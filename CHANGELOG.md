@@ -10,7 +10,8 @@ Supported invoice standards are documented per release.
 ### Added
 - Project foundation: dual licensing (GPL-3.0-or-later or Landrix Software Commercial
   License), third-party notices, contribution rules, security policy.
-- LandrixXML for Pascal as Git submodule in `external/landrix-xml`.
+- LandrixXML for Pascal as Git submodule in `external/landrix-xml`, pinned to
+  release 0.2.0.
 - `tools/check-forbidden.py`: checks sources for language features and units that
   Delphi 6 does not support. `cwstring` is allowed in programs (`.dpr`/`.lpr`) only.
 - `LandrixEInvoice.inc` with the central compiler switches (`LANDRIXEINVOICE_UNICODE`).
