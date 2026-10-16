@@ -101,3 +101,6 @@ E-Rechnung-Analyse-und-Fahrplan.md
 
 # Local agent settings
 .claude/settings.local.json
+
+# Downloaded schema packages (tools/syntaxmodel/extract-xsd.py)
+tools/syntaxmodel/download/

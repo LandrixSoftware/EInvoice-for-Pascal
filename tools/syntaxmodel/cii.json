@@ -1,0 +1,2463 @@
+{
+ "namespaces": {
+  "qdt": "urn:un:unece:uncefact:data:standard:QualifiedDataType:100",
+  "ram": "urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100",
+  "rsm": "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100",
+  "udt": "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100"
+ },
+ "root": {
+  "name": "CrossIndustryInvoice",
+  "ns": "rsm",
+  "type": "rsm:CrossIndustryInvoiceType"
+ },
+ "types": {
+  "qdt:AccountingAccountTypeCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:AllowanceChargeReasonCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": [
+    {
+     "name": "listID",
+     "required": false,
+     "default": "4465_AllowanceChargeReasonCode"
+    }
+   ]
+  },
+  "qdt:ContactTypeCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:CountryIDType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:CurrencyCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:DeliveryTermsCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:DocumentCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:FormattedDateTimeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "DateTimeString",
+     "ns": "qdt",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:FormattedDateTimeType/DateTimeString"
+    }
+   ]
+  },
+  "qdt:FormattedDateTimeType/DateTimeString": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": [
+    {
+     "name": "format",
+     "required": true,
+     "default": null
+    }
+   ]
+  },
+  "qdt:LineStatusCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:PartyRoleCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:PaymentMeansCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:ReferenceCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:TaxCategoryCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:TaxTypeCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:TimeReferenceCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "qdt:TransportModeCodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": []
+  },
+  "ram:AdvancePaymentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "PaidAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "FormattedReceivedDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:FormattedDateTimeType"
+    },
+    {
+     "name": "IncludedTradeTax",
+     "ns": "ram",
+     "min": 1,
+     "max": -1,
+     "type": "ram:TradeTaxType"
+    },
+    {
+     "name": "InvoiceSpecifiedReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    }
+   ]
+  },
+  "ram:CreditorFinancialAccountType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "IBANID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "AccountName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "ProprietaryID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    }
+   ]
+  },
+  "ram:CreditorFinancialInstitutionType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "BICID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    }
+   ]
+  },
+  "ram:DebtorFinancialAccountType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "IBANID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "AccountName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "ram:DebtorFinancialInstitutionType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "BICID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    }
+   ]
+  },
+  "ram:DocumentContextParameterType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    }
+   ]
+  },
+  "ram:DocumentLineDocumentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "LineID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "ParentLineID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "LineStatusCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:LineStatusCodeType"
+    },
+    {
+     "name": "LineStatusReasonCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:CodeType"
+    },
+    {
+     "name": "IncludedNote",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:NoteType"
+    }
+   ]
+  },
+  "ram:ExchangedDocumentContextType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "TestIndicator",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IndicatorType"
+    },
+    {
+     "name": "BusinessProcessSpecifiedDocumentContextParameter",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:DocumentContextParameterType"
+    },
+    {
+     "name": "GuidelineSpecifiedDocumentContextParameter",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:DocumentContextParameterType"
+    }
+   ]
+  },
+  "ram:ExchangedDocumentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "Name",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "TypeCode",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:DocumentCodeType"
+    },
+    {
+     "name": "IssueDateTime",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    },
+    {
+     "name": "CopyIndicator",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IndicatorType"
+    },
+    {
+     "name": "LanguageID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "IncludedNote",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:NoteType"
+    },
+    {
+     "name": "EffectiveSpecifiedPeriod",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:SpecifiedPeriodType"
+    }
+   ]
+  },
+  "ram:FinancialAdjustmentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Reason",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "ActualAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    }
+   ]
+  },
+  "ram:HeaderTradeAgreementType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "BuyerReference",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "SellerTradeParty",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "BuyerTradeParty",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "SalesAgentTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "BuyerTaxRepresentativeTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "SellerTaxRepresentativeTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "ProductEndUserTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "ApplicableTradeDeliveryTerms",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeDeliveryTermsType"
+    },
+    {
+     "name": "SellerOrderReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "BuyerOrderReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "QuotationReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "ContractReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "AdditionalReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "BuyerAgentTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "SpecifiedProcuringProject",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ProcuringProjectType"
+    },
+    {
+     "name": "UltimateCustomerOrderReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ReferencedDocumentType"
+    }
+   ]
+  },
+  "ram:HeaderTradeDeliveryType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "RelatedSupplyChainConsignment",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:SupplyChainConsignmentType"
+    },
+    {
+     "name": "ShipToTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "UltimateShipToTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "ShipFromTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "ActualDeliverySupplyChainEvent",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:SupplyChainEventType"
+    },
+    {
+     "name": "DespatchAdviceReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "ReceivingAdviceReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "DeliveryNoteReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    }
+   ]
+  },
+  "ram:HeaderTradeSettlementType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "CreditorReferenceID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "PaymentReference",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "TaxCurrencyCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:CurrencyCodeType"
+    },
+    {
+     "name": "InvoiceCurrencyCode",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:CurrencyCodeType"
+    },
+    {
+     "name": "InvoiceIssuerReference",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "InvoicerTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "InvoiceeTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "PayeeTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "PayerTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "TaxApplicableTradeCurrencyExchange",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeCurrencyExchangeType"
+    },
+    {
+     "name": "SpecifiedTradeSettlementPaymentMeans",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeSettlementPaymentMeansType"
+    },
+    {
+     "name": "ApplicableTradeTax",
+     "ns": "ram",
+     "min": 1,
+     "max": -1,
+     "type": "ram:TradeTaxType"
+    },
+    {
+     "name": "BillingSpecifiedPeriod",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:SpecifiedPeriodType"
+    },
+    {
+     "name": "SpecifiedTradeAllowanceCharge",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeAllowanceChargeType"
+    },
+    {
+     "name": "SpecifiedLogisticsServiceCharge",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:LogisticsServiceChargeType"
+    },
+    {
+     "name": "SpecifiedTradePaymentTerms",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradePaymentTermsType"
+    },
+    {
+     "name": "SpecifiedTradeSettlementHeaderMonetarySummation",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:TradeSettlementHeaderMonetarySummationType"
+    },
+    {
+     "name": "SpecifiedFinancialAdjustment",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:FinancialAdjustmentType"
+    },
+    {
+     "name": "InvoiceReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "ReceivableSpecifiedTradeAccountingAccount",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeAccountingAccountType"
+    },
+    {
+     "name": "SpecifiedAdvancePayment",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:AdvancePaymentType"
+    }
+   ]
+  },
+  "ram:LegalOrganizationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "TradingBusinessName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "PostalTradeAddress",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeAddressType"
+    }
+   ]
+  },
+  "ram:LineTradeAgreementType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ApplicableTradeDeliveryTerms",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeDeliveryTermsType"
+    },
+    {
+     "name": "SellerOrderReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "BuyerOrderReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "QuotationReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "ContractReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "AdditionalReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "GrossPriceProductTradePrice",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePriceType"
+    },
+    {
+     "name": "NetPriceProductTradePrice",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePriceType"
+    },
+    {
+     "name": "ItemSellerTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "UltimateCustomerOrderReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ReferencedDocumentType"
+    }
+   ]
+  },
+  "ram:LineTradeDeliveryType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "BilledQuantity",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:QuantityType"
+    },
+    {
+     "name": "ChargeFreeQuantity",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:QuantityType"
+    },
+    {
+     "name": "PackageQuantity",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:QuantityType"
+    },
+    {
+     "name": "PerPackageUnitQuantity",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:QuantityType"
+    },
+    {
+     "name": "ShipToTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "UltimateShipToTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "ActualDeliverySupplyChainEvent",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:SupplyChainEventType"
+    },
+    {
+     "name": "DespatchAdviceReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "ReceivingAdviceReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "DeliveryNoteReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    }
+   ]
+  },
+  "ram:LineTradeSettlementType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ApplicableTradeTax",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeTaxType"
+    },
+    {
+     "name": "BillingSpecifiedPeriod",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:SpecifiedPeriodType"
+    },
+    {
+     "name": "SpecifiedTradeAllowanceCharge",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeAllowanceChargeType"
+    },
+    {
+     "name": "SpecifiedTradeSettlementLineMonetarySummation",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeSettlementLineMonetarySummationType"
+    },
+    {
+     "name": "InvoiceReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "AdditionalReferencedDocument",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ReferencedDocumentType"
+    },
+    {
+     "name": "ReceivableSpecifiedTradeAccountingAccount",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeAccountingAccountType"
+    }
+   ]
+  },
+  "ram:LogisticsServiceChargeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Description",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "AppliedAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "AppliedTradeTax",
+     "ns": "ram",
+     "min": 1,
+     "max": -1,
+     "type": "ram:TradeTaxType"
+    }
+   ]
+  },
+  "ram:LogisticsTransportMovementType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ModeCode",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:TransportModeCodeType"
+    }
+   ]
+  },
+  "ram:NoteType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ContentCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:CodeType"
+    },
+    {
+     "name": "Content",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "SubjectCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:CodeType"
+    }
+   ]
+  },
+  "ram:ProcuringProjectType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "Name",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "ram:ProductCharacteristicType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "TypeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:CodeType"
+    },
+    {
+     "name": "Description",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "ValueMeasure",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:MeasureType"
+    },
+    {
+     "name": "Value",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "ram:ProductClassificationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ClassCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:CodeType"
+    },
+    {
+     "name": "ClassName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "ram:ReferencedDocumentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "IssuerAssignedID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "URIID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "LineID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "TypeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:DocumentCodeType"
+    },
+    {
+     "name": "Name",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "AttachmentBinaryObject",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:BinaryObjectType"
+    },
+    {
+     "name": "ReferenceTypeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:ReferenceCodeType"
+    },
+    {
+     "name": "FormattedIssueDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:FormattedDateTimeType"
+    }
+   ]
+  },
+  "ram:ReferencedProductType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "GlobalID",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "SellerAssignedID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "BuyerAssignedID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "IndustryAssignedID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "Name",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "Description",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "UnitQuantity",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:QuantityType"
+    }
+   ]
+  },
+  "ram:SpecifiedPeriodType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Description",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "StartDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    },
+    {
+     "name": "EndDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    },
+    {
+     "name": "CompleteDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    }
+   ]
+  },
+  "ram:SupplyChainConsignmentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "SpecifiedLogisticsTransportMovement",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:LogisticsTransportMovementType"
+    }
+   ]
+  },
+  "ram:SupplyChainEventType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "OccurrenceDateTime",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    }
+   ]
+  },
+  "ram:SupplyChainTradeLineItemType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "AssociatedDocumentLineDocument",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:DocumentLineDocumentType"
+    },
+    {
+     "name": "SpecifiedTradeProduct",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:TradeProductType"
+    },
+    {
+     "name": "SpecifiedLineTradeAgreement",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:LineTradeAgreementType"
+    },
+    {
+     "name": "SpecifiedLineTradeDelivery",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:LineTradeDeliveryType"
+    },
+    {
+     "name": "SpecifiedLineTradeSettlement",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:LineTradeSettlementType"
+    }
+   ]
+  },
+  "ram:SupplyChainTradeTransactionType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "IncludedSupplyChainTradeLineItem",
+     "ns": "ram",
+     "min": 1,
+     "max": -1,
+     "type": "ram:SupplyChainTradeLineItemType"
+    },
+    {
+     "name": "ApplicableHeaderTradeAgreement",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:HeaderTradeAgreementType"
+    },
+    {
+     "name": "ApplicableHeaderTradeDelivery",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:HeaderTradeDeliveryType"
+    },
+    {
+     "name": "ApplicableHeaderTradeSettlement",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "ram:HeaderTradeSettlementType"
+    }
+   ]
+  },
+  "ram:TaxRegistrationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    }
+   ]
+  },
+  "ram:TradeAccountingAccountType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "TypeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:AccountingAccountTypeCodeType"
+    }
+   ]
+  },
+  "ram:TradeAddressType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "PostcodeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:CodeType"
+    },
+    {
+     "name": "LineOne",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "LineTwo",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "LineThree",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "CityName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "CountryID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:CountryIDType"
+    },
+    {
+     "name": "CountrySubDivisionName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "ram:TradeAllowanceChargeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ChargeIndicator",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IndicatorType"
+    },
+    {
+     "name": "SequenceNumeric",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:NumericType"
+    },
+    {
+     "name": "CalculationPercent",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:PercentType"
+    },
+    {
+     "name": "BasisAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "BasisQuantity",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:QuantityType"
+    },
+    {
+     "name": "ActualAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "ReasonCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:AllowanceChargeReasonCodeType"
+    },
+    {
+     "name": "Reason",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "CategoryTradeTax",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeTaxType"
+    }
+   ]
+  },
+  "ram:TradeContactType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "PersonName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "DepartmentName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "TypeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:ContactTypeCodeType"
+    },
+    {
+     "name": "TelephoneUniversalCommunication",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:UniversalCommunicationType"
+    },
+    {
+     "name": "FaxUniversalCommunication",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:UniversalCommunicationType"
+    },
+    {
+     "name": "EmailURIUniversalCommunication",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:UniversalCommunicationType"
+    }
+   ]
+  },
+  "ram:TradeCountryType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:CountryIDType"
+    }
+   ]
+  },
+  "ram:TradeCurrencyExchangeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "SourceCurrencyCode",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:CurrencyCodeType"
+    },
+    {
+     "name": "TargetCurrencyCode",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:CurrencyCodeType"
+    },
+    {
+     "name": "ConversionRate",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:RateType"
+    },
+    {
+     "name": "ConversionRateDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    }
+   ]
+  },
+  "ram:TradeDeliveryTermsType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "DeliveryTypeCode",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:DeliveryTermsCodeType"
+    },
+    {
+     "name": "RelevantTradeLocation",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeLocationType"
+    }
+   ]
+  },
+  "ram:TradeLocationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "CountryID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:CountryIDType"
+    },
+    {
+     "name": "Name",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "ram:TradePartyType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "GlobalID",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "Name",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "RoleCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:PartyRoleCodeType"
+    },
+    {
+     "name": "Description",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "SpecifiedLegalOrganization",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:LegalOrganizationType"
+    },
+    {
+     "name": "DefinedTradeContact",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeContactType"
+    },
+    {
+     "name": "PostalTradeAddress",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeAddressType"
+    },
+    {
+     "name": "URIUniversalCommunication",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:UniversalCommunicationType"
+    },
+    {
+     "name": "SpecifiedTaxRegistration",
+     "ns": "ram",
+     "min": 0,
+     "max": 2,
+     "type": "ram:TaxRegistrationType"
+    }
+   ]
+  },
+  "ram:TradePaymentDiscountTermsType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "BasisDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    },
+    {
+     "name": "BasisPeriodMeasure",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:MeasureType"
+    },
+    {
+     "name": "BasisAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "CalculationPercent",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:PercentType"
+    },
+    {
+     "name": "ActualDiscountAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    }
+   ]
+  },
+  "ram:TradePaymentPenaltyTermsType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "BasisDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    },
+    {
+     "name": "BasisPeriodMeasure",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:MeasureType"
+    },
+    {
+     "name": "BasisAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "CalculationPercent",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:PercentType"
+    },
+    {
+     "name": "ActualPenaltyAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    }
+   ]
+  },
+  "ram:TradePaymentTermsType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Description",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "DueDateDateTime",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateTimeType"
+    },
+    {
+     "name": "DirectDebitMandateID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "PartialPaymentAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "ApplicableTradePaymentPenaltyTerms",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePaymentPenaltyTermsType"
+    },
+    {
+     "name": "ApplicableTradePaymentDiscountTerms",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePaymentDiscountTermsType"
+    },
+    {
+     "name": "PayeeTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    }
+   ]
+  },
+  "ram:TradePriceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ChargeAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "BasisQuantity",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:QuantityType"
+    },
+    {
+     "name": "AppliedTradeAllowanceCharge",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeAllowanceChargeType"
+    },
+    {
+     "name": "IncludedTradeTax",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeTaxType"
+    }
+   ]
+  },
+  "ram:TradeProductInstanceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "BatchID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "SupplierAssignedSerialID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    }
+   ]
+  },
+  "ram:TradeProductType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "GlobalID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "SellerAssignedID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "BuyerAssignedID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "IndustryAssignedID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "ModelID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "Name",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "Description",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "BatchID",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "BrandName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "ModelName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "ApplicableProductCharacteristic",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ProductCharacteristicType"
+    },
+    {
+     "name": "DesignatedProductClassification",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ProductClassificationType"
+    },
+    {
+     "name": "IndividualTradeProductInstance",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:TradeProductInstanceType"
+    },
+    {
+     "name": "OriginTradeCountry",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeCountryType"
+    },
+    {
+     "name": "ManufacturerTradeParty",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradePartyType"
+    },
+    {
+     "name": "IncludedReferencedProduct",
+     "ns": "ram",
+     "min": 0,
+     "max": -1,
+     "type": "ram:ReferencedProductType"
+    }
+   ]
+  },
+  "ram:TradeSettlementFinancialCardType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "CardholderName",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "ram:TradeSettlementHeaderMonetarySummationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "LineTotalAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "ChargeTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "AllowanceTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "TaxBasisTotalAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "TaxTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 2,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "RoundingAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "GrandTotalAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "TotalPrepaidAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "DuePayableAmount",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "udt:AmountType"
+    }
+   ]
+  },
+  "ram:TradeSettlementLineMonetarySummationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "LineTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "ChargeTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "AllowanceTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "TaxTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 2,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "GrandTotalAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "TotalAllowanceChargeAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    }
+   ]
+  },
+  "ram:TradeSettlementPaymentMeansType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "TypeCode",
+     "ns": "ram",
+     "min": 1,
+     "max": 1,
+     "type": "qdt:PaymentMeansCodeType"
+    },
+    {
+     "name": "Information",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "ApplicableTradeSettlementFinancialCard",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:TradeSettlementFinancialCardType"
+    },
+    {
+     "name": "PayerPartyDebtorFinancialAccount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:DebtorFinancialAccountType"
+    },
+    {
+     "name": "PayeePartyCreditorFinancialAccount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:CreditorFinancialAccountType"
+    },
+    {
+     "name": "PayerSpecifiedDebtorFinancialInstitution",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:DebtorFinancialInstitutionType"
+    },
+    {
+     "name": "PayeeSpecifiedCreditorFinancialInstitution",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "ram:CreditorFinancialInstitutionType"
+    }
+   ]
+  },
+  "ram:TradeTaxType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "CalculatedAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "TypeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:TaxTypeCodeType"
+    },
+    {
+     "name": "ExemptionReason",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    },
+    {
+     "name": "BasisAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "LineTotalBasisAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "AllowanceChargeBasisAmount",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:AmountType"
+    },
+    {
+     "name": "CategoryCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:TaxCategoryCodeType"
+    },
+    {
+     "name": "ExemptionReasonCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:CodeType"
+    },
+    {
+     "name": "TaxPointDate",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:DateType"
+    },
+    {
+     "name": "DueDateTypeCode",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "qdt:TimeReferenceCodeType"
+    },
+    {
+     "name": "RateApplicablePercent",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:PercentType"
+    }
+   ]
+  },
+  "ram:UniversalCommunicationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "URIID",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:IDType"
+    },
+    {
+     "name": "CompleteNumber",
+     "ns": "ram",
+     "min": 0,
+     "max": 1,
+     "type": "udt:TextType"
+    }
+   ]
+  },
+  "rsm:CrossIndustryInvoiceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ExchangedDocumentContext",
+     "ns": "rsm",
+     "min": 1,
+     "max": 1,
+     "type": "ram:ExchangedDocumentContextType"
+    },
+    {
+     "name": "ExchangedDocument",
+     "ns": "rsm",
+     "min": 1,
+     "max": 1,
+     "type": "ram:ExchangedDocumentType"
+    },
+    {
+     "name": "SupplyChainTradeTransaction",
+     "ns": "rsm",
+     "min": 1,
+     "max": 1,
+     "type": "ram:SupplyChainTradeTransactionType"
+    }
+   ]
+  },
+  "udt:AmountType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": [
+    {
+     "name": "currencyID",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:BinaryObjectType": {
+   "kind": "simple",
+   "base": "base64",
+   "attributes": [
+    {
+     "name": "mimeCode",
+     "required": true,
+     "default": null
+    },
+    {
+     "name": "filename",
+     "required": true,
+     "default": null
+    }
+   ]
+  },
+  "udt:CodeType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": [
+    {
+     "name": "listID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "listVersionID",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:DateTimeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "DateTimeString",
+     "ns": "udt",
+     "min": 1,
+     "max": 1,
+     "type": "udt:DateTimeType/DateTimeString"
+    }
+   ]
+  },
+  "udt:DateTimeType/DateTimeString": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": [
+    {
+     "name": "format",
+     "required": true,
+     "default": null
+    }
+   ]
+  },
+  "udt:DateType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "DateString",
+     "ns": "udt",
+     "min": 1,
+     "max": 1,
+     "type": "udt:DateType/DateString"
+    }
+   ]
+  },
+  "udt:DateType/DateString": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": [
+    {
+     "name": "format",
+     "required": true,
+     "default": null
+    }
+   ]
+  },
+  "udt:IDType": {
+   "kind": "simple",
+   "base": "token",
+   "attributes": [
+    {
+     "name": "schemeID",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:IndicatorType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Indicator",
+     "ns": "udt",
+     "min": 1,
+     "max": 1,
+     "type": "xs:boolean"
+    }
+   ]
+  },
+  "udt:MeasureType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": [
+    {
+     "name": "unitCode",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:NumericType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": []
+  },
+  "udt:PercentType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": []
+  },
+  "udt:QuantityType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": [
+    {
+     "name": "unitCode",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:RateType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": []
+  },
+  "udt:TextType": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": []
+  }
+ }
+}

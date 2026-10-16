@@ -1,0 +1,17 @@
+{
+  "comment": "Input of extract-xsd.py. The schema files are not part of the repository; extract-xsd.py downloads the package, verifies the checksums and writes the reduced structure description cii.json, which is committed and used by gen-syntaxmodel.py.",
+  "cii": {
+    "title": "Factur-X 1.09.2 / ZUGFeRD 2.5.2 EXTENDED schema, from validator-configuration-zugferd 2.5.2",
+    "url": "https://github.com/LandrixSoftware/validator-configuration-zugferd/releases/download/validation-configuration-zugferd-2.5.2/validation-configuration-zugferd-2.5.2-2026-10-15.zip",
+    "zip_sha256": "43487e76edad8b7276da8266f0b1473b597be23554d1ab7fb1c828a03036eafa",
+    "folder": "Schema/factur-x-1.09.2/4_Factur-X_1.09.2_EXTENDED/",
+    "main": "Factur-X_1.09.2_EXTENDED.xsd",
+    "files": {
+      "Factur-X_1.09.2_EXTENDED.xsd": "2accff44dbdc405f38fd35d789ff5e6262396940356ed362009509cd024556c6",
+      "Factur-X_1.09.2_EXTENDED_urn_un_unece_uncefact_data_standard_QualifiedDataType_100.xsd": "ece13000d4f99c97ef09b909e9f8646d45415c46fd24d19d3c9b771c72ae2b34",
+      "Factur-X_1.09.2_EXTENDED_urn_un_unece_uncefact_data_standard_ReusableAggregateBusinessInformationEntity_100.xsd": "83cef3c48a6c83149733ffdced362e230e9ae482f62acdfb8c0fb3a919452fdb",
+      "Factur-X_1.09.2_EXTENDED_urn_un_unece_uncefact_data_standard_UnqualifiedDataType_100.xsd": "c6c9f7b3f36c821999f20d7b7fff30db64112bc7b2a8f132e3d048d859855d00"
+    },
+    "output": "cii.json"
+  }
+}

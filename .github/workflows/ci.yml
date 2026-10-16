@@ -18,6 +18,13 @@ jobs:
       - name: Check that the generated code lists are up to date
         run: python3 tools/codelists/gen-codelists.py --check
 
+      - name: Check that the CII structure description matches the schema
+        # downloads the Factur-X schema package and verifies its checksums
+        run: python3 tools/syntaxmodel/extract-xsd.py --check
+
+      - name: Check that the generated CII units are up to date
+        run: python3 tools/syntaxmodel/gen-syntaxmodel.py --check
+
       # The LandrixXml submodule is a private repository. LANDRIXXML_TOKEN is a
       # fine-grained personal access token with read access (Contents: read) to
       # LandrixSoftware/LandrixXML-for-Pascal only. Pull requests from forks do
