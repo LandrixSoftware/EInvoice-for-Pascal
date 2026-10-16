@@ -19,7 +19,8 @@ import sys
 ALLOW_MARKER = "check-forbidden: allow"
 EXTENSIONS = (".pas", ".inc", ".dpr", ".lpr")
 
-ALLOWED_UNITS = {"sysutils", "classes", "contnrs"}
+# types: Delphi 13 needs it for TList.TDirection (hint H2443 at inherited Extract)
+ALLOWED_UNITS = {"sysutils", "classes", "contnrs", "types"}
 # Only in programs (.dpr/.lpr), never in library units: cwstring installs the
 # Unix wide string manager that applications need for lossless conversions.
 PROGRAM_UNITS = {"cwstring"}
@@ -205,9 +206,12 @@ def check_blocks(path, code, violations):
     for start, body in block_bodies(code, r"=\s*class\b(?!\s*(of\b|;|\([\w\s,.]*\)\s*;))"):
         # a nested section starts a line ("type" alone, or "const X = ...");
         # "const" as a parameter modifier does not count
-        if re.search(r"^\s*(type|const)\s*$|^\s*(type|const)\s+\w+\s*=", body, re.IGNORECASE | re.MULTILINE):
+        # optionally preceded by a visibility keyword on the same line
+        # ("public const X = ...", "private type")
+        vis = r"(?:(?:strict\s+)?(?:public|private|protected|published)\s+)?"
+        if re.search(r"^\s*" + vis + r"(type|const|var)\s*$|^\s*" + vis + r"(type|const)\s+\w+\s*=", body, re.IGNORECASE | re.MULTILINE):
             line = code.count("\n", 0, start) + 1
-            violations.append(Violation(path, line, "nested type/const in class"))
+            violations.append(Violation(path, line, "nested type/const/var section in class"))
     # old-style objects are allowed only as value types without a VMT
     # (optional values): zeroed memory must be a valid "not set" state
     for start, body in block_bodies(code, r"=\s*(packed\s+)?object\b"):

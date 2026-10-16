@@ -25,6 +25,21 @@ Supported invoice standards are documented per release.
   `TLandrixEInvoicePercent`, `TLandrixEInvoiceInteger`, `TLandrixEInvoiceBoolean`, with
   factories `LandrixEInvoiceAmount(...)` / `LandrixEInvoiceNoAmount` etc.
 - `ELandrixEInvoiceError`, base class of the library's own exceptions.
+- `TLandrixEInvoiceListIndex`: index type of the model's lists (`NativeInt` from Delphi 12 on,
+  `Integer` before and on Free Pascal).
+- `LandrixEInvoiceCodes`: code lists of the model (invoice type, payment means, unit of
+  measure, attachment MIME type and document type, allowance and charge reasons, VAT
+  category, note subject) with `...ToStr` / `...FromStr` functions.
+- `LandrixEInvoiceInvoice`: the semantic invoice model `TLandrixInvoice` with lines, parties,
+  payment, tax and attachment classes, taken over from `TInvoice` of XRechnung-for-Delphi
+  with `TLandrix...` names and unchanged enumeration member names. Changes against
+  XRechnung-for-Delphi: text fields are `TLandrixEInvoiceString`, date fields `TDateTime`;
+  `TInvoiceEmptyLeitwegID.NON_EXISTENT` is the constant `LandrixEInvoiceLeitwegIDNonExistent`;
+  the helper classes are the functions `LandrixEInvoiceUnitCodeFromUnitOfMeasure` and
+  `LandrixEInvoiceAttachmentTypeFromFilename`; `EmbedDataFromText` writes UTF-8 without BOM
+  (was UTF-16LE with BOM) and has an overload for `TLandrixEInvoiceString`;
+  `EmbedDataFromFile` no longer retries on locked files; invalid Base64 raises
+  `ELandrixXmlError`; `TryAddAttachmentByExtension` sets the attachment to nil on failure.
 - Framework-free console test runner `tests/LandrixEInvoiceTests.dpr`.
 - `tools/build.ps1`: builds and runs the tests with the local toolchains.
 - CI with Free Pascal 3.2.2 on Linux (manual start only for now).

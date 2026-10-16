@@ -87,6 +87,25 @@ type
 {$ENDIF}
   TLandrixEInvoiceChar = WideChar;
 
+  { Index type of the model's list classes (TObjectList descendants). It
+    matches the index type of TList on each compiler: NativeInt from Delphi
+    12 on, Integer before and on FPC. Use it for loop variables over these
+    lists; an Integer index there causes W1075/W1072 on Delphi 13 Win64.
+    DE: Indextyp der Listenklassen des Modells (Nachfahren von TObjectList).
+    Er entspricht dem Indextyp von TList je Compiler: NativeInt ab Delphi
+    12, davor und unter FPC Integer. Fuer Schleifenvariablen ueber diese
+    Listen verwenden; ein Integer-Index fuehrt dort unter Delphi 13 Win64 zu
+    W1075/W1072. }
+{$IFDEF FPC}
+  TLandrixEInvoiceListIndex = Integer;
+{$ELSE}
+  {$IF CompilerVersion >= 36.0}
+  TLandrixEInvoiceListIndex = NativeInt; // check-forbidden: allow
+  {$ELSE}
+  TLandrixEInvoiceListIndex = Integer;
+  {$IFEND}
+{$ENDIF}
+
   { Base class of the library's own exceptions (conversion errors from
     LandrixXml keep their class ELandrixXmlError).
     DE: Basisklasse der eigenen Ausnahmen der Bibliothek (Umwandlungsfehler

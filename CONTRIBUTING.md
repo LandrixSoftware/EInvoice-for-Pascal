@@ -39,7 +39,7 @@ Generated units (syntax models, code lists) must not be edited by hand. Change t
 
 All library code must compile unchanged with Delphi 6 through Delphi 13 and Free Pascal 3.2.2+. The language subset is the same as in [LandrixXML for Pascal](https://github.com/LandrixSoftware/LandrixXML-for-Pascal):
 
-* Units: only `SysUtils`, `Classes`, `Contnrs`, LandrixXml units and own units. Unqualified unit names; unit names contain no dot.
+* Units: only `SysUtils`, `Classes`, `Contnrs`, `Types` (Delphi only; Delphi 13 needs it for `TList.TDirection`), LandrixXml units and own units. Unqualified unit names; unit names contain no dot.
 * Not allowed: generics, anonymous methods, `for ... in`, `Exit(Value)`, `strict private/protected`, records with methods, class and record helpers, operator overloading, `inline`, `class var`, nested types, inline `var` declarations, `{$REGION}`.
 * Old-style `object` types are allowed only as value types without a VMT (no constructors, destructors, virtual, dynamic, abstract or override methods), as used by the optional value types `TLandrixEInvoiceAmount` etc.: zeroed memory must mean "not set". Such a type must not be exactly 8 bytes in size: Delphi 13 Win64 passes 8-byte objects wrongly as value or `const` parameters (records are not affected).
 * Not allowed: `TStringBuilder`, `TEncoding`, `TFormatSettings`, `PosEx`, `CharInSet`, `RawByteString`, `NativeInt`, `NativeUInt`, `TBytes`, `UInt64`, `UTF8ToString`.
