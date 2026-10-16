@@ -459,6 +459,322 @@ begin
   end;
 end;
 
+{ --- Clear --------------------------------------------------------------- }
+
+procedure CheckEmpty(const S: TLandrixEInvoiceString; const Msg: string);
+begin
+  CheckEquals(0, Length(S), Msg + ' is empty');
+end;
+
+procedure CheckZero(Value: Double; const Msg: string);
+begin
+  Check(Value = 0, Msg + ' is 0');
+end;
+
+procedure FillAddress(A: TLandrixInvoiceAddress);
+begin
+  A.StreetName := 'a';
+  A.AdditionalStreetName := 'a';
+  A.City := 'a';
+  A.PostalZone := 'a';
+  A.CountrySubentity := 'a';
+  A.AddressLine := 'a';
+  A.CountryCode := 'a';
+end;
+
+procedure CheckAddressDefault(A: TLandrixInvoiceAddress; const Msg: string);
+begin
+  CheckEmpty(A.StreetName, Msg + '.StreetName');
+  CheckEmpty(A.AdditionalStreetName, Msg + '.AdditionalStreetName');
+  CheckEmpty(A.City, Msg + '.City');
+  CheckEmpty(A.PostalZone, Msg + '.PostalZone');
+  CheckEmpty(A.CountrySubentity, Msg + '.CountrySubentity');
+  CheckEmpty(A.AddressLine, Msg + '.AddressLine');
+  CheckEmpty(A.CountryCode, Msg + '.CountryCode');
+end;
+
+procedure FillParty(P: TLandrixInvoiceAccountingParty);
+begin
+  P.Name := 'a';
+  P.RegistrationName := 'a';
+  P.CompanyID := 'a';
+  FillAddress(P.Address);
+  P.IdentifierSellerBuyer := 'a';
+  P.GlobalIdentifierSellerBuyer := 'a';
+  P.GlobalIdentifierSellerBuyerSchemeID := 'a';
+  P.BankAssignedCreditorIdentifier := 'a';
+  P.VATCompanyID := 'a';
+  P.VATCompanyNumber := 'a';
+  P.ContactName := 'a';
+  P.ContactTelephone := 'a';
+  P.ContactElectronicMail := 'a';
+  P.AdditionalLegalInformationSeller := 'a';
+  P.ElectronicAddressSellerBuyer := 'a';
+  P.ElectronicAddressSellerBuyerSchemeID := 'a';
+end;
+
+procedure CheckPartyDefault(P: TLandrixInvoiceAccountingParty; const Msg: string);
+begin
+  CheckEmpty(P.Name, Msg + '.Name');
+  CheckEmpty(P.RegistrationName, Msg + '.RegistrationName');
+  CheckEmpty(P.CompanyID, Msg + '.CompanyID');
+  CheckAddressDefault(P.Address, Msg + '.Address');
+  CheckEmpty(P.IdentifierSellerBuyer, Msg + '.IdentifierSellerBuyer');
+  CheckEmpty(P.GlobalIdentifierSellerBuyer, Msg + '.GlobalIdentifierSellerBuyer');
+  CheckEmpty(P.GlobalIdentifierSellerBuyerSchemeID, Msg + '.GlobalIdentifierSellerBuyerSchemeID');
+  CheckEmpty(P.BankAssignedCreditorIdentifier, Msg + '.BankAssignedCreditorIdentifier');
+  CheckEmpty(P.VATCompanyID, Msg + '.VATCompanyID');
+  CheckEmpty(P.VATCompanyNumber, Msg + '.VATCompanyNumber');
+  CheckEmpty(P.ContactName, Msg + '.ContactName');
+  CheckEmpty(P.ContactTelephone, Msg + '.ContactTelephone');
+  CheckEmpty(P.ContactElectronicMail, Msg + '.ContactElectronicMail');
+  CheckEmpty(P.AdditionalLegalInformationSeller, Msg + '.AdditionalLegalInformationSeller');
+  CheckEmpty(P.ElectronicAddressSellerBuyer, Msg + '.ElectronicAddressSellerBuyer');
+  CheckEmpty(P.ElectronicAddressSellerBuyerSchemeID, Msg + '.ElectronicAddressSellerBuyerSchemeID');
+end;
+
+procedure FillLine(L: TLandrixInvoiceLine);
+begin
+  L.ID := 'a';
+  L.GlobalID_EAN_GTIN := 'a';
+  L.Note := 'a';
+  L.ObjectIdentifier := 'a';
+  L.ObjectIdentifierSchemeID := 'a';
+  L.Name := 'a';
+  L.Description := 'a';
+  L.Quantity := 1;
+  L.UnitCode := iuc_piece;
+  L.SellersItemIdentification := 'a';
+  L.BuyersItemIdentification := 'a';
+  L.OrderNumber := 'a';
+  L.OrderLineReference := 'a';
+  L.BuyerAccountingReference := 'a';
+  L.TaxPercent := 19;
+  L.TaxCategory := idtfcc_S_StandardRate;
+  L.TaxExemptionReason := 'a';
+  L.GrossPriceAmount := 1;
+  L.DiscountOnTheGrossPrice := 1;
+  L.NetPriceAmount := 1;
+  L.BaseQuantity := 1;
+  L.BaseQuantityUnitCode := iuc_piece;
+  L.LineAmount := 1;
+  L.AllowanceCharges.AddAllowanceCharge;
+  L.InvoiceLinePeriodStartDate := 1;
+  L.InvoiceLinePeriodEndDate := 1;
+  L.ItemClassifications.AddItemClassification;
+  L.OriginTradeCountry := 'a';
+  L.ItemAttributes.AddItemAttribute;
+  L.DeliveryNoteNumber := 'a';
+  L.DeliveryNoteLineID := 'a';
+  L.DeliveryNoteDate := 1;
+  L.ActualDeliveryDate := 1;
+  L.SubInvoiceLines.AddInvoiceLine;
+  L.LineStatusReasonCode := ilsrc_Group;
+end;
+
+procedure CheckLineDefault(L: TLandrixInvoiceLine; const Msg: string);
+begin
+  CheckEmpty(L.ID, Msg + '.ID');
+  CheckEmpty(L.GlobalID_EAN_GTIN, Msg + '.GlobalID_EAN_GTIN');
+  CheckEmpty(L.Note, Msg + '.Note');
+  CheckEmpty(L.ObjectIdentifier, Msg + '.ObjectIdentifier');
+  CheckEmpty(L.ObjectIdentifierSchemeID, Msg + '.ObjectIdentifierSchemeID');
+  CheckEmpty(L.Name, Msg + '.Name');
+  CheckEmpty(L.Description, Msg + '.Description');
+  CheckZero(L.Quantity, Msg + '.Quantity');
+  Check(L.UnitCode = iuc_None, Msg + '.UnitCode is iuc_None');
+  CheckEmpty(L.SellersItemIdentification, Msg + '.SellersItemIdentification');
+  CheckEmpty(L.BuyersItemIdentification, Msg + '.BuyersItemIdentification');
+  CheckEmpty(L.OrderNumber, Msg + '.OrderNumber');
+  CheckEmpty(L.OrderLineReference, Msg + '.OrderLineReference');
+  CheckEmpty(L.BuyerAccountingReference, Msg + '.BuyerAccountingReference');
+  CheckZero(L.TaxPercent, Msg + '.TaxPercent');
+  Check(L.TaxCategory = idtfcc_None, Msg + '.TaxCategory is idtfcc_None');
+  CheckEmpty(L.TaxExemptionReason, Msg + '.TaxExemptionReason');
+  CheckZero(L.GrossPriceAmount, Msg + '.GrossPriceAmount');
+  CheckZero(L.DiscountOnTheGrossPrice, Msg + '.DiscountOnTheGrossPrice');
+  CheckZero(L.NetPriceAmount, Msg + '.NetPriceAmount');
+  CheckZero(L.BaseQuantity, Msg + '.BaseQuantity');
+  Check(L.BaseQuantityUnitCode = iuc_None, Msg + '.BaseQuantityUnitCode is iuc_None');
+  CheckZero(L.LineAmount, Msg + '.LineAmount');
+  CheckEquals(0, Integer(L.AllowanceCharges.Count), Msg + '.AllowanceCharges');
+  CheckZero(L.InvoiceLinePeriodStartDate, Msg + '.InvoiceLinePeriodStartDate');
+  CheckZero(L.InvoiceLinePeriodEndDate, Msg + '.InvoiceLinePeriodEndDate');
+  CheckEquals(0, Integer(L.ItemClassifications.Count), Msg + '.ItemClassifications');
+  CheckEmpty(L.OriginTradeCountry, Msg + '.OriginTradeCountry');
+  CheckEquals(0, Integer(L.ItemAttributes.Count), Msg + '.ItemAttributes');
+  CheckEmpty(L.DeliveryNoteNumber, Msg + '.DeliveryNoteNumber');
+  CheckEmpty(L.DeliveryNoteLineID, Msg + '.DeliveryNoteLineID');
+  CheckZero(L.DeliveryNoteDate, Msg + '.DeliveryNoteDate');
+  CheckZero(L.ActualDeliveryDate, Msg + '.ActualDeliveryDate');
+  CheckEquals(0, Integer(L.SubInvoiceLines.Count), Msg + '.SubInvoiceLines');
+  Check(L.LineStatusReasonCode = ilsrc_None, Msg + '.LineStatusReasonCode is ilsrc_None');
+end;
+
+procedure FillInvoice(Inv: TLandrixInvoice);
+begin
+  Inv.ProfileID := 'a';
+  Inv.InvoiceNumber := 'a';
+  Inv.InvoiceIssueDate := 1;
+  Inv.InvoiceDueDate := 1;
+  Inv.InvoicePeriodStartDate := 1;
+  Inv.InvoicePeriodEndDate := 1;
+  Inv.InvoiceTypeCode := itc_CommercialInvoice;
+  Inv.InvoiceCurrencyCode := 'a';
+  Inv.TaxCurrencyCode := 'a';
+  Inv.BuyerReference := 'a';
+  Inv.Notes.AddNote;
+  Inv.SellerOrderReference := 'a';
+  Inv.PurchaseOrderReference := 'a';
+  Inv.ProjectReference := 'a';
+  Inv.ReceiptDocumentReference := 'a';
+  Inv.ContractDocumentReference := 'a';
+  Inv.DeliveryReceiptNumber := 'a';
+  Inv.DeliveryReceiptDate := 1;
+  Inv.DeliveryReceiptNumberExtended := 'a';
+  Inv.DeliveryReceiptDateExtended := 1;
+  Inv.BuyerAccountingReference := 'a';
+  FillParty(Inv.AccountingSupplierParty);
+  FillParty(Inv.AccountingCustomerParty);
+  Inv.DeliveryInformation.Name := 'a';
+  Inv.DeliveryInformation.LocationIdentifier := 'a';
+  Inv.DeliveryInformation.LocationIdentifierSchemeID := 'a';
+  FillAddress(Inv.DeliveryInformation.Address);
+  Inv.DeliveryInformation.ActualDeliveryDate := 1;
+  Inv.PaymentID := 'a';
+  Inv.PaymentTypes.AddPaymentType;
+  Inv.PaymentMandateID := 'a';
+  Inv.PaymentTermsType := iptt_CashDiscount3;
+  Inv.PaymentTermNetNote := 'a';
+  Inv.PaymentTermCashDiscount1Days := 1;
+  Inv.PaymentTermCashDiscount1Percent := 1;
+  Inv.PaymentTermCashDiscount1Base := 1;
+  Inv.PaymentTermCashDiscount1ActualAmount := 1;
+  Inv.PaymentTermCashDiscount2Days := 1;
+  Inv.PaymentTermCashDiscount2Percent := 1;
+  Inv.PaymentTermCashDiscount2Base := 1;
+  Inv.PaymentTermCashDiscount2ActualAmount := 1;
+  Inv.PaymentTermCashDiscount3Days := 1;
+  Inv.PaymentTermCashDiscount3Percent := 1;
+  Inv.PaymentTermCashDiscount3Base := 1;
+  Inv.PaymentTermCashDiscount3ActualAmount := 1;
+  FillLine(Inv.InvoiceLines.AddInvoiceLine);
+  Inv.Attachments.AddAttachment(iat_application_pdf);
+  Inv.PrepaidPayments.AddPrepaidPayment;
+  Inv.AllowanceCharges.AddAllowanceCharge;
+  Inv.PrecedingInvoiceReferences.AddPrecedingInvoiceReference;
+  Inv.TaxAmountTotal := 1;
+  Inv.TaxAmountSubtotals.AddTaxAmount;
+  Inv.LineAmount := 1;
+  Inv.TaxExclusiveAmount := 1;
+  Inv.TaxInclusiveAmount := 1;
+  Inv.AllowanceTotalAmount := 1;
+  Inv.ChargeTotalAmount := 1;
+  Inv.PrepaidAmount := 1;
+  Inv.PayableRoundingAmount := 1;
+  Inv.PayableAmount := 1;
+end;
+
+procedure CheckInvoiceDefault(Inv: TLandrixInvoice; const Msg: string);
+begin
+  CheckEqualsInvoiceStr('urn:fdc:peppol.eu:2017:poacc:billing:01:1.0', Inv.ProfileID, Msg + '.ProfileID');
+  CheckEmpty(Inv.InvoiceNumber, Msg + '.InvoiceNumber');
+  CheckZero(Inv.InvoiceIssueDate, Msg + '.InvoiceIssueDate');
+  CheckZero(Inv.InvoiceDueDate, Msg + '.InvoiceDueDate');
+  CheckZero(Inv.InvoicePeriodStartDate, Msg + '.InvoicePeriodStartDate');
+  CheckZero(Inv.InvoicePeriodEndDate, Msg + '.InvoicePeriodEndDate');
+  Check(Inv.InvoiceTypeCode = itc_None, Msg + '.InvoiceTypeCode is itc_None');
+  CheckEmpty(Inv.InvoiceCurrencyCode, Msg + '.InvoiceCurrencyCode');
+  CheckEmpty(Inv.TaxCurrencyCode, Msg + '.TaxCurrencyCode');
+  CheckEmpty(Inv.BuyerReference, Msg + '.BuyerReference');
+  CheckEquals(0, Integer(Inv.Notes.Count), Msg + '.Notes');
+  CheckEmpty(Inv.SellerOrderReference, Msg + '.SellerOrderReference');
+  CheckEmpty(Inv.PurchaseOrderReference, Msg + '.PurchaseOrderReference');
+  CheckEmpty(Inv.ProjectReference, Msg + '.ProjectReference');
+  CheckEmpty(Inv.ReceiptDocumentReference, Msg + '.ReceiptDocumentReference');
+  CheckEmpty(Inv.ContractDocumentReference, Msg + '.ContractDocumentReference');
+  CheckEmpty(Inv.DeliveryReceiptNumber, Msg + '.DeliveryReceiptNumber');
+  CheckZero(Inv.DeliveryReceiptDate, Msg + '.DeliveryReceiptDate');
+  CheckEmpty(Inv.DeliveryReceiptNumberExtended, Msg + '.DeliveryReceiptNumberExtended');
+  CheckZero(Inv.DeliveryReceiptDateExtended, Msg + '.DeliveryReceiptDateExtended');
+  CheckEmpty(Inv.BuyerAccountingReference, Msg + '.BuyerAccountingReference');
+  CheckPartyDefault(Inv.AccountingSupplierParty, Msg + '.AccountingSupplierParty');
+  CheckPartyDefault(Inv.AccountingCustomerParty, Msg + '.AccountingCustomerParty');
+  CheckEmpty(Inv.DeliveryInformation.Name, Msg + '.DeliveryInformation.Name');
+  CheckEmpty(Inv.DeliveryInformation.LocationIdentifier, Msg + '.DeliveryInformation.LocationIdentifier');
+  CheckEqualsInvoiceStr('0088', Inv.DeliveryInformation.LocationIdentifierSchemeID, Msg + '.DeliveryInformation.LocationIdentifierSchemeID');
+  CheckAddressDefault(Inv.DeliveryInformation.Address, Msg + '.DeliveryInformation.Address');
+  CheckZero(Inv.DeliveryInformation.ActualDeliveryDate, Msg + '.DeliveryInformation.ActualDeliveryDate');
+  CheckEmpty(Inv.PaymentID, Msg + '.PaymentID');
+  CheckEquals(0, Integer(Inv.PaymentTypes.Count), Msg + '.PaymentTypes');
+  CheckEmpty(Inv.PaymentMandateID, Msg + '.PaymentMandateID');
+  Check(Inv.PaymentTermsType = iptt_None, Msg + '.PaymentTermsType is iptt_None');
+  CheckEmpty(Inv.PaymentTermNetNote, Msg + '.PaymentTermNetNote');
+  CheckEquals(0, Inv.PaymentTermCashDiscount1Days, Msg + '.PaymentTermCashDiscount1Days');
+  CheckZero(Inv.PaymentTermCashDiscount1Percent, Msg + '.PaymentTermCashDiscount1Percent');
+  CheckZero(Inv.PaymentTermCashDiscount1Base, Msg + '.PaymentTermCashDiscount1Base');
+  CheckZero(Inv.PaymentTermCashDiscount1ActualAmount, Msg + '.PaymentTermCashDiscount1ActualAmount');
+  CheckEquals(0, Inv.PaymentTermCashDiscount2Days, Msg + '.PaymentTermCashDiscount2Days');
+  CheckZero(Inv.PaymentTermCashDiscount2Percent, Msg + '.PaymentTermCashDiscount2Percent');
+  CheckZero(Inv.PaymentTermCashDiscount2Base, Msg + '.PaymentTermCashDiscount2Base');
+  CheckZero(Inv.PaymentTermCashDiscount2ActualAmount, Msg + '.PaymentTermCashDiscount2ActualAmount');
+  CheckEquals(0, Inv.PaymentTermCashDiscount3Days, Msg + '.PaymentTermCashDiscount3Days');
+  CheckZero(Inv.PaymentTermCashDiscount3Percent, Msg + '.PaymentTermCashDiscount3Percent');
+  CheckZero(Inv.PaymentTermCashDiscount3Base, Msg + '.PaymentTermCashDiscount3Base');
+  CheckZero(Inv.PaymentTermCashDiscount3ActualAmount, Msg + '.PaymentTermCashDiscount3ActualAmount');
+  CheckEquals(0, Integer(Inv.InvoiceLines.Count), Msg + '.InvoiceLines');
+  CheckEquals(0, Integer(Inv.Attachments.Count), Msg + '.Attachments');
+  CheckEquals(0, Integer(Inv.PrepaidPayments.Count), Msg + '.PrepaidPayments');
+  CheckEquals(0, Integer(Inv.AllowanceCharges.Count), Msg + '.AllowanceCharges');
+  CheckEquals(0, Integer(Inv.PrecedingInvoiceReferences.Count), Msg + '.PrecedingInvoiceReferences');
+  CheckZero(Inv.TaxAmountTotal, Msg + '.TaxAmountTotal');
+  CheckEquals(0, Integer(Inv.TaxAmountSubtotals.Count), Msg + '.TaxAmountSubtotals');
+  CheckZero(Inv.LineAmount, Msg + '.LineAmount');
+  CheckZero(Inv.TaxExclusiveAmount, Msg + '.TaxExclusiveAmount');
+  CheckZero(Inv.TaxInclusiveAmount, Msg + '.TaxInclusiveAmount');
+  CheckZero(Inv.AllowanceTotalAmount, Msg + '.AllowanceTotalAmount');
+  CheckZero(Inv.ChargeTotalAmount, Msg + '.ChargeTotalAmount');
+  CheckZero(Inv.PrepaidAmount, Msg + '.PrepaidAmount');
+  CheckZero(Inv.PayableRoundingAmount, Msg + '.PayableRoundingAmount');
+  CheckZero(Inv.PayableAmount, Msg + '.PayableAmount');
+end;
+
+procedure TestInvoiceClear;
+var
+  Inv: TLandrixInvoice;
+  Supplier: TLandrixInvoiceAccountingParty;
+begin
+  Inv := TLandrixInvoice.Create;
+  try
+    CheckInvoiceDefault(Inv, 'fresh invoice');
+    Supplier := Inv.AccountingSupplierParty;
+    FillInvoice(Inv);
+    Inv.Clear;
+    CheckInvoiceDefault(Inv, 'cleared invoice');
+    Check(Inv.AccountingSupplierParty = Supplier, 'owned objects are kept, not replaced');
+    FillInvoice(Inv);
+    Inv.Clear;
+    CheckInvoiceDefault(Inv, 'cleared twice');
+  finally
+    Inv.Free;
+  end;
+end;
+
+procedure TestLineClear;
+var
+  Line: TLandrixInvoiceLine;
+begin
+  Line := TLandrixInvoiceLine.Create;
+  try
+    CheckLineDefault(Line, 'fresh line');
+    FillLine(Line);
+    Line.Clear;
+    CheckLineDefault(Line, 'cleared line');
+  finally
+    Line.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Codes.TypeCode', TestTypeCodes);
@@ -477,6 +793,8 @@ begin
   RegisterTest('Model.EmbedText', TestEmbedText);
   RegisterTest('Model.TryAddAttachmentByExtension', TestTryAddAttachmentByExtension);
   RegisterTest('Model.AttachmentFromFile', TestAttachmentFromFile);
+  RegisterTest('Model.InvoiceClear', TestInvoiceClear);
+  RegisterTest('Model.LineClear', TestLineClear);
 end;
 
 end.

@@ -451,6 +451,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    { Resets all fields to the values after Create; owned objects are
+      cleared, not replaced. DE: Setzt alle Felder auf die Werte nach Create
+      zurueck; eigene Unterobjekte werden geleert, nicht ersetzt. }
+    procedure Clear;
   end;
 
   { List of invoice lines. DE: Liste der Rechnungspositionen. }
@@ -528,6 +532,9 @@ type
     { BT-40/BT-55/BT-80 country code (ISO 3166-1 alpha-2). DE: Laendercode
       (ISO 3166-1 alpha-2). }
     CountryCode: TLandrixEInvoiceString;
+    { Resets all fields to the values after Create. DE: Setzt alle Felder
+      auf die Werte nach Create zurueck. }
+    procedure Clear;
   end;
 
   { Seller (BG-4) or buyer (BG-7). DE: Verkaeufer (BG-4) oder Kaeufer
@@ -618,6 +625,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    { Resets all fields to the values after Create; owned objects are
+      cleared, not replaced. DE: Setzt alle Felder auf die Werte nach Create
+      zurueck; eigene Unterobjekte werden geleert, nicht ersetzt. }
+    procedure Clear;
   end;
 
   { Delivery information (BG-13). DE: Lieferinformationen (BG-13). }
@@ -643,6 +654,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    { Resets all fields to the values after Create; owned objects are
+      cleared, not replaced. DE: Setzt alle Felder auf die Werte nach Create
+      zurueck; eigene Unterobjekte werden geleert, nicht ersetzt. }
+    procedure Clear;
   end;
 
   { Preceding invoice reference (BG-3). DE: Referenz auf eine vorausgegangene
@@ -919,10 +934,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    { Resets the invoice for reuse. Note: resets only part of the fields
-      today (to be completed).
-      DE: Setzt die Rechnung zur Wiederverwendung zurueck. Hinweis: setzt
-      derzeit nur einen Teil der Felder zurueck (wird vervollstaendigt). }
+    { Resets the invoice for reuse: all fields get the values after Create,
+      all lists are emptied, owned objects are cleared, not replaced.
+      DE: Setzt die Rechnung zur Wiederverwendung zurueck: alle Felder
+      erhalten die Werte nach Create, alle Listen werden geleert, eigene
+      Unterobjekte werden geleert, nicht ersetzt. }
     procedure Clear;
   end;
 
@@ -1667,6 +1683,15 @@ end;
 constructor TLandrixInvoiceLine.Create;
 begin
   inherited Create;
+  AllowanceCharges := TLandrixInvoiceAllowanceCharges.Create;
+  SubInvoiceLines := TLandrixInvoiceLines.Create;
+  ItemAttributes := TLandrixInvoiceLineItemAttributes.Create;
+  ItemClassifications := TLandrixInvoiceLineItemClassifications.Create;
+  Clear;
+end;
+
+procedure TLandrixInvoiceLine.Clear;
+begin
   ID := '';
   GlobalID_EAN_GTIN := '';
   Note := '';
@@ -1678,27 +1703,30 @@ begin
   UnitCode := iuc_None;
   SellersItemIdentification := '';
   BuyersItemIdentification := '';
+  OrderNumber := '';
   OrderLineReference := '';
   BuyerAccountingReference := '';
   TaxPercent := 0;
   TaxCategory := idtfcc_None;
+  TaxExemptionReason := '';
   GrossPriceAmount := 0;
   DiscountOnTheGrossPrice := 0;
   NetPriceAmount := 0;
   BaseQuantity := 0;
   BaseQuantityUnitCode := iuc_None;
   LineAmount := 0;
-  AllowanceCharges := TLandrixInvoiceAllowanceCharges.Create;
-  SubInvoiceLines := TLandrixInvoiceLines.Create;
-  ItemAttributes := TLandrixInvoiceLineItemAttributes.Create;
-  ItemClassifications := TLandrixInvoiceLineItemClassifications.Create;
+  AllowanceCharges.Clear;
   InvoiceLinePeriodStartDate := 0;
   InvoiceLinePeriodEndDate := 0;
+  ItemClassifications.Clear;
   OriginTradeCountry := '';
+  ItemAttributes.Clear;
   DeliveryNoteNumber := '';
   DeliveryNoteLineID := '';
   DeliveryNoteDate := 0;
   ActualDeliveryDate := 0;
+  SubInvoiceLines.Clear;
+  LineStatusReasonCode := ilsrc_None;
 end;
 
 destructor TLandrixInvoiceLine.Destroy;
@@ -1821,12 +1849,26 @@ begin
     end;
 end;
 
+{ --- TLandrixInvoiceAddress --------------------------------------------- }
+
+procedure TLandrixInvoiceAddress.Clear;
+begin
+  StreetName := '';
+  AdditionalStreetName := '';
+  City := '';
+  PostalZone := '';
+  CountrySubentity := '';
+  AddressLine := '';
+  CountryCode := '';
+end;
+
 { --- TLandrixInvoiceAccountingParty ------------------------------------- }
 
 constructor TLandrixInvoiceAccountingParty.Create;
 begin
   inherited Create;
   Address := TLandrixInvoiceAddress.Create;
+  Clear;
 end;
 
 destructor TLandrixInvoiceAccountingParty.Destroy;
@@ -1836,13 +1878,33 @@ begin
   inherited;
 end;
 
+procedure TLandrixInvoiceAccountingParty.Clear;
+begin
+  Name := '';
+  RegistrationName := '';
+  CompanyID := '';
+  Address.Clear;
+  IdentifierSellerBuyer := '';
+  GlobalIdentifierSellerBuyer := '';
+  GlobalIdentifierSellerBuyerSchemeID := '';
+  BankAssignedCreditorIdentifier := '';
+  VATCompanyID := '';
+  VATCompanyNumber := '';
+  ContactName := '';
+  ContactTelephone := '';
+  ContactElectronicMail := '';
+  AdditionalLegalInformationSeller := '';
+  ElectronicAddressSellerBuyer := '';
+  ElectronicAddressSellerBuyerSchemeID := '';
+end;
+
 { --- TLandrixInvoiceDeliveryInformation --------------------------------- }
 
 constructor TLandrixInvoiceDeliveryInformation.Create;
 begin
   inherited Create;
   Address := TLandrixInvoiceAddress.Create;
-  LocationIdentifierSchemeID := '0088';
+  Clear;
 end;
 
 destructor TLandrixInvoiceDeliveryInformation.Destroy;
@@ -1850,6 +1912,15 @@ begin
   Address.Free;
   Address := nil;
   inherited;
+end;
+
+procedure TLandrixInvoiceDeliveryInformation.Clear;
+begin
+  Name := '';
+  LocationIdentifier := '';
+  LocationIdentifierSchemeID := '0088';
+  Address.Clear;
+  ActualDeliveryDate := 0;
 end;
 
 { --- TLandrixInvoicePrecedingInvoiceReferences -------------------------- }
@@ -2040,7 +2111,6 @@ begin
   AccountingSupplierParty := TLandrixInvoiceAccountingParty.Create;
   AccountingCustomerParty := TLandrixInvoiceAccountingParty.Create;
   DeliveryInformation := TLandrixInvoiceDeliveryInformation.Create;
-  PaymentTermsType := iptt_None;
   Clear;
 end;
 
@@ -2074,12 +2144,58 @@ end;
 procedure TLandrixInvoice.Clear;
 begin
   ProfileID := 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0';
+  InvoiceNumber := '';
+  InvoiceIssueDate := 0;
+  InvoiceDueDate := 0;
+  InvoicePeriodStartDate := 0;
+  InvoicePeriodEndDate := 0;
+  InvoiceTypeCode := itc_None;
+  InvoiceCurrencyCode := '';
+  TaxCurrencyCode := '';
+  BuyerReference := '';
+  Notes.Clear;
+  SellerOrderReference := '';
+  PurchaseOrderReference := '';
+  ProjectReference := '';
+  ReceiptDocumentReference := '';
+  ContractDocumentReference := '';
+  DeliveryReceiptNumber := '';
+  DeliveryReceiptDate := 0;
+  DeliveryReceiptNumberExtended := '';
+  DeliveryReceiptDateExtended := 0;
+  BuyerAccountingReference := '';
+
+  AccountingSupplierParty.Clear;
+  AccountingCustomerParty.Clear;
+  DeliveryInformation.Clear;
+
+  PaymentID := '';
+  PaymentTypes.Clear;
+  PaymentMandateID := '';
+
+  PaymentTermsType := iptt_None;
+  PaymentTermNetNote := '';
+  PaymentTermCashDiscount1Days := 0;
+  PaymentTermCashDiscount1Percent := 0;
+  PaymentTermCashDiscount1Base := 0;
+  PaymentTermCashDiscount1ActualAmount := 0;
+  PaymentTermCashDiscount2Days := 0;
+  PaymentTermCashDiscount2Percent := 0;
+  PaymentTermCashDiscount2Base := 0;
+  PaymentTermCashDiscount2ActualAmount := 0;
+  PaymentTermCashDiscount3Days := 0;
+  PaymentTermCashDiscount3Percent := 0;
+  PaymentTermCashDiscount3Base := 0;
+  PaymentTermCashDiscount3ActualAmount := 0;
+
   InvoiceLines.Clear;
+  Attachments.Clear;
+  PrepaidPayments.Clear;
   AllowanceCharges.Clear;
   PrecedingInvoiceReferences.Clear;
-  Notes.Clear;
+
+  TaxAmountTotal := 0;
   TaxAmountSubtotals.Clear;
-  PaymentTermsType := iptt_None;
 
   LineAmount := 0;
   TaxExclusiveAmount := 0;

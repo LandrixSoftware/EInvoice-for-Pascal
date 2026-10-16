@@ -40,6 +40,11 @@ Supported invoice standards are documented per release.
   (was UTF-16LE with BOM) and has an overload for `TLandrixEInvoiceString`;
   `EmbedDataFromFile` no longer retries on locked files; invalid Base64 raises
   `ELandrixXmlError`; `TryAddAttachmentByExtension` sets the attachment to nil on failure.
+- `TLandrixInvoice.Clear` resets every field and list and clears the parties and the delivery
+  information (in XRechnung-for-Delphi it reset only `ProfileID`, `PaymentTermsType`, five
+  lists and the totals); new `Clear`
+  methods on `TLandrixInvoiceLine`, `TLandrixInvoiceAccountingParty`,
+  `TLandrixInvoiceAddress` and `TLandrixInvoiceDeliveryInformation`.
 - Framework-free console test runner `tests/LandrixEInvoiceTests.dpr`.
 - `tools/build.ps1`: builds and runs the tests with the local toolchains.
 - CI with Free Pascal 3.2.2 on Linux (manual start only for now).
