@@ -1,0 +1,78 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "insc_None"
+    },
+    {
+      "code": "AAI",
+      "id": "insc_AAI",
+      "doc": [
+        "general information / allgemeine Informationen"
+      ]
+    },
+    {
+      "code": "AAJ",
+      "id": "insc_AAJ",
+      "doc": [
+        "additional conditions of sale (e.g. retention of title) / zusaetzliche Kaufkonditionen (z. B. Eigentumsvorbehalt)"
+      ]
+    },
+    {
+      "code": "AAK",
+      "id": "insc_AAK",
+      "doc": [
+        "price conditions (e.g. discount or bonus agreements) / Preiskonditionen (z. B. Rabatt- oder Bonusvereinbarungen)"
+      ]
+    },
+    {
+      "code": "SUR",
+      "id": "insc_SUR",
+      "doc": [
+        "supplier remarks / Anmerkungen des Verkaeufers"
+      ]
+    },
+    {
+      "code": "REG",
+      "id": "insc_REG",
+      "doc": [
+        "regulatory information / regulatorische Informationen"
+      ]
+    },
+    {
+      "code": "ABL",
+      "id": "insc_ABL",
+      "doc": [
+        "legal information / rechtliche Informationen"
+      ]
+    },
+    {
+      "code": "TXD",
+      "id": "insc_TXD",
+      "doc": [
+        "tax declaration / Informationen zur Steuer"
+      ]
+    },
+    {
+      "code": "CUS",
+      "id": "insc_CUS",
+      "doc": [
+        "customs declaration / Zollinformationen"
+      ]
+    },
+    {
+      "code": "PMT",
+      "id": "insc_PMT",
+      "doc": [
+        "payment information (e.g. guarantees, retentions) / Zahlungsinformationen (z. B. Buergschaften, Sicherheitseinbehalte)"
+      ]
+    },
+    {
+      "code": "BLP",
+      "id": "insc_BLP",
+      "doc": [
+        "legislation (e.g. retention duty, section 14b UStG) / gesetzliche Vorschriften (z. B. Aufbewahrungspflicht nach Paragraph 14b UStG)"
+      ]
+    }
+  ]
+}

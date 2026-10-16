@@ -27,6 +27,7 @@ implementation
 
 uses
   SysUtils,
+  LandrixEInvoiceCodes,
   LandrixEInvoiceCompatXRechnung,
   LandrixEInvoiceTestFramework;
 
@@ -79,9 +80,10 @@ begin
   else
     Fail('no branch');
   end;
-  Check(Ord(iuc_hectare) = Ord(High(TInvoiceUnitCode)), 'last unit code member');
-  Check(Ord(insc_BLP) = Ord(High(TInvoiceNoteSubjectCode)), 'last note subject member');
-  Check(Ord(ipmc_MutuallyDefined) = Ord(High(TInvoicePaymentMeansCode)), 'last payment means member');
+  Check(iuc_hectare = LandrixEInvoiceCodes.iuc_hectare, 'unit code constant');
+  Check(insc_BLP = LandrixEInvoiceCodes.insc_BLP, 'note subject constant');
+  Check(ipmc_MutuallyDefined = LandrixEInvoiceCodes.ipmc_MutuallyDefined, 'payment means constant');
+  Check(iuc_one <> iuc_piece, 'distinct members');
 end;
 
 procedure Register;

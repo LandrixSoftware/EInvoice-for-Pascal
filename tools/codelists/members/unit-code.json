@@ -1,0 +1,181 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "iuc_None"
+    },
+    {
+      "code": "C62",
+      "id": "iuc_one",
+      "doc": [
+        "C62 unit of count"
+      ]
+    },
+    {
+      "code": "H87",
+      "id": "iuc_piece"
+    },
+    {
+      "code": "LS",
+      "id": "iuc_flaterate",
+      "doc": [
+        "LS lump sum"
+      ]
+    },
+    {
+      "code": "NAR",
+      "id": "iuc_number_of_articles"
+    },
+    {
+      "code": "SET",
+      "id": "iuc_set"
+    },
+    {
+      "code": "WEE",
+      "id": "iuc_week"
+    },
+    {
+      "code": "MON",
+      "id": "iuc_month"
+    },
+    {
+      "code": "DAY",
+      "id": "iuc_day"
+    },
+    {
+      "code": "TNE",
+      "id": "iuc_tonne_metric_ton"
+    },
+    {
+      "code": "MTK",
+      "id": "iuc_square_metre"
+    },
+    {
+      "code": "MTQ",
+      "id": "iuc_cubic_metre"
+    },
+    {
+      "code": "MTR",
+      "id": "iuc_metre"
+    },
+    {
+      "code": "MMK",
+      "id": "iuc_square_millimetre"
+    },
+    {
+      "code": "MMQ",
+      "id": "iuc_cubic_millimetre"
+    },
+    {
+      "code": "MMT",
+      "id": "iuc_millimetre"
+    },
+    {
+      "code": "MIN",
+      "id": "iuc_minute_unit_of_time"
+    },
+    {
+      "code": "SEC",
+      "id": "iuc_second_unit_of_time"
+    },
+    {
+      "code": "MLT",
+      "id": "iuc_millilitre"
+    },
+    {
+      "code": "LTR",
+      "id": "iuc_litre"
+    },
+    {
+      "code": "HUR",
+      "id": "iuc_hour"
+    },
+    {
+      "code": "MGM",
+      "id": "iuc_milligram"
+    },
+    {
+      "code": "GRM",
+      "id": "iuc_gram"
+    },
+    {
+      "code": "KGM",
+      "id": "iuc_kilogram"
+    },
+    {
+      "code": "KMT",
+      "id": "iuc_kilometre"
+    },
+    {
+      "code": "KWH",
+      "id": "iuc_kilowatt_hour"
+    },
+    {
+      "code": "P1",
+      "id": "iuc_percent"
+    },
+    {
+      "code": "XPK",
+      "id": "iuc_packaging"
+    },
+    {
+      "code": "ANN",
+      "id": "iuc_year"
+    },
+    {
+      "code": "IE",
+      "id": "iuc_person"
+    },
+    {
+      "code": "DMK",
+      "id": "iuc_square_decimetre"
+    },
+    {
+      "code": "DMQ",
+      "id": "iuc_cubic_decimetre"
+    },
+    {
+      "code": "DMT",
+      "id": "iuc_decimetre"
+    },
+    {
+      "code": "CMT",
+      "id": "iuc_centimetre"
+    },
+    {
+      "code": "CMK",
+      "id": "iuc_square_centimetre"
+    },
+    {
+      "code": "CMQ",
+      "id": "iuc_cubic_centimetre"
+    },
+    {
+      "code": "PR",
+      "id": "iuc_pair"
+    },
+    {
+      "code": "XBG",
+      "id": "iuc_bag"
+    },
+    {
+      "code": "XRO",
+      "id": "iuc_roll"
+    },
+    {
+      "code": "FOT",
+      "id": "iuc_foot"
+    },
+    {
+      "code": "INH",
+      "id": "iuc_inch"
+    },
+    {
+      "code": "H18",
+      "id": "iuc_hectare",
+      "doc": [
+        "H18 (Factur-X rejects HAR; FromStr also reads HAR)"
+      ]
+    }
+  ]
+}

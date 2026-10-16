@@ -1,0 +1,266 @@
+{
+  "comment": "Input of gen-codelists.py. Sources are committed byte-exact under src/; the generator verifies the checksums and never downloads anything.",
+  "sources": {
+    "ec-v17": {
+      "title": "European Commission, EN16931 code lists values, version 17 (genericode), valid from 2026-05-15",
+      "registry": "https://ec.europa.eu/digital-building-blocks/sites/display/DIGITAL/Registry+of+supporting+artefacts+to+implement+EN16931",
+      "url": "https://ec.europa.eu/digital-building-blocks/sites/download/attachments/467108974/digital-genericodes-2026-05-15.zip?version=2&modificationDate=1776349554309&api=v2",
+      "zip_sha256": "b10ac254517f3173311498e200829483cdca3c11f4d8046820c72e53ced0c926",
+      "retrieved": "2026-10-16",
+      "files": {
+        "1001.gc": "7226d84b2fa3100fd43464f33ad0d570fce382ae568f1fed848f2086d7c31fa7",
+        "1153.gc": "065ee0bb3a6d3e3cfd6e5d4361a2ceefcd77fbc9f00950b4eb26f8d5639d8d21",
+        "5305.gc": "276445487a6e2f3753df1715b60e091294c5e85b496f682e6456bfba86ca5354",
+        "Allowance.gc": "47983df3179fffa3ff44b56395d4d5ad202326b57d18d89fdadb2d3b7f5af58d",
+        "Charge.gc": "7f44bcfb7ebc28ca3a185aac771939615e6bd6a591ae731260c1bdd5befebe2c",
+        "Country.gc": "30b6c041c0a0a30cfe1dbcb1824c4c8e0605acd14214f0d1105be9d651a00f8b",
+        "Currency.gc": "f9c84250bcd224bd2b796c0381a1bda74fe14daea07b4777cce38630df44265c",
+        "EAS.gc": "e5060e426c8f90bec5b1845683863678ed48a270888d78f0bf9f38ec9a2ea36e",
+        "ICD.gc": "53582abe3a3d99420fb052b84fb25221efe7eec5ff7da06623889180284c30bf",
+        "Item.gc": "740fff92392e35f1b6e59c2bc5e07d2ba619f1998946e1fbc12e5ec5cdf5a6eb",
+        "MIME.gc": "f088b66b09537e42bf703112a5ac519b3c6472de8210253bed753559cd166195",
+        "Payment.gc": "3e29b6db578f5b4ddb1706338168ecda161d081935b7c69e81658bdeb171f368",
+        "Text.gc": "8d9a9ed2e4a5473d5256007a0b8d32d28c5672d317a6e06ff409330f6a62cce8",
+        "Unit.gc": "ee2e3a90a059b5ef1f17473267f4677196ee1f98a1b5f3333ee5f8ca615dd13c",
+        "VATEX.gc": "3ac67d81d3bdf1cf34173f1b99b67b820a5db52a4111f4aada22c193f0c02d7b"
+      }
+    }
+  },
+  "lists": [
+    {
+      "type": "TLandrixInvoiceTypeCode",
+      "func": "TypeCode",
+      "prefix": "itc_",
+      "none": "itc_None",
+      "source": "ec-v17/1001.gc",
+      "members": "members/type-code.json",
+      "doc": [
+        "Invoice type code (BT-3), UNTDID 1001 as allowed by EN 16931.",
+        "DE: Rechnungsart (BT-3), UNTDID 1001 in der von EN 16931 erlaubten",
+        "Auswahl."
+      ]
+    },
+    {
+      "type": "TLandrixInvoicePaymentMeansCode",
+      "func": "PaymentMeansCode",
+      "prefix": "ipmc_",
+      "none": "ipmc_NotImplemented",
+      "source": "ec-v17/Payment.gc",
+      "members": "members/payment-means-code.json",
+      "doc": [
+        "Payment means type code (BT-81), UNTDID 4461.",
+        "DE: Zahlungsart (BT-81), UNTDID 4461."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceUnitCode",
+      "func": "UnitCode",
+      "prefix": "iuc_",
+      "none": "iuc_None",
+      "source": "ec-v17/Unit.gc",
+      "members": "members/unit-code.json",
+      "read_aliases": {"HAR": "H18"},
+      "doc": [
+        "Unit of measure (BT-130, BT-150), UN/ECE Recommendation 20 and 21",
+        "(packaging codes with prefix X). FromStr also reads HAR as hectare",
+        "(H18), which Factur-X rejects.",
+        "DE: Mengeneinheit (BT-130, BT-150), UN/ECE-Empfehlung 20 und 21",
+        "(Verpackungscodes mit Praefix X). FromStr liest auch HAR als Hektar",
+        "(H18), das Factur-X ablehnt."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceAttachmentType",
+      "func": "AttachmentType",
+      "prefix": "iat_",
+      "none": "iat_application_None",
+      "source": "ec-v17/MIME.gc",
+      "members": "members/attachment-type.json",
+      "extra_codes": [
+        {"code": "application/xml", "name": "XML, allowed by XRechnung since 2.0.0"}
+      ],
+      "doc": [
+        "MIME type of an attached document (BT-125-1). The code is the MIME",
+        "type, e.g. application/pdf. application/xml is not in the EN 16931",
+        "list but allowed by XRechnung.",
+        "DE: MIME-Typ eines angehaengten Dokuments (BT-125-1). Der Code ist der",
+        "MIME-Typ, z. B. application/pdf. application/xml steht nicht in der",
+        "Liste der EN 16931, ist aber in XRechnung erlaubt."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceAttachmentTypeCode",
+      "func": "AttachmentTypeCode",
+      "prefix": "iatc_",
+      "none": "iatc_None",
+      "source": null,
+      "members": "members/attachment-type-code.json",
+      "doc": [
+        "Type code of a referenced document, subset of UNTDID 1001: 916",
+        "\"related document\" references a supporting document (BT-122,",
+        "default), 50 \"price/sales catalogue response\" the tender or lot",
+        "(BT-17), 130 \"invoicing data sheet\" an object identifier of the",
+        "seller (BT-18). Fixed list, not taken from a code list file.",
+        "DE: Art eines referenzierten Dokuments, Auswahl aus UNTDID 1001: 916",
+        "\"Referenzpapier\" fuer die rechnungsbegruendende Unterlage (BT-122,",
+        "Standard), 50 \"Price/sales catalogue response\" fuer die Ausschreibung",
+        "oder das Los (BT-17), 130 \"Rechnungsdatenblatt\" fuer eine vom",
+        "Verkaeufer vergebene Objektkennung (BT-18). Feste Liste, nicht aus einer",
+        "Codelistendatei."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceAllowanceOrChargeIdentCode",
+      "func": "AllowanceOrChargeIdentCode",
+      "prefix": "iacic_",
+      "none": "iacic_None",
+      "source": "ec-v17/Allowance.gc",
+      "members": "members/allowance-reason-code.json",
+      "doc": [
+        "Reason code of an allowance (BT-98, BT-140), UNTDID 5189 as allowed",
+        "by EN 16931.",
+        "DE: Grund eines Nachlasses (BT-98, BT-140), UNTDID 5189 in der von",
+        "EN 16931 erlaubten Auswahl."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceSpecialServiceDescriptionCode",
+      "func": "SpecialServiceDescriptionCode",
+      "prefix": "issdc_",
+      "none": "issdc_None",
+      "source": "ec-v17/Charge.gc",
+      "members": "members/charge-reason-code.json",
+      "doc": [
+        "Reason code of a charge (BT-105, BT-145), UNTDID 7161.",
+        "DE: Grund eines Zuschlags (BT-105, BT-145), UNTDID 7161."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceDutyTaxFeeCategoryCode",
+      "func": "DutyTaxFeeCategoryCode",
+      "prefix": "idtfcc_",
+      "none": "idtfcc_None",
+      "source": "ec-v17/5305.gc",
+      "members": "members/tax-category-code.json",
+      "doc": [
+        "VAT category code (BT-95, BT-102, BT-118, BT-151), UNTDID 5305 as",
+        "allowed by EN 16931: S standard rate, Z zero rated goods, E exempt, AE",
+        "reverse charge (also for business customers under reverse charge), K",
+        "intra-community supply in the EEA, G export outside the EU, O outside",
+        "the scope of VAT, L Canary Islands (IGIC), M Ceuta and Melilla (IPSI).",
+        "DE: Umsatzsteuerkategorie (BT-95, BT-102, BT-118, BT-151), UNTDID 5305",
+        "in der von EN 16931 erlaubten Auswahl: S Normalsatz, Z Nullsatz, E",
+        "steuerbefreit, AE Umkehrung der Steuerschuldnerschaft (auch bei",
+        "gewerblichen Kunden im Reverse-Charge), K innergemeinschaftliche",
+        "Lieferung im EWR, G Export ausserhalb der EU, O nicht steuerbar, L",
+        "Kanarische Inseln (IGIC), M Ceuta und Melilla (IPSI)."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceNoteSubjectCode",
+      "func": "NoteSubjectCode",
+      "prefix": "insc_",
+      "none": "insc_None",
+      "source": "ec-v17/Text.gc",
+      "members": "members/note-subject-code.json",
+      "doc": [
+        "Subject of an invoice note (BT-21), UNTDID 4451. \"Not set\" means free",
+        "text.",
+        "DE: Betreff eines Rechnungshinweises (BT-21), UNTDID 4451. \"Nicht",
+        "gesetzt\" bedeutet Freitext."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceCountryCode",
+      "func": "CountryCode",
+      "prefix": "icc_",
+      "none": "icc_None",
+      "source": "ec-v17/Country.gc",
+      "doc": [
+        "Country code (BT-40, BT-55, BT-69, BT-80, BT-159), ISO 3166-1 alpha-2",
+        "as used by EN 16931.",
+        "DE: Laendercode (BT-40, BT-55, BT-69, BT-80, BT-159), ISO 3166-1",
+        "alpha-2 wie in EN 16931 verwendet."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceCurrencyCode",
+      "func": "CurrencyCode",
+      "prefix": "icur_",
+      "none": "icur_None",
+      "source": "ec-v17/Currency.gc",
+      "doc": [
+        "Currency code (BT-5, BT-6), ISO 4217 as used by EN 16931.",
+        "DE: Waehrungscode (BT-5, BT-6), ISO 4217 wie in EN 16931 verwendet."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceElectronicAddressScheme",
+      "func": "ElectronicAddressScheme",
+      "prefix": "ieas_",
+      "none": "ieas_None",
+      "source": "ec-v17/EAS.gc",
+      "doc": [
+        "Scheme of an electronic address (BT-34-1, BT-49-1), Electronic Address",
+        "Scheme (EAS) code list, e.g. 9930 or EM.",
+        "DE: Schema einer elektronischen Adresse (BT-34-1, BT-49-1), Codeliste",
+        "Electronic Address Scheme (EAS), z. B. 9930 oder EM."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceIdentifierScheme",
+      "func": "IdentifierScheme",
+      "prefix": "iicd_",
+      "none": "iicd_None",
+      "source": "ec-v17/ICD.gc",
+      "doc": [
+        "Scheme of an identifier (e.g. BT-29-1, BT-46-1, BT-60-1, BT-71-1,",
+        "BT-157-1), ISO/IEC 6523 International Code Designator (ICD), e.g. 0088",
+        "for GLN.",
+        "DE: Schema einer Kennung (z. B. BT-29-1, BT-46-1, BT-60-1, BT-71-1,",
+        "BT-157-1), ISO/IEC 6523 International Code Designator (ICD), z. B. 0088",
+        "fuer GLN."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceVATExemptionReasonCode",
+      "func": "VATExemptionReasonCode",
+      "prefix": "ivx_",
+      "none": "ivx_None",
+      "strip_prefix": "VATEX-",
+      "source": "ec-v17/VATEX.gc",
+      "doc": [
+        "VAT exemption reason code (BT-121), VATEX code list; the member name",
+        "drops the prefix VATEX- (ivx_EU_79_C is VATEX-EU-79-C).",
+        "DE: Code des Grunds der Steuerbefreiung (BT-121), Codeliste VATEX; der",
+        "Name des Werts laesst das Praefix VATEX- weg (ivx_EU_79_C ist",
+        "VATEX-EU-79-C)."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceReferenceCodeQualifier",
+      "func": "ReferenceCodeQualifier",
+      "prefix": "irc_",
+      "none": "irc_None",
+      "source": "ec-v17/1153.gc",
+      "doc": [
+        "Scheme of an object identifier (BT-18-1, BT-128-1), UNTDID 1153, e.g.",
+        "ON for the buyer's order number.",
+        "DE: Schema einer Objektkennung (BT-18-1, BT-128-1), UNTDID 1153, z. B.",
+        "ON fuer die Bestellnummer des Kaeufers."
+      ]
+    },
+    {
+      "type": "TLandrixInvoiceItemClassificationScheme",
+      "func": "ItemClassificationScheme",
+      "prefix": "iics_",
+      "none": "iics_None",
+      "source": "ec-v17/Item.gc",
+      "doc": [
+        "Scheme of an item classification (BT-158-1), UNTDID 7143, e.g. GB.",
+        "DE: Schema einer Artikelklassifizierung (BT-158-1), UNTDID 7143, z. B.",
+        "GB."
+      ]
+    }
+  ]
+}

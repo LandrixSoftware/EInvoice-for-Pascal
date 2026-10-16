@@ -1,0 +1,39 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "iat_application_None"
+    },
+    {
+      "code": "application/pdf",
+      "id": "iat_application_pdf"
+    },
+    {
+      "code": "image/png",
+      "id": "iat_image_png"
+    },
+    {
+      "code": "image/jpeg",
+      "id": "iat_image_jpeg"
+    },
+    {
+      "code": "text/csv",
+      "id": "iat_text_csv"
+    },
+    {
+      "code": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "id": "iat_application_vnd_openxmlformats_officedocument_spreadsheetml_sheet"
+    },
+    {
+      "code": "application/vnd.oasis.opendocument.spreadsheet",
+      "id": "iat_application_vnd_oasis_opendocument_spreadsheet"
+    },
+    {
+      "code": "application/xml",
+      "id": "iat_application_xml",
+      "doc": [
+        "since XRechnung 2.0.0"
+      ]
+    }
+  ]
+}

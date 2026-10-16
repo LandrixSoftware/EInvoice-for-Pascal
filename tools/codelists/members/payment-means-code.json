@@ -1,0 +1,346 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "ipmc_NotImplemented"
+    },
+    {
+      "code": "1",
+      "id": "ipmc_InstrumentNotDefined"
+    },
+    {
+      "code": "2",
+      "id": "ipmc_AutomatedClearingHouseCredit"
+    },
+    {
+      "code": "3",
+      "id": "ipmc_AutomatedClearingHouseDebit"
+    },
+    {
+      "code": "4",
+      "id": "ipmc_ACH_DemandDebitReversal"
+    },
+    {
+      "code": "5",
+      "id": "ipmc_ACH_DemandCreditReversal"
+    },
+    {
+      "code": "6",
+      "id": "ipmc_ACH_Demand_Credit"
+    },
+    {
+      "code": "7",
+      "id": "ipmc_ACH_Demand_Debit"
+    },
+    {
+      "code": "8",
+      "id": "ipmc_Hold"
+    },
+    {
+      "code": "9",
+      "id": "ipmc_NationalOrRegionalClearing"
+    },
+    {
+      "code": "10",
+      "id": "ipmc_InCash"
+    },
+    {
+      "code": "11",
+      "id": "ipmc_ACH_SavingsCreditReversal"
+    },
+    {
+      "code": "12",
+      "id": "ipmc_ACH_SavingsDebitReversal"
+    },
+    {
+      "code": "13",
+      "id": "ipmc_ACH_SavingsCredit"
+    },
+    {
+      "code": "14",
+      "id": "ipmc_ACH_SavingsDebit"
+    },
+    {
+      "code": "15",
+      "id": "ipmc_BookEntryCredit"
+    },
+    {
+      "code": "16",
+      "id": "ipmc_BookEntryDebit"
+    },
+    {
+      "code": "17",
+      "id": "ipmc_ACH_DemandCashConcentrationDisbursementCredit"
+    },
+    {
+      "code": "18",
+      "id": "ipmc_ACH_DemandCashConcentrationDisbursementDebit"
+    },
+    {
+      "code": "19",
+      "id": "ipmc_ACH_DemandCorporateTradePaymentCredit"
+    },
+    {
+      "code": "20",
+      "id": "ipmc_Cheque"
+    },
+    {
+      "code": "21",
+      "id": "ipmc_BankersDraft"
+    },
+    {
+      "code": "22",
+      "id": "ipmc_CertifiedBankerDraft"
+    },
+    {
+      "code": "23",
+      "id": "ipmc_BankChequeIssuedByEstablishment"
+    },
+    {
+      "code": "24",
+      "id": "ipmc_BillOfExchangeAwaitingAcceptance"
+    },
+    {
+      "code": "25",
+      "id": "ipmc_CertifiedCheque"
+    },
+    {
+      "code": "26",
+      "id": "ipmc_LocalCheque"
+    },
+    {
+      "code": "27",
+      "id": "ipmc_ACH_DemandCorporateTradePaymentDebit"
+    },
+    {
+      "code": "28",
+      "id": "ipmc_ACH_DemandCorporateTradeExchangeCredit"
+    },
+    {
+      "code": "29",
+      "id": "ipmc_ACH_DemandCorporateTradeExchangeDebit"
+    },
+    {
+      "code": "30",
+      "id": "ipmc_CreditTransfer",
+      "doc": [
+        "30 non-SEPA"
+      ]
+    },
+    {
+      "code": "31",
+      "id": "ipmc_DebitTransfer"
+    },
+    {
+      "code": "32",
+      "id": "ipmc_ACH_DemandCashConcentrationDisbursementPlusCredit"
+    },
+    {
+      "code": "33",
+      "id": "ipmc_ACH_DemandCashConcentrationDisbursementPlusDebit"
+    },
+    {
+      "code": "34",
+      "id": "ipmc_ACH_PrearrangedPaymentAndDeposit"
+    },
+    {
+      "code": "35",
+      "id": "ipmc_ACH_SavingsCashConcentrationDisbursementCredit"
+    },
+    {
+      "code": "36",
+      "id": "ipmc_ACH_SavingsCashConcentrationDisbursementDebit"
+    },
+    {
+      "code": "37",
+      "id": "ipmc_ACH_SavingsCorporateTradePaymentCredit"
+    },
+    {
+      "code": "38",
+      "id": "ipmc_ACH_SavingsCorporateTradePaymentDebit"
+    },
+    {
+      "code": "39",
+      "id": "ipmc_ACH_SavingsCorporateTradeExchangeCredit"
+    },
+    {
+      "code": "40",
+      "id": "ipmc_ACH_SavingsCorporateTradeExchangeDebit"
+    },
+    {
+      "code": "41",
+      "id": "ipmc_ACH_SavingsCashConcentrationDisbursementPlusCredit"
+    },
+    {
+      "code": "42",
+      "id": "ipmc_PaymentToBankAccount"
+    },
+    {
+      "code": "43",
+      "id": "ipmc_ACH_SavingsCashConcentrationDisbursementPlusDebit"
+    },
+    {
+      "code": "44",
+      "id": "ipmc_AcceptedBillOfExchange"
+    },
+    {
+      "code": "45",
+      "id": "ipmc_ReferencedHomeBankingCreditTransfer"
+    },
+    {
+      "code": "46",
+      "id": "ipmc_InterbankDebitTransfer"
+    },
+    {
+      "code": "47",
+      "id": "ipmc_HomeBankingDebitTransfer"
+    },
+    {
+      "code": "48",
+      "id": "ipmc_BankCard"
+    },
+    {
+      "code": "49",
+      "id": "ipmc_DirectDebit"
+    },
+    {
+      "code": "50",
+      "id": "ipmc_PaymentByPostgiro"
+    },
+    {
+      "code": "51",
+      "id": "ipmc_FR_Norme_6_97"
+    },
+    {
+      "code": "52",
+      "id": "ipmc_UrgentCommercialPayment"
+    },
+    {
+      "code": "53",
+      "id": "ipmc_UrgentTreasuryPayment"
+    },
+    {
+      "code": "54",
+      "id": "ipmc_CreditCard"
+    },
+    {
+      "code": "55",
+      "id": "ipmc_DebitCard"
+    },
+    {
+      "code": "56",
+      "id": "ipmc_Bankgiro"
+    },
+    {
+      "code": "57",
+      "id": "ipmc_StandingAgreement"
+    },
+    {
+      "code": "58",
+      "id": "ipmc_SEPACreditTransfer"
+    },
+    {
+      "code": "59",
+      "id": "ipmc_SEPADirectDebit"
+    },
+    {
+      "code": "60",
+      "id": "ipmc_PromissoryNote"
+    },
+    {
+      "code": "61",
+      "id": "ipmc_PromissoryNoteSignedByDebtor"
+    },
+    {
+      "code": "62",
+      "id": "ipmc_PromissoryNoteSignedByDebtorEndorsedByBank"
+    },
+    {
+      "code": "63",
+      "id": "ipmc_PromissoryNoteSignedByDebtorEndorsedByThirdParty"
+    },
+    {
+      "code": "64",
+      "id": "ipmc_PromissoryNoteSignedByBank"
+    },
+    {
+      "code": "65",
+      "id": "ipmc_PromissoryNoteSignedByBankEndorsedByAnotherBank"
+    },
+    {
+      "code": "66",
+      "id": "ipmc_PromissoryNoteSignedByThirdParty"
+    },
+    {
+      "code": "67",
+      "id": "ipmc_PromissoryNoteSignedByThirdPartyEndorsedByBank"
+    },
+    {
+      "code": "68",
+      "id": "ipmc_OnlinePaymentService",
+      "doc": [
+        "68 e.g. PayPal"
+      ]
+    },
+    {
+      "code": "69",
+      "id": "ipmc_TransferAdvice"
+    },
+    {
+      "code": "70",
+      "id": "ipmc_BillDrawnByCrdtOnDebtor"
+    },
+    {
+      "code": "74",
+      "id": "ipmc_BillDrawnByCrdtOnBank"
+    },
+    {
+      "code": "75",
+      "id": "ipmc_BillDrawnByCrdtEndorsedByAnotherBank"
+    },
+    {
+      "code": "76",
+      "id": "ipmc_BillDrawnByCrdtOnBankEndorsedByThirdParty"
+    },
+    {
+      "code": "77",
+      "id": "ipmc_BillDrawnByCrdtOnThirdParty"
+    },
+    {
+      "code": "78",
+      "id": "ipmc_BillDrawnByCrdtOnThirdPartyAcceptedAndEndorsedByBank"
+    },
+    {
+      "code": "91",
+      "id": "ipmc_NotTransferableBankersDraft"
+    },
+    {
+      "code": "92",
+      "id": "ipmc_NotTransferableLocalCheque"
+    },
+    {
+      "code": "93",
+      "id": "ipmc_ReferenceGiro"
+    },
+    {
+      "code": "94",
+      "id": "ipmc_UrgentGiro"
+    },
+    {
+      "code": "95",
+      "id": "ipmc_FreeFormatGiro"
+    },
+    {
+      "code": "96",
+      "id": "ipmc_RequestedMethodForPaymentWasNotUsed"
+    },
+    {
+      "code": "97",
+      "id": "ipmc_ClearingBetweenPartners"
+    },
+    {
+      "code": "ZZZ",
+      "id": "ipmc_MutuallyDefined"
+    }
+  ]
+}

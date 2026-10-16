@@ -1,0 +1,154 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "itc_None"
+    },
+    {
+      "code": "84",
+      "id": "itc_DebitnoteRelatedToFinancialAdjustments",
+      "doc": [
+        "84 Debit note related to financial adjustments. Not for XRechnung.",
+        "DE: Belastungsanzeige fuer finanzielle Anpassungen. Nicht in XRechnung",
+        "verwenden."
+      ]
+    },
+    {
+      "code": "261",
+      "id": "itc_SelfBilledCreditNote",
+      "doc": [
+        "261 Self-billed credit note. Not for XRechnung.",
+        "DE: Selbst ausgestellte Gutschrift. Nicht in XRechnung verwenden."
+      ]
+    },
+    {
+      "code": "326",
+      "id": "itc_PartialInvoice",
+      "doc": [
+        "326 Partial invoice (in fact a partial final invoice): bills one or",
+        "more services already rendered, typically in longer projects or for",
+        "staggered deliveries. Unlike a down payment invoice it bills only",
+        "services actually rendered, with all warranty obligations.",
+        "DE: Teilrechnung (eigentlich Teilschlussrechnung): rechnet einen oder",
+        "mehrere erbrachte Leistungsposten ab, meist bei laengeren Projekten oder",
+        "gestaffelten Lieferungen. Anders als eine Abschlagsrechnung rechnet sie",
+        "nur tatsaechlich erbrachte Leistungen ab, mit allen damit verbundenen",
+        "Gewaehrleistungspflichten."
+      ]
+    },
+    {
+      "code": "380",
+      "id": "itc_CommercialInvoice",
+      "doc": [
+        "380 Commercial invoice, the normal case for most invoices.",
+        "DE: Rechnung, der Normalfall fuer die meisten Rechnungen."
+      ]
+    },
+    {
+      "code": "383",
+      "id": "itc_DebitNote",
+      "doc": [
+        "383 Debit note. Not for XRechnung.",
+        "DE: Belastungsanzeige. Nicht in XRechnung verwenden."
+      ]
+    },
+    {
+      "code": "384",
+      "id": "itc_CorrectedInvoice",
+      "doc": [
+        "384 Corrected invoice (also cancellation invoice): issued when an",
+        "invoice was wrong or the service was incomplete or defective and the",
+        "amount must be reduced. It always refers to an existing invoice:",
+        "BT-25 number and BT-26 date of the original invoice (XRechnung 3.0.2",
+        "chapter 13.1, BR-DE-26). A complete cancellation has negative",
+        "quantities with positive unit prices, hence negative totals.",
+        "DE: Rechnungskorrektur (auch Stornorechnung): wird erstellt, wenn eine",
+        "Rechnung falsch war oder die Leistung unvollstaendig oder mangelhaft",
+        "erbracht wurde und der Betrag sinken muss. Sie bezieht sich immer auf",
+        "eine bestehende Rechnung: BT-25 Nummer und BT-26 Datum der",
+        "Originalrechnung (XRechnung 3.0.2 Kap. 13.1, BR-DE-26). Ein",
+        "vollstaendiges Storno hat negative Mengen bei positiven Einzelpreisen",
+        "und damit negative Summen."
+      ]
+    },
+    {
+      "code": "386",
+      "id": "itc_PrepaymentInvoice",
+      "doc": [
+        "386 Prepayment invoice. Not recommended in XRechnung (BR-DE-17 lists",
+        "only 326, 380, 381, 384, 389, 875, 876, 877; warning, no rejection).",
+        "Invoices in advance (e.g. maintenance) are better 380 with a note.",
+        "DE: Vorauszahlungsrechnung. In XRechnung nicht empfohlen (BR-DE-17",
+        "nennt nur 326, 380, 381, 384, 389, 875, 876, 877; Warnung, kein",
+        "Abbruch). Vorausrechnungen (z. B. Wartung im Voraus) besser als 380",
+        "mit Hinweis im Rechnungstext."
+      ]
+    },
+    {
+      "code": "457",
+      "id": "itc_Cancellation",
+      "doc": [
+        "457 Cancellation. Not for XRechnung.",
+        "DE: Storno. Nicht in XRechnung verwenden."
+      ]
+    },
+    {
+      "code": "389",
+      "id": "itc_SelfbilledInvoice",
+      "doc": [
+        "389 Self-billed invoice, issued by the customer (credit note in the",
+        "sense of German VAT law, section 14 (2) UStG). The supplier receives a",
+        "copy and the payment.",
+        "DE: Selbst ausgestellte Rechnung des Kunden (umsatzsteuerliche",
+        "Gutschrift, Paragraph 14 Abs. 2 UStG). Der Lieferant erhaelt eine Kopie",
+        "und die Zahlung."
+      ]
+    },
+    {
+      "code": "381",
+      "id": "itc_CreditNote",
+      "doc": [
+        "381 Credit note of the supplier to the customer, e.g. for returns or",
+        "price reductions. Not the credit note in the sense of section 14 (2)",
+        "UStG (use 389). In UBL 381 is a separate CreditNote document, in CII",
+        "only the code. To cancel an own invoice use 384.",
+        "DE: Kaufmaennische Gutschrift des Lieferanten an den Kunden, z. B. fuer",
+        "Rueckgaben oder Preisnachlaesse. Nicht die umsatzsteuerliche Gutschrift",
+        "nach Paragraph 14 Abs. 2 UStG (dafuer 389). In UBL ist 381 ein eigenes",
+        "CreditNote-Dokument, in CII nur der Code. Fuer das Storno einer eigenen",
+        "Rechnung 384 verwenden."
+      ]
+    },
+    {
+      "code": "875",
+      "id": "itc_PartialConstructionInvoice",
+      "doc": [
+        "875 Down payment invoice for construction work. Not as binding as a",
+        "partial final or final invoice.",
+        "DE: Abschlagsrechnung fuer Bauleistungen. Nicht so verbindlich wie eine",
+        "Teilschluss- oder Schlussrechnung."
+      ]
+    },
+    {
+      "code": "876",
+      "id": "itc_PartialFinalConstructionInvoice",
+      "doc": [
+        "876 Partial final invoice for construction work: same character as a",
+        "final invoice, bills work accepted in a partial acceptance.",
+        "DE: Teilschlussrechnung fuer Bauleistungen: hat denselben Charakter wie",
+        "eine Schlussrechnung und rechnet Arbeiten einer Teilabnahme ab."
+      ]
+    },
+    {
+      "code": "877",
+      "id": "itc_FinalConstructionInvoice",
+      "doc": [
+        "877 Final invoice for construction work, based on completion and",
+        "acceptance of the agreed work plus any additional claims.",
+        "DE: Schlussrechnung fuer Bauleistungen, auf Grundlage von",
+        "Fertigstellung und Abnahme der vereinbarten Leistungen zuzueglich",
+        "etwaiger Nachforderungen."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "iacic_None"
+    },
+    {
+      "code": "41",
+      "id": "iacic_BonusForWorksAheadOfSchedule"
+    },
+    {
+      "code": "42",
+      "id": "iacic_OtherBonus"
+    },
+    {
+      "code": "60",
+      "id": "iacic_ManufacturersConsumerDiscount"
+    },
+    {
+      "code": "62",
+      "id": "iacic_DueToMilitaryStatus"
+    },
+    {
+      "code": "63",
+      "id": "iacic_DueToWorkAccident"
+    },
+    {
+      "code": "64",
+      "id": "iacic_SpecialAgreement"
+    },
+    {
+      "code": "65",
+      "id": "iacic_ProductionErrorDiscount"
+    },
+    {
+      "code": "66",
+      "id": "iacic_NewOutletDiscount"
+    },
+    {
+      "code": "67",
+      "id": "iacic_SampleDiscount"
+    },
+    {
+      "code": "68",
+      "id": "iacic_EndOfRangeDiscount"
+    },
+    {
+      "code": "70",
+      "id": "iacic_IncotermDiscount"
+    },
+    {
+      "code": "71",
+      "id": "iacic_PointOfSalesThresholdAllowance"
+    },
+    {
+      "code": "88",
+      "id": "iacic_MaterialSurchargeDeduction"
+    },
+    {
+      "code": "95",
+      "id": "iacic_Discount"
+    },
+    {
+      "code": "100",
+      "id": "iacic_SpecialRebate"
+    },
+    {
+      "code": "102",
+      "id": "iacic_FixedLongTerm"
+    },
+    {
+      "code": "103",
+      "id": "iacic_Temporary"
+    },
+    {
+      "code": "104",
+      "id": "iacic_Standard"
+    },
+    {
+      "code": "105",
+      "id": "iacic_YearlyTurnover"
+    }
+  ]
+}

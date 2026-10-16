@@ -1,0 +1,44 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "idtfcc_None"
+    },
+    {
+      "code": "AE",
+      "id": "idtfcc_AE_VATReverseCharge"
+    },
+    {
+      "code": "E",
+      "id": "idtfcc_E_ExemptFromTax"
+    },
+    {
+      "code": "G",
+      "id": "idtfcc_G_FreeExportItemTaxNotCharged"
+    },
+    {
+      "code": "K",
+      "id": "idtfcc_K_VATExemptForEEAIntracommunitySupplyOfGoodsAndServices"
+    },
+    {
+      "code": "L",
+      "id": "idtfcc_L_CanaryIslandsGeneralIndirectTax"
+    },
+    {
+      "code": "M",
+      "id": "idtfcc_M_TaxForProductionServicesAndImportationInCeutaAndMelilla"
+    },
+    {
+      "code": "O",
+      "id": "idtfcc_O_ServicesOutsideScopeOfTax"
+    },
+    {
+      "code": "S",
+      "id": "idtfcc_S_StandardRate"
+    },
+    {
+      "code": "Z",
+      "id": "idtfcc_Z_ZeroRatedGoods"
+    }
+  ]
+}

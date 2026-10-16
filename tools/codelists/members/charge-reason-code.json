@@ -1,0 +1,48 @@
+{
+  "members": [
+    {
+      "code": "",
+      "id": "issdc_None"
+    },
+    {
+      "code": "AA",
+      "id": "issdc_AA_Advertising"
+    },
+    {
+      "code": "AAA",
+      "id": "issdc_AAA_Telecommunication"
+    },
+    {
+      "code": "ABK",
+      "id": "issdc_ABK_Miscellaneous"
+    },
+    {
+      "code": "ABL",
+      "id": "issdc_ABL_AdditionalPackaging"
+    },
+    {
+      "code": "ADR",
+      "id": "issdc_ADR_OtherServices"
+    },
+    {
+      "code": "ADT",
+      "id": "issdc_ADT_Pickup"
+    },
+    {
+      "code": "FC",
+      "id": "issdc_FC_FreightService"
+    },
+    {
+      "code": "FI",
+      "id": "issdc_FI_Financing"
+    },
+    {
+      "code": "LA",
+      "id": "issdc_LA_Labelling"
+    },
+    {
+      "code": "PC",
+      "id": "issdc_PC_Packing"
+    }
+  ]
+}

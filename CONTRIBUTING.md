@@ -28,7 +28,7 @@ Please:
 3. Follow the style of the surrounding source code.
 4. Add or update tests for functional changes.
 5. Make sure existing tests still pass.
-6. Run `python tools/check-forbidden.py` and fix every reported violation.
+6. Run `python tools/check-forbidden.py` and fix every reported violation, and `python tools/codelists/gen-codelists.py --check` (generated code lists up to date).
 7. Clearly describe what was changed and why.
 
 Changes affecting generated invoice XML should, where applicable, be tested against the official or commonly used validation tools for the respective invoice format (for example the KoSIT validator for XRechnung).

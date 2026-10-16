@@ -162,6 +162,66 @@ begin
   CheckEqualsInvoiceStr('GROUP', LandrixEInvoiceLineStatusReasonCodeToStr(ilsrc_Group), 'GROUP');
 end;
 
+procedure TestNewCodeLists;
+var
+  CC, CC2: TLandrixInvoiceCountryCode;
+  CU, CU2: TLandrixInvoiceCurrencyCode;
+  EA, EA2: TLandrixInvoiceElectronicAddressScheme;
+  IC, IC2: TLandrixInvoiceIdentifierScheme;
+  VX, VX2: TLandrixInvoiceVATExemptionReasonCode;
+  RC, RC2: TLandrixInvoiceReferenceCodeQualifier;
+  ICS, ICS2: TLandrixInvoiceItemClassificationScheme;
+  Found: Boolean;
+begin
+  for CC := Low(CC) to High(CC) do
+  begin
+    Found := LandrixEInvoiceCountryCodeFromStr(LowerAscii(LandrixEInvoiceCountryCodeToStr(CC)), CC2);
+    CheckCodeCommon('CountryCode', Ord(CC), LandrixEInvoiceCountryCodeToStr(CC), Found, Ord(CC2));
+  end;
+  for CU := Low(CU) to High(CU) do
+  begin
+    Found := LandrixEInvoiceCurrencyCodeFromStr(LandrixEInvoiceCurrencyCodeToStr(CU), CU2);
+    CheckCodeCommon('CurrencyCode', Ord(CU), LandrixEInvoiceCurrencyCodeToStr(CU), Found, Ord(CU2));
+  end;
+  for EA := Low(EA) to High(EA) do
+  begin
+    Found := LandrixEInvoiceElectronicAddressSchemeFromStr(LandrixEInvoiceElectronicAddressSchemeToStr(EA), EA2);
+    CheckCodeCommon('ElectronicAddressScheme', Ord(EA), LandrixEInvoiceElectronicAddressSchemeToStr(EA), Found, Ord(EA2));
+  end;
+  for IC := Low(IC) to High(IC) do
+  begin
+    Found := LandrixEInvoiceIdentifierSchemeFromStr(LandrixEInvoiceIdentifierSchemeToStr(IC), IC2);
+    CheckCodeCommon('IdentifierScheme', Ord(IC), LandrixEInvoiceIdentifierSchemeToStr(IC), Found, Ord(IC2));
+  end;
+  for VX := Low(VX) to High(VX) do
+  begin
+    Found := LandrixEInvoiceVATExemptionReasonCodeFromStr(LowerAscii(LandrixEInvoiceVATExemptionReasonCodeToStr(VX)), VX2);
+    CheckCodeCommon('VATExemptionReasonCode', Ord(VX), LandrixEInvoiceVATExemptionReasonCodeToStr(VX), Found, Ord(VX2));
+  end;
+  for RC := Low(RC) to High(RC) do
+  begin
+    Found := LandrixEInvoiceReferenceCodeQualifierFromStr(LandrixEInvoiceReferenceCodeQualifierToStr(RC), RC2);
+    CheckCodeCommon('ReferenceCodeQualifier', Ord(RC), LandrixEInvoiceReferenceCodeQualifierToStr(RC), Found, Ord(RC2));
+  end;
+  for ICS := Low(ICS) to High(ICS) do
+  begin
+    Found := LandrixEInvoiceItemClassificationSchemeFromStr(LandrixEInvoiceItemClassificationSchemeToStr(ICS), ICS2);
+    CheckCodeCommon('ItemClassificationScheme', Ord(ICS), LandrixEInvoiceItemClassificationSchemeToStr(ICS), Found, Ord(ICS2));
+  end;
+  CheckEqualsInvoiceStr('DE', LandrixEInvoiceCountryCodeToStr(icc_DE), 'country DE');
+  CheckEqualsInvoiceStr('EUR', LandrixEInvoiceCurrencyCodeToStr(icur_EUR), 'currency EUR');
+  CheckEqualsInvoiceStr('9930', LandrixEInvoiceElectronicAddressSchemeToStr(ieas_9930), 'EAS 9930');
+  CheckEqualsInvoiceStr('EM', LandrixEInvoiceElectronicAddressSchemeToStr(ieas_EM), 'EAS EM');
+  CheckEqualsInvoiceStr('0088', LandrixEInvoiceIdentifierSchemeToStr(iicd_0088), 'ICD 0088');
+  CheckEqualsInvoiceStr('VATEX-EU-79-C', LandrixEInvoiceVATExemptionReasonCodeToStr(ivx_EU_79_C), 'VATEX prefix');
+  CheckEqualsInvoiceStr('ON', LandrixEInvoiceReferenceCodeQualifierToStr(irc_ON), '1153 ON');
+  CheckEqualsInvoiceStr('GB', LandrixEInvoiceItemClassificationSchemeToStr(iics_GB), '7143 GB');
+  CheckEqualsInvoiceStr('XPK', LandrixEInvoiceUnitCodeToStr(iuc_packaging), 'Rec. 21 package code kept as alias');
+  CheckEqualsInvoiceStr('XBX', LandrixEInvoiceUnitCodeToStr(iuc_XBX), 'generated Rec. 21 member');
+  Check(not LandrixEInvoiceCountryCodeFromStr('XX', CC), 'unknown country');
+  Check(CC = icc_None, 'unknown country gives icc_None');
+end;
+
 { --- model -------------------------------------------------------------- }
 
 { Builds an invoice with every owned sub-object and list filled, so that the
@@ -781,6 +841,7 @@ begin
   RegisterTest('Codes.PaymentMeansCode', TestPaymentMeansCodes);
   RegisterTest('Codes.UnitCode', TestUnitCodes);
   RegisterTest('Codes.OtherLists', TestOtherCodeLists);
+  RegisterTest('Codes.NewLists', TestNewCodeLists);
   RegisterTest('Model.CreateFullInvoice', TestCreateFullInvoice);
   RegisterTest('Model.ListExtract', TestListExtract);
   RegisterTest('Model.Notes', TestNotes);

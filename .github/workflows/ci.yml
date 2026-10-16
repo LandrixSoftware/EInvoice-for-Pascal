@@ -15,6 +15,9 @@ jobs:
       - name: Check forbidden language features
         run: python3 tools/check-forbidden.py
 
+      - name: Check that the generated code lists are up to date
+        run: python3 tools/codelists/gen-codelists.py --check
+
       # The LandrixXml submodule is a private repository. LANDRIXXML_TOKEN is a
       # fine-grained personal access token with read access (Contents: read) to
       # LandrixSoftware/LandrixXML-for-Pascal only. Pull requests from forks do
