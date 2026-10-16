@@ -208,6 +208,13 @@ def check_blocks(path, code, violations):
         if re.search(r"^\s*(type|const)\s*$|^\s*(type|const)\s+\w+\s*=", body, re.IGNORECASE | re.MULTILINE):
             line = code.count("\n", 0, start) + 1
             violations.append(Violation(path, line, "nested type/const in class"))
+    # old-style objects are allowed only as value types without a VMT
+    # (optional values): zeroed memory must be a valid "not set" state
+    for start, body in block_bodies(code, r"=\s*(packed\s+)?object\b"):
+        m = re.search(r"\b(constructor|destructor|virtual|dynamic|abstract|override)\b", body, re.IGNORECASE)
+        if m:
+            line = code.count("\n", 0, start) + 1
+            violations.append(Violation(path, line, "object type with %s (no VMT allowed)" % m.group(1).lower()))
 
 
 def check_file(path, violations):

@@ -21,7 +21,14 @@
                              Not defined on Delphi 6-2007 and not on FPC. It
                              describes the native string, not whether invoice
                              text is Unicode-safe: TLandrixEInvoiceString is
-                             lossless on every Delphi. }
+                             lossless on every Delphi.
+
+  DE: Zentrale Compiler-Schalter. Werden in jeder Unit direkt nach dem
+  Unit-Kopf eingebunden. LANDRIXEINVOICE_UNICODE ist ab Delphi 2009 gesetzt:
+  Der native string ist UTF-16 (string = UnicodeString, Char = WideChar).
+  Unter Delphi 6 bis 2007 und unter FPC ist er nicht gesetzt. Er beschreibt
+  den nativen string, nicht ob Rechnungstext Unicode-sicher ist:
+  TLandrixEInvoiceString ist unter jedem Delphi verlustfrei. }
 
 {$IFDEF FPC}
   {$MODE DELPHI}

@@ -41,6 +41,7 @@ All library code must compile unchanged with Delphi 6 through Delphi 13 and Free
 
 * Units: only `SysUtils`, `Classes`, `Contnrs`, LandrixXml units and own units. Unqualified unit names; unit names contain no dot.
 * Not allowed: generics, anonymous methods, `for ... in`, `Exit(Value)`, `strict private/protected`, records with methods, class and record helpers, operator overloading, `inline`, `class var`, nested types, inline `var` declarations, `{$REGION}`.
+* Old-style `object` types are allowed only as value types without a VMT (no constructors, destructors, virtual, dynamic, abstract or override methods), as used by the optional value types `TLandrixEInvoiceAmount` etc.: zeroed memory must mean "not set". Such a type must not be exactly 8 bytes in size: Delphi 13 Win64 passes 8-byte objects wrongly as value or `const` parameters (records are not affected).
 * Not allowed: `TStringBuilder`, `TEncoding`, `TFormatSettings`, `PosEx`, `CharInSet`, `RawByteString`, `NativeInt`, `NativeUInt`, `TBytes`, `UInt64`, `UTF8ToString`.
 * `{$IF}` is always closed with `{$IFEND}`; `CompilerVersion` comparisons use float constants (`20.0`).
 * No dependency on the current locale. Numbers and dates are converted with the locale-independent helpers.
@@ -76,7 +77,19 @@ Files that contain code derived from other projects need a different header and 
 
 ## Comments and documentation
 
-Identifiers, comments and documentation in the repository are written in English.
+Code is written in English: identifiers, test messages and purely technical comments.
+
+The code is documented directly in the source, in English and German:
+
+* In the library sources (`source/`), every public declaration in an `interface` section and every business rule in an implementation (business terms `BT-...`/`BG-...`, profile rules, special cases) has a comment block: first English, then a paragraph starting with `DE:` in German.
+* Purely technical comments inside implementations are English only, and so are tests and tools.
+* Self-explanatory code needs no comment.
+* Sources stay ASCII-only, so German umlauts are written as `ae`, `oe`, `ue` and `ss`.
+
+```pascal
+{ Optional monetary amount (Currency, four decimals).
+  DE: Optionaler Geldbetrag (Currency, vier Nachkommastellen). }
+```
 
 New public APIs should contain enough documentation to make their intended use and any relevant invoice-standard restrictions understandable.
 
