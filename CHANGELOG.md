@@ -51,6 +51,14 @@ Supported invoice standards are documented per release.
   lists and the totals); new `Clear`
   methods on `TLandrixInvoiceLine`, `TLandrixInvoiceAccountingParty`,
   `TLandrixInvoiceAddress` and `TLandrixInvoiceDeliveryInformation`.
+- Targets and specification directory: `TLandrixEInvoiceTarget` (standard, syntax, profile,
+  version) with the factories `TLandrixEInvoiceTargets.XRechnung/FacturX/ZUGFeRD/PeppolBIS`
+  (ZUGFeRD 2.5 = Factur-X 1.09), and `LandrixEInvoiceSpecs` with entries for XRechnung 3.0
+  UBL and CII, Factur-X 1.09 EN16931 and EXTENDED and Peppol BIS Billing 3.0 (identifiers,
+  default business process, syntax and norm version, PDF attachment name, KoSIT code list
+  versions of XRechnung 3.0.2), found by target (`LandrixEInvoiceFindSpec`, versions matched by
+  major.minor) or by the identifiers of a read document (`LandrixEInvoiceDetectSpec`, also
+  reports the XRechnung extension).
 - `LandrixEInvoiceCompatXRechnung`: the model names of XRechnung-for-Delphi (`TInvoice`,
   `TInvoiceLine`, ..., enumeration members, `TInvoiceListItemType`,
   `TInvoiceEmptyLeitwegID.NON_EXISTENT`, `TInvoiceUnitCodeHelper`,

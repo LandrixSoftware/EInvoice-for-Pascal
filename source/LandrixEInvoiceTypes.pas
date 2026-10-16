@@ -112,6 +112,63 @@ type
     aus LandrixXml behalten ihre Klasse ELandrixXmlError). }
   ELandrixEInvoiceError = class(Exception);
 
+  { Standard of an e-invoice specification. ZUGFeRD 2.x and Factur-X 1.x
+    are one standard with two names (est_FacturX).
+    DE: Standard einer E-Rechnungs-Spezifikation. ZUGFeRD 2.x und Factur-X
+    1.x sind ein Standard mit zwei Namen (est_FacturX). }
+  TLandrixEInvoiceStandard = (
+    est_None,
+    est_XRechnung,
+    est_FacturX,
+    est_PeppolBIS
+  );
+
+  { Syntax of an e-invoice: UBL or UN/CEFACT CII.
+    DE: Syntax einer E-Rechnung: UBL oder UN/CEFACT CII. }
+  TLandrixEInvoiceSyntax = (
+    esy_None,
+    esy_UBL,
+    esy_CII
+  );
+
+  { Profile of a Factur-X/ZUGFeRD target. epr_None is used for standards
+    without a profile axis (XRechnung, Peppol BIS); epr_XRechnung is the
+    ZUGFeRD profile XRECHNUNG, whose XML is an XRechnung CII invoice.
+    DE: Profil eines Factur-X/ZUGFeRD-Ziels. epr_None gilt fuer Standards
+    ohne Profilachse (XRechnung, Peppol BIS); epr_XRechnung ist das
+    ZUGFeRD-Profil XRECHNUNG, dessen XML eine XRechnung in CII ist. }
+  TLandrixEInvoiceProfile = (
+    epr_None,
+    epr_Minimum,
+    epr_BasicWL,
+    epr_Basic,
+    epr_EN16931,
+    epr_Extended,
+    epr_XRechnung
+  );
+
+  { What to write or what was read: standard, syntax, profile and version.
+    A target is valid if the specification directory (LandrixEInvoiceSpecs)
+    has an entry for it. The version is matched by major and minor number:
+    '3.0.2', '3.0.x' and '3.0' select the entry '3.0'; an empty, incomplete
+    or malformed version matches nothing. Create targets with
+    TLandrixEInvoiceTargets and compare them with LandrixEInvoiceSameTarget,
+    never with '='.
+    DE: Was geschrieben werden soll oder gelesen wurde: Standard, Syntax,
+    Profil und Version. Eine Zielangabe ist gueltig, wenn das
+    Spezifikationsverzeichnis (LandrixEInvoiceSpecs) einen Eintrag dafuer
+    hat. Die Version wird nach Haupt- und Nebenversion verglichen: '3.0.2',
+    '3.0.x' und '3.0' waehlen den Eintrag '3.0'; eine leere, unvollstaendige
+    oder fehlerhafte Version passt zu nichts. Zielangaben mit
+    TLandrixEInvoiceTargets erzeugen und mit LandrixEInvoiceSameTarget
+    vergleichen, nie mit '='. }
+  TLandrixEInvoiceTarget = record
+    Standard: TLandrixEInvoiceStandard;
+    Syntax: TLandrixEInvoiceSyntax;
+    Profile: TLandrixEInvoiceProfile;
+    Version: TLandrixEInvoiceString;
+  end;
+
   { Optional values
     ---------------
     A value that may be absent, so that "not set" differs from an explicit
