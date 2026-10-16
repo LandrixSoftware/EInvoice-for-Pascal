@@ -30,7 +30,8 @@ uses
   LandrixEInvoiceTestSelf,
   LandrixEInvoiceTestTypes,
   LandrixEInvoiceTestNullable,
-  LandrixEInvoiceTestModel;
+  LandrixEInvoiceTestModel,
+  LandrixEInvoiceTestCompat;
 
 function FilterParam: string;
 var
@@ -47,5 +48,6 @@ begin
   LandrixEInvoiceTestTypes.Register;
   LandrixEInvoiceTestNullable.Register;
   LandrixEInvoiceTestModel.Register;
+  LandrixEInvoiceTestCompat.Register;
   ExitCode := RunAllTests(FilterParam);
 end.

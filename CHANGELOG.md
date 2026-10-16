@@ -45,6 +45,14 @@ Supported invoice standards are documented per release.
   lists and the totals); new `Clear`
   methods on `TLandrixInvoiceLine`, `TLandrixInvoiceAccountingParty`,
   `TLandrixInvoiceAddress` and `TLandrixInvoiceDeliveryInformation`.
+- `LandrixEInvoiceCompatXRechnung`: the model names of XRechnung-for-Delphi (`TInvoice`,
+  `TInvoiceLine`, ..., enumeration members, `TInvoiceListItemType`,
+  `TInvoiceEmptyLeitwegID.NON_EXISTENT`, `TInvoiceUnitCodeHelper`,
+  `TInvoiceAttachmentTypeHelper`, and `TInvoiceEmptyLeitwegID_NON_EXISTENT` of the Delphi 6
+  version) for existing code that replaces `intf.Invoice` (`intfInvoice` in the Delphi 6
+  version) in its uses clauses. `TInvoiceEmptyLeitwegID.NON_EXISTENT` is a class function now,
+  so it can no longer be used in constant expressions; `ClassName` returns the new names
+  (`TLandrixInvoice`). Reading and writing (`TXRechnungInvoiceAdapter`) will follow.
 - Framework-free console test runner `tests/LandrixEInvoiceTests.dpr`.
 - `tools/build.ps1`: builds and runs the tests with the local toolchains.
 - CI with Free Pascal 3.2.2 on Linux (manual start only for now).
