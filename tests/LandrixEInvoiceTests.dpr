@@ -25,9 +25,6 @@ program LandrixEInvoiceTests;
 {$ENDIF}
 
 uses
-{$IFDEF UNIX}
-  cwstring, { wide string manager: lossless string conversions }
-{$ENDIF}
   SysUtils,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestSelf,

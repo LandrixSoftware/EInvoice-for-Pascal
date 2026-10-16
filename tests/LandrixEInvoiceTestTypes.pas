@@ -48,11 +48,7 @@ var
   S: TLandrixEInvoiceString;
   C: TLandrixEInvoiceChar;
 begin
-{$IFDEF FPC}
-  CheckEquals(1, SizeOf(TLandrixEInvoiceChar), 'FPC: one byte per code unit');
-{$ELSE}
-  CheckEquals(2, SizeOf(TLandrixEInvoiceChar), 'Delphi: UTF-16 code unit');
-{$ENDIF}
+  CheckEquals(2, SizeOf(TLandrixEInvoiceChar), 'UTF-16 code unit');
   S := 'xA';
   C := S[2];
   CheckEquals(Ord('A'), Ord(C), 'indexing yields TLandrixEInvoiceChar');
@@ -78,21 +74,10 @@ procedure TestPolishRoundTrip;
 var
   S: TLandrixEInvoiceString;
 begin
+  { lossless on every compiler, whatever the system code page }
   S := LandrixEInvoiceUtf8ToString(LodzUtf8);
-{$IFDEF FPC}
-  { Lossless only with a UTF-8 system code page. Whether FPC keeps string or
-    switches to UnicodeString is decided in phase 1 (plan 5.3). }
-  if DefaultSystemCodePage = CP_UTF8 then
-  begin
-    CheckEquals(7, Length(S), 'FPC UTF-8: seven bytes');
-    CheckEqualsUtf8(LodzUtf8, LandrixEInvoiceStringToUtf8(S), 'FPC UTF-8: round trip');
-  end
-  else
-    Skip('system code page ' + IntToStr(DefaultSystemCodePage) + ' is not UTF-8');
-{$ELSE}
-  CheckEqualsInvoiceStr(Wide([$0141, $00F3, $0064, $017A]), S, 'Delphi: UTF-16 code units');
-  CheckEqualsUtf8(LodzUtf8, LandrixEInvoiceStringToUtf8(S), 'Delphi: lossless round trip');
-{$ENDIF}
+  CheckEqualsInvoiceStr(Wide([$0141, $00F3, $0064, $017A]), S, 'UTF-16 code units');
+  CheckEqualsUtf8(LodzUtf8, LandrixEInvoiceStringToUtf8(S), 'lossless round trip');
 end;
 
 procedure TestSupplementaryRoundTrip;
@@ -103,15 +88,8 @@ begin
   { U+1F600, four bytes in UTF-8, a surrogate pair in UTF-16 }
   U := Utf8Bytes([$F0, $9F, $98, $80]);
   S := LandrixEInvoiceUtf8ToString(U);
-{$IFDEF FPC}
-  if DefaultSystemCodePage = CP_UTF8 then
-    CheckEqualsUtf8(U, LandrixEInvoiceStringToUtf8(S), 'FPC UTF-8: round trip')
-  else
-    Skip('system code page ' + IntToStr(DefaultSystemCodePage) + ' is not UTF-8');
-{$ELSE}
-  CheckEqualsInvoiceStr(Wide([$D83D, $DE00]), S, 'Delphi: surrogate pair');
-  CheckEqualsUtf8(U, LandrixEInvoiceStringToUtf8(S), 'Delphi: round trip');
-{$ENDIF}
+  CheckEqualsInvoiceStr(Wide([$D83D, $DE00]), S, 'surrogate pair');
+  CheckEqualsUtf8(U, LandrixEInvoiceStringToUtf8(S), 'round trip');
 end;
 
 procedure TestInvalidUtf8;
@@ -125,7 +103,6 @@ begin
   end;
 end;
 
-{$IFNDEF FPC}
 procedure TestLoneSurrogate;
 begin
   try
@@ -136,7 +113,6 @@ begin
       Check(E.Code = xecInvalidUnicode, 'lone surrogate: xecInvalidUnicode');
   end;
 end;
-{$ENDIF}
 
 procedure Register;
 begin
@@ -147,9 +123,7 @@ begin
   RegisterTest('Types.PolishRoundTrip', TestPolishRoundTrip);
   RegisterTest('Types.SupplementaryRoundTrip', TestSupplementaryRoundTrip);
   RegisterTest('Types.InvalidUtf8', TestInvalidUtf8);
-{$IFNDEF FPC}
   RegisterTest('Types.LoneSurrogate', TestLoneSurrogate);
-{$ENDIF}
 end;
 
 end.

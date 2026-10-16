@@ -75,13 +75,8 @@ begin
     on E: ETestFailure do
     begin
       Raised := True;
-{$IFDEF FPC}
-      Check(Pos('61 62', E.Message) > 0, 'hex dump of expected invoice text');
-      Check(Pos('61 63', E.Message) > 0, 'hex dump of actual invoice text');
-{$ELSE}
       Check(Pos('0061 0062', E.Message) > 0, 'hex dump of expected invoice text');
       Check(Pos('0061 0063', E.Message) > 0, 'hex dump of actual invoice text');
-{$ENDIF}
     end;
   end;
   Check(Raised, 'CheckEqualsInvoiceStr must fail on different text');
@@ -102,11 +97,7 @@ begin
   CheckEqualsStr('00 FF', BytesToHex(Bytes([0, 255])), 'BytesToHex');
   CheckEqualsStr('D83D DE00', WideToHex(Wide([$D83D, $DE00])), 'WideToHex');
   CheckEqualsStr('C3 A4', Utf8ToHex(Utf8Bytes([$C3, $A4])), 'Utf8ToHex');
-{$IFDEF FPC}
-  CheckEqualsStr('41 42', InvoiceStrToHex('AB'), 'InvoiceStrToHex');
-{$ELSE}
   CheckEqualsStr('0041 0042', InvoiceStrToHex('AB'), 'InvoiceStrToHex');
-{$ENDIF}
 end;
 
 procedure TestCompilerAssumptions;

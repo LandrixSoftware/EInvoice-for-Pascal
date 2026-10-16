@@ -80,7 +80,7 @@ procedure CheckEqualsInvoiceStr(const Expected, Actual: TLandrixEInvoiceString;
 function BytesToHex(const S: AnsiString): string;
 function WideToHex(const S: TLandrixXmlWide): string;
 function Utf8ToHex(const S: TLandrixXmlUtf8): string;
-{ Two hex digits per code unit on FPC, four on Delphi. }
+{ Four hex digits per UTF-16 code unit. }
 function InvoiceStrToHex(const S: TLandrixEInvoiceString): string;
 
 { Builds an AnsiString from byte values, e.g. Bytes([$C3, $A4]). }

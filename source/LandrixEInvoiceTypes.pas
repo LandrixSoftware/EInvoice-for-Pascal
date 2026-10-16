@@ -26,40 +26,39 @@
 
   String type
   -----------
-  TLandrixEInvoiceString  Text of the invoice model.
-                          Delphi 6-2007: WideString (UTF-16, lossless).
-                          Delphi 2009+:  string = UnicodeString (lossless).
-                          FPC:           string (AnsiString with code page);
-                                         lossless when the code page is
-                                         UTF-8, otherwise converted to the
-                                         system code page by the RTL. On
-                                         Unix the application must use the
-                                         cwstring unit, else the RTL has no
-                                         wide string manager and characters
-                                         outside Latin-1 become '?'.
-                          On every Delphi it is the same type as
-                          TLandrixXmlWide.
-  TLandrixEInvoiceChar    One code unit of TLandrixEInvoiceString (WideChar
-                          on Delphi, Char on FPC). Not necessarily a complete
-                          character: a UTF-16 surrogate or one UTF-8 byte.
+  TLandrixEInvoiceString  Text of the invoice model, UTF-16 and lossless on
+                          every compiler, the same type as TLandrixXmlWide:
+                          Delphi 6-2007: WideString.
+                          Delphi 2009+:  string = UnicodeString.
+                          FPC:           UnicodeString.
+  TLandrixEInvoiceChar    One UTF-16 code unit (WideChar). Not necessarily a
+                          complete character: a surrogate pair takes two.
 
-  On Delphi 6-2007 assigning a TLandrixEInvoiceString to a plain string (or
-  passing it to SysUtils routines that take string) converts it to the system
-  code page and loses characters that code page cannot represent.
+  The conversion to and from UTF-8 (LandrixEInvoiceStringToUtf8,
+  LandrixEInvoiceUtf8ToString) is lossless and independent of the system
+  code page. Converting to a plain string is not: on Delphi 6-2007 and on
+  FPC, assigning a TLandrixEInvoiceString to a string (or passing it to
+  routines that take string) converts it to the code page of that string
+  and loses characters it cannot represent. On FPC under Unix, without a
+  wide string manager in the application (unit cwstring; Lazarus installs
+  one), such conversions turn characters outside Latin-1 into '?'; FPC warns
+  about them (4104, 4105).
 
   DE: Zeichenkettentyp
-  TLandrixEInvoiceString ist der Text des Rechnungsmodells: unter Delphi 6
-  bis 2007 WideString (UTF-16, verlustfrei), ab Delphi 2009 string =
-  UnicodeString (verlustfrei), unter FPC string (AnsiString mit Codepage;
-  verlustfrei bei UTF-8 als Codepage, sonst wandelt die RTL in die
-  Systemcodepage um). Unter Unix muss die Anwendung die Unit cwstring
-  einbinden, sonst fehlt der RTL der Wide-String-Manager und Zeichen
-  ausserhalb von Latin-1 werden zu '?'. Unter jedem Delphi ist es derselbe
-  Typ wie TLandrixXmlWide. TLandrixEInvoiceChar ist eine Codeeinheit davon
-  (WideChar unter Delphi, Char unter FPC), nicht unbedingt ein ganzes
-  Zeichen. Unter Delphi 6 bis 2007 verliert die Zuweisung an einen normalen
-  string (auch die Uebergabe an SysUtils-Routinen mit string-Parametern)
-  alle Zeichen, die die Systemcodepage nicht darstellen kann. }
+  TLandrixEInvoiceString ist der Text des Rechnungsmodells, unter jedem
+  Compiler UTF-16 und verlustfrei, derselbe Typ wie TLandrixXmlWide: unter
+  Delphi 6 bis 2007 WideString, ab Delphi 2009 string = UnicodeString, unter
+  FPC UnicodeString. TLandrixEInvoiceChar ist eine UTF-16-Codeeinheit
+  (WideChar), nicht unbedingt ein ganzes Zeichen: Ein Surrogatpaar belegt
+  zwei. Die Umwandlung von und nach UTF-8 (LandrixEInvoiceStringToUtf8,
+  LandrixEInvoiceUtf8ToString) ist verlustfrei und unabhaengig von der
+  Systemcodepage. Die Umwandlung in einen normalen string ist es nicht: Unter
+  Delphi 6 bis 2007 und unter FPC verliert die Zuweisung an einen string
+  (auch die Uebergabe an Routinen mit string-Parametern) alle Zeichen, die
+  dessen Codepage nicht darstellen kann. Unter FPC und Unix werden bei
+  solchen Umwandlungen ohne Wide-String-Manager in der Anwendung (Unit
+  cwstring; Lazarus bringt einen mit) Zeichen ausserhalb von Latin-1 zu '?';
+  FPC warnt dabei (4104, 4105). }
 
 unit LandrixEInvoiceTypes;
 
@@ -78,17 +77,15 @@ const
 
 type
 {$IFDEF FPC}
-  TLandrixEInvoiceString = string;
-  TLandrixEInvoiceChar = Char;
+  TLandrixEInvoiceString = UnicodeString;
 {$ELSE}
   {$IFDEF LANDRIXEINVOICE_UNICODE}
   TLandrixEInvoiceString = string;
-  TLandrixEInvoiceChar = Char;
   {$ELSE}
   TLandrixEInvoiceString = WideString;
-  TLandrixEInvoiceChar = WideChar;
   {$ENDIF}
 {$ENDIF}
+  TLandrixEInvoiceChar = WideChar;
 
   { Base class of the library's own exceptions (conversion errors from
     LandrixXml keep their class ELandrixXmlError).
@@ -622,27 +619,17 @@ begin
   Result.Clear;
 end;
 
-{ On Delphi TLandrixEInvoiceString is TLandrixXmlWide, so the wide
-  conversion is lossless and never passes through the system code page. On
-  FPC it is string, which LandrixXmlBase converts according to the string's
-  code page. }
+{ TLandrixEInvoiceString is TLandrixXmlWide on every compiler, so the wide
+  conversion is lossless and never passes through a code page. }
 
 function LandrixEInvoiceStringToUtf8(const S: TLandrixEInvoiceString): TLandrixXmlUtf8;
 begin
-{$IFDEF FPC}
-  Result := LandrixXmlStringToUtf8(S);
-{$ELSE}
   Result := LandrixXmlWideToUtf8(S);
-{$ENDIF}
 end;
 
 function LandrixEInvoiceUtf8ToString(const S: TLandrixXmlUtf8): TLandrixEInvoiceString;
 begin
-{$IFDEF FPC}
-  Result := LandrixXmlUtf8ToString(S);
-{$ELSE}
   Result := LandrixXmlUtf8ToWide(S);
-{$ENDIF}
 end;
 
 end.

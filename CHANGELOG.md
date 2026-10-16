@@ -16,8 +16,9 @@ Supported invoice standards are documented per release.
   Delphi 6 does not support. `cwstring` is allowed in programs (`.dpr`/`.lpr`) only; old-style
   `object` types must not have a VMT.
 - `LandrixEInvoice.inc` with the central compiler switches (`LANDRIXEINVOICE_UNICODE`).
-- `LandrixEInvoiceTypes`: `TLandrixEInvoiceString` (`WideString` on Delphi 6-2007,
-  `string` on Delphi 2009+ and Free Pascal), `TLandrixEInvoiceChar`,
+- `LandrixEInvoiceTypes`: `TLandrixEInvoiceString` (UTF-16 on every compiler: `WideString`
+  on Delphi 6-2007, `string` on Delphi 2009+, `UnicodeString` on Free Pascal; lossless
+  regardless of the system code page), `TLandrixEInvoiceChar` (`WideChar`),
   `LandrixEInvoiceStringToUtf8`, `LandrixEInvoiceUtf8ToString`, `LandrixEInvoiceVersion`.
 - Optional value types that distinguish "not set" from an explicit zero:
   `TLandrixEInvoiceAmount`, `TLandrixEInvoiceDate`, `TLandrixEInvoiceQuantity`,
