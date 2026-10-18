@@ -203,6 +203,10 @@ begin
     Check(Pos('<ram:ApplicableHeaderTradeDelivery', Written) > 0, 'empty delivery written');
     Check(Pos('<rsm:ExchangedDocumentContext', Written) > 0, 'empty context written');
     Check(D.CountOf(edk_MissingElement) > 0, 'missing content reported');
+    Check(D.HasErrors, 'missing content is an error');
+    Check(D[0].Severity = eds_Error, 'severity set from the kind');
+    Check(LandrixEInvoiceDiagnosticDefaultSeverity(edk_UnknownCode) = eds_Info, 'unknown code is information');
+    Check(LandrixEInvoiceDiagnosticDefaultSeverity(edk_NotAllowed) = eds_Warning, 'left out content is a warning');
   finally
     Inv.Free;
     D.Free;

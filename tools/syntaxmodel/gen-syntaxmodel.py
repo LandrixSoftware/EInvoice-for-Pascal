@@ -441,6 +441,13 @@ const
         w("    procedure Clear;")
         w("    { True if nothing is set. DE: True, wenn nichts gesetzt ist. }")
         w("    function IsEmpty: Boolean;")
+        w("    { Adds the qualified names of the children that are set (e.g.")
+        w("      'ram:Name') to AList, in schema order; used to report content that")
+        w("      a mapping does not take over.")
+        w("      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.")
+        w("      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt")
+        w("      zu melden, den eine Abbildung nicht uebernimmt. }")
+        w("    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);")
         for c in objs:
             L.extend(doc(["%s, %s (created on first access)." % (m.qname(c), cardinality(c)),
                           "DE: %s, %s (beim ersten Zugriff angelegt)." % (m.qname(c), cardinality_de(c))], "    "))
@@ -571,6 +578,22 @@ end;
             else:
                 conds.append("(%s = '')" % c["pname"])
         w("  Result := " + (" and\n    ".join(conds) if conds else "True") + ";")
+        w("end;")
+        w("")
+        w("procedure %s.ListFilledChildren(AList: TLandrixEInvoiceStringList);" % p)
+        w("begin")
+        for c in children:
+            k = m.child_kind(c)
+            if c["max"] != 1:
+                cond = "(F%s <> nil) and (F%s.Count > 0)" % (c["pname"], c["pname"])
+            elif k == "class":
+                cond = "(F%s <> nil) and not F%s.IsEmpty" % (c["pname"], c["pname"])
+            elif k == "record":
+                cond = "not %sIsEmpty(%s)" % (m.pascal[c["type"]][len("TLandrix"):], c["pname"])
+            else:
+                cond = "%s <> ''" % c["pname"]
+            w("  if %s then" % cond)
+            w("    AList.Add('%s');" % m.qname(c))
         w("end;")
         w("")
     w("end.")

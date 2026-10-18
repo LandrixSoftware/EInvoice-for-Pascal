@@ -545,6 +545,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:AddressLine, repeated (created on first access).
       DE: cac:AddressLine, wiederholbar (beim ersten Zugriff angelegt). }
     property AddressLine: TLandrixUBLAddressLineList read GetAddressLine;
@@ -567,6 +574,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:AllowanceChargeType.
@@ -600,6 +614,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:AllowanceChargeReason, repeated (created on first access).
       DE: cbc:AllowanceChargeReason, wiederholbar (beim ersten Zugriff angelegt). }
     property AllowanceChargeReason: TLandrixEInvoiceStringList read GetAllowanceChargeReason;
@@ -625,6 +646,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:ExternalReference, optional (created on first access).
       DE: cac:ExternalReference, optional (beim ersten Zugriff angelegt). }
     property ExternalReference: TLandrixUBLExternalReference read GetExternalReference;
@@ -644,6 +672,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:InvoiceDocumentReference, optional (created on first access).
       DE: cac:InvoiceDocumentReference, optional (beim ersten Zugriff angelegt). }
     property InvoiceDocumentReference: TLandrixUBLDocumentReference read GetInvoiceDocumentReference;
@@ -663,6 +698,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:CardAccountType.
@@ -685,6 +727,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:CommodityClassificationType.
@@ -701,6 +750,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:ConditionType.
@@ -729,6 +785,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Description, repeated (created on first access).
       DE: cbc:Description, wiederholbar (beim ersten Zugriff angelegt). }
     property Description: TLandrixEInvoiceStringList read GetDescription;
@@ -754,6 +817,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:CountryType.
@@ -770,6 +840,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cn:CreditNoteType.
@@ -859,6 +936,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Note, repeated (created on first access).
       DE: cbc:Note, wiederholbar (beim ersten Zugriff angelegt). }
     property Note: TLandrixEInvoiceStringList read GetNote;
@@ -966,6 +1050,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Note, repeated (created on first access).
       DE: cbc:Note, wiederholbar (beim ersten Zugriff angelegt). }
     property Note: TLandrixEInvoiceStringList read GetNote;
@@ -1009,6 +1100,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:Party, optional (created on first access).
       DE: cac:Party, optional (beim ersten Zugriff angelegt). }
     property Party: TLandrixUBLParty read GetParty;
@@ -1035,6 +1133,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:DeliveryLocation, optional (created on first access).
       DE: cac:DeliveryLocation, optional (beim ersten Zugriff angelegt). }
     property DeliveryLocation: TLandrixUBLLocation read GetDeliveryLocation;
@@ -1074,6 +1179,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:DocumentDescription, repeated (created on first access).
       DE: cbc:DocumentDescription, wiederholbar (beim ersten Zugriff angelegt). }
     property DocumentDescription: TLandrixEInvoiceStringList read GetDocumentDescription;
@@ -1096,6 +1208,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:FinancialAccountType.
@@ -1118,6 +1237,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:FinancialInstitutionBranch, optional (created on first access).
       DE: cac:FinancialInstitutionBranch, optional (beim ersten Zugriff angelegt). }
     property FinancialInstitutionBranch: TLandrixUBLBranch read GetFinancialInstitutionBranch;
@@ -1215,6 +1341,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Note, repeated (created on first access).
       DE: cbc:Note, wiederholbar (beim ersten Zugriff angelegt). }
     property Note: TLandrixEInvoiceStringList read GetNote;
@@ -1323,6 +1456,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Note, repeated (created on first access).
       DE: cbc:Note, wiederholbar (beim ersten Zugriff angelegt). }
     property Note: TLandrixEInvoiceStringList read GetNote;
@@ -1380,6 +1520,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Description, repeated (created on first access).
       DE: cbc:Description, wiederholbar (beim ersten Zugriff angelegt). }
     property Description: TLandrixEInvoiceStringList read GetDescription;
@@ -1420,6 +1567,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:ItemPropertyType.
@@ -1439,6 +1593,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:LocationType.
@@ -1458,6 +1619,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:Address, optional (created on first access).
       DE: cac:Address, optional (beim ersten Zugriff angelegt). }
     property Address: TLandrixUBLAddress read GetAddress;
@@ -1498,6 +1666,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:OrderLineReferenceType.
@@ -1517,6 +1692,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:OrderReference, optional (created on first access).
       DE: cac:OrderReference, optional (beim ersten Zugriff angelegt). }
     property OrderReference: TLandrixUBLOrderReference read GetOrderReference;
@@ -1539,6 +1721,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:PartyType.
@@ -1568,6 +1757,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:PartyIdentification, repeated (created on first access).
       DE: cac:PartyIdentification, wiederholbar (beim ersten Zugriff angelegt). }
     property PartyIdentification: TLandrixUBLPartyIdentificationList read GetPartyIdentification;
@@ -1602,6 +1798,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:PartyLegalEntityType.
@@ -1624,6 +1827,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:PartyNameType.
@@ -1640,6 +1850,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:PartyTaxSchemeType.
@@ -1659,6 +1876,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:TaxScheme, required (created on first access).
       DE: cac:TaxScheme, Pflicht (beim ersten Zugriff angelegt). }
     property TaxScheme: TLandrixUBLTaxScheme read GetTaxScheme;
@@ -1684,6 +1908,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:PaymentMandateType.
@@ -1703,6 +1934,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:PayerFinancialAccount, optional (created on first access).
       DE: cac:PayerFinancialAccount, optional (beim ersten Zugriff angelegt). }
     property PayerFinancialAccount: TLandrixUBLFinancialAccount read GetPayerFinancialAccount;
@@ -1734,6 +1972,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:PaymentID, repeated (created on first access).
       DE: cbc:PaymentID, wiederholbar (beim ersten Zugriff angelegt). }
     property PaymentID: TLandrixUBLIDList read GetPaymentID;
@@ -1762,6 +2007,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Note, repeated (created on first access).
       DE: cbc:Note, wiederholbar (beim ersten Zugriff angelegt). }
     property Note: TLandrixEInvoiceStringList read GetNote;
@@ -1798,6 +2050,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:DescriptionCode, repeated (created on first access).
       DE: cbc:DescriptionCode, wiederholbar (beim ersten Zugriff angelegt). }
     property DescriptionCode: TLandrixUBLCodeList read GetDescriptionCode;
@@ -1830,6 +2089,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:ValidityPeriod, repeated (created on first access).
       DE: cac:ValidityPeriod, wiederholbar (beim ersten Zugriff angelegt). }
     property ValidityPeriod: TLandrixUBLPeriodList read GetValidityPeriod;
@@ -1863,6 +2129,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:ValidityPeriod, repeated (created on first access).
       DE: cac:ValidityPeriod, wiederholbar (beim ersten Zugriff angelegt). }
     property ValidityPeriod: TLandrixUBLPeriodList read GetValidityPeriod;
@@ -1885,6 +2158,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:ResponseType.
@@ -1915,6 +2195,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Description, repeated (created on first access).
       DE: cbc:Description, wiederholbar (beim ersten Zugriff angelegt). }
     property Description: TLandrixEInvoiceStringList read GetDescription;
@@ -1967,6 +2254,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:Description, repeated (created on first access).
       DE: cbc:Description, wiederholbar (beim ersten Zugriff angelegt). }
     property Description: TLandrixEInvoiceStringList read GetDescription;
@@ -1995,6 +2289,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:Party, optional (created on first access).
       DE: cac:Party, optional (beim ersten Zugriff angelegt). }
     property Party: TLandrixUBLParty read GetParty;
@@ -2025,6 +2326,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cbc:TaxExemptionReason, repeated (created on first access).
       DE: cbc:TaxExemptionReason, wiederholbar (beim ersten Zugriff angelegt). }
     property TaxExemptionReason: TLandrixEInvoiceStringList read GetTaxExemptionReason;
@@ -2047,6 +2355,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { UBL type cac:TaxSubtotalType.
@@ -2069,6 +2384,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:TaxCategory, required (created on first access).
       DE: cac:TaxCategory, Pflicht (beim ersten Zugriff angelegt). }
     property TaxCategory: TLandrixUBLTaxCategory read GetTaxCategory;
@@ -2091,6 +2413,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { cac:TaxSubtotal, repeated (created on first access).
       DE: cac:TaxSubtotal, wiederholbar (beim ersten Zugriff angelegt). }
     property TaxSubtotal: TLandrixUBLTaxSubtotalList read GetTaxSubtotal;
@@ -2590,6 +2919,24 @@ begin
     ((FCountry = nil) or FCountry.IsEmpty);
 end;
 
+procedure TLandrixUBLAddress.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if StreetName <> '' then
+    AList.Add('cbc:StreetName');
+  if AdditionalStreetName <> '' then
+    AList.Add('cbc:AdditionalStreetName');
+  if CityName <> '' then
+    AList.Add('cbc:CityName');
+  if PostalZone <> '' then
+    AList.Add('cbc:PostalZone');
+  if CountrySubentity <> '' then
+    AList.Add('cbc:CountrySubentity');
+  if (FAddressLine <> nil) and (FAddressLine.Count > 0) then
+    AList.Add('cac:AddressLine');
+  if (FCountry <> nil) and not FCountry.IsEmpty then
+    AList.Add('cac:Country');
+end;
+
 { TLandrixUBLAddressLine }
 
 destructor TLandrixUBLAddressLine.Destroy;
@@ -2605,6 +2952,12 @@ end;
 function TLandrixUBLAddressLine.IsEmpty: Boolean;
 begin
   Result := (Line = '');
+end;
+
+procedure TLandrixUBLAddressLine.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Line <> '' then
+    AList.Add('cbc:Line');
 end;
 
 { TLandrixUBLAllowanceCharge }
@@ -2654,6 +3007,24 @@ begin
     ((FTaxCategory = nil) or (FTaxCategory.Count = 0));
 end;
 
+procedure TLandrixUBLAllowanceCharge.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if ChargeIndicator <> '' then
+    AList.Add('cbc:ChargeIndicator');
+  if not UBLCodeIsEmpty(AllowanceChargeReasonCode) then
+    AList.Add('cbc:AllowanceChargeReasonCode');
+  if (FAllowanceChargeReason <> nil) and (FAllowanceChargeReason.Count > 0) then
+    AList.Add('cbc:AllowanceChargeReason');
+  if MultiplierFactorNumeric <> '' then
+    AList.Add('cbc:MultiplierFactorNumeric');
+  if not UBLAmountIsEmpty(Amount) then
+    AList.Add('cbc:Amount');
+  if not UBLAmountIsEmpty(BaseAmount) then
+    AList.Add('cbc:BaseAmount');
+  if (FTaxCategory <> nil) and (FTaxCategory.Count > 0) then
+    AList.Add('cac:TaxCategory');
+end;
+
 { TLandrixUBLAttachment }
 
 function TLandrixUBLAttachment.GetExternalReference: TLandrixUBLExternalReference;
@@ -2682,6 +3053,14 @@ begin
     ((FExternalReference = nil) or FExternalReference.IsEmpty);
 end;
 
+procedure TLandrixUBLAttachment.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLBinaryObjectIsEmpty(EmbeddedDocumentBinaryObject) then
+    AList.Add('cbc:EmbeddedDocumentBinaryObject');
+  if (FExternalReference <> nil) and not FExternalReference.IsEmpty then
+    AList.Add('cac:ExternalReference');
+end;
+
 { TLandrixUBLBillingReference }
 
 function TLandrixUBLBillingReference.GetInvoiceDocumentReference: TLandrixUBLDocumentReference;
@@ -2708,6 +3087,12 @@ begin
   Result := ((FInvoiceDocumentReference = nil) or FInvoiceDocumentReference.IsEmpty);
 end;
 
+procedure TLandrixUBLBillingReference.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FInvoiceDocumentReference <> nil) and not FInvoiceDocumentReference.IsEmpty then
+    AList.Add('cac:InvoiceDocumentReference');
+end;
+
 { TLandrixUBLBranch }
 
 destructor TLandrixUBLBranch.Destroy;
@@ -2723,6 +3108,12 @@ end;
 function TLandrixUBLBranch.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID);
+end;
+
+procedure TLandrixUBLBranch.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
 end;
 
 { TLandrixUBLCardAccount }
@@ -2746,6 +3137,16 @@ begin
     (HolderName = '');
 end;
 
+procedure TLandrixUBLCardAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(PrimaryAccountNumberID) then
+    AList.Add('cbc:PrimaryAccountNumberID');
+  if not UBLIDIsEmpty(NetworkID) then
+    AList.Add('cbc:NetworkID');
+  if HolderName <> '' then
+    AList.Add('cbc:HolderName');
+end;
+
 { TLandrixUBLCommodityClassification }
 
 destructor TLandrixUBLCommodityClassification.Destroy;
@@ -2761,6 +3162,12 @@ end;
 function TLandrixUBLCommodityClassification.IsEmpty: Boolean;
 begin
   Result := UBLCodeIsEmpty(ItemClassificationCode);
+end;
+
+procedure TLandrixUBLCommodityClassification.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLCodeIsEmpty(ItemClassificationCode) then
+    AList.Add('cbc:ItemClassificationCode');
 end;
 
 { TLandrixUBLCondition }
@@ -2797,6 +3204,20 @@ begin
     UBLMeasureIsEmpty(MaximumMeasure);
 end;
 
+procedure TLandrixUBLCondition.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(AttributeID) then
+    AList.Add('cbc:AttributeID');
+  if not UBLMeasureIsEmpty(Measure) then
+    AList.Add('cbc:Measure');
+  if (FDescription <> nil) and (FDescription.Count > 0) then
+    AList.Add('cbc:Description');
+  if not UBLMeasureIsEmpty(MinimumMeasure) then
+    AList.Add('cbc:MinimumMeasure');
+  if not UBLMeasureIsEmpty(MaximumMeasure) then
+    AList.Add('cbc:MaximumMeasure');
+end;
+
 { TLandrixUBLContact }
 
 destructor TLandrixUBLContact.Destroy;
@@ -2818,6 +3239,16 @@ begin
     (ElectronicMail = '');
 end;
 
+procedure TLandrixUBLContact.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Name <> '' then
+    AList.Add('cbc:Name');
+  if Telephone <> '' then
+    AList.Add('cbc:Telephone');
+  if ElectronicMail <> '' then
+    AList.Add('cbc:ElectronicMail');
+end;
+
 { TLandrixUBLCountry }
 
 destructor TLandrixUBLCountry.Destroy;
@@ -2833,6 +3264,12 @@ end;
 function TLandrixUBLCountry.IsEmpty: Boolean;
 begin
   Result := UBLCodeIsEmpty(IdentificationCode);
+end;
+
+procedure TLandrixUBLCountry.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLCodeIsEmpty(IdentificationCode) then
+    AList.Add('cbc:IdentificationCode');
 end;
 
 { TLandrixUBLCreditNote }
@@ -3103,6 +3540,74 @@ begin
     ((FCreditNoteLine = nil) or (FCreditNoteLine.Count = 0));
 end;
 
+procedure TLandrixUBLCreditNote.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(UBLVersionID) then
+    AList.Add('cbc:UBLVersionID');
+  if not UBLIDIsEmpty(CustomizationID) then
+    AList.Add('cbc:CustomizationID');
+  if not UBLIDIsEmpty(ProfileID) then
+    AList.Add('cbc:ProfileID');
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if IssueDate <> '' then
+    AList.Add('cbc:IssueDate');
+  if TaxPointDate <> '' then
+    AList.Add('cbc:TaxPointDate');
+  if not UBLCodeIsEmpty(CreditNoteTypeCode) then
+    AList.Add('cbc:CreditNoteTypeCode');
+  if (FNote <> nil) and (FNote.Count > 0) then
+    AList.Add('cbc:Note');
+  if not UBLCodeIsEmpty(DocumentCurrencyCode) then
+    AList.Add('cbc:DocumentCurrencyCode');
+  if not UBLCodeIsEmpty(TaxCurrencyCode) then
+    AList.Add('cbc:TaxCurrencyCode');
+  if AccountingCost <> '' then
+    AList.Add('cbc:AccountingCost');
+  if BuyerReference <> '' then
+    AList.Add('cbc:BuyerReference');
+  if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
+    AList.Add('cac:InvoicePeriod');
+  if (FDiscrepancyResponse <> nil) and (FDiscrepancyResponse.Count > 0) then
+    AList.Add('cac:DiscrepancyResponse');
+  if (FOrderReference <> nil) and not FOrderReference.IsEmpty then
+    AList.Add('cac:OrderReference');
+  if (FBillingReference <> nil) and (FBillingReference.Count > 0) then
+    AList.Add('cac:BillingReference');
+  if (FDespatchDocumentReference <> nil) and (FDespatchDocumentReference.Count > 0) then
+    AList.Add('cac:DespatchDocumentReference');
+  if (FReceiptDocumentReference <> nil) and (FReceiptDocumentReference.Count > 0) then
+    AList.Add('cac:ReceiptDocumentReference');
+  if (FContractDocumentReference <> nil) and (FContractDocumentReference.Count > 0) then
+    AList.Add('cac:ContractDocumentReference');
+  if (FAdditionalDocumentReference <> nil) and (FAdditionalDocumentReference.Count > 0) then
+    AList.Add('cac:AdditionalDocumentReference');
+  if (FOriginatorDocumentReference <> nil) and (FOriginatorDocumentReference.Count > 0) then
+    AList.Add('cac:OriginatorDocumentReference');
+  if (FAccountingSupplierParty <> nil) and not FAccountingSupplierParty.IsEmpty then
+    AList.Add('cac:AccountingSupplierParty');
+  if (FAccountingCustomerParty <> nil) and not FAccountingCustomerParty.IsEmpty then
+    AList.Add('cac:AccountingCustomerParty');
+  if (FPayeeParty <> nil) and not FPayeeParty.IsEmpty then
+    AList.Add('cac:PayeeParty');
+  if (FTaxRepresentativeParty <> nil) and not FTaxRepresentativeParty.IsEmpty then
+    AList.Add('cac:TaxRepresentativeParty');
+  if (FDelivery <> nil) and (FDelivery.Count > 0) then
+    AList.Add('cac:Delivery');
+  if (FPaymentMeans <> nil) and (FPaymentMeans.Count > 0) then
+    AList.Add('cac:PaymentMeans');
+  if (FPaymentTerms <> nil) and (FPaymentTerms.Count > 0) then
+    AList.Add('cac:PaymentTerms');
+  if (FAllowanceCharge <> nil) and (FAllowanceCharge.Count > 0) then
+    AList.Add('cac:AllowanceCharge');
+  if (FTaxTotal <> nil) and (FTaxTotal.Count > 0) then
+    AList.Add('cac:TaxTotal');
+  if (FLegalMonetaryTotal <> nil) and not FLegalMonetaryTotal.IsEmpty then
+    AList.Add('cac:LegalMonetaryTotal');
+  if (FCreditNoteLine <> nil) and (FCreditNoteLine.Count > 0) then
+    AList.Add('cac:CreditNoteLine');
+end;
+
 { TLandrixUBLCreditNoteLine }
 
 function TLandrixUBLCreditNoteLine.GetNote: TLandrixEInvoiceStringList;
@@ -3225,6 +3730,36 @@ begin
     ((FSubCreditNoteLine = nil) or (FSubCreditNoteLine.Count = 0));
 end;
 
+procedure TLandrixUBLCreditNoteLine.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if (FNote <> nil) and (FNote.Count > 0) then
+    AList.Add('cbc:Note');
+  if not UBLQuantityIsEmpty(CreditedQuantity) then
+    AList.Add('cbc:CreditedQuantity');
+  if not UBLAmountIsEmpty(LineExtensionAmount) then
+    AList.Add('cbc:LineExtensionAmount');
+  if AccountingCost <> '' then
+    AList.Add('cbc:AccountingCost');
+  if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
+    AList.Add('cac:InvoicePeriod');
+  if (FOrderLineReference <> nil) and (FOrderLineReference.Count > 0) then
+    AList.Add('cac:OrderLineReference');
+  if (FDiscrepancyResponse <> nil) and (FDiscrepancyResponse.Count > 0) then
+    AList.Add('cac:DiscrepancyResponse');
+  if (FDocumentReference <> nil) and (FDocumentReference.Count > 0) then
+    AList.Add('cac:DocumentReference');
+  if (FAllowanceCharge <> nil) and (FAllowanceCharge.Count > 0) then
+    AList.Add('cac:AllowanceCharge');
+  if (FItem <> nil) and not FItem.IsEmpty then
+    AList.Add('cac:Item');
+  if (FPrice <> nil) and not FPrice.IsEmpty then
+    AList.Add('cac:Price');
+  if (FSubCreditNoteLine <> nil) and (FSubCreditNoteLine.Count > 0) then
+    AList.Add('cac:SubCreditNoteLine');
+end;
+
 { TLandrixUBLCustomerParty }
 
 function TLandrixUBLCustomerParty.GetParty: TLandrixUBLParty;
@@ -3249,6 +3784,12 @@ end;
 function TLandrixUBLCustomerParty.IsEmpty: Boolean;
 begin
   Result := ((FParty = nil) or FParty.IsEmpty);
+end;
+
+procedure TLandrixUBLCustomerParty.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FParty <> nil) and not FParty.IsEmpty then
+    AList.Add('cac:Party');
 end;
 
 { TLandrixUBLDelivery }
@@ -3301,6 +3842,18 @@ begin
     ((FDeliveryParty = nil) or FDeliveryParty.IsEmpty);
 end;
 
+procedure TLandrixUBLDelivery.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if ActualDeliveryDate <> '' then
+    AList.Add('cbc:ActualDeliveryDate');
+  if (FDeliveryLocation <> nil) and not FDeliveryLocation.IsEmpty then
+    AList.Add('cac:DeliveryLocation');
+  if (FPromisedDeliveryPeriod <> nil) and not FPromisedDeliveryPeriod.IsEmpty then
+    AList.Add('cac:PromisedDeliveryPeriod');
+  if (FDeliveryParty <> nil) and not FDeliveryParty.IsEmpty then
+    AList.Add('cac:DeliveryParty');
+end;
+
 { TLandrixUBLDocumentReference }
 
 function TLandrixUBLDocumentReference.GetDocumentDescription: TLandrixEInvoiceStringList;
@@ -3346,6 +3899,22 @@ begin
     ((FAttachment = nil) or FAttachment.IsEmpty);
 end;
 
+procedure TLandrixUBLDocumentReference.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if IssueDate <> '' then
+    AList.Add('cbc:IssueDate');
+  if not UBLCodeIsEmpty(DocumentTypeCode) then
+    AList.Add('cbc:DocumentTypeCode');
+  if DocumentType <> '' then
+    AList.Add('cbc:DocumentType');
+  if (FDocumentDescription <> nil) and (FDocumentDescription.Count > 0) then
+    AList.Add('cbc:DocumentDescription');
+  if (FAttachment <> nil) and not FAttachment.IsEmpty then
+    AList.Add('cac:Attachment');
+end;
+
 { TLandrixUBLExternalReference }
 
 destructor TLandrixUBLExternalReference.Destroy;
@@ -3361,6 +3930,12 @@ end;
 function TLandrixUBLExternalReference.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(URI);
+end;
+
+procedure TLandrixUBLExternalReference.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(URI) then
+    AList.Add('cbc:URI');
 end;
 
 { TLandrixUBLFinancialAccount }
@@ -3391,6 +3966,16 @@ begin
   Result := UBLIDIsEmpty(ID) and
     (Name = '') and
     ((FFinancialInstitutionBranch = nil) or FFinancialInstitutionBranch.IsEmpty);
+end;
+
+procedure TLandrixUBLFinancialAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if Name <> '' then
+    AList.Add('cbc:Name');
+  if (FFinancialInstitutionBranch <> nil) and not FFinancialInstitutionBranch.IsEmpty then
+    AList.Add('cac:FinancialInstitutionBranch');
 end;
 
 { TLandrixUBLInvoice }
@@ -3674,6 +4259,78 @@ begin
     ((FInvoiceLine = nil) or (FInvoiceLine.Count = 0));
 end;
 
+procedure TLandrixUBLInvoice.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(UBLVersionID) then
+    AList.Add('cbc:UBLVersionID');
+  if not UBLIDIsEmpty(CustomizationID) then
+    AList.Add('cbc:CustomizationID');
+  if not UBLIDIsEmpty(ProfileID) then
+    AList.Add('cbc:ProfileID');
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if IssueDate <> '' then
+    AList.Add('cbc:IssueDate');
+  if DueDate <> '' then
+    AList.Add('cbc:DueDate');
+  if not UBLCodeIsEmpty(InvoiceTypeCode) then
+    AList.Add('cbc:InvoiceTypeCode');
+  if (FNote <> nil) and (FNote.Count > 0) then
+    AList.Add('cbc:Note');
+  if TaxPointDate <> '' then
+    AList.Add('cbc:TaxPointDate');
+  if not UBLCodeIsEmpty(DocumentCurrencyCode) then
+    AList.Add('cbc:DocumentCurrencyCode');
+  if not UBLCodeIsEmpty(TaxCurrencyCode) then
+    AList.Add('cbc:TaxCurrencyCode');
+  if AccountingCost <> '' then
+    AList.Add('cbc:AccountingCost');
+  if BuyerReference <> '' then
+    AList.Add('cbc:BuyerReference');
+  if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
+    AList.Add('cac:InvoicePeriod');
+  if (FOrderReference <> nil) and not FOrderReference.IsEmpty then
+    AList.Add('cac:OrderReference');
+  if (FBillingReference <> nil) and (FBillingReference.Count > 0) then
+    AList.Add('cac:BillingReference');
+  if (FDespatchDocumentReference <> nil) and (FDespatchDocumentReference.Count > 0) then
+    AList.Add('cac:DespatchDocumentReference');
+  if (FReceiptDocumentReference <> nil) and (FReceiptDocumentReference.Count > 0) then
+    AList.Add('cac:ReceiptDocumentReference');
+  if (FOriginatorDocumentReference <> nil) and (FOriginatorDocumentReference.Count > 0) then
+    AList.Add('cac:OriginatorDocumentReference');
+  if (FContractDocumentReference <> nil) and (FContractDocumentReference.Count > 0) then
+    AList.Add('cac:ContractDocumentReference');
+  if (FAdditionalDocumentReference <> nil) and (FAdditionalDocumentReference.Count > 0) then
+    AList.Add('cac:AdditionalDocumentReference');
+  if (FProjectReference <> nil) and (FProjectReference.Count > 0) then
+    AList.Add('cac:ProjectReference');
+  if (FAccountingSupplierParty <> nil) and not FAccountingSupplierParty.IsEmpty then
+    AList.Add('cac:AccountingSupplierParty');
+  if (FAccountingCustomerParty <> nil) and not FAccountingCustomerParty.IsEmpty then
+    AList.Add('cac:AccountingCustomerParty');
+  if (FPayeeParty <> nil) and not FPayeeParty.IsEmpty then
+    AList.Add('cac:PayeeParty');
+  if (FTaxRepresentativeParty <> nil) and not FTaxRepresentativeParty.IsEmpty then
+    AList.Add('cac:TaxRepresentativeParty');
+  if (FDelivery <> nil) and (FDelivery.Count > 0) then
+    AList.Add('cac:Delivery');
+  if (FPaymentMeans <> nil) and (FPaymentMeans.Count > 0) then
+    AList.Add('cac:PaymentMeans');
+  if (FPaymentTerms <> nil) and (FPaymentTerms.Count > 0) then
+    AList.Add('cac:PaymentTerms');
+  if (FPrepaidPayment <> nil) and (FPrepaidPayment.Count > 0) then
+    AList.Add('cac:PrepaidPayment');
+  if (FAllowanceCharge <> nil) and (FAllowanceCharge.Count > 0) then
+    AList.Add('cac:AllowanceCharge');
+  if (FTaxTotal <> nil) and (FTaxTotal.Count > 0) then
+    AList.Add('cac:TaxTotal');
+  if (FLegalMonetaryTotal <> nil) and not FLegalMonetaryTotal.IsEmpty then
+    AList.Add('cac:LegalMonetaryTotal');
+  if (FInvoiceLine <> nil) and (FInvoiceLine.Count > 0) then
+    AList.Add('cac:InvoiceLine');
+end;
+
 { TLandrixUBLInvoiceLine }
 
 function TLandrixUBLInvoiceLine.GetNote: TLandrixEInvoiceStringList;
@@ -3785,6 +4442,34 @@ begin
     ((FSubInvoiceLine = nil) or (FSubInvoiceLine.Count = 0));
 end;
 
+procedure TLandrixUBLInvoiceLine.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if (FNote <> nil) and (FNote.Count > 0) then
+    AList.Add('cbc:Note');
+  if not UBLQuantityIsEmpty(InvoicedQuantity) then
+    AList.Add('cbc:InvoicedQuantity');
+  if not UBLAmountIsEmpty(LineExtensionAmount) then
+    AList.Add('cbc:LineExtensionAmount');
+  if AccountingCost <> '' then
+    AList.Add('cbc:AccountingCost');
+  if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
+    AList.Add('cac:InvoicePeriod');
+  if (FOrderLineReference <> nil) and (FOrderLineReference.Count > 0) then
+    AList.Add('cac:OrderLineReference');
+  if (FDocumentReference <> nil) and (FDocumentReference.Count > 0) then
+    AList.Add('cac:DocumentReference');
+  if (FAllowanceCharge <> nil) and (FAllowanceCharge.Count > 0) then
+    AList.Add('cac:AllowanceCharge');
+  if (FItem <> nil) and not FItem.IsEmpty then
+    AList.Add('cac:Item');
+  if (FPrice <> nil) and not FPrice.IsEmpty then
+    AList.Add('cac:Price');
+  if (FSubInvoiceLine <> nil) and (FSubInvoiceLine.Count > 0) then
+    AList.Add('cac:SubInvoiceLine');
+end;
+
 { TLandrixUBLItem }
 
 function TLandrixUBLItem.GetDescription: TLandrixEInvoiceStringList;
@@ -3890,6 +4575,28 @@ begin
     ((FAdditionalItemProperty = nil) or (FAdditionalItemProperty.Count = 0));
 end;
 
+procedure TLandrixUBLItem.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FDescription <> nil) and (FDescription.Count > 0) then
+    AList.Add('cbc:Description');
+  if Name <> '' then
+    AList.Add('cbc:Name');
+  if (FBuyersItemIdentification <> nil) and not FBuyersItemIdentification.IsEmpty then
+    AList.Add('cac:BuyersItemIdentification');
+  if (FSellersItemIdentification <> nil) and not FSellersItemIdentification.IsEmpty then
+    AList.Add('cac:SellersItemIdentification');
+  if (FStandardItemIdentification <> nil) and not FStandardItemIdentification.IsEmpty then
+    AList.Add('cac:StandardItemIdentification');
+  if (FOriginCountry <> nil) and not FOriginCountry.IsEmpty then
+    AList.Add('cac:OriginCountry');
+  if (FCommodityClassification <> nil) and (FCommodityClassification.Count > 0) then
+    AList.Add('cac:CommodityClassification');
+  if (FClassifiedTaxCategory <> nil) and (FClassifiedTaxCategory.Count > 0) then
+    AList.Add('cac:ClassifiedTaxCategory');
+  if (FAdditionalItemProperty <> nil) and (FAdditionalItemProperty.Count > 0) then
+    AList.Add('cac:AdditionalItemProperty');
+end;
+
 { TLandrixUBLItemIdentification }
 
 destructor TLandrixUBLItemIdentification.Destroy;
@@ -3905,6 +4612,12 @@ end;
 function TLandrixUBLItemIdentification.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID);
+end;
+
+procedure TLandrixUBLItemIdentification.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
 end;
 
 { TLandrixUBLItemProperty }
@@ -3924,6 +4637,14 @@ function TLandrixUBLItemProperty.IsEmpty: Boolean;
 begin
   Result := (Name = '') and
     (Value = '');
+end;
+
+procedure TLandrixUBLItemProperty.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Name <> '' then
+    AList.Add('cbc:Name');
+  if Value <> '' then
+    AList.Add('cbc:Value');
 end;
 
 { TLandrixUBLLocation }
@@ -3952,6 +4673,14 @@ function TLandrixUBLLocation.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID) and
     ((FAddress = nil) or FAddress.IsEmpty);
+end;
+
+procedure TLandrixUBLLocation.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if (FAddress <> nil) and not FAddress.IsEmpty then
+    AList.Add('cac:Address');
 end;
 
 { TLandrixUBLMonetaryTotal }
@@ -3985,6 +4714,26 @@ begin
     UBLAmountIsEmpty(PayableAmount);
 end;
 
+procedure TLandrixUBLMonetaryTotal.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLAmountIsEmpty(LineExtensionAmount) then
+    AList.Add('cbc:LineExtensionAmount');
+  if not UBLAmountIsEmpty(TaxExclusiveAmount) then
+    AList.Add('cbc:TaxExclusiveAmount');
+  if not UBLAmountIsEmpty(TaxInclusiveAmount) then
+    AList.Add('cbc:TaxInclusiveAmount');
+  if not UBLAmountIsEmpty(AllowanceTotalAmount) then
+    AList.Add('cbc:AllowanceTotalAmount');
+  if not UBLAmountIsEmpty(ChargeTotalAmount) then
+    AList.Add('cbc:ChargeTotalAmount');
+  if not UBLAmountIsEmpty(PrepaidAmount) then
+    AList.Add('cbc:PrepaidAmount');
+  if not UBLAmountIsEmpty(PayableRoundingAmount) then
+    AList.Add('cbc:PayableRoundingAmount');
+  if not UBLAmountIsEmpty(PayableAmount) then
+    AList.Add('cbc:PayableAmount');
+end;
+
 { TLandrixUBLOrderLineReference }
 
 function TLandrixUBLOrderLineReference.GetOrderReference: TLandrixUBLOrderReference;
@@ -4013,6 +4762,14 @@ begin
     ((FOrderReference = nil) or FOrderReference.IsEmpty);
 end;
 
+procedure TLandrixUBLOrderLineReference.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(LineID) then
+    AList.Add('cbc:LineID');
+  if (FOrderReference <> nil) and not FOrderReference.IsEmpty then
+    AList.Add('cac:OrderReference');
+end;
+
 { TLandrixUBLOrderReference }
 
 destructor TLandrixUBLOrderReference.Destroy;
@@ -4030,6 +4787,14 @@ function TLandrixUBLOrderReference.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID) and
     UBLIDIsEmpty(SalesOrderID);
+end;
+
+procedure TLandrixUBLOrderReference.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if not UBLIDIsEmpty(SalesOrderID) then
+    AList.Add('cbc:SalesOrderID');
 end;
 
 { TLandrixUBLParty }
@@ -4115,6 +4880,24 @@ begin
     ((FContact = nil) or FContact.IsEmpty);
 end;
 
+procedure TLandrixUBLParty.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(EndpointID) then
+    AList.Add('cbc:EndpointID');
+  if (FPartyIdentification <> nil) and (FPartyIdentification.Count > 0) then
+    AList.Add('cac:PartyIdentification');
+  if (FPartyName <> nil) and (FPartyName.Count > 0) then
+    AList.Add('cac:PartyName');
+  if (FPostalAddress <> nil) and not FPostalAddress.IsEmpty then
+    AList.Add('cac:PostalAddress');
+  if (FPartyTaxScheme <> nil) and (FPartyTaxScheme.Count > 0) then
+    AList.Add('cac:PartyTaxScheme');
+  if (FPartyLegalEntity <> nil) and (FPartyLegalEntity.Count > 0) then
+    AList.Add('cac:PartyLegalEntity');
+  if (FContact <> nil) and not FContact.IsEmpty then
+    AList.Add('cac:Contact');
+end;
+
 { TLandrixUBLPartyIdentification }
 
 destructor TLandrixUBLPartyIdentification.Destroy;
@@ -4130,6 +4913,12 @@ end;
 function TLandrixUBLPartyIdentification.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID);
+end;
+
+procedure TLandrixUBLPartyIdentification.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
 end;
 
 { TLandrixUBLPartyLegalEntity }
@@ -4153,6 +4942,16 @@ begin
     (CompanyLegalForm = '');
 end;
 
+procedure TLandrixUBLPartyLegalEntity.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if RegistrationName <> '' then
+    AList.Add('cbc:RegistrationName');
+  if not UBLIDIsEmpty(CompanyID) then
+    AList.Add('cbc:CompanyID');
+  if CompanyLegalForm <> '' then
+    AList.Add('cbc:CompanyLegalForm');
+end;
+
 { TLandrixUBLPartyName }
 
 destructor TLandrixUBLPartyName.Destroy;
@@ -4168,6 +4967,12 @@ end;
 function TLandrixUBLPartyName.IsEmpty: Boolean;
 begin
   Result := (Name = '');
+end;
+
+procedure TLandrixUBLPartyName.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Name <> '' then
+    AList.Add('cbc:Name');
 end;
 
 { TLandrixUBLPartyTaxScheme }
@@ -4198,6 +5003,14 @@ begin
     ((FTaxScheme = nil) or FTaxScheme.IsEmpty);
 end;
 
+procedure TLandrixUBLPartyTaxScheme.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(CompanyID) then
+    AList.Add('cbc:CompanyID');
+  if (FTaxScheme <> nil) and not FTaxScheme.IsEmpty then
+    AList.Add('cac:TaxScheme');
+end;
+
 { TLandrixUBLPayment }
 
 destructor TLandrixUBLPayment.Destroy;
@@ -4217,6 +5030,16 @@ begin
   Result := UBLIDIsEmpty(ID) and
     UBLAmountIsEmpty(PaidAmount) and
     UBLIDIsEmpty(InstructionID);
+end;
+
+procedure TLandrixUBLPayment.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if not UBLAmountIsEmpty(PaidAmount) then
+    AList.Add('cbc:PaidAmount');
+  if not UBLIDIsEmpty(InstructionID) then
+    AList.Add('cbc:InstructionID');
 end;
 
 { TLandrixUBLPaymentMandate }
@@ -4245,6 +5068,14 @@ function TLandrixUBLPaymentMandate.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID) and
     ((FPayerFinancialAccount = nil) or FPayerFinancialAccount.IsEmpty);
+end;
+
+procedure TLandrixUBLPaymentMandate.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if (FPayerFinancialAccount <> nil) and not FPayerFinancialAccount.IsEmpty then
+    AList.Add('cac:PayerFinancialAccount');
 end;
 
 { TLandrixUBLPaymentMeans }
@@ -4310,6 +5141,22 @@ begin
     ((FPaymentMandate = nil) or FPaymentMandate.IsEmpty);
 end;
 
+procedure TLandrixUBLPaymentMeans.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLCodeIsEmpty(PaymentMeansCode) then
+    AList.Add('cbc:PaymentMeansCode');
+  if PaymentDueDate <> '' then
+    AList.Add('cbc:PaymentDueDate');
+  if (FPaymentID <> nil) and (FPaymentID.Count > 0) then
+    AList.Add('cbc:PaymentID');
+  if (FCardAccount <> nil) and not FCardAccount.IsEmpty then
+    AList.Add('cac:CardAccount');
+  if (FPayeeFinancialAccount <> nil) and not FPayeeFinancialAccount.IsEmpty then
+    AList.Add('cac:PayeeFinancialAccount');
+  if (FPaymentMandate <> nil) and not FPaymentMandate.IsEmpty then
+    AList.Add('cac:PaymentMandate');
+end;
+
 { TLandrixUBLPaymentTerms }
 
 function TLandrixUBLPaymentTerms.GetNote: TLandrixEInvoiceStringList;
@@ -4334,6 +5181,12 @@ end;
 function TLandrixUBLPaymentTerms.IsEmpty: Boolean;
 begin
   Result := ((FNote = nil) or (FNote.Count = 0));
+end;
+
+procedure TLandrixUBLPaymentTerms.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FNote <> nil) and (FNote.Count > 0) then
+    AList.Add('cbc:Note');
 end;
 
 { TLandrixUBLPeriod }
@@ -4381,6 +5234,24 @@ begin
     UBLMeasureIsEmpty(DurationMeasure) and
     ((FDescriptionCode = nil) or (FDescriptionCode.Count = 0)) and
     ((FDescription = nil) or (FDescription.Count = 0));
+end;
+
+procedure TLandrixUBLPeriod.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if StartDate <> '' then
+    AList.Add('cbc:StartDate');
+  if StartTime <> '' then
+    AList.Add('cbc:StartTime');
+  if EndDate <> '' then
+    AList.Add('cbc:EndDate');
+  if EndTime <> '' then
+    AList.Add('cbc:EndTime');
+  if not UBLMeasureIsEmpty(DurationMeasure) then
+    AList.Add('cbc:DurationMeasure');
+  if (FDescriptionCode <> nil) and (FDescriptionCode.Count > 0) then
+    AList.Add('cbc:DescriptionCode');
+  if (FDescription <> nil) and (FDescription.Count > 0) then
+    AList.Add('cbc:Description');
 end;
 
 { TLandrixUBLPrice }
@@ -4435,6 +5306,20 @@ begin
     ((FAllowanceCharge = nil) or (FAllowanceCharge.Count = 0));
 end;
 
+procedure TLandrixUBLPrice.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLAmountIsEmpty(PriceAmount) then
+    AList.Add('cbc:PriceAmount');
+  if not UBLQuantityIsEmpty(BaseQuantity) then
+    AList.Add('cbc:BaseQuantity');
+  if (FValidityPeriod <> nil) and (FValidityPeriod.Count > 0) then
+    AList.Add('cac:ValidityPeriod');
+  if (FPriceList <> nil) and not FPriceList.IsEmpty then
+    AList.Add('cac:PriceList');
+  if (FAllowanceCharge <> nil) and (FAllowanceCharge.Count > 0) then
+    AList.Add('cac:AllowanceCharge');
+end;
+
 { TLandrixUBLPriceList }
 
 function TLandrixUBLPriceList.GetValidityPeriod: TLandrixUBLPeriodList;
@@ -4476,6 +5361,18 @@ begin
     ((FPreviousPriceList = nil) or FPreviousPriceList.IsEmpty);
 end;
 
+procedure TLandrixUBLPriceList.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if not UBLCodeIsEmpty(StatusCode) then
+    AList.Add('cbc:StatusCode');
+  if (FValidityPeriod <> nil) and (FValidityPeriod.Count > 0) then
+    AList.Add('cac:ValidityPeriod');
+  if (FPreviousPriceList <> nil) and not FPreviousPriceList.IsEmpty then
+    AList.Add('cac:PreviousPriceList');
+end;
+
 { TLandrixUBLProjectReference }
 
 destructor TLandrixUBLProjectReference.Destroy;
@@ -4491,6 +5388,12 @@ end;
 function TLandrixUBLProjectReference.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID);
+end;
+
+procedure TLandrixUBLProjectReference.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
 end;
 
 { TLandrixUBLResponse }
@@ -4536,6 +5439,22 @@ begin
     (EffectiveDate = '') and
     (EffectiveTime = '') and
     ((FStatus = nil) or (FStatus.Count = 0));
+end;
+
+procedure TLandrixUBLResponse.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ReferenceID) then
+    AList.Add('cbc:ReferenceID');
+  if not UBLCodeIsEmpty(ResponseCode) then
+    AList.Add('cbc:ResponseCode');
+  if (FDescription <> nil) and (FDescription.Count > 0) then
+    AList.Add('cbc:Description');
+  if EffectiveDate <> '' then
+    AList.Add('cbc:EffectiveDate');
+  if EffectiveTime <> '' then
+    AList.Add('cbc:EffectiveTime');
+  if (FStatus <> nil) and (FStatus.Count > 0) then
+    AList.Add('cac:Status');
 end;
 
 { TLandrixUBLStatus }
@@ -4613,6 +5532,34 @@ begin
     ((FCondition = nil) or (FCondition.Count = 0));
 end;
 
+procedure TLandrixUBLStatus.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLCodeIsEmpty(ConditionCode) then
+    AList.Add('cbc:ConditionCode');
+  if ReferenceDate <> '' then
+    AList.Add('cbc:ReferenceDate');
+  if ReferenceTime <> '' then
+    AList.Add('cbc:ReferenceTime');
+  if (FDescription <> nil) and (FDescription.Count > 0) then
+    AList.Add('cbc:Description');
+  if not UBLCodeIsEmpty(StatusReasonCode) then
+    AList.Add('cbc:StatusReasonCode');
+  if (FStatusReason <> nil) and (FStatusReason.Count > 0) then
+    AList.Add('cbc:StatusReason');
+  if not UBLIDIsEmpty(SequenceID) then
+    AList.Add('cbc:SequenceID');
+  if (FText <> nil) and (FText.Count > 0) then
+    AList.Add('cbc:Text');
+  if IndicationIndicator <> '' then
+    AList.Add('cbc:IndicationIndicator');
+  if Percent <> '' then
+    AList.Add('cbc:Percent');
+  if ReliabilityPercent <> '' then
+    AList.Add('cbc:ReliabilityPercent');
+  if (FCondition <> nil) and (FCondition.Count > 0) then
+    AList.Add('cac:Condition');
+end;
+
 { TLandrixUBLSupplierParty }
 
 function TLandrixUBLSupplierParty.GetParty: TLandrixUBLParty;
@@ -4637,6 +5584,12 @@ end;
 function TLandrixUBLSupplierParty.IsEmpty: Boolean;
 begin
   Result := ((FParty = nil) or FParty.IsEmpty);
+end;
+
+procedure TLandrixUBLSupplierParty.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FParty <> nil) and not FParty.IsEmpty then
+    AList.Add('cac:Party');
 end;
 
 { TLandrixUBLTaxCategory }
@@ -4682,6 +5635,20 @@ begin
     ((FTaxScheme = nil) or FTaxScheme.IsEmpty);
 end;
 
+procedure TLandrixUBLTaxCategory.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
+  if Percent <> '' then
+    AList.Add('cbc:Percent');
+  if not UBLCodeIsEmpty(TaxExemptionReasonCode) then
+    AList.Add('cbc:TaxExemptionReasonCode');
+  if (FTaxExemptionReason <> nil) and (FTaxExemptionReason.Count > 0) then
+    AList.Add('cbc:TaxExemptionReason');
+  if (FTaxScheme <> nil) and not FTaxScheme.IsEmpty then
+    AList.Add('cac:TaxScheme');
+end;
+
 { TLandrixUBLTaxScheme }
 
 destructor TLandrixUBLTaxScheme.Destroy;
@@ -4697,6 +5664,12 @@ end;
 function TLandrixUBLTaxScheme.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID);
+end;
+
+procedure TLandrixUBLTaxScheme.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLIDIsEmpty(ID) then
+    AList.Add('cbc:ID');
 end;
 
 { TLandrixUBLTaxSubtotal }
@@ -4729,6 +5702,16 @@ begin
     ((FTaxCategory = nil) or FTaxCategory.IsEmpty);
 end;
 
+procedure TLandrixUBLTaxSubtotal.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLAmountIsEmpty(TaxableAmount) then
+    AList.Add('cbc:TaxableAmount');
+  if not UBLAmountIsEmpty(TaxAmount) then
+    AList.Add('cbc:TaxAmount');
+  if (FTaxCategory <> nil) and not FTaxCategory.IsEmpty then
+    AList.Add('cac:TaxCategory');
+end;
+
 { TLandrixUBLTaxTotal }
 
 function TLandrixUBLTaxTotal.GetTaxSubtotal: TLandrixUBLTaxSubtotalList;
@@ -4755,6 +5738,14 @@ function TLandrixUBLTaxTotal.IsEmpty: Boolean;
 begin
   Result := UBLAmountIsEmpty(TaxAmount) and
     ((FTaxSubtotal = nil) or (FTaxSubtotal.Count = 0));
+end;
+
+procedure TLandrixUBLTaxTotal.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not UBLAmountIsEmpty(TaxAmount) then
+    AList.Add('cbc:TaxAmount');
+  if (FTaxSubtotal <> nil) and (FTaxSubtotal.Count > 0) then
+    AList.Add('cac:TaxSubtotal');
 end;
 
 end.

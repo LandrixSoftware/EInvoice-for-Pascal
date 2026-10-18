@@ -64,7 +64,47 @@ type
       DE: Ein Erweiterungsblock (UBL ext:UBLExtensions, z. B. eine Signatur),
       den das Modell nicht behaelt; er wurde als Ganzes uebersprungen und
       wird nie geschrieben. }
-    edk_SkippedExtension
+    edk_SkippedExtension,
+    { Mapping: a text that is present could not be converted into the typed
+      field of the invoice model (e.g. '19,00' as an amount, an invalid
+      date); the field keeps its "not set" value. Also used when a value
+      had to be rounded.
+      DE: Abbildung: ein vorhandener Text liess sich nicht in das
+      typisierte Feld des Rechnungsmodells umwandeln (z. B. '19,00' als
+      Betrag, ein ungueltiges Datum); das Feld bleibt "nicht gesetzt". Auch
+      wenn ein Wert gerundet werden musste. }
+    edk_ConversionFailed,
+    { Mapping: a well-formed code that the code list does not know; it is
+      kept in the ...Other field next to the enumeration.
+      DE: Abbildung: ein formal gueltiger Code, den die Codeliste nicht
+      kennt; er bleibt im Feld ...Other neben der Aufzaehlung erhalten. }
+    edk_UnknownCode,
+    { Mapping: content of the syntax model that the invoice model has no
+      place for; it remains available in the syntax model only.
+      DE: Abbildung: Inhalt des Syntaxmodells, fuer den das Rechnungsmodell
+      keinen Platz hat; er bleibt nur im Syntaxmodell erhalten. }
+    edk_NotMapped,
+    { Mapping: content of the invoice model that the target specification
+      does not allow; it was left out.
+      DE: Abbildung: Inhalt des Rechnungsmodells, den die
+      Zielspezifikation nicht erlaubt; er wurde weggelassen. }
+    edk_NotAllowed
+  );
+
+  { How serious a diagnostic is. Errors mean that data was lost or the
+    output is invalid.
+    DE: Wie schwer eine Meldung wiegt. Fehler bedeuten, dass Daten verloren
+    gingen oder die Ausgabe ungueltig ist. }
+  TLandrixEInvoiceDiagnosticSeverity = (
+    { Information only, nothing is lost. DE: Nur zur Information, nichts
+      geht verloren. }
+    eds_Info,
+    { Something was skipped, ignored or adjusted.
+      DE: Etwas wurde uebersprungen, ignoriert oder angepasst. }
+    eds_Warning,
+    { Data was lost or the output is invalid.
+      DE: Daten gingen verloren oder die Ausgabe ist ungueltig. }
+    eds_Error
   );
 
   { One diagnostic. Line, Column and Offset are 0 when there is no position
@@ -74,6 +114,11 @@ type
   TLandrixEInvoiceDiagnostic = class(TObject)
   public
     Kind: TLandrixEInvoiceDiagnosticKind;
+    { Set from the kind (LandrixEInvoiceDiagnosticDefaultSeverity); may be
+      changed by the code that adds the entry.
+      DE: Wird aus der Art gesetzt (LandrixEInvoiceDiagnosticDefaultSeverity);
+      der Code, der den Eintrag anlegt, darf sie aendern. }
+    Severity: TLandrixEInvoiceDiagnosticSeverity;
     { Element path, e.g. /rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID.
       DE: Elementpfad, z. B. /rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID. }
     Path: TLandrixEInvoiceString;
@@ -98,10 +143,27 @@ type
       const AMessage: TLandrixEInvoiceString): TLandrixEInvoiceDiagnostic;
     { Number of entries of one kind. DE: Anzahl der Eintraege einer Art. }
     function CountOf(AKind: TLandrixEInvoiceDiagnosticKind): Integer;
+    { True if an entry has the severity eds_Error.
+      DE: True, wenn ein Eintrag die Schwere eds_Error hat. }
+    function HasErrors: Boolean;
     { All entries, one per line: "line:column kind path: message".
       DE: Alle Eintraege, einer je Zeile: "Zeile:Spalte Art Pfad: Text". }
     function ToText: TLandrixEInvoiceString;
   end;
+
+{ Default severity of a kind: eds_Error for edk_MissingElement and
+  edk_ConversionFailed (invalid output, lost value), eds_Info for
+  edk_UnknownCode, eds_Warning otherwise. Content a target does not allow
+  (edk_NotAllowed) is a warning: it is left out and the output stays
+  valid, so one invoice can be written to several targets.
+  DE: Standard-Schwere einer Art: eds_Error fuer edk_MissingElement und
+  edk_ConversionFailed (ungueltige Ausgabe, verlorener Wert), eds_Info fuer
+  edk_UnknownCode, sonst eds_Warning. Inhalt, den ein Ziel nicht erlaubt
+  (edk_NotAllowed), ist eine Warnung: er wird weggelassen und die Ausgabe
+  bleibt gueltig, so laesst sich eine Rechnung in mehrere Ziele
+  schreiben. }
+function LandrixEInvoiceDiagnosticDefaultSeverity(
+  AKind: TLandrixEInvoiceDiagnosticKind): TLandrixEInvoiceDiagnosticSeverity;
 
 { Name of a kind for messages, e.g. 'UnknownElement'.
   DE: Name einer Art fuer Meldungen, z. B. 'UnknownElement'. }
@@ -112,7 +174,18 @@ implementation
 const
   KindNames: array[TLandrixEInvoiceDiagnosticKind] of TLandrixEInvoiceString = (
     'UnknownElement', 'DuplicateElement', 'UnexpectedText', 'UnknownAttribute',
-    'InvalidValue', 'MissingElement', 'SkippedExtension');
+    'InvalidValue', 'MissingElement', 'SkippedExtension', 'ConversionFailed',
+    'UnknownCode', 'NotMapped', 'NotAllowed');
+
+  DefaultSeverities: array[TLandrixEInvoiceDiagnosticKind] of TLandrixEInvoiceDiagnosticSeverity = (
+    eds_Warning, eds_Warning, eds_Warning, eds_Warning, eds_Warning, eds_Error, eds_Warning,
+    eds_Error, eds_Info, eds_Warning, eds_Warning);
+
+function LandrixEInvoiceDiagnosticDefaultSeverity(
+  AKind: TLandrixEInvoiceDiagnosticKind): TLandrixEInvoiceDiagnosticSeverity;
+begin
+  Result := DefaultSeverities[AKind];
+end;
 
 function LandrixEInvoiceDiagnosticKindToStr(AKind: TLandrixEInvoiceDiagnosticKind): TLandrixEInvoiceString;
 begin
@@ -130,6 +203,7 @@ function TLandrixEInvoiceDiagnostics.AddDiagnostic(AKind: TLandrixEInvoiceDiagno
 begin
   Result := TLandrixEInvoiceDiagnostic.Create;
   Result.Kind := AKind;
+  Result.Severity := DefaultSeverities[AKind];
   Result.Path := APath;
   Result.Line := ALine;
   Result.Column := AColumn;
@@ -146,6 +220,17 @@ begin
   for I := 0 to Count - 1 do
     if Items[I].Kind = AKind then
       Inc(Result);
+end;
+
+function TLandrixEInvoiceDiagnostics.HasErrors: Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := True;
+  for I := 0 to Count - 1 do
+    if Items[I].Severity = eds_Error then
+      Exit;
+  Result := False;
 end;
 
 function TLandrixEInvoiceDiagnostics.ToText: TLandrixEInvoiceString;

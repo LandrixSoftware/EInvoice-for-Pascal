@@ -604,6 +604,7 @@ begin
   L.Description := 'a';
   L.Quantity := 1;
   L.UnitCode := iuc_piece;
+  L.UnitCodeOther := 'a';
   L.SellersItemIdentification := 'a';
   L.BuyersItemIdentification := 'a';
   L.OrderNumber := 'a';
@@ -611,12 +612,14 @@ begin
   L.BuyerAccountingReference := 'a';
   L.TaxPercent := 19;
   L.TaxCategory := idtfcc_S_StandardRate;
+  L.TaxCategoryOther := 'a';
   L.TaxExemptionReason := 'a';
   L.GrossPriceAmount := 1;
   L.DiscountOnTheGrossPrice := 1;
   L.NetPriceAmount := 1;
   L.BaseQuantity := 1;
   L.BaseQuantityUnitCode := iuc_piece;
+  L.BaseQuantityUnitCodeOther := 'a';
   L.LineAmount := 1;
   L.AllowanceCharges.AddAllowanceCharge;
   L.InvoiceLinePeriodStartDate := 1;
@@ -630,6 +633,7 @@ begin
   L.ActualDeliveryDate := 1;
   L.SubInvoiceLines.AddInvoiceLine;
   L.LineStatusReasonCode := ilsrc_Group;
+  L.LineStatusReasonCodeOther := 'a';
 end;
 
 procedure CheckLineDefault(L: TLandrixInvoiceLine; const Msg: string);
@@ -643,6 +647,7 @@ begin
   CheckEmpty(L.Description, Msg + '.Description');
   CheckZero(L.Quantity, Msg + '.Quantity');
   Check(L.UnitCode = iuc_None, Msg + '.UnitCode is iuc_None');
+  CheckEmpty(L.UnitCodeOther, Msg + '.UnitCodeOther');
   CheckEmpty(L.SellersItemIdentification, Msg + '.SellersItemIdentification');
   CheckEmpty(L.BuyersItemIdentification, Msg + '.BuyersItemIdentification');
   CheckEmpty(L.OrderNumber, Msg + '.OrderNumber');
@@ -650,12 +655,14 @@ begin
   CheckEmpty(L.BuyerAccountingReference, Msg + '.BuyerAccountingReference');
   CheckZero(L.TaxPercent, Msg + '.TaxPercent');
   Check(L.TaxCategory = idtfcc_None, Msg + '.TaxCategory is idtfcc_None');
+  CheckEmpty(L.TaxCategoryOther, Msg + '.TaxCategoryOther');
   CheckEmpty(L.TaxExemptionReason, Msg + '.TaxExemptionReason');
   CheckZero(L.GrossPriceAmount, Msg + '.GrossPriceAmount');
   CheckZero(L.DiscountOnTheGrossPrice, Msg + '.DiscountOnTheGrossPrice');
   CheckZero(L.NetPriceAmount, Msg + '.NetPriceAmount');
   CheckZero(L.BaseQuantity, Msg + '.BaseQuantity');
   Check(L.BaseQuantityUnitCode = iuc_None, Msg + '.BaseQuantityUnitCode is iuc_None');
+  CheckEmpty(L.BaseQuantityUnitCodeOther, Msg + '.BaseQuantityUnitCodeOther');
   CheckZero(L.LineAmount, Msg + '.LineAmount');
   CheckEquals(0, Integer(L.AllowanceCharges.Count), Msg + '.AllowanceCharges');
   CheckZero(L.InvoiceLinePeriodStartDate, Msg + '.InvoiceLinePeriodStartDate');
@@ -669,6 +676,7 @@ begin
   CheckZero(L.ActualDeliveryDate, Msg + '.ActualDeliveryDate');
   CheckEquals(0, Integer(L.SubInvoiceLines.Count), Msg + '.SubInvoiceLines');
   Check(L.LineStatusReasonCode = ilsrc_None, Msg + '.LineStatusReasonCode is ilsrc_None');
+  CheckEmpty(L.LineStatusReasonCodeOther, Msg + '.LineStatusReasonCodeOther');
 end;
 
 procedure FillInvoice(Inv: TLandrixInvoice);
@@ -680,6 +688,7 @@ begin
   Inv.InvoicePeriodStartDate := 1;
   Inv.InvoicePeriodEndDate := 1;
   Inv.InvoiceTypeCode := itc_CommercialInvoice;
+  Inv.InvoiceTypeCodeOther := 'a';
   Inv.InvoiceCurrencyCode := 'a';
   Inv.TaxCurrencyCode := 'a';
   Inv.BuyerReference := 'a';
@@ -744,6 +753,7 @@ begin
   CheckZero(Inv.InvoicePeriodStartDate, Msg + '.InvoicePeriodStartDate');
   CheckZero(Inv.InvoicePeriodEndDate, Msg + '.InvoicePeriodEndDate');
   Check(Inv.InvoiceTypeCode = itc_None, Msg + '.InvoiceTypeCode is itc_None');
+  CheckEmpty(Inv.InvoiceTypeCodeOther, Msg + '.InvoiceTypeCodeOther');
   CheckEmpty(Inv.InvoiceCurrencyCode, Msg + '.InvoiceCurrencyCode');
   CheckEmpty(Inv.TaxCurrencyCode, Msg + '.TaxCurrencyCode');
   CheckEmpty(Inv.BuyerReference, Msg + '.BuyerReference');

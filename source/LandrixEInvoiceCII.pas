@@ -469,6 +469,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:IncludedTradeTax, repeated, at least 1 (created on first access).
       DE: ram:IncludedTradeTax, wiederholbar, mindestens 1 (beim ersten Zugriff angelegt). }
     property IncludedTradeTax: TLandrixCIITradeTaxList read GetIncludedTradeTax;
@@ -497,6 +504,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:CreditorFinancialInstitutionType.
@@ -513,6 +527,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:DebtorFinancialAccountType.
@@ -532,6 +553,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:DebtorFinancialInstitutionType.
@@ -548,6 +576,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:DocumentContextParameterType.
@@ -564,6 +599,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:DocumentLineDocumentType.
@@ -592,6 +634,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:IncludedNote, repeated (created on first access).
       DE: ram:IncludedNote, wiederholbar (beim ersten Zugriff angelegt). }
     property IncludedNote: TLandrixCIINoteList read GetIncludedNote;
@@ -631,6 +680,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:IncludedNote, repeated (created on first access).
       DE: ram:IncludedNote, wiederholbar (beim ersten Zugriff angelegt). }
     property IncludedNote: TLandrixCIINoteList read GetIncludedNote;
@@ -658,6 +714,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:BusinessProcessSpecifiedDocumentContextParameter, optional (created on first access).
       DE: ram:BusinessProcessSpecifiedDocumentContextParameter, optional (beim ersten Zugriff angelegt). }
     property BusinessProcessSpecifiedDocumentContextParameter: TLandrixCIIDocumentContextParameter read GetBusinessProcessSpecifiedDocumentContextParameter;
@@ -683,6 +746,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:HeaderTradeAgreementType.
@@ -730,6 +800,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:SellerTradeParty, required (created on first access).
       DE: ram:SellerTradeParty, Pflicht (beim ersten Zugriff angelegt). }
     property SellerTradeParty: TLandrixCIITradeParty read GetSellerTradeParty;
@@ -805,6 +882,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:RelatedSupplyChainConsignment, optional (created on first access).
       DE: ram:RelatedSupplyChainConsignment, optional (beim ersten Zugriff angelegt). }
     property RelatedSupplyChainConsignment: TLandrixCIISupplyChainConsignment read GetRelatedSupplyChainConsignment;
@@ -890,6 +974,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:InvoicerTradeParty, optional (created on first access).
       DE: ram:InvoicerTradeParty, optional (beim ersten Zugriff angelegt). }
     property InvoicerTradeParty: TLandrixCIITradeParty read GetInvoicerTradeParty;
@@ -958,6 +1049,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { rsm:ExchangedDocumentContext, required (created on first access).
       DE: rsm:ExchangedDocumentContext, Pflicht (beim ersten Zugriff angelegt). }
     property ExchangedDocumentContext: TLandrixCIIExchangedDocumentContext read GetExchangedDocumentContext;
@@ -989,6 +1087,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:PostalTradeAddress, optional (created on first access).
       DE: ram:PostalTradeAddress, optional (beim ersten Zugriff angelegt). }
     property PostalTradeAddress: TLandrixCIITradeAddress read GetPostalTradeAddress;
@@ -1026,6 +1131,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:ApplicableTradeDeliveryTerms, optional (created on first access).
       DE: ram:ApplicableTradeDeliveryTerms, optional (beim ersten Zugriff angelegt). }
     property ApplicableTradeDeliveryTerms: TLandrixCIITradeDeliveryTerms read GetApplicableTradeDeliveryTerms;
@@ -1094,6 +1206,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:ShipToTradeParty, optional (created on first access).
       DE: ram:ShipToTradeParty, optional (beim ersten Zugriff angelegt). }
     property ShipToTradeParty: TLandrixCIITradeParty read GetShipToTradeParty;
@@ -1140,6 +1259,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:ApplicableTradeTax, repeated (created on first access).
       DE: ram:ApplicableTradeTax, wiederholbar (beim ersten Zugriff angelegt). }
     property ApplicableTradeTax: TLandrixCIITradeTaxList read GetApplicableTradeTax;
@@ -1183,6 +1309,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:AppliedTradeTax, repeated, at least 1 (created on first access).
       DE: ram:AppliedTradeTax, wiederholbar, mindestens 1 (beim ersten Zugriff angelegt). }
     property AppliedTradeTax: TLandrixCIITradeTaxList read GetAppliedTradeTax;
@@ -1202,6 +1335,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:NoteType.
@@ -1224,6 +1364,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:ProcuringProjectType.
@@ -1243,6 +1390,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:ProductCharacteristicType.
@@ -1268,6 +1422,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:ProductClassificationType.
@@ -1287,6 +1448,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:ReferencedDocumentType.
@@ -1324,6 +1492,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:ReferencedProductType.
@@ -1361,6 +1536,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:GlobalID, repeated (created on first access).
       DE: ram:GlobalID, wiederholbar (beim ersten Zugriff angelegt). }
     property GlobalID: TLandrixCIIIDList read GetGlobalID;
@@ -1389,6 +1571,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:SupplyChainConsignmentType.
@@ -1405,6 +1594,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:SpecifiedLogisticsTransportMovement, repeated (created on first access).
       DE: ram:SpecifiedLogisticsTransportMovement, wiederholbar (beim ersten Zugriff angelegt). }
     property SpecifiedLogisticsTransportMovement: TLandrixCIILogisticsTransportMovementList read GetSpecifiedLogisticsTransportMovement;
@@ -1424,6 +1620,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:SupplyChainTradeLineItemType.
@@ -1448,6 +1651,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:AssociatedDocumentLineDocument, required (created on first access).
       DE: ram:AssociatedDocumentLineDocument, Pflicht (beim ersten Zugriff angelegt). }
     property AssociatedDocumentLineDocument: TLandrixCIIDocumentLineDocument read GetAssociatedDocumentLineDocument;
@@ -1485,6 +1695,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:IncludedSupplyChainTradeLineItem, repeated, at least 1 (created on first access).
       DE: ram:IncludedSupplyChainTradeLineItem, wiederholbar, mindestens 1 (beim ersten Zugriff angelegt). }
     property IncludedSupplyChainTradeLineItem: TLandrixCIISupplyChainTradeLineItemList read GetIncludedSupplyChainTradeLineItem;
@@ -1513,6 +1730,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradeAccountingAccountType.
@@ -1532,6 +1756,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradeAddressType.
@@ -1566,6 +1797,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradeAllowanceChargeType.
@@ -1606,6 +1844,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:CategoryTradeTax, optional (created on first access).
       DE: ram:CategoryTradeTax, optional (beim ersten Zugriff angelegt). }
     property CategoryTradeTax: TLandrixCIITradeTax read GetCategoryTradeTax;
@@ -1638,6 +1883,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:TelephoneUniversalCommunication, optional (created on first access).
       DE: ram:TelephoneUniversalCommunication, optional (beim ersten Zugriff angelegt). }
     property TelephoneUniversalCommunication: TLandrixCIIUniversalCommunication read GetTelephoneUniversalCommunication;
@@ -1663,6 +1915,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradeCurrencyExchangeType.
@@ -1688,6 +1947,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradeDeliveryTermsType.
@@ -1707,6 +1973,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:RelevantTradeLocation, optional (created on first access).
       DE: ram:RelevantTradeLocation, optional (beim ersten Zugriff angelegt). }
     property RelevantTradeLocation: TLandrixCIITradeLocation read GetRelevantTradeLocation;
@@ -1729,6 +2002,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradePartyType.
@@ -1766,6 +2046,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:ID, repeated (created on first access).
       DE: ram:ID, wiederholbar (beim ersten Zugriff angelegt). }
     property ID: TLandrixCIIIDList read GetID;
@@ -1815,6 +2102,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradePaymentPenaltyTermsType.
@@ -1843,6 +2137,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradePaymentTermsType.
@@ -1875,6 +2176,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:ApplicableTradePaymentPenaltyTerms, optional (created on first access).
       DE: ram:ApplicableTradePaymentPenaltyTerms, optional (beim ersten Zugriff angelegt). }
     property ApplicableTradePaymentPenaltyTerms: TLandrixCIITradePaymentPenaltyTerms read GetApplicableTradePaymentPenaltyTerms;
@@ -1908,6 +2216,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:AppliedTradeAllowanceCharge, repeated (created on first access).
       DE: ram:AppliedTradeAllowanceCharge, wiederholbar (beim ersten Zugriff angelegt). }
     property AppliedTradeAllowanceCharge: TLandrixCIITradeAllowanceChargeList read GetAppliedTradeAllowanceCharge;
@@ -1972,6 +2287,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:BatchID, repeated (created on first access).
       DE: ram:BatchID, wiederholbar (beim ersten Zugriff angelegt). }
     property BatchID: TLandrixCIIIDList read GetBatchID;
@@ -2012,6 +2334,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradeSettlementFinancialCardType.
@@ -2031,6 +2360,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:TradeSettlementHeaderMonetarySummationType.
@@ -2071,6 +2407,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:TaxTotalAmount, repeated, at most 2, not checked (created on first access).
       DE: ram:TaxTotalAmount, wiederholbar, hoechstens 2, nicht geprueft (beim ersten Zugriff angelegt). }
     property TaxTotalAmount: TLandrixCIIAmountList read GetTaxTotalAmount;
@@ -2105,6 +2448,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:TaxTotalAmount, repeated, at most 2, not checked (created on first access).
       DE: ram:TaxTotalAmount, wiederholbar, hoechstens 2, nicht geprueft (beim ersten Zugriff angelegt). }
     property TaxTotalAmount: TLandrixCIIAmountList read GetTaxTotalAmount;
@@ -2138,6 +2488,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
     { ram:ApplicableTradeSettlementFinancialCard, optional (created on first access).
       DE: ram:ApplicableTradeSettlementFinancialCard, optional (beim ersten Zugriff angelegt). }
     property ApplicableTradeSettlementFinancialCard: TLandrixCIITradeSettlementFinancialCard read GetApplicableTradeSettlementFinancialCard;
@@ -2199,6 +2556,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
   { CII type ram:UniversalCommunicationType.
@@ -2218,6 +2582,13 @@ type
     procedure Clear;
     { True if nothing is set. DE: True, wenn nichts gesetzt ist. }
     function IsEmpty: Boolean;
+    { Adds the qualified names of the children that are set (e.g.
+      'ram:Name') to AList, in schema order; used to report content that
+      a mapping does not take over.
+      DE: Fuegt die qualifizierten Namen der gesetzten Kinder (z. B.
+      'ram:Name') in Schema-Reihenfolge an AList an; dient dazu, Inhalt
+      zu melden, den eine Abbildung nicht uebernimmt. }
+    procedure ListFilledChildren(AList: TLandrixEInvoiceStringList);
   end;
 
 implementation
@@ -2653,6 +3024,18 @@ begin
     ((FInvoiceSpecifiedReferencedDocument = nil) or FInvoiceSpecifiedReferencedDocument.IsEmpty);
 end;
 
+procedure TLandrixCIIAdvancePayment.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIAmountIsEmpty(PaidAmount) then
+    AList.Add('ram:PaidAmount');
+  if not CIIFormattedDateTimeIsEmpty(FormattedReceivedDateTime) then
+    AList.Add('ram:FormattedReceivedDateTime');
+  if (FIncludedTradeTax <> nil) and (FIncludedTradeTax.Count > 0) then
+    AList.Add('ram:IncludedTradeTax');
+  if (FInvoiceSpecifiedReferencedDocument <> nil) and not FInvoiceSpecifiedReferencedDocument.IsEmpty then
+    AList.Add('ram:InvoiceSpecifiedReferencedDocument');
+end;
+
 { TLandrixCIICreditorFinancialAccount }
 
 destructor TLandrixCIICreditorFinancialAccount.Destroy;
@@ -2674,6 +3057,16 @@ begin
     CIIIDIsEmpty(ProprietaryID);
 end;
 
+procedure TLandrixCIICreditorFinancialAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(IBANID) then
+    AList.Add('ram:IBANID');
+  if AccountName <> '' then
+    AList.Add('ram:AccountName');
+  if not CIIIDIsEmpty(ProprietaryID) then
+    AList.Add('ram:ProprietaryID');
+end;
+
 { TLandrixCIICreditorFinancialInstitution }
 
 destructor TLandrixCIICreditorFinancialInstitution.Destroy;
@@ -2689,6 +3082,12 @@ end;
 function TLandrixCIICreditorFinancialInstitution.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(BICID);
+end;
+
+procedure TLandrixCIICreditorFinancialInstitution.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(BICID) then
+    AList.Add('ram:BICID');
 end;
 
 { TLandrixCIIDebtorFinancialAccount }
@@ -2710,6 +3109,14 @@ begin
     (AccountName = '');
 end;
 
+procedure TLandrixCIIDebtorFinancialAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(IBANID) then
+    AList.Add('ram:IBANID');
+  if AccountName <> '' then
+    AList.Add('ram:AccountName');
+end;
+
 { TLandrixCIIDebtorFinancialInstitution }
 
 destructor TLandrixCIIDebtorFinancialInstitution.Destroy;
@@ -2727,6 +3134,12 @@ begin
   Result := CIIIDIsEmpty(BICID);
 end;
 
+procedure TLandrixCIIDebtorFinancialInstitution.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(BICID) then
+    AList.Add('ram:BICID');
+end;
+
 { TLandrixCIIDocumentContextParameter }
 
 destructor TLandrixCIIDocumentContextParameter.Destroy;
@@ -2742,6 +3155,12 @@ end;
 function TLandrixCIIDocumentContextParameter.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID);
+end;
+
+procedure TLandrixCIIDocumentContextParameter.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
 end;
 
 { TLandrixCIIDocumentLineDocument }
@@ -2776,6 +3195,20 @@ begin
     (LineStatusCode = '') and
     CIICodeIsEmpty(LineStatusReasonCode) and
     ((FIncludedNote = nil) or (FIncludedNote.Count = 0));
+end;
+
+procedure TLandrixCIIDocumentLineDocument.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(LineID) then
+    AList.Add('ram:LineID');
+  if not CIIIDIsEmpty(ParentLineID) then
+    AList.Add('ram:ParentLineID');
+  if LineStatusCode <> '' then
+    AList.Add('ram:LineStatusCode');
+  if not CIICodeIsEmpty(LineStatusReasonCode) then
+    AList.Add('ram:LineStatusReasonCode');
+  if (FIncludedNote <> nil) and (FIncludedNote.Count > 0) then
+    AList.Add('ram:IncludedNote');
 end;
 
 { TLandrixCIIExchangedDocument }
@@ -2827,6 +3260,26 @@ begin
     ((FEffectiveSpecifiedPeriod = nil) or FEffectiveSpecifiedPeriod.IsEmpty);
 end;
 
+procedure TLandrixCIIExchangedDocument.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
+  if Name <> '' then
+    AList.Add('ram:Name');
+  if TypeCode <> '' then
+    AList.Add('ram:TypeCode');
+  if not CIIDateTimeIsEmpty(IssueDateTime) then
+    AList.Add('ram:IssueDateTime');
+  if CopyIndicator <> '' then
+    AList.Add('ram:CopyIndicator');
+  if not CIIIDIsEmpty(LanguageID) then
+    AList.Add('ram:LanguageID');
+  if (FIncludedNote <> nil) and (FIncludedNote.Count > 0) then
+    AList.Add('ram:IncludedNote');
+  if (FEffectiveSpecifiedPeriod <> nil) and not FEffectiveSpecifiedPeriod.IsEmpty then
+    AList.Add('ram:EffectiveSpecifiedPeriod');
+end;
+
 { TLandrixCIIExchangedDocumentContext }
 
 function TLandrixCIIExchangedDocumentContext.GetBusinessProcessSpecifiedDocumentContextParameter: TLandrixCIIDocumentContextParameter;
@@ -2866,6 +3319,16 @@ begin
     ((FGuidelineSpecifiedDocumentContextParameter = nil) or FGuidelineSpecifiedDocumentContextParameter.IsEmpty);
 end;
 
+procedure TLandrixCIIExchangedDocumentContext.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if TestIndicator <> '' then
+    AList.Add('ram:TestIndicator');
+  if (FBusinessProcessSpecifiedDocumentContextParameter <> nil) and not FBusinessProcessSpecifiedDocumentContextParameter.IsEmpty then
+    AList.Add('ram:BusinessProcessSpecifiedDocumentContextParameter');
+  if (FGuidelineSpecifiedDocumentContextParameter <> nil) and not FGuidelineSpecifiedDocumentContextParameter.IsEmpty then
+    AList.Add('ram:GuidelineSpecifiedDocumentContextParameter');
+end;
+
 { TLandrixCIIFinancialAdjustment }
 
 destructor TLandrixCIIFinancialAdjustment.Destroy;
@@ -2883,6 +3346,14 @@ function TLandrixCIIFinancialAdjustment.IsEmpty: Boolean;
 begin
   Result := (Reason = '') and
     CIIAmountIsEmpty(ActualAmount);
+end;
+
+procedure TLandrixCIIFinancialAdjustment.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Reason <> '' then
+    AList.Add('ram:Reason');
+  if not CIIAmountIsEmpty(ActualAmount) then
+    AList.Add('ram:ActualAmount');
 end;
 
 { TLandrixCIIHeaderTradeAgreement }
@@ -3067,6 +3538,42 @@ begin
     ((FUltimateCustomerOrderReferencedDocument = nil) or (FUltimateCustomerOrderReferencedDocument.Count = 0));
 end;
 
+procedure TLandrixCIIHeaderTradeAgreement.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if BuyerReference <> '' then
+    AList.Add('ram:BuyerReference');
+  if (FSellerTradeParty <> nil) and not FSellerTradeParty.IsEmpty then
+    AList.Add('ram:SellerTradeParty');
+  if (FBuyerTradeParty <> nil) and not FBuyerTradeParty.IsEmpty then
+    AList.Add('ram:BuyerTradeParty');
+  if (FSalesAgentTradeParty <> nil) and not FSalesAgentTradeParty.IsEmpty then
+    AList.Add('ram:SalesAgentTradeParty');
+  if (FBuyerTaxRepresentativeTradeParty <> nil) and not FBuyerTaxRepresentativeTradeParty.IsEmpty then
+    AList.Add('ram:BuyerTaxRepresentativeTradeParty');
+  if (FSellerTaxRepresentativeTradeParty <> nil) and not FSellerTaxRepresentativeTradeParty.IsEmpty then
+    AList.Add('ram:SellerTaxRepresentativeTradeParty');
+  if (FProductEndUserTradeParty <> nil) and not FProductEndUserTradeParty.IsEmpty then
+    AList.Add('ram:ProductEndUserTradeParty');
+  if (FApplicableTradeDeliveryTerms <> nil) and not FApplicableTradeDeliveryTerms.IsEmpty then
+    AList.Add('ram:ApplicableTradeDeliveryTerms');
+  if (FSellerOrderReferencedDocument <> nil) and not FSellerOrderReferencedDocument.IsEmpty then
+    AList.Add('ram:SellerOrderReferencedDocument');
+  if (FBuyerOrderReferencedDocument <> nil) and not FBuyerOrderReferencedDocument.IsEmpty then
+    AList.Add('ram:BuyerOrderReferencedDocument');
+  if (FQuotationReferencedDocument <> nil) and not FQuotationReferencedDocument.IsEmpty then
+    AList.Add('ram:QuotationReferencedDocument');
+  if (FContractReferencedDocument <> nil) and not FContractReferencedDocument.IsEmpty then
+    AList.Add('ram:ContractReferencedDocument');
+  if (FAdditionalReferencedDocument <> nil) and (FAdditionalReferencedDocument.Count > 0) then
+    AList.Add('ram:AdditionalReferencedDocument');
+  if (FBuyerAgentTradeParty <> nil) and not FBuyerAgentTradeParty.IsEmpty then
+    AList.Add('ram:BuyerAgentTradeParty');
+  if (FSpecifiedProcuringProject <> nil) and not FSpecifiedProcuringProject.IsEmpty then
+    AList.Add('ram:SpecifiedProcuringProject');
+  if (FUltimateCustomerOrderReferencedDocument <> nil) and (FUltimateCustomerOrderReferencedDocument.Count > 0) then
+    AList.Add('ram:UltimateCustomerOrderReferencedDocument');
+end;
+
 { TLandrixCIIHeaderTradeDelivery }
 
 function TLandrixCIIHeaderTradeDelivery.GetRelatedSupplyChainConsignment: TLandrixCIISupplyChainConsignment;
@@ -3168,6 +3675,26 @@ begin
     ((FDespatchAdviceReferencedDocument = nil) or FDespatchAdviceReferencedDocument.IsEmpty) and
     ((FReceivingAdviceReferencedDocument = nil) or FReceivingAdviceReferencedDocument.IsEmpty) and
     ((FDeliveryNoteReferencedDocument = nil) or FDeliveryNoteReferencedDocument.IsEmpty);
+end;
+
+procedure TLandrixCIIHeaderTradeDelivery.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FRelatedSupplyChainConsignment <> nil) and not FRelatedSupplyChainConsignment.IsEmpty then
+    AList.Add('ram:RelatedSupplyChainConsignment');
+  if (FShipToTradeParty <> nil) and not FShipToTradeParty.IsEmpty then
+    AList.Add('ram:ShipToTradeParty');
+  if (FUltimateShipToTradeParty <> nil) and not FUltimateShipToTradeParty.IsEmpty then
+    AList.Add('ram:UltimateShipToTradeParty');
+  if (FShipFromTradeParty <> nil) and not FShipFromTradeParty.IsEmpty then
+    AList.Add('ram:ShipFromTradeParty');
+  if (FActualDeliverySupplyChainEvent <> nil) and not FActualDeliverySupplyChainEvent.IsEmpty then
+    AList.Add('ram:ActualDeliverySupplyChainEvent');
+  if (FDespatchAdviceReferencedDocument <> nil) and not FDespatchAdviceReferencedDocument.IsEmpty then
+    AList.Add('ram:DespatchAdviceReferencedDocument');
+  if (FReceivingAdviceReferencedDocument <> nil) and not FReceivingAdviceReferencedDocument.IsEmpty then
+    AList.Add('ram:ReceivingAdviceReferencedDocument');
+  if (FDeliveryNoteReferencedDocument <> nil) and not FDeliveryNoteReferencedDocument.IsEmpty then
+    AList.Add('ram:DeliveryNoteReferencedDocument');
 end;
 
 { TLandrixCIIHeaderTradeSettlement }
@@ -3371,6 +3898,52 @@ begin
     ((FSpecifiedAdvancePayment = nil) or (FSpecifiedAdvancePayment.Count = 0));
 end;
 
+procedure TLandrixCIIHeaderTradeSettlement.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(CreditorReferenceID) then
+    AList.Add('ram:CreditorReferenceID');
+  if PaymentReference <> '' then
+    AList.Add('ram:PaymentReference');
+  if TaxCurrencyCode <> '' then
+    AList.Add('ram:TaxCurrencyCode');
+  if InvoiceCurrencyCode <> '' then
+    AList.Add('ram:InvoiceCurrencyCode');
+  if InvoiceIssuerReference <> '' then
+    AList.Add('ram:InvoiceIssuerReference');
+  if (FInvoicerTradeParty <> nil) and not FInvoicerTradeParty.IsEmpty then
+    AList.Add('ram:InvoicerTradeParty');
+  if (FInvoiceeTradeParty <> nil) and not FInvoiceeTradeParty.IsEmpty then
+    AList.Add('ram:InvoiceeTradeParty');
+  if (FPayeeTradeParty <> nil) and not FPayeeTradeParty.IsEmpty then
+    AList.Add('ram:PayeeTradeParty');
+  if (FPayerTradeParty <> nil) and not FPayerTradeParty.IsEmpty then
+    AList.Add('ram:PayerTradeParty');
+  if (FTaxApplicableTradeCurrencyExchange <> nil) and not FTaxApplicableTradeCurrencyExchange.IsEmpty then
+    AList.Add('ram:TaxApplicableTradeCurrencyExchange');
+  if (FSpecifiedTradeSettlementPaymentMeans <> nil) and (FSpecifiedTradeSettlementPaymentMeans.Count > 0) then
+    AList.Add('ram:SpecifiedTradeSettlementPaymentMeans');
+  if (FApplicableTradeTax <> nil) and (FApplicableTradeTax.Count > 0) then
+    AList.Add('ram:ApplicableTradeTax');
+  if (FBillingSpecifiedPeriod <> nil) and not FBillingSpecifiedPeriod.IsEmpty then
+    AList.Add('ram:BillingSpecifiedPeriod');
+  if (FSpecifiedTradeAllowanceCharge <> nil) and (FSpecifiedTradeAllowanceCharge.Count > 0) then
+    AList.Add('ram:SpecifiedTradeAllowanceCharge');
+  if (FSpecifiedLogisticsServiceCharge <> nil) and (FSpecifiedLogisticsServiceCharge.Count > 0) then
+    AList.Add('ram:SpecifiedLogisticsServiceCharge');
+  if (FSpecifiedTradePaymentTerms <> nil) and (FSpecifiedTradePaymentTerms.Count > 0) then
+    AList.Add('ram:SpecifiedTradePaymentTerms');
+  if (FSpecifiedTradeSettlementHeaderMonetarySummation <> nil) and not FSpecifiedTradeSettlementHeaderMonetarySummation.IsEmpty then
+    AList.Add('ram:SpecifiedTradeSettlementHeaderMonetarySummation');
+  if (FSpecifiedFinancialAdjustment <> nil) and (FSpecifiedFinancialAdjustment.Count > 0) then
+    AList.Add('ram:SpecifiedFinancialAdjustment');
+  if (FInvoiceReferencedDocument <> nil) and (FInvoiceReferencedDocument.Count > 0) then
+    AList.Add('ram:InvoiceReferencedDocument');
+  if (FReceivableSpecifiedTradeAccountingAccount <> nil) and (FReceivableSpecifiedTradeAccountingAccount.Count > 0) then
+    AList.Add('ram:ReceivableSpecifiedTradeAccountingAccount');
+  if (FSpecifiedAdvancePayment <> nil) and (FSpecifiedAdvancePayment.Count > 0) then
+    AList.Add('ram:SpecifiedAdvancePayment');
+end;
+
 { TLandrixCIIInvoice }
 
 function TLandrixCIIInvoice.GetExchangedDocumentContext: TLandrixCIIExchangedDocumentContext;
@@ -3419,6 +3992,16 @@ begin
     ((FSupplyChainTradeTransaction = nil) or FSupplyChainTradeTransaction.IsEmpty);
 end;
 
+procedure TLandrixCIIInvoice.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FExchangedDocumentContext <> nil) and not FExchangedDocumentContext.IsEmpty then
+    AList.Add('rsm:ExchangedDocumentContext');
+  if (FExchangedDocument <> nil) and not FExchangedDocument.IsEmpty then
+    AList.Add('rsm:ExchangedDocument');
+  if (FSupplyChainTradeTransaction <> nil) and not FSupplyChainTradeTransaction.IsEmpty then
+    AList.Add('rsm:SupplyChainTradeTransaction');
+end;
+
 { TLandrixCIILegalOrganization }
 
 function TLandrixCIILegalOrganization.GetPostalTradeAddress: TLandrixCIITradeAddress;
@@ -3447,6 +4030,16 @@ begin
   Result := CIIIDIsEmpty(ID) and
     (TradingBusinessName = '') and
     ((FPostalTradeAddress = nil) or FPostalTradeAddress.IsEmpty);
+end;
+
+procedure TLandrixCIILegalOrganization.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
+  if TradingBusinessName <> '' then
+    AList.Add('ram:TradingBusinessName');
+  if (FPostalTradeAddress <> nil) and not FPostalTradeAddress.IsEmpty then
+    AList.Add('ram:PostalTradeAddress');
 end;
 
 { TLandrixCIILineTradeAgreement }
@@ -3574,6 +4167,30 @@ begin
     ((FUltimateCustomerOrderReferencedDocument = nil) or (FUltimateCustomerOrderReferencedDocument.Count = 0));
 end;
 
+procedure TLandrixCIILineTradeAgreement.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FApplicableTradeDeliveryTerms <> nil) and not FApplicableTradeDeliveryTerms.IsEmpty then
+    AList.Add('ram:ApplicableTradeDeliveryTerms');
+  if (FSellerOrderReferencedDocument <> nil) and not FSellerOrderReferencedDocument.IsEmpty then
+    AList.Add('ram:SellerOrderReferencedDocument');
+  if (FBuyerOrderReferencedDocument <> nil) and not FBuyerOrderReferencedDocument.IsEmpty then
+    AList.Add('ram:BuyerOrderReferencedDocument');
+  if (FQuotationReferencedDocument <> nil) and not FQuotationReferencedDocument.IsEmpty then
+    AList.Add('ram:QuotationReferencedDocument');
+  if (FContractReferencedDocument <> nil) and not FContractReferencedDocument.IsEmpty then
+    AList.Add('ram:ContractReferencedDocument');
+  if (FAdditionalReferencedDocument <> nil) and (FAdditionalReferencedDocument.Count > 0) then
+    AList.Add('ram:AdditionalReferencedDocument');
+  if (FGrossPriceProductTradePrice <> nil) and not FGrossPriceProductTradePrice.IsEmpty then
+    AList.Add('ram:GrossPriceProductTradePrice');
+  if (FNetPriceProductTradePrice <> nil) and not FNetPriceProductTradePrice.IsEmpty then
+    AList.Add('ram:NetPriceProductTradePrice');
+  if (FItemSellerTradeParty <> nil) and not FItemSellerTradeParty.IsEmpty then
+    AList.Add('ram:ItemSellerTradeParty');
+  if (FUltimateCustomerOrderReferencedDocument <> nil) and (FUltimateCustomerOrderReferencedDocument.Count > 0) then
+    AList.Add('ram:UltimateCustomerOrderReferencedDocument');
+end;
+
 { TLandrixCIILineTradeDelivery }
 
 function TLandrixCIILineTradeDelivery.GetShipToTradeParty: TLandrixCIITradeParty;
@@ -3661,6 +4278,30 @@ begin
     ((FDespatchAdviceReferencedDocument = nil) or FDespatchAdviceReferencedDocument.IsEmpty) and
     ((FReceivingAdviceReferencedDocument = nil) or FReceivingAdviceReferencedDocument.IsEmpty) and
     ((FDeliveryNoteReferencedDocument = nil) or FDeliveryNoteReferencedDocument.IsEmpty);
+end;
+
+procedure TLandrixCIILineTradeDelivery.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIQuantityIsEmpty(BilledQuantity) then
+    AList.Add('ram:BilledQuantity');
+  if not CIIQuantityIsEmpty(ChargeFreeQuantity) then
+    AList.Add('ram:ChargeFreeQuantity');
+  if not CIIQuantityIsEmpty(PackageQuantity) then
+    AList.Add('ram:PackageQuantity');
+  if not CIIQuantityIsEmpty(PerPackageUnitQuantity) then
+    AList.Add('ram:PerPackageUnitQuantity');
+  if (FShipToTradeParty <> nil) and not FShipToTradeParty.IsEmpty then
+    AList.Add('ram:ShipToTradeParty');
+  if (FUltimateShipToTradeParty <> nil) and not FUltimateShipToTradeParty.IsEmpty then
+    AList.Add('ram:UltimateShipToTradeParty');
+  if (FActualDeliverySupplyChainEvent <> nil) and not FActualDeliverySupplyChainEvent.IsEmpty then
+    AList.Add('ram:ActualDeliverySupplyChainEvent');
+  if (FDespatchAdviceReferencedDocument <> nil) and not FDespatchAdviceReferencedDocument.IsEmpty then
+    AList.Add('ram:DespatchAdviceReferencedDocument');
+  if (FReceivingAdviceReferencedDocument <> nil) and not FReceivingAdviceReferencedDocument.IsEmpty then
+    AList.Add('ram:ReceivingAdviceReferencedDocument');
+  if (FDeliveryNoteReferencedDocument <> nil) and not FDeliveryNoteReferencedDocument.IsEmpty then
+    AList.Add('ram:DeliveryNoteReferencedDocument');
 end;
 
 { TLandrixCIILineTradeSettlement }
@@ -3755,6 +4396,24 @@ begin
     ((FReceivableSpecifiedTradeAccountingAccount = nil) or (FReceivableSpecifiedTradeAccountingAccount.Count = 0));
 end;
 
+procedure TLandrixCIILineTradeSettlement.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FApplicableTradeTax <> nil) and (FApplicableTradeTax.Count > 0) then
+    AList.Add('ram:ApplicableTradeTax');
+  if (FBillingSpecifiedPeriod <> nil) and not FBillingSpecifiedPeriod.IsEmpty then
+    AList.Add('ram:BillingSpecifiedPeriod');
+  if (FSpecifiedTradeAllowanceCharge <> nil) and (FSpecifiedTradeAllowanceCharge.Count > 0) then
+    AList.Add('ram:SpecifiedTradeAllowanceCharge');
+  if (FSpecifiedTradeSettlementLineMonetarySummation <> nil) and not FSpecifiedTradeSettlementLineMonetarySummation.IsEmpty then
+    AList.Add('ram:SpecifiedTradeSettlementLineMonetarySummation');
+  if (FInvoiceReferencedDocument <> nil) and not FInvoiceReferencedDocument.IsEmpty then
+    AList.Add('ram:InvoiceReferencedDocument');
+  if (FAdditionalReferencedDocument <> nil) and (FAdditionalReferencedDocument.Count > 0) then
+    AList.Add('ram:AdditionalReferencedDocument');
+  if (FReceivableSpecifiedTradeAccountingAccount <> nil) and (FReceivableSpecifiedTradeAccountingAccount.Count > 0) then
+    AList.Add('ram:ReceivableSpecifiedTradeAccountingAccount');
+end;
+
 { TLandrixCIILogisticsServiceCharge }
 
 function TLandrixCIILogisticsServiceCharge.GetAppliedTradeTax: TLandrixCIITradeTaxList;
@@ -3785,6 +4444,16 @@ begin
     ((FAppliedTradeTax = nil) or (FAppliedTradeTax.Count = 0));
 end;
 
+procedure TLandrixCIILogisticsServiceCharge.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Description <> '' then
+    AList.Add('ram:Description');
+  if not CIIAmountIsEmpty(AppliedAmount) then
+    AList.Add('ram:AppliedAmount');
+  if (FAppliedTradeTax <> nil) and (FAppliedTradeTax.Count > 0) then
+    AList.Add('ram:AppliedTradeTax');
+end;
+
 { TLandrixCIILogisticsTransportMovement }
 
 destructor TLandrixCIILogisticsTransportMovement.Destroy;
@@ -3800,6 +4469,12 @@ end;
 function TLandrixCIILogisticsTransportMovement.IsEmpty: Boolean;
 begin
   Result := (ModeCode = '');
+end;
+
+procedure TLandrixCIILogisticsTransportMovement.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if ModeCode <> '' then
+    AList.Add('ram:ModeCode');
 end;
 
 { TLandrixCIINote }
@@ -3823,6 +4498,16 @@ begin
     CIICodeIsEmpty(SubjectCode);
 end;
 
+procedure TLandrixCIINote.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIICodeIsEmpty(ContentCode) then
+    AList.Add('ram:ContentCode');
+  if Content <> '' then
+    AList.Add('ram:Content');
+  if not CIICodeIsEmpty(SubjectCode) then
+    AList.Add('ram:SubjectCode');
+end;
+
 { TLandrixCIIProcuringProject }
 
 destructor TLandrixCIIProcuringProject.Destroy;
@@ -3840,6 +4525,14 @@ function TLandrixCIIProcuringProject.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
     (Name = '');
+end;
+
+procedure TLandrixCIIProcuringProject.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
+  if Name <> '' then
+    AList.Add('ram:Name');
 end;
 
 { TLandrixCIIProductCharacteristic }
@@ -3865,6 +4558,18 @@ begin
     (Value = '');
 end;
 
+procedure TLandrixCIIProductCharacteristic.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIICodeIsEmpty(TypeCode) then
+    AList.Add('ram:TypeCode');
+  if Description <> '' then
+    AList.Add('ram:Description');
+  if not CIIMeasureIsEmpty(ValueMeasure) then
+    AList.Add('ram:ValueMeasure');
+  if Value <> '' then
+    AList.Add('ram:Value');
+end;
+
 { TLandrixCIIProductClassification }
 
 destructor TLandrixCIIProductClassification.Destroy;
@@ -3882,6 +4587,14 @@ function TLandrixCIIProductClassification.IsEmpty: Boolean;
 begin
   Result := CIICodeIsEmpty(ClassCode) and
     (ClassificationName = '');
+end;
+
+procedure TLandrixCIIProductClassification.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIICodeIsEmpty(ClassCode) then
+    AList.Add('ram:ClassCode');
+  if ClassificationName <> '' then
+    AList.Add('ram:ClassName');
 end;
 
 { TLandrixCIIReferencedDocument }
@@ -3913,6 +4626,26 @@ begin
     CIIBinaryObjectIsEmpty(AttachmentBinaryObject) and
     (ReferenceTypeCode = '') and
     CIIFormattedDateTimeIsEmpty(FormattedIssueDateTime);
+end;
+
+procedure TLandrixCIIReferencedDocument.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(IssuerAssignedID) then
+    AList.Add('ram:IssuerAssignedID');
+  if not CIIIDIsEmpty(URIID) then
+    AList.Add('ram:URIID');
+  if not CIIIDIsEmpty(LineID) then
+    AList.Add('ram:LineID');
+  if TypeCode <> '' then
+    AList.Add('ram:TypeCode');
+  if Name <> '' then
+    AList.Add('ram:Name');
+  if not CIIBinaryObjectIsEmpty(AttachmentBinaryObject) then
+    AList.Add('ram:AttachmentBinaryObject');
+  if ReferenceTypeCode <> '' then
+    AList.Add('ram:ReferenceTypeCode');
+  if not CIIFormattedDateTimeIsEmpty(FormattedIssueDateTime) then
+    AList.Add('ram:FormattedIssueDateTime');
 end;
 
 { TLandrixCIIReferencedProduct }
@@ -3955,6 +4688,26 @@ begin
     CIIQuantityIsEmpty(UnitQuantity);
 end;
 
+procedure TLandrixCIIReferencedProduct.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
+  if (FGlobalID <> nil) and (FGlobalID.Count > 0) then
+    AList.Add('ram:GlobalID');
+  if not CIIIDIsEmpty(SellerAssignedID) then
+    AList.Add('ram:SellerAssignedID');
+  if not CIIIDIsEmpty(BuyerAssignedID) then
+    AList.Add('ram:BuyerAssignedID');
+  if not CIIIDIsEmpty(IndustryAssignedID) then
+    AList.Add('ram:IndustryAssignedID');
+  if Name <> '' then
+    AList.Add('ram:Name');
+  if Description <> '' then
+    AList.Add('ram:Description');
+  if not CIIQuantityIsEmpty(UnitQuantity) then
+    AList.Add('ram:UnitQuantity');
+end;
+
 { TLandrixCIISpecifiedPeriod }
 
 destructor TLandrixCIISpecifiedPeriod.Destroy;
@@ -3976,6 +4729,18 @@ begin
     CIIDateTimeIsEmpty(StartDateTime) and
     CIIDateTimeIsEmpty(EndDateTime) and
     CIIDateTimeIsEmpty(CompleteDateTime);
+end;
+
+procedure TLandrixCIISpecifiedPeriod.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Description <> '' then
+    AList.Add('ram:Description');
+  if not CIIDateTimeIsEmpty(StartDateTime) then
+    AList.Add('ram:StartDateTime');
+  if not CIIDateTimeIsEmpty(EndDateTime) then
+    AList.Add('ram:EndDateTime');
+  if not CIIDateTimeIsEmpty(CompleteDateTime) then
+    AList.Add('ram:CompleteDateTime');
 end;
 
 { TLandrixCIISupplyChainConsignment }
@@ -4004,6 +4769,12 @@ begin
   Result := ((FSpecifiedLogisticsTransportMovement = nil) or (FSpecifiedLogisticsTransportMovement.Count = 0));
 end;
 
+procedure TLandrixCIISupplyChainConsignment.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FSpecifiedLogisticsTransportMovement <> nil) and (FSpecifiedLogisticsTransportMovement.Count > 0) then
+    AList.Add('ram:SpecifiedLogisticsTransportMovement');
+end;
+
 { TLandrixCIISupplyChainEvent }
 
 destructor TLandrixCIISupplyChainEvent.Destroy;
@@ -4019,6 +4790,12 @@ end;
 function TLandrixCIISupplyChainEvent.IsEmpty: Boolean;
 begin
   Result := CIIDateTimeIsEmpty(OccurrenceDateTime);
+end;
+
+procedure TLandrixCIISupplyChainEvent.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIDateTimeIsEmpty(OccurrenceDateTime) then
+    AList.Add('ram:OccurrenceDateTime');
 end;
 
 { TLandrixCIISupplyChainTradeLineItem }
@@ -4091,6 +4868,20 @@ begin
     ((FSpecifiedLineTradeSettlement = nil) or FSpecifiedLineTradeSettlement.IsEmpty);
 end;
 
+procedure TLandrixCIISupplyChainTradeLineItem.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FAssociatedDocumentLineDocument <> nil) and not FAssociatedDocumentLineDocument.IsEmpty then
+    AList.Add('ram:AssociatedDocumentLineDocument');
+  if (FSpecifiedTradeProduct <> nil) and not FSpecifiedTradeProduct.IsEmpty then
+    AList.Add('ram:SpecifiedTradeProduct');
+  if (FSpecifiedLineTradeAgreement <> nil) and not FSpecifiedLineTradeAgreement.IsEmpty then
+    AList.Add('ram:SpecifiedLineTradeAgreement');
+  if (FSpecifiedLineTradeDelivery <> nil) and not FSpecifiedLineTradeDelivery.IsEmpty then
+    AList.Add('ram:SpecifiedLineTradeDelivery');
+  if (FSpecifiedLineTradeSettlement <> nil) and not FSpecifiedLineTradeSettlement.IsEmpty then
+    AList.Add('ram:SpecifiedLineTradeSettlement');
+end;
+
 { TLandrixCIISupplyChainTradeTransaction }
 
 function TLandrixCIISupplyChainTradeTransaction.GetIncludedSupplyChainTradeLineItem: TLandrixCIISupplyChainTradeLineItemList;
@@ -4150,6 +4941,18 @@ begin
     ((FApplicableHeaderTradeSettlement = nil) or FApplicableHeaderTradeSettlement.IsEmpty);
 end;
 
+procedure TLandrixCIISupplyChainTradeTransaction.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FIncludedSupplyChainTradeLineItem <> nil) and (FIncludedSupplyChainTradeLineItem.Count > 0) then
+    AList.Add('ram:IncludedSupplyChainTradeLineItem');
+  if (FApplicableHeaderTradeAgreement <> nil) and not FApplicableHeaderTradeAgreement.IsEmpty then
+    AList.Add('ram:ApplicableHeaderTradeAgreement');
+  if (FApplicableHeaderTradeDelivery <> nil) and not FApplicableHeaderTradeDelivery.IsEmpty then
+    AList.Add('ram:ApplicableHeaderTradeDelivery');
+  if (FApplicableHeaderTradeSettlement <> nil) and not FApplicableHeaderTradeSettlement.IsEmpty then
+    AList.Add('ram:ApplicableHeaderTradeSettlement');
+end;
+
 { TLandrixCIITaxRegistration }
 
 destructor TLandrixCIITaxRegistration.Destroy;
@@ -4165,6 +4968,12 @@ end;
 function TLandrixCIITaxRegistration.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID);
+end;
+
+procedure TLandrixCIITaxRegistration.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
 end;
 
 { TLandrixCIITradeAccountingAccount }
@@ -4184,6 +4993,14 @@ function TLandrixCIITradeAccountingAccount.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
     (TypeCode = '');
+end;
+
+procedure TLandrixCIITradeAccountingAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
+  if TypeCode <> '' then
+    AList.Add('ram:TypeCode');
 end;
 
 { TLandrixCIITradeAddress }
@@ -4213,6 +5030,24 @@ begin
     (CityName = '') and
     (CountryID = '') and
     (CountrySubDivisionName = '');
+end;
+
+procedure TLandrixCIITradeAddress.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIICodeIsEmpty(PostcodeCode) then
+    AList.Add('ram:PostcodeCode');
+  if LineOne <> '' then
+    AList.Add('ram:LineOne');
+  if LineTwo <> '' then
+    AList.Add('ram:LineTwo');
+  if LineThree <> '' then
+    AList.Add('ram:LineThree');
+  if CityName <> '' then
+    AList.Add('ram:CityName');
+  if CountryID <> '' then
+    AList.Add('ram:CountryID');
+  if CountrySubDivisionName <> '' then
+    AList.Add('ram:CountrySubDivisionName');
 end;
 
 { TLandrixCIITradeAllowanceCharge }
@@ -4255,6 +5090,28 @@ begin
     CIIAllowanceChargeReasonCodeIsEmpty(ReasonCode) and
     (Reason = '') and
     ((FCategoryTradeTax = nil) or FCategoryTradeTax.IsEmpty);
+end;
+
+procedure TLandrixCIITradeAllowanceCharge.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if ChargeIndicator <> '' then
+    AList.Add('ram:ChargeIndicator');
+  if SequenceNumeric <> '' then
+    AList.Add('ram:SequenceNumeric');
+  if CalculationPercent <> '' then
+    AList.Add('ram:CalculationPercent');
+  if not CIIAmountIsEmpty(BasisAmount) then
+    AList.Add('ram:BasisAmount');
+  if not CIIQuantityIsEmpty(BasisQuantity) then
+    AList.Add('ram:BasisQuantity');
+  if not CIIAmountIsEmpty(ActualAmount) then
+    AList.Add('ram:ActualAmount');
+  if not CIIAllowanceChargeReasonCodeIsEmpty(ReasonCode) then
+    AList.Add('ram:ReasonCode');
+  if Reason <> '' then
+    AList.Add('ram:Reason');
+  if (FCategoryTradeTax <> nil) and not FCategoryTradeTax.IsEmpty then
+    AList.Add('ram:CategoryTradeTax');
 end;
 
 { TLandrixCIITradeContact }
@@ -4311,6 +5168,22 @@ begin
     ((FEmailURIUniversalCommunication = nil) or FEmailURIUniversalCommunication.IsEmpty);
 end;
 
+procedure TLandrixCIITradeContact.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if PersonName <> '' then
+    AList.Add('ram:PersonName');
+  if DepartmentName <> '' then
+    AList.Add('ram:DepartmentName');
+  if TypeCode <> '' then
+    AList.Add('ram:TypeCode');
+  if (FTelephoneUniversalCommunication <> nil) and not FTelephoneUniversalCommunication.IsEmpty then
+    AList.Add('ram:TelephoneUniversalCommunication');
+  if (FFaxUniversalCommunication <> nil) and not FFaxUniversalCommunication.IsEmpty then
+    AList.Add('ram:FaxUniversalCommunication');
+  if (FEmailURIUniversalCommunication <> nil) and not FEmailURIUniversalCommunication.IsEmpty then
+    AList.Add('ram:EmailURIUniversalCommunication');
+end;
+
 { TLandrixCIITradeCountry }
 
 destructor TLandrixCIITradeCountry.Destroy;
@@ -4326,6 +5199,12 @@ end;
 function TLandrixCIITradeCountry.IsEmpty: Boolean;
 begin
   Result := (ID = '');
+end;
+
+procedure TLandrixCIITradeCountry.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if ID <> '' then
+    AList.Add('ram:ID');
 end;
 
 { TLandrixCIITradeCurrencyExchange }
@@ -4349,6 +5228,18 @@ begin
     (TargetCurrencyCode = '') and
     (ConversionRate = '') and
     CIIDateTimeIsEmpty(ConversionRateDateTime);
+end;
+
+procedure TLandrixCIITradeCurrencyExchange.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if SourceCurrencyCode <> '' then
+    AList.Add('ram:SourceCurrencyCode');
+  if TargetCurrencyCode <> '' then
+    AList.Add('ram:TargetCurrencyCode');
+  if ConversionRate <> '' then
+    AList.Add('ram:ConversionRate');
+  if not CIIDateTimeIsEmpty(ConversionRateDateTime) then
+    AList.Add('ram:ConversionRateDateTime');
 end;
 
 { TLandrixCIITradeDeliveryTerms }
@@ -4379,6 +5270,14 @@ begin
     ((FRelevantTradeLocation = nil) or FRelevantTradeLocation.IsEmpty);
 end;
 
+procedure TLandrixCIITradeDeliveryTerms.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if DeliveryTypeCode <> '' then
+    AList.Add('ram:DeliveryTypeCode');
+  if (FRelevantTradeLocation <> nil) and not FRelevantTradeLocation.IsEmpty then
+    AList.Add('ram:RelevantTradeLocation');
+end;
+
 { TLandrixCIITradeLocation }
 
 destructor TLandrixCIITradeLocation.Destroy;
@@ -4396,6 +5295,14 @@ function TLandrixCIITradeLocation.IsEmpty: Boolean;
 begin
   Result := (CountryID = '') and
     (Name = '');
+end;
+
+procedure TLandrixCIITradeLocation.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if CountryID <> '' then
+    AList.Add('ram:CountryID');
+  if Name <> '' then
+    AList.Add('ram:Name');
 end;
 
 { TLandrixCIITradeParty }
@@ -4496,6 +5403,30 @@ begin
     ((FSpecifiedTaxRegistration = nil) or (FSpecifiedTaxRegistration.Count = 0));
 end;
 
+procedure TLandrixCIITradeParty.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if (FID <> nil) and (FID.Count > 0) then
+    AList.Add('ram:ID');
+  if (FGlobalID <> nil) and (FGlobalID.Count > 0) then
+    AList.Add('ram:GlobalID');
+  if Name <> '' then
+    AList.Add('ram:Name');
+  if RoleCode <> '' then
+    AList.Add('ram:RoleCode');
+  if Description <> '' then
+    AList.Add('ram:Description');
+  if (FSpecifiedLegalOrganization <> nil) and not FSpecifiedLegalOrganization.IsEmpty then
+    AList.Add('ram:SpecifiedLegalOrganization');
+  if (FDefinedTradeContact <> nil) and (FDefinedTradeContact.Count > 0) then
+    AList.Add('ram:DefinedTradeContact');
+  if (FPostalTradeAddress <> nil) and not FPostalTradeAddress.IsEmpty then
+    AList.Add('ram:PostalTradeAddress');
+  if (FURIUniversalCommunication <> nil) and not FURIUniversalCommunication.IsEmpty then
+    AList.Add('ram:URIUniversalCommunication');
+  if (FSpecifiedTaxRegistration <> nil) and (FSpecifiedTaxRegistration.Count > 0) then
+    AList.Add('ram:SpecifiedTaxRegistration');
+end;
+
 { TLandrixCIITradePaymentDiscountTerms }
 
 destructor TLandrixCIITradePaymentDiscountTerms.Destroy;
@@ -4521,6 +5452,20 @@ begin
     CIIAmountIsEmpty(ActualDiscountAmount);
 end;
 
+procedure TLandrixCIITradePaymentDiscountTerms.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIDateTimeIsEmpty(BasisDateTime) then
+    AList.Add('ram:BasisDateTime');
+  if not CIIMeasureIsEmpty(BasisPeriodMeasure) then
+    AList.Add('ram:BasisPeriodMeasure');
+  if not CIIAmountIsEmpty(BasisAmount) then
+    AList.Add('ram:BasisAmount');
+  if CalculationPercent <> '' then
+    AList.Add('ram:CalculationPercent');
+  if not CIIAmountIsEmpty(ActualDiscountAmount) then
+    AList.Add('ram:ActualDiscountAmount');
+end;
+
 { TLandrixCIITradePaymentPenaltyTerms }
 
 destructor TLandrixCIITradePaymentPenaltyTerms.Destroy;
@@ -4544,6 +5489,20 @@ begin
     CIIAmountIsEmpty(BasisAmount) and
     (CalculationPercent = '') and
     CIIAmountIsEmpty(ActualPenaltyAmount);
+end;
+
+procedure TLandrixCIITradePaymentPenaltyTerms.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIDateTimeIsEmpty(BasisDateTime) then
+    AList.Add('ram:BasisDateTime');
+  if not CIIMeasureIsEmpty(BasisPeriodMeasure) then
+    AList.Add('ram:BasisPeriodMeasure');
+  if not CIIAmountIsEmpty(BasisAmount) then
+    AList.Add('ram:BasisAmount');
+  if CalculationPercent <> '' then
+    AList.Add('ram:CalculationPercent');
+  if not CIIAmountIsEmpty(ActualPenaltyAmount) then
+    AList.Add('ram:ActualPenaltyAmount');
 end;
 
 { TLandrixCIITradePaymentTerms }
@@ -4602,6 +5561,24 @@ begin
     ((FPayeeTradeParty = nil) or FPayeeTradeParty.IsEmpty);
 end;
 
+procedure TLandrixCIITradePaymentTerms.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if Description <> '' then
+    AList.Add('ram:Description');
+  if not CIIDateTimeIsEmpty(DueDateDateTime) then
+    AList.Add('ram:DueDateDateTime');
+  if not CIIIDIsEmpty(DirectDebitMandateID) then
+    AList.Add('ram:DirectDebitMandateID');
+  if not CIIAmountIsEmpty(PartialPaymentAmount) then
+    AList.Add('ram:PartialPaymentAmount');
+  if (FApplicableTradePaymentPenaltyTerms <> nil) and not FApplicableTradePaymentPenaltyTerms.IsEmpty then
+    AList.Add('ram:ApplicableTradePaymentPenaltyTerms');
+  if (FApplicableTradePaymentDiscountTerms <> nil) and not FApplicableTradePaymentDiscountTerms.IsEmpty then
+    AList.Add('ram:ApplicableTradePaymentDiscountTerms');
+  if (FPayeeTradeParty <> nil) and not FPayeeTradeParty.IsEmpty then
+    AList.Add('ram:PayeeTradeParty');
+end;
+
 { TLandrixCIITradePrice }
 
 function TLandrixCIITradePrice.GetAppliedTradeAllowanceCharge: TLandrixCIITradeAllowanceChargeList;
@@ -4641,6 +5618,18 @@ begin
     CIIQuantityIsEmpty(BasisQuantity) and
     ((FAppliedTradeAllowanceCharge = nil) or (FAppliedTradeAllowanceCharge.Count = 0)) and
     ((FIncludedTradeTax = nil) or FIncludedTradeTax.IsEmpty);
+end;
+
+procedure TLandrixCIITradePrice.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIAmountIsEmpty(ChargeAmount) then
+    AList.Add('ram:ChargeAmount');
+  if not CIIQuantityIsEmpty(BasisQuantity) then
+    AList.Add('ram:BasisQuantity');
+  if (FAppliedTradeAllowanceCharge <> nil) and (FAppliedTradeAllowanceCharge.Count > 0) then
+    AList.Add('ram:AppliedTradeAllowanceCharge');
+  if (FIncludedTradeTax <> nil) and not FIncludedTradeTax.IsEmpty then
+    AList.Add('ram:IncludedTradeTax');
 end;
 
 { TLandrixCIITradeProduct }
@@ -4755,6 +5744,44 @@ begin
     ((FIncludedReferencedProduct = nil) or (FIncludedReferencedProduct.Count = 0));
 end;
 
+procedure TLandrixCIITradeProduct.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
+  if not CIIIDIsEmpty(GlobalID) then
+    AList.Add('ram:GlobalID');
+  if not CIIIDIsEmpty(SellerAssignedID) then
+    AList.Add('ram:SellerAssignedID');
+  if not CIIIDIsEmpty(BuyerAssignedID) then
+    AList.Add('ram:BuyerAssignedID');
+  if not CIIIDIsEmpty(IndustryAssignedID) then
+    AList.Add('ram:IndustryAssignedID');
+  if not CIIIDIsEmpty(ModelID) then
+    AList.Add('ram:ModelID');
+  if Name <> '' then
+    AList.Add('ram:Name');
+  if Description <> '' then
+    AList.Add('ram:Description');
+  if (FBatchID <> nil) and (FBatchID.Count > 0) then
+    AList.Add('ram:BatchID');
+  if BrandName <> '' then
+    AList.Add('ram:BrandName');
+  if ModelName <> '' then
+    AList.Add('ram:ModelName');
+  if (FApplicableProductCharacteristic <> nil) and (FApplicableProductCharacteristic.Count > 0) then
+    AList.Add('ram:ApplicableProductCharacteristic');
+  if (FDesignatedProductClassification <> nil) and (FDesignatedProductClassification.Count > 0) then
+    AList.Add('ram:DesignatedProductClassification');
+  if (FIndividualTradeProductInstance <> nil) and (FIndividualTradeProductInstance.Count > 0) then
+    AList.Add('ram:IndividualTradeProductInstance');
+  if (FOriginTradeCountry <> nil) and not FOriginTradeCountry.IsEmpty then
+    AList.Add('ram:OriginTradeCountry');
+  if (FManufacturerTradeParty <> nil) and not FManufacturerTradeParty.IsEmpty then
+    AList.Add('ram:ManufacturerTradeParty');
+  if (FIncludedReferencedProduct <> nil) and (FIncludedReferencedProduct.Count > 0) then
+    AList.Add('ram:IncludedReferencedProduct');
+end;
+
 { TLandrixCIITradeProductInstance }
 
 destructor TLandrixCIITradeProductInstance.Destroy;
@@ -4774,6 +5801,14 @@ begin
     CIIIDIsEmpty(SupplierAssignedSerialID);
 end;
 
+procedure TLandrixCIITradeProductInstance.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(BatchID) then
+    AList.Add('ram:BatchID');
+  if not CIIIDIsEmpty(SupplierAssignedSerialID) then
+    AList.Add('ram:SupplierAssignedSerialID');
+end;
+
 { TLandrixCIITradeSettlementFinancialCard }
 
 destructor TLandrixCIITradeSettlementFinancialCard.Destroy;
@@ -4791,6 +5826,14 @@ function TLandrixCIITradeSettlementFinancialCard.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
     (CardholderName = '');
+end;
+
+procedure TLandrixCIITradeSettlementFinancialCard.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(ID) then
+    AList.Add('ram:ID');
+  if CardholderName <> '' then
+    AList.Add('ram:CardholderName');
 end;
 
 { TLandrixCIITradeSettlementHeaderMonetarySummation }
@@ -4835,6 +5878,28 @@ begin
     CIIAmountIsEmpty(DuePayableAmount);
 end;
 
+procedure TLandrixCIITradeSettlementHeaderMonetarySummation.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIAmountIsEmpty(LineTotalAmount) then
+    AList.Add('ram:LineTotalAmount');
+  if not CIIAmountIsEmpty(ChargeTotalAmount) then
+    AList.Add('ram:ChargeTotalAmount');
+  if not CIIAmountIsEmpty(AllowanceTotalAmount) then
+    AList.Add('ram:AllowanceTotalAmount');
+  if not CIIAmountIsEmpty(TaxBasisTotalAmount) then
+    AList.Add('ram:TaxBasisTotalAmount');
+  if (FTaxTotalAmount <> nil) and (FTaxTotalAmount.Count > 0) then
+    AList.Add('ram:TaxTotalAmount');
+  if not CIIAmountIsEmpty(RoundingAmount) then
+    AList.Add('ram:RoundingAmount');
+  if not CIIAmountIsEmpty(GrandTotalAmount) then
+    AList.Add('ram:GrandTotalAmount');
+  if not CIIAmountIsEmpty(TotalPrepaidAmount) then
+    AList.Add('ram:TotalPrepaidAmount');
+  if not CIIAmountIsEmpty(DuePayableAmount) then
+    AList.Add('ram:DuePayableAmount');
+end;
+
 { TLandrixCIITradeSettlementLineMonetarySummation }
 
 function TLandrixCIITradeSettlementLineMonetarySummation.GetTaxTotalAmount: TLandrixCIIAmountList;
@@ -4869,6 +5934,22 @@ begin
     ((FTaxTotalAmount = nil) or (FTaxTotalAmount.Count = 0)) and
     CIIAmountIsEmpty(GrandTotalAmount) and
     CIIAmountIsEmpty(TotalAllowanceChargeAmount);
+end;
+
+procedure TLandrixCIITradeSettlementLineMonetarySummation.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIAmountIsEmpty(LineTotalAmount) then
+    AList.Add('ram:LineTotalAmount');
+  if not CIIAmountIsEmpty(ChargeTotalAmount) then
+    AList.Add('ram:ChargeTotalAmount');
+  if not CIIAmountIsEmpty(AllowanceTotalAmount) then
+    AList.Add('ram:AllowanceTotalAmount');
+  if (FTaxTotalAmount <> nil) and (FTaxTotalAmount.Count > 0) then
+    AList.Add('ram:TaxTotalAmount');
+  if not CIIAmountIsEmpty(GrandTotalAmount) then
+    AList.Add('ram:GrandTotalAmount');
+  if not CIIAmountIsEmpty(TotalAllowanceChargeAmount) then
+    AList.Add('ram:TotalAllowanceChargeAmount');
 end;
 
 { TLandrixCIITradeSettlementPaymentMeans }
@@ -4945,6 +6026,24 @@ begin
     ((FPayeeSpecifiedCreditorFinancialInstitution = nil) or FPayeeSpecifiedCreditorFinancialInstitution.IsEmpty);
 end;
 
+procedure TLandrixCIITradeSettlementPaymentMeans.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if TypeCode <> '' then
+    AList.Add('ram:TypeCode');
+  if Information <> '' then
+    AList.Add('ram:Information');
+  if (FApplicableTradeSettlementFinancialCard <> nil) and not FApplicableTradeSettlementFinancialCard.IsEmpty then
+    AList.Add('ram:ApplicableTradeSettlementFinancialCard');
+  if (FPayerPartyDebtorFinancialAccount <> nil) and not FPayerPartyDebtorFinancialAccount.IsEmpty then
+    AList.Add('ram:PayerPartyDebtorFinancialAccount');
+  if (FPayeePartyCreditorFinancialAccount <> nil) and not FPayeePartyCreditorFinancialAccount.IsEmpty then
+    AList.Add('ram:PayeePartyCreditorFinancialAccount');
+  if (FPayerSpecifiedDebtorFinancialInstitution <> nil) and not FPayerSpecifiedDebtorFinancialInstitution.IsEmpty then
+    AList.Add('ram:PayerSpecifiedDebtorFinancialInstitution');
+  if (FPayeeSpecifiedCreditorFinancialInstitution <> nil) and not FPayeeSpecifiedCreditorFinancialInstitution.IsEmpty then
+    AList.Add('ram:PayeeSpecifiedCreditorFinancialInstitution');
+end;
+
 { TLandrixCIITradeTax }
 
 destructor TLandrixCIITradeTax.Destroy;
@@ -4982,6 +6081,32 @@ begin
     (RateApplicablePercent = '');
 end;
 
+procedure TLandrixCIITradeTax.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIAmountIsEmpty(CalculatedAmount) then
+    AList.Add('ram:CalculatedAmount');
+  if TypeCode <> '' then
+    AList.Add('ram:TypeCode');
+  if ExemptionReason <> '' then
+    AList.Add('ram:ExemptionReason');
+  if not CIIAmountIsEmpty(BasisAmount) then
+    AList.Add('ram:BasisAmount');
+  if not CIIAmountIsEmpty(LineTotalBasisAmount) then
+    AList.Add('ram:LineTotalBasisAmount');
+  if not CIIAmountIsEmpty(AllowanceChargeBasisAmount) then
+    AList.Add('ram:AllowanceChargeBasisAmount');
+  if CategoryCode <> '' then
+    AList.Add('ram:CategoryCode');
+  if not CIICodeIsEmpty(ExemptionReasonCode) then
+    AList.Add('ram:ExemptionReasonCode');
+  if not CIIDateIsEmpty(TaxPointDate) then
+    AList.Add('ram:TaxPointDate');
+  if DueDateTypeCode <> '' then
+    AList.Add('ram:DueDateTypeCode');
+  if RateApplicablePercent <> '' then
+    AList.Add('ram:RateApplicablePercent');
+end;
+
 { TLandrixCIIUniversalCommunication }
 
 destructor TLandrixCIIUniversalCommunication.Destroy;
@@ -4999,6 +6124,14 @@ function TLandrixCIIUniversalCommunication.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(URIID) and
     (CompleteNumber = '');
+end;
+
+procedure TLandrixCIIUniversalCommunication.ListFilledChildren(AList: TLandrixEInvoiceStringList);
+begin
+  if not CIIIDIsEmpty(URIID) then
+    AList.Add('ram:URIID');
+  if CompleteNumber <> '' then
+    AList.Add('ram:CompleteNumber');
 end;
 
 end.

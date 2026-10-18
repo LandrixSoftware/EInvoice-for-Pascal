@@ -29,6 +29,7 @@ uses
   SysUtils,
   LandrixEInvoiceTypes,
   LandrixEInvoiceSpecs,
+  LandrixEInvoiceRules,
   LandrixEInvoiceTestFramework;
 
 procedure TestEveryEntryFoundByItsTarget;
@@ -165,6 +166,41 @@ begin
   Check(Pos('urn:xoev-de:xrechnung:codeliste:untdid.4461_3', Spec.CodeLists) > 0, '4461 in the XRechnung namespace');
 end;
 
+function SpecOf(const ATarget: TLandrixEInvoiceTarget): TLandrixEInvoiceSpec;
+begin
+  Check(LandrixEInvoiceFindSpec(ATarget, Result), 'spec ' + string(LandrixEInvoiceTargetToStr(ATarget)));
+end;
+
+procedure TestRules;
+var
+  XrUbl, XrCii, FxEn, FxExt, Peppol: TLandrixEInvoiceSpec;
+  Rule: TLandrixEInvoiceRule;
+  I: Integer;
+begin
+  XrUbl := SpecOf(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL));
+  XrCii := SpecOf(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII));
+  FxEn := SpecOf(TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931));
+  FxExt := SpecOf(TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended));
+  Peppol := SpecOf(TLandrixEInvoiceTargets.PeppolBIS('3.0'));
+  Check(LandrixEInvoiceRuleLevel(FxExt, LandrixEInvoiceRuleLineSubLines) = erl_Allowed, 'sub lines EXTENDED');
+  Check(LandrixEInvoiceRuleLevel(FxEn, LandrixEInvoiceRuleLineSubLines) = erl_Forbidden, 'sub lines EN16931');
+  Check(LandrixEInvoiceRuleLevel(XrCii, LandrixEInvoiceRuleLineSubLines) = erl_Forbidden, 'sub lines XRechnung CII');
+  Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleLineSubLines) = erl_Allowed, 'sub lines XRechnung UBL');
+  Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleLineSubLines) = erl_Discouraged, 'sub lines Peppol');
+  Check(LandrixEInvoiceRuleLevel(FxExt, LandrixEInvoiceRuleLineDelivery) = erl_Allowed, 'line delivery EXTENDED');
+  Check(LandrixEInvoiceRuleLevel(XrCii, LandrixEInvoiceRuleLineDelivery) = erl_Forbidden, 'line delivery XRechnung CII');
+  Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleBuyerReferencePlaceholder) = erl_Allowed, 'placeholder XRechnung');
+  Check(LandrixEInvoiceRuleLevel(FxEn, LandrixEInvoiceRuleBuyerReferencePlaceholder) = erl_Forbidden, 'placeholder Factur-X');
+  Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleElectronicAddressDefaultEM) = erl_Forbidden, 'EM Peppol');
+  Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleElectronicAddressDefaultEM) = erl_Allowed, 'EM XRechnung');
+  Check(LandrixEInvoiceRuleLevel(FxEn, 'No.Such.Key') = erl_Allowed, 'unknown key allowed');
+  Check(LandrixEInvoiceFindRule(Peppol, LandrixEInvoiceRuleLineSubLines, Rule) and (Rule.Source = 'UBL-CR-646 (warning)'),
+    'rule with source');
+  Check(LandrixEInvoiceRuleCount > 0, 'rules');
+  for I := 0 to LandrixEInvoiceRuleCount - 1 do
+    Check((LandrixEInvoiceRule(I).Key <> '') and (LandrixEInvoiceRule(I).Source <> ''), 'rule ' + IntToStr(I) + ' complete');
+end;
+
 procedure Register;
 begin
   RegisterTest('Specs.EveryEntryFoundByItsTarget', TestEveryEntryFoundByItsTarget);
@@ -173,6 +209,7 @@ begin
   RegisterTest('Specs.SameTargetAndNames', TestSameTargetAndNames);
   RegisterTest('Specs.Detect', TestDetect);
   RegisterTest('Specs.CodeListsOfXRechnung', TestCodeListsOfXRechnung);
+  RegisterTest('Specs.Rules', TestRules);
 end;
 
 end.

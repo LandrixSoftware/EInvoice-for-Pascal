@@ -109,9 +109,25 @@ type
     { Document type (BT-17, BT-18 or BT-122), default 916.
       DE: Dokumentart (BT-17, BT-18 oder BT-122), Standard 916. }
     TypeCode: TLandrixInvoiceAttachmentTypeCode;
+    { Code of TypeCode that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while TypeCode is
+      iatc_None; a set TypeCode wins when writing.
+      DE: Code zu TypeCode, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      TypeCode den Wert iatc_None hat; ein gesetztes TypeCode gewinnt beim
+      Schreiben. }
+    TypeCodeOther: TLandrixEInvoiceString;
     { BT-125-1 MIME type of the embedded data. DE: BT-125-1 MIME-Typ der
       eingebetteten Daten. }
     AttachmentType: TLandrixInvoiceAttachmentType;
+    { Code of AttachmentType that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while AttachmentType is
+      iat_application_None; a set AttachmentType wins when writing.
+      DE: Code zu AttachmentType, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      AttachmentType den Wert iat_application_None hat; ein gesetztes AttachmentType gewinnt beim
+      Schreiben. }
+    AttachmentTypeOther: TLandrixEInvoiceString;
     { BT-125 embedded data (owned). DE: BT-125 eingebettete Daten (gehoert
       dem Objekt). }
     Data: TMemoryStream;
@@ -213,9 +229,25 @@ type
     { BT-98/BT-140 allowance reason code. DE: BT-98/BT-140 Code des
       Nachlassgrunds. }
     ReasonCodeAllowance: TLandrixInvoiceAllowanceOrChargeIdentCode;
+    { Code of ReasonCodeAllowance that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while ReasonCodeAllowance is
+      iacic_None; a set ReasonCodeAllowance wins when writing.
+      DE: Code zu ReasonCodeAllowance, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      ReasonCodeAllowance den Wert iacic_None hat; ein gesetztes ReasonCodeAllowance gewinnt beim
+      Schreiben. }
+    ReasonCodeAllowanceOther: TLandrixEInvoiceString;
     { BT-105/BT-145 charge reason code. DE: BT-105/BT-145 Code des
       Zuschlagsgrunds. }
     ReasonCodeCharge: TLandrixInvoiceSpecialServiceDescriptionCode;
+    { Code of ReasonCodeCharge that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while ReasonCodeCharge is
+      issdc_None; a set ReasonCodeCharge wins when writing.
+      DE: Code zu ReasonCodeCharge, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      ReasonCodeCharge den Wert issdc_None hat; ein gesetztes ReasonCodeCharge gewinnt beim
+      Schreiben. }
+    ReasonCodeChargeOther: TLandrixEInvoiceString;
     { BT-97/BT-104/BT-139/BT-144 reason. DE: Grund als Text. }
     Reason: TLandrixEInvoiceString;
     { BT-93/BT-100/BT-137/BT-142 base amount. DE: Grundbetrag. }
@@ -230,6 +262,14 @@ type
     { BT-95/BT-102 VAT category (document level). DE: BT-95/BT-102
       Umsatzsteuerkategorie (Dokumentebene). }
     TaxCategory: TLandrixInvoiceDutyTaxFeeCategoryCode;
+    { Code of TaxCategory that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while TaxCategory is
+      idtfcc_None; a set TaxCategory wins when writing.
+      DE: Code zu TaxCategory, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      TaxCategory den Wert idtfcc_None hat; ein gesetztes TaxCategory gewinnt beim
+      Schreiben. }
+    TaxCategoryOther: TLandrixEInvoiceString;
   end;
 
   { List of allowances and charges. DE: Liste der Nachlaesse und
@@ -331,6 +371,14 @@ type
     Quantity: Double;
     { BT-130 unit of measure. DE: BT-130 Mengeneinheit. }
     UnitCode: TLandrixInvoiceUnitCode;
+    { Code of UnitCode that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while UnitCode is
+      iuc_None; a set UnitCode wins when writing.
+      DE: Code zu UnitCode, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      UnitCode den Wert iuc_None hat; ein gesetztes UnitCode gewinnt beim
+      Schreiben. }
+    UnitCodeOther: TLandrixEInvoiceString;
     { BT-155 seller's item identifier. DE: BT-155 Artikelnummer des
       Verkaeufers. }
     SellersItemIdentification: TLandrixEInvoiceString;
@@ -350,6 +398,14 @@ type
     TaxPercent: Double;
     { BT-151 VAT category. DE: BT-151 Umsatzsteuerkategorie. }
     TaxCategory: TLandrixInvoiceDutyTaxFeeCategoryCode;
+    { Code of TaxCategory that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while TaxCategory is
+      idtfcc_None; a set TaxCategory wins when writing.
+      DE: Code zu TaxCategory, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      TaxCategory den Wert idtfcc_None hat; ein gesetztes TaxCategory gewinnt beim
+      Schreiben. }
+    TaxCategoryOther: TLandrixEInvoiceString;
     { VAT exemption reason of the line. DE: Grund der Steuerbefreiung der
       Position. }
     TaxExemptionReason: TLandrixEInvoiceString;
@@ -368,6 +424,14 @@ type
     { BT-150 unit of the price base quantity. DE: BT-150 Mengeneinheit der
       Preiseinheit. }
     BaseQuantityUnitCode: TLandrixInvoiceUnitCode;
+    { Code of BaseQuantityUnitCode that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while BaseQuantityUnitCode is
+      iuc_None; a set BaseQuantityUnitCode wins when writing.
+      DE: Code zu BaseQuantityUnitCode, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      BaseQuantityUnitCode den Wert iuc_None hat; ein gesetztes BaseQuantityUnitCode gewinnt beim
+      Schreiben. }
+    BaseQuantityUnitCodeOther: TLandrixEInvoiceString;
     { BT-131 line net amount. DE: BT-131 Nettobetrag der Position. }
     LineAmount: Currency;
     { BG-27 allowances (BT-136..BT-140) and BG-28 charges (BT-141..BT-145)
@@ -448,6 +512,14 @@ type
       DETAIL, sonst nichts. Beim Lesen wird der Wert aus der Datei
       uebernommen. }
     LineStatusReasonCode: TLandrixInvoiceLineStatusReasonCode;
+    { Code of LineStatusReasonCode that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while LineStatusReasonCode is
+      ilsrc_None; a set LineStatusReasonCode wins when writing.
+      DE: Code zu LineStatusReasonCode, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      LineStatusReasonCode den Wert ilsrc_None hat; ein gesetztes LineStatusReasonCode gewinnt beim
+      Schreiben. }
+    LineStatusReasonCodeOther: TLandrixEInvoiceString;
   public
     constructor Create;
     destructor Destroy; override;
@@ -482,6 +554,14 @@ type
     TaxPercent: Double;
     { BT-118 VAT category. DE: BT-118 Umsatzsteuerkategorie. }
     TaxCategory: TLandrixInvoiceDutyTaxFeeCategoryCode;
+    { Code of TaxCategory that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while TaxCategory is
+      idtfcc_None; a set TaxCategory wins when writing.
+      DE: Code zu TaxCategory, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      TaxCategory den Wert idtfcc_None hat; ein gesetztes TaxCategory gewinnt beim
+      Schreiben. }
+    TaxCategoryOther: TLandrixEInvoiceString;
     { BT-120 VAT exemption reason; should be set for the categories AE, E,
       O and Z. DE: BT-120 Grund der Steuerbefreiung; sollte bei den
       Kategorien AE, E, O und Z gesetzt sein. }
@@ -699,6 +779,14 @@ type
     { BT-21 subject code; insc_None means free text. DE: BT-21 Betreff;
       insc_None bedeutet Freitext. }
     SubjectCode: TLandrixInvoiceNoteSubjectCode;
+    { Code of SubjectCode that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while SubjectCode is
+      insc_None; a set SubjectCode wins when writing.
+      DE: Code zu SubjectCode, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      SubjectCode den Wert insc_None hat; ein gesetztes SubjectCode gewinnt beim
+      Schreiben. }
+    SubjectCodeOther: TLandrixEInvoiceString;
   public
     constructor Create;
   end;
@@ -732,6 +820,14 @@ type
   public
     { BT-81 payment means type code. DE: BT-81 Code der Zahlungsart. }
     PaymentMeansCode: TLandrixInvoicePaymentMeansCode;
+    { Code of PaymentMeansCode that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while PaymentMeansCode is
+      ipmc_NotImplemented; a set PaymentMeansCode wins when writing.
+      DE: Code zu PaymentMeansCode, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      PaymentMeansCode den Wert ipmc_NotImplemented hat; ein gesetztes PaymentMeansCode gewinnt beim
+      Schreiben. }
+    PaymentMeansCodeOther: TLandrixEInvoiceString;
     { BT-82 payment means text. DE: BT-82 Zahlungsart als Text. }
     PaymentMeansInformation: TLandrixEInvoiceString;
     { BT-84 payee IBAN (credit transfer 58), BT-91 debited account (direct
@@ -787,6 +883,14 @@ type
     { BT-3 invoice type code. BT-4 does not exist. DE: BT-3 Rechnungsart.
       BT-4 gibt es nicht. }
     InvoiceTypeCode: TLandrixInvoiceTypeCode;
+    { Code of InvoiceTypeCode that the code list does not know, e.g. read from an
+      invoice or newer than this library. Used only while InvoiceTypeCode is
+      itc_None; a set InvoiceTypeCode wins when writing.
+      DE: Code zu InvoiceTypeCode, den die Codeliste nicht kennt, z. B. aus einer
+      gelesenen Rechnung oder neuer als diese Bibliothek. Gilt nur, solange
+      InvoiceTypeCode den Wert itc_None hat; ein gesetztes InvoiceTypeCode gewinnt beim
+      Schreiben. }
+    InvoiceTypeCodeOther: TLandrixEInvoiceString;
     { BT-5 invoice currency code, e.g. EUR. DE: BT-5 Rechnungswaehrung,
       z. B. EUR. }
     InvoiceCurrencyCode: TLandrixEInvoiceString;
@@ -1701,6 +1805,7 @@ begin
   Description := '';
   Quantity := 0;
   UnitCode := iuc_None;
+  UnitCodeOther := '';
   SellersItemIdentification := '';
   BuyersItemIdentification := '';
   OrderNumber := '';
@@ -1708,12 +1813,14 @@ begin
   BuyerAccountingReference := '';
   TaxPercent := 0;
   TaxCategory := idtfcc_None;
+  TaxCategoryOther := '';
   TaxExemptionReason := '';
   GrossPriceAmount := 0;
   DiscountOnTheGrossPrice := 0;
   NetPriceAmount := 0;
   BaseQuantity := 0;
   BaseQuantityUnitCode := iuc_None;
+  BaseQuantityUnitCodeOther := '';
   LineAmount := 0;
   AllowanceCharges.Clear;
   InvoiceLinePeriodStartDate := 0;
@@ -1727,6 +1834,7 @@ begin
   ActualDeliveryDate := 0;
   SubInvoiceLines.Clear;
   LineStatusReasonCode := ilsrc_None;
+  LineStatusReasonCodeOther := '';
 end;
 
 destructor TLandrixInvoiceLine.Destroy;
@@ -1790,6 +1898,7 @@ begin
   TaxAmount := 0;
   TaxPercent := 0;
   TaxCategory := idtfcc_None;
+  TaxCategoryOther := '';
   TaxExemptionReason := '';
   TaxExemptionReasonCode := '';
 end;
@@ -1983,6 +2092,7 @@ begin
   inherited Create;
   Content := '';
   SubjectCode := insc_None;
+  SubjectCodeOther := '';
 end;
 
 { --- TLandrixInvoiceNotes ----------------------------------------------- }
@@ -2050,6 +2160,7 @@ constructor TLandrixInvoicePaymentType.Create;
 begin
   inherited Create;
   PaymentMeansCode := ipmc_NotImplemented;
+  PaymentMeansCodeOther := '';
   PaymentMeansInformation := '';
   FinancialAccount := '';
   FinancialAccountName := '';
@@ -2150,6 +2261,7 @@ begin
   InvoicePeriodStartDate := 0;
   InvoicePeriodEndDate := 0;
   InvoiceTypeCode := itc_None;
+  InvoiceTypeCodeOther := '';
   InvoiceCurrencyCode := '';
   TaxCurrencyCode := '';
   BuyerReference := '';

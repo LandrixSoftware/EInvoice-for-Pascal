@@ -29,12 +29,15 @@ uses
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestSelf,
   LandrixEInvoiceTestTypes,
+  LandrixEInvoiceTestLexical,
   LandrixEInvoiceTestNullable,
   LandrixEInvoiceTestModel,
   LandrixEInvoiceTestCompat,
   LandrixEInvoiceTestSpecs,
   LandrixEInvoiceTestCII,
-  LandrixEInvoiceTestUBL;
+  LandrixEInvoiceTestUBL,
+  LandrixEInvoiceTestScenarioRun,
+  LandrixEInvoiceTestMapCII;
 
 function FilterParam: string;
 var
@@ -49,11 +52,14 @@ end;
 begin
   LandrixEInvoiceTestSelf.Register;
   LandrixEInvoiceTestTypes.Register;
+  LandrixEInvoiceTestLexical.Register;
   LandrixEInvoiceTestNullable.Register;
   LandrixEInvoiceTestModel.Register;
   LandrixEInvoiceTestCompat.Register;
   LandrixEInvoiceTestSpecs.Register;
   LandrixEInvoiceTestCII.Register;
   LandrixEInvoiceTestUBL.Register;
+  LandrixEInvoiceTestScenarioRun.Register;
+  LandrixEInvoiceTestMapCII.Register;
   ExitCode := RunAllTests(FilterParam);
 end.
