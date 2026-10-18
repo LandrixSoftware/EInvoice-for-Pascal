@@ -1,0 +1,2144 @@
+{
+ "namespaces": {
+  "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+  "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+  "cn": "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
+  "ext": "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
+  "inv": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+ },
+ "roots": [
+  {
+   "name": "Invoice",
+   "ns": "inv",
+   "type": "inv:InvoiceType"
+  },
+  {
+   "name": "CreditNote",
+   "ns": "cn",
+   "type": "cn:CreditNoteType"
+  }
+ ],
+ "skip": [
+  {
+   "ns": "ext",
+   "name": "UBLExtensions"
+  }
+ ],
+ "types": {
+  "cac:AddressLineType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Line",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:AddressType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "StreetName",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AdditionalStreetName",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CityName",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PostalZone",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CountrySubentity",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AddressLine",
+     "ns": "cac",
+     "type": "cac:AddressLineType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "Country",
+     "ns": "cac",
+     "type": "cac:CountryType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:AllowanceChargeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ChargeIndicator",
+     "ns": "cbc",
+     "type": "udt:IndicatorType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "AllowanceChargeReasonCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AllowanceChargeReason",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "MultiplierFactorNumeric",
+     "ns": "cbc",
+     "type": "udt:NumericType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Amount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "BaseAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxCategory",
+     "ns": "cac",
+     "type": "cac:TaxCategoryType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:AttachmentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "EmbeddedDocumentBinaryObject",
+     "ns": "cbc",
+     "type": "udt:BinaryObjectType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ExternalReference",
+     "ns": "cac",
+     "type": "cac:ExternalReferenceType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:BillingReferenceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "InvoiceDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:BranchType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:CardAccountType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "PrimaryAccountNumberID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "NetworkID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "HolderName",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:CommodityClassificationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ItemClassificationCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:ConditionType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "AttributeID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "Measure",
+     "ns": "cbc",
+     "type": "udt:MeasureType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Description",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "MinimumMeasure",
+     "ns": "cbc",
+     "type": "udt:MeasureType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "MaximumMeasure",
+     "ns": "cbc",
+     "type": "udt:MeasureType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:ContactType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Name",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Telephone",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ElectronicMail",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:CountryType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "IdentificationCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:CreditNoteLineType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "Note",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "CreditedQuantity",
+     "ns": "cbc",
+     "type": "udt:QuantityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "LineExtensionAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AccountingCost",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "InvoicePeriod",
+     "ns": "cac",
+     "type": "cac:PeriodType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "OrderLineReference",
+     "ns": "cac",
+     "type": "cac:OrderLineReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "DiscrepancyResponse",
+     "ns": "cac",
+     "type": "cac:ResponseType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "DocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AllowanceCharge",
+     "ns": "cac",
+     "type": "cac:AllowanceChargeType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "Item",
+     "ns": "cac",
+     "type": "cac:ItemType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Price",
+     "ns": "cac",
+     "type": "cac:PriceType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "SubCreditNoteLine",
+     "ns": "cac",
+     "type": "cac:CreditNoteLineType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:CustomerPartyType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Party",
+     "ns": "cac",
+     "type": "cac:PartyType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:DeliveryType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ActualDeliveryDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DeliveryLocation",
+     "ns": "cac",
+     "type": "cac:LocationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PromisedDeliveryPeriod",
+     "ns": "cac",
+     "type": "cac:PeriodType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DeliveryParty",
+     "ns": "cac",
+     "type": "cac:PartyType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:DocumentReferenceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "IssueDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DocumentTypeCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DocumentType",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DocumentDescription",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "Attachment",
+     "ns": "cac",
+     "type": "cac:AttachmentType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:ExternalReferenceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "URI",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:FinancialAccountType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Name",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "FinancialInstitutionBranch",
+     "ns": "cac",
+     "type": "cac:BranchType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:InvoiceLineType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "Note",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "InvoicedQuantity",
+     "ns": "cbc",
+     "type": "udt:QuantityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "LineExtensionAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "AccountingCost",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "InvoicePeriod",
+     "ns": "cac",
+     "type": "cac:PeriodType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "OrderLineReference",
+     "ns": "cac",
+     "type": "cac:OrderLineReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "DocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AllowanceCharge",
+     "ns": "cac",
+     "type": "cac:AllowanceChargeType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "Item",
+     "ns": "cac",
+     "type": "cac:ItemType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "Price",
+     "ns": "cac",
+     "type": "cac:PriceType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "SubInvoiceLine",
+     "ns": "cac",
+     "type": "cac:InvoiceLineType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:ItemIdentificationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:ItemPropertyType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Name",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "Value",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:ItemType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Description",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "Name",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "BuyersItemIdentification",
+     "ns": "cac",
+     "type": "cac:ItemIdentificationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "SellersItemIdentification",
+     "ns": "cac",
+     "type": "cac:ItemIdentificationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "StandardItemIdentification",
+     "ns": "cac",
+     "type": "cac:ItemIdentificationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "OriginCountry",
+     "ns": "cac",
+     "type": "cac:CountryType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CommodityClassification",
+     "ns": "cac",
+     "type": "cac:CommodityClassificationType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "ClassifiedTaxCategory",
+     "ns": "cac",
+     "type": "cac:TaxCategoryType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AdditionalItemProperty",
+     "ns": "cac",
+     "type": "cac:ItemPropertyType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:LocationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Address",
+     "ns": "cac",
+     "type": "cac:AddressType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:MonetaryTotalType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "LineExtensionAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxExclusiveAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxInclusiveAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AllowanceTotalAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ChargeTotalAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PrepaidAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PayableRoundingAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PayableAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:OrderLineReferenceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "LineID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "OrderReference",
+     "ns": "cac",
+     "type": "cac:OrderReferenceType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:OrderReferenceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "SalesOrderID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PartyIdentificationType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PartyLegalEntityType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "RegistrationName",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CompanyID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CompanyLegalForm",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PartyNameType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Name",
+     "ns": "cbc",
+     "type": "udt:NameType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PartyTaxSchemeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "CompanyID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxScheme",
+     "ns": "cac",
+     "type": "cac:TaxSchemeType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PartyType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "EndpointID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PartyIdentification",
+     "ns": "cac",
+     "type": "cac:PartyIdentificationType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PartyName",
+     "ns": "cac",
+     "type": "cac:PartyNameType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PostalAddress",
+     "ns": "cac",
+     "type": "cac:AddressType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PartyTaxScheme",
+     "ns": "cac",
+     "type": "cac:PartyTaxSchemeType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PartyLegalEntity",
+     "ns": "cac",
+     "type": "cac:PartyLegalEntityType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "Contact",
+     "ns": "cac",
+     "type": "cac:ContactType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PaymentMandateType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PayerFinancialAccount",
+     "ns": "cac",
+     "type": "cac:FinancialAccountType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PaymentMeansType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "PaymentMeansCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "PaymentDueDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PaymentID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "CardAccount",
+     "ns": "cac",
+     "type": "cac:CardAccountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PayeeFinancialAccount",
+     "ns": "cac",
+     "type": "cac:FinancialAccountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PaymentMandate",
+     "ns": "cac",
+     "type": "cac:PaymentMandateType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PaymentTermsType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Note",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:PaymentType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "PaidAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "InstructionID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PeriodType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "StartDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "StartTime",
+     "ns": "cbc",
+     "type": "udt:TimeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "EndDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "EndTime",
+     "ns": "cbc",
+     "type": "udt:TimeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DurationMeasure",
+     "ns": "cbc",
+     "type": "udt:MeasureType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DescriptionCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "Description",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:PriceListType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "StatusCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ValidityPeriod",
+     "ns": "cac",
+     "type": "cac:PeriodType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PreviousPriceList",
+     "ns": "cac",
+     "type": "cac:PriceListType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:PriceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "PriceAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "BaseQuantity",
+     "ns": "cbc",
+     "type": "udt:QuantityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ValidityPeriod",
+     "ns": "cac",
+     "type": "cac:PeriodType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PriceList",
+     "ns": "cac",
+     "type": "cac:PriceListType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AllowanceCharge",
+     "ns": "cac",
+     "type": "cac:AllowanceChargeType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:ProjectReferenceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:ResponseType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ReferenceID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ResponseCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Description",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "EffectiveDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "EffectiveTime",
+     "ns": "cbc",
+     "type": "udt:TimeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Status",
+     "ns": "cac",
+     "type": "cac:StatusType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:StatusType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ConditionCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ReferenceDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ReferenceTime",
+     "ns": "cbc",
+     "type": "udt:TimeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Description",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "StatusReasonCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "StatusReason",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "SequenceID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Text",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "IndicationIndicator",
+     "ns": "cbc",
+     "type": "udt:IndicatorType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Percent",
+     "ns": "cbc",
+     "type": "udt:PercentType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ReliabilityPercent",
+     "ns": "cbc",
+     "type": "udt:PercentType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Condition",
+     "ns": "cac",
+     "type": "cac:ConditionType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cac:SupplierPartyType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "Party",
+     "ns": "cac",
+     "type": "cac:PartyType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:TaxCategoryType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Percent",
+     "ns": "cbc",
+     "type": "udt:PercentType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxExemptionReasonCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxExemptionReason",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "TaxScheme",
+     "ns": "cac",
+     "type": "cac:TaxSchemeType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:TaxSchemeType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    }
+   ]
+  },
+  "cac:TaxSubtotalType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "TaxableAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "TaxCategory",
+     "ns": "cac",
+     "type": "cac:TaxCategoryType",
+     "min": 1,
+     "max": 1
+    }
+   ]
+  },
+  "cac:TaxTotalType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "TaxAmount",
+     "ns": "cbc",
+     "type": "udt:AmountType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "TaxSubtotal",
+     "ns": "cac",
+     "type": "cac:TaxSubtotalType",
+     "min": 0,
+     "max": -1
+    }
+   ]
+  },
+  "cn:CreditNoteType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "UBLVersionID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CustomizationID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ProfileID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "IssueDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "TaxPointDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CreditNoteTypeCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Note",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "DocumentCurrencyCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxCurrencyCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AccountingCost",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "BuyerReference",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "InvoicePeriod",
+     "ns": "cac",
+     "type": "cac:PeriodType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "DiscrepancyResponse",
+     "ns": "cac",
+     "type": "cac:ResponseType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "OrderReference",
+     "ns": "cac",
+     "type": "cac:OrderReferenceType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "BillingReference",
+     "ns": "cac",
+     "type": "cac:BillingReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "DespatchDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "ReceiptDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "ContractDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AdditionalDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "OriginatorDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AccountingSupplierParty",
+     "ns": "cac",
+     "type": "cac:SupplierPartyType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "AccountingCustomerParty",
+     "ns": "cac",
+     "type": "cac:CustomerPartyType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "PayeeParty",
+     "ns": "cac",
+     "type": "cac:PartyType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxRepresentativeParty",
+     "ns": "cac",
+     "type": "cac:PartyType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Delivery",
+     "ns": "cac",
+     "type": "cac:DeliveryType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PaymentMeans",
+     "ns": "cac",
+     "type": "cac:PaymentMeansType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PaymentTerms",
+     "ns": "cac",
+     "type": "cac:PaymentTermsType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AllowanceCharge",
+     "ns": "cac",
+     "type": "cac:AllowanceChargeType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "TaxTotal",
+     "ns": "cac",
+     "type": "cac:TaxTotalType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "LegalMonetaryTotal",
+     "ns": "cac",
+     "type": "cac:MonetaryTotalType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "CreditNoteLine",
+     "ns": "cac",
+     "type": "cac:CreditNoteLineType",
+     "min": 1,
+     "max": -1
+    }
+   ]
+  },
+  "inv:InvoiceType": {
+   "kind": "complex",
+   "children": [
+    {
+     "name": "UBLVersionID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "CustomizationID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ProfileID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "ID",
+     "ns": "cbc",
+     "type": "udt:IdentifierType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "IssueDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "DueDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "InvoiceTypeCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Note",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "TaxPointDate",
+     "ns": "cbc",
+     "type": "udt:DateType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "DocumentCurrencyCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxCurrencyCode",
+     "ns": "cbc",
+     "type": "udt:CodeType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "AccountingCost",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "BuyerReference",
+     "ns": "cbc",
+     "type": "udt:TextType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "InvoicePeriod",
+     "ns": "cac",
+     "type": "cac:PeriodType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "OrderReference",
+     "ns": "cac",
+     "type": "cac:OrderReferenceType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "BillingReference",
+     "ns": "cac",
+     "type": "cac:BillingReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "DespatchDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "ReceiptDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "OriginatorDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "ContractDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AdditionalDocumentReference",
+     "ns": "cac",
+     "type": "cac:DocumentReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "ProjectReference",
+     "ns": "cac",
+     "type": "cac:ProjectReferenceType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AccountingSupplierParty",
+     "ns": "cac",
+     "type": "cac:SupplierPartyType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "AccountingCustomerParty",
+     "ns": "cac",
+     "type": "cac:CustomerPartyType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "PayeeParty",
+     "ns": "cac",
+     "type": "cac:PartyType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "TaxRepresentativeParty",
+     "ns": "cac",
+     "type": "cac:PartyType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "Delivery",
+     "ns": "cac",
+     "type": "cac:DeliveryType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PaymentMeans",
+     "ns": "cac",
+     "type": "cac:PaymentMeansType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PaymentTerms",
+     "ns": "cac",
+     "type": "cac:PaymentTermsType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "PrepaidPayment",
+     "ns": "cac",
+     "type": "cac:PaymentType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "AllowanceCharge",
+     "ns": "cac",
+     "type": "cac:AllowanceChargeType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "TaxTotal",
+     "ns": "cac",
+     "type": "cac:TaxTotalType",
+     "min": 0,
+     "max": -1
+    },
+    {
+     "name": "LegalMonetaryTotal",
+     "ns": "cac",
+     "type": "cac:MonetaryTotalType",
+     "min": 1,
+     "max": 1
+    },
+    {
+     "name": "InvoiceLine",
+     "ns": "cac",
+     "type": "cac:InvoiceLineType",
+     "min": 1,
+     "max": -1
+    }
+   ]
+  },
+  "udt:AmountType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": [
+    {
+     "name": "currencyID",
+     "required": true,
+     "default": null
+    },
+    {
+     "name": "currencyCodeListVersionID",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:BinaryObjectType": {
+   "kind": "simple",
+   "base": "base64",
+   "attributes": [
+    {
+     "name": "format",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "mimeCode",
+     "required": true,
+     "default": null
+    },
+    {
+     "name": "encodingCode",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "characterSetCode",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "uri",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "filename",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:CodeType": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": [
+    {
+     "name": "listID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "listAgencyID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "listAgencyName",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "listName",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "listVersionID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "name",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "languageID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "listURI",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "listSchemeURI",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:DateType": {
+   "kind": "simple",
+   "base": "date",
+   "attributes": []
+  },
+  "udt:IdentifierType": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": [
+    {
+     "name": "schemeID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "schemeName",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "schemeAgencyID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "schemeAgencyName",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "schemeVersionID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "schemeDataURI",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "schemeURI",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:IndicatorType": {
+   "kind": "simple",
+   "base": "boolean",
+   "attributes": []
+  },
+  "udt:MeasureType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": [
+    {
+     "name": "unitCode",
+     "required": true,
+     "default": null
+    },
+    {
+     "name": "unitCodeListVersionID",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:NameType": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": []
+  },
+  "udt:NumericType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": []
+  },
+  "udt:PercentType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": []
+  },
+  "udt:QuantityType": {
+   "kind": "simple",
+   "base": "decimal",
+   "attributes": [
+    {
+     "name": "unitCode",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "unitCodeListID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "unitCodeListAgencyID",
+     "required": false,
+     "default": null
+    },
+    {
+     "name": "unitCodeListAgencyName",
+     "required": false,
+     "default": null
+    }
+   ]
+  },
+  "udt:TextType": {
+   "kind": "simple",
+   "base": "string",
+   "attributes": []
+  },
+  "udt:TimeType": {
+   "kind": "simple",
+   "base": "time",
+   "attributes": []
+  }
+ }
+}

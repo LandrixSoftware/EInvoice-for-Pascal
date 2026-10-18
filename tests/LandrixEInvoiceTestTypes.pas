@@ -114,6 +114,36 @@ begin
   end;
 end;
 
+procedure TestStringList;
+var
+  L: TLandrixEInvoiceStringList;
+  I: Integer;
+begin
+  L := TLandrixEInvoiceStringList.Create;
+  try
+    CheckEquals(0, Integer(L.Count), 'empty');
+    for I := 1 to 10 do
+      L.Add(Wide([Word($41 + I), $0142]));
+    CheckEquals(10, Integer(L.Count), 'ten items');
+    Check(L[0] = Wide([$42, $0142]), 'first item, non-Latin-1 kept');
+    L[1] := 'x';
+    Check(L[1] = 'x', 'set item');
+    L.Delete(0);
+    CheckEquals(9, Integer(L.Count), 'after delete');
+    Check(L[0] = 'x', 'items moved up');
+    try
+      L.Delete(9);
+      FailNotRaised('ELandrixEInvoiceError for index 9 of 9');
+    except
+      on ELandrixEInvoiceError do ;
+    end;
+    L.Clear;
+    CheckEquals(0, Integer(L.Count), 'after Clear');
+  finally
+    L.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Types.Version', TestVersion);
@@ -124,6 +154,7 @@ begin
   RegisterTest('Types.SupplementaryRoundTrip', TestSupplementaryRoundTrip);
   RegisterTest('Types.InvalidUtf8', TestInvalidUtf8);
   RegisterTest('Types.LoneSurrogate', TestLoneSurrogate);
+  RegisterTest('Types.StringList', TestStringList);
 end;
 
 end.

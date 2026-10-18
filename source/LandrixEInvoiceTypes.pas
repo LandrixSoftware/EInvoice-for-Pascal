@@ -112,6 +112,33 @@ type
     aus LandrixXml behalten ihre Klasse ELandrixXmlError). }
   ELandrixEInvoiceError = class(Exception);
 
+  { List of strings in TLandrixEInvoiceString (UTF-16 on every compiler;
+    TStringList holds AnsiString on Delphi 6-2007). Used by the syntax
+    models for repeated plain text such as cbc:Note. Index errors raise
+    ELandrixEInvoiceError.
+    DE: Liste von Zeichenketten in TLandrixEInvoiceString (UTF-16 auf jedem
+    Compiler; TStringList haelt unter Delphi 6-2007 AnsiString). Die
+    Syntaxmodelle nutzen sie fuer wiederholten einfachen Text wie cbc:Note.
+    Indexfehler loesen ELandrixEInvoiceError aus. }
+  TLandrixEInvoiceStringList = class(TObject)
+  private
+    FItems: array of TLandrixEInvoiceString;
+    FCount: TLandrixEInvoiceListIndex;
+    function GetItem(Index: TLandrixEInvoiceListIndex): TLandrixEInvoiceString;
+    procedure SetItem(Index: TLandrixEInvoiceListIndex; const AValue: TLandrixEInvoiceString);
+  public
+    { Appends a string. DE: Haengt eine Zeichenkette an. }
+    procedure Add(const AValue: TLandrixEInvoiceString);
+    { Removes the string at Index. DE: Entfernt die Zeichenkette an Index. }
+    procedure Delete(Index: TLandrixEInvoiceListIndex);
+    { Removes all strings. DE: Entfernt alle Zeichenketten. }
+    procedure Clear;
+    { Number of strings. DE: Anzahl der Zeichenketten. }
+    property Count: TLandrixEInvoiceListIndex read FCount;
+    { The strings, 0-based. DE: Die Zeichenketten, ab 0 gezaehlt. }
+    property Items[Index: TLandrixEInvoiceListIndex]: TLandrixEInvoiceString read GetItem write SetItem; default;
+  end;
+
   { Standard of an e-invoice specification. ZUGFeRD 2.x and Factur-X 1.x
     are one standard with two names (est_FacturX).
     DE: Standard einer E-Rechnungs-Spezifikation. ZUGFeRD 2.x und Factur-X
@@ -706,6 +733,49 @@ end;
 function LandrixEInvoiceUtf8ToString(const S: TLandrixXmlUtf8): TLandrixEInvoiceString;
 begin
   Result := LandrixXmlUtf8ToWide(S);
+end;
+
+{ TLandrixEInvoiceStringList }
+
+function TLandrixEInvoiceStringList.GetItem(Index: TLandrixEInvoiceListIndex): TLandrixEInvoiceString;
+begin
+  if (Index < 0) or (Index >= FCount) then
+    raise ELandrixEInvoiceError.Create('TLandrixEInvoiceStringList index out of range');
+  Result := FItems[Index];
+end;
+
+procedure TLandrixEInvoiceStringList.SetItem(Index: TLandrixEInvoiceListIndex;
+  const AValue: TLandrixEInvoiceString);
+begin
+  if (Index < 0) or (Index >= FCount) then
+    raise ELandrixEInvoiceError.Create('TLandrixEInvoiceStringList index out of range');
+  FItems[Index] := AValue;
+end;
+
+procedure TLandrixEInvoiceStringList.Add(const AValue: TLandrixEInvoiceString);
+begin
+  if FCount = Length(FItems) then
+    SetLength(FItems, FCount * 2 + 4);
+  FItems[FCount] := AValue;
+  Inc(FCount);
+end;
+
+procedure TLandrixEInvoiceStringList.Delete(Index: TLandrixEInvoiceListIndex);
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  if (Index < 0) or (Index >= FCount) then
+    raise ELandrixEInvoiceError.Create('TLandrixEInvoiceStringList index out of range');
+  for I := Index to FCount - 2 do
+    FItems[I] := FItems[I + 1];
+  Dec(FCount);
+  FItems[FCount] := '';
+end;
+
+procedure TLandrixEInvoiceStringList.Clear;
+begin
+  FItems := nil;
+  FCount := 0;
 end;
 
 end.

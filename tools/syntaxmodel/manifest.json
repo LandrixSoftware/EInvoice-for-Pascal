@@ -1,5 +1,5 @@
 {
-  "comment": "Input of extract-xsd.py. The schema files are not part of the repository; extract-xsd.py downloads the package, verifies the checksums and writes the reduced structure description cii.json, which is committed and used by gen-syntaxmodel.py.",
+  "comment": "Input of extract-xsd.py. The schema files are not part of the repository; extract-xsd.py downloads the packages, verifies the checksums and writes the reduced structure descriptions cii.json and ubl.json, which are committed and used by gen-syntaxmodel.py.",
   "cii": {
     "title": "Factur-X 1.09.2 / ZUGFeRD 2.5.2 EXTENDED schema, from validator-configuration-zugferd 2.5.2",
     "url": "https://github.com/LandrixSoftware/validator-configuration-zugferd/releases/download/validation-configuration-zugferd-2.5.2/validation-configuration-zugferd-2.5.2-2026-10-15.zip",
@@ -13,5 +13,46 @@
       "Factur-X_1.09.2_EXTENDED_urn_un_unece_uncefact_data_standard_UnqualifiedDataType_100.xsd": "c6c9f7b3f36c821999f20d7b7fff30db64112bc7b2a8f132e3d048d859855d00"
     },
     "output": "cii.json"
+  },
+  "ubl": {
+    "title": "UBL 2.1 Invoice and CreditNote schema, from the KoSIT validator configuration XRechnung 3.0.2",
+    "url": "https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v2026-08-31/xrechnung-3.0.2-validator-configuration-2026-08-31.zip",
+    "zip_sha256": "2530cd107c414511c5d0462ec10f886910395abfca820db82e83d70bf01221a8",
+    "folder": "resources/ubl/2.1/",
+    "main": [
+      "xsd/maindoc/UBL-Invoice-2.1.xsd",
+      "xsd/maindoc/UBL-CreditNote-2.1.xsd"
+    ],
+    "files": {
+      "xsd/maindoc/UBL-Invoice-2.1.xsd": "3a5aacd823f0e5b8f25ae7b5191c2002d5333ba351d87de9371ed62dca2b2b0c",
+      "xsd/maindoc/UBL-CreditNote-2.1.xsd": "1e117b6c1ab713604b29b0d685442a81a0c78a82575445ee8c43e6050cda7454",
+      "xsd/common/UBL-CommonAggregateComponents-2.1.xsd": "580b5af6f68f7f556bd15945ba0e819cbf561442c81694f9b9468036ebedec4d",
+      "xsd/common/UBL-CommonBasicComponents-2.1.xsd": "a3b349bf92e5cff26e303d2f05b7e00c884dcafcfd9e12755fb80289abf5e22e",
+      "xsd/common/UBL-UnqualifiedDataTypes-2.1.xsd": "09052d406b4293e2a5f9c2bfee6df10ad4d8d5f0b36e24a6349d7f7936d89eb6",
+      "xsd/common/CCTS_CCT_SchemaModule-2.1.xsd": "dd546e4809df86b6445589f69f0d6c9df162840ae386574ddfc1da7638103e15",
+      "xsd/common/UBL-QualifiedDataTypes-2.1.xsd": "7dcb156e610239c97ae70940cf4653b88e48c3595bf5f56a2204a32e2893e6cf",
+      "xsl/EN16931-UBL-validation.xsl": "759f2d2e830c7fd1d5a6e8b4f61e5dbafc7a7805862c4ae1c749eeac6adde698"
+    },
+    "prefixes": {
+      "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2": "inv",
+      "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2": "cn",
+      "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2": "cac",
+      "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2": "cbc",
+      "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2": "ext",
+      "urn:oasis:names:specification:ubl:schema:xsd:UnqualifiedDataTypes-2": "udt",
+      "urn:oasis:names:specification:ubl:schema:xsd:QualifiedDataTypes-2": "qdt",
+      "urn:un:unece:uncefact:data:specification:CoreComponentTypeSchemaModule:2": "ccts-cct"
+    },
+    "attribute_types": [
+      "udt:AmountType",
+      "udt:BinaryObjectType",
+      "udt:CodeType",
+      "udt:IdentifierType",
+      "udt:MeasureType",
+      "udt:QuantityType"
+    ],
+    "positive_list": "ubl-positive.json",
+    "en16931_rules": "xsl/EN16931-UBL-validation.xsl",
+    "output": "ubl.json"
   }
 }

@@ -1,0 +1,349 @@
+{
+ "comment": "UBL positive list: per schema type, the child elements the UBL syntax model keeps. Order, cardinality and types come from the UBL 2.1 XSD; extract-xsd.py fails on entries that are not children of their type. Maintained by hand; extract-xsd.py --report compares it with the EN 16931 UBL binding.",
+ "sources": [
+  "UBL 2.1 XSD minus the elements forbidden by the EN 16931 UBL syntax rules UBL-CR-001 to UBL-CR-682 (KoSIT validator configuration XRechnung 3.0.2, 2026-08-31): 46 types, 230 entries",
+  "plus the children used by the 742 UBL example documents of XRechnung-for-Delphi and ZUGFeRD-for-Delphi (2026-10-18)",
+  "plus cac:SubCreditNoteLine, read and written by XRechnung-for-Delphi; every cbc/cac name in the code of both libraries is covered"
+ ],
+ "notes": {
+  "inv:InvoiceType cac:PrepaidPayment": "XRechnung extension: third-party payment (BG-DEX-09)",
+  "cac:PaymentType": "XRechnung extension: third-party payment (BG-DEX-09)",
+  "cac:InvoiceLineType cac:SubInvoiceLine": "XRechnung extension: sub invoice lines (BG-DEX-01)",
+  "cac:CreditNoteLineType cac:SubCreditNoteLine": "XRechnung extension: sub invoice lines (BG-DEX-01), credit note form; the EN 16931 rule UBL-CR-646 names only cac:SubInvoiceLine, so extract-xsd.py --report cannot list this entry as outside the binding",
+  "cac:DocumentReferenceType cbc:DocumentType": "outside EN 16931; used by examples in the XRechnung-for-Delphi documentation",
+  "cac:OrderLineReferenceType cac:OrderReference": "outside EN 16931; used by XRechnung 2.3.1 Schematron test documents"
+ },
+ "types": {
+  "cac:AddressLineType": [
+   "cbc:Line"
+  ],
+  "cac:AddressType": [
+   "cbc:StreetName",
+   "cbc:AdditionalStreetName",
+   "cbc:CityName",
+   "cbc:PostalZone",
+   "cbc:CountrySubentity",
+   "cac:AddressLine",
+   "cac:Country"
+  ],
+  "cac:AllowanceChargeType": [
+   "cbc:ChargeIndicator",
+   "cbc:AllowanceChargeReasonCode",
+   "cbc:AllowanceChargeReason",
+   "cbc:MultiplierFactorNumeric",
+   "cbc:Amount",
+   "cbc:BaseAmount",
+   "cac:TaxCategory"
+  ],
+  "cac:AttachmentType": [
+   "cbc:EmbeddedDocumentBinaryObject",
+   "cac:ExternalReference"
+  ],
+  "cac:BillingReferenceType": [
+   "cac:InvoiceDocumentReference"
+  ],
+  "cac:BranchType": [
+   "cbc:ID"
+  ],
+  "cac:CardAccountType": [
+   "cbc:PrimaryAccountNumberID",
+   "cbc:NetworkID",
+   "cbc:HolderName"
+  ],
+  "cac:CommodityClassificationType": [
+   "cbc:ItemClassificationCode"
+  ],
+  "cac:ConditionType": [
+   "cbc:AttributeID",
+   "cbc:Measure",
+   "cbc:Description",
+   "cbc:MinimumMeasure",
+   "cbc:MaximumMeasure"
+  ],
+  "cac:ContactType": [
+   "cbc:Name",
+   "cbc:Telephone",
+   "cbc:ElectronicMail"
+  ],
+  "cac:CountryType": [
+   "cbc:IdentificationCode"
+  ],
+  "cac:CreditNoteLineType": [
+   "cbc:ID",
+   "cbc:Note",
+   "cbc:CreditedQuantity",
+   "cbc:LineExtensionAmount",
+   "cbc:AccountingCost",
+   "cac:InvoicePeriod",
+   "cac:OrderLineReference",
+   "cac:DiscrepancyResponse",
+   "cac:DocumentReference",
+   "cac:AllowanceCharge",
+   "cac:Item",
+   "cac:Price",
+   "cac:SubCreditNoteLine"
+  ],
+  "cac:CustomerPartyType": [
+   "cac:Party"
+  ],
+  "cac:DeliveryType": [
+   "cbc:ActualDeliveryDate",
+   "cac:DeliveryLocation",
+   "cac:PromisedDeliveryPeriod",
+   "cac:DeliveryParty"
+  ],
+  "cac:DocumentReferenceType": [
+   "cbc:ID",
+   "cbc:IssueDate",
+   "cbc:DocumentTypeCode",
+   "cbc:DocumentType",
+   "cbc:DocumentDescription",
+   "cac:Attachment"
+  ],
+  "cac:ExternalReferenceType": [
+   "cbc:URI"
+  ],
+  "cac:FinancialAccountType": [
+   "cbc:ID",
+   "cbc:Name",
+   "cac:FinancialInstitutionBranch"
+  ],
+  "cac:InvoiceLineType": [
+   "cbc:ID",
+   "cbc:Note",
+   "cbc:InvoicedQuantity",
+   "cbc:LineExtensionAmount",
+   "cbc:AccountingCost",
+   "cac:InvoicePeriod",
+   "cac:OrderLineReference",
+   "cac:DocumentReference",
+   "cac:AllowanceCharge",
+   "cac:Item",
+   "cac:Price",
+   "cac:SubInvoiceLine"
+  ],
+  "cac:ItemIdentificationType": [
+   "cbc:ID"
+  ],
+  "cac:ItemPropertyType": [
+   "cbc:Name",
+   "cbc:Value"
+  ],
+  "cac:ItemType": [
+   "cbc:Description",
+   "cbc:Name",
+   "cac:BuyersItemIdentification",
+   "cac:SellersItemIdentification",
+   "cac:StandardItemIdentification",
+   "cac:OriginCountry",
+   "cac:CommodityClassification",
+   "cac:ClassifiedTaxCategory",
+   "cac:AdditionalItemProperty"
+  ],
+  "cac:LocationType": [
+   "cbc:ID",
+   "cac:Address"
+  ],
+  "cac:MonetaryTotalType": [
+   "cbc:LineExtensionAmount",
+   "cbc:TaxExclusiveAmount",
+   "cbc:TaxInclusiveAmount",
+   "cbc:AllowanceTotalAmount",
+   "cbc:ChargeTotalAmount",
+   "cbc:PrepaidAmount",
+   "cbc:PayableRoundingAmount",
+   "cbc:PayableAmount"
+  ],
+  "cac:OrderLineReferenceType": [
+   "cbc:LineID",
+   "cac:OrderReference"
+  ],
+  "cac:OrderReferenceType": [
+   "cbc:ID",
+   "cbc:SalesOrderID"
+  ],
+  "cac:PartyIdentificationType": [
+   "cbc:ID"
+  ],
+  "cac:PartyLegalEntityType": [
+   "cbc:RegistrationName",
+   "cbc:CompanyID",
+   "cbc:CompanyLegalForm"
+  ],
+  "cac:PartyNameType": [
+   "cbc:Name"
+  ],
+  "cac:PartyTaxSchemeType": [
+   "cbc:CompanyID",
+   "cac:TaxScheme"
+  ],
+  "cac:PartyType": [
+   "cbc:EndpointID",
+   "cac:PartyIdentification",
+   "cac:PartyName",
+   "cac:PostalAddress",
+   "cac:PartyTaxScheme",
+   "cac:PartyLegalEntity",
+   "cac:Contact"
+  ],
+  "cac:PaymentMandateType": [
+   "cbc:ID",
+   "cac:PayerFinancialAccount"
+  ],
+  "cac:PaymentMeansType": [
+   "cbc:PaymentMeansCode",
+   "cbc:PaymentDueDate",
+   "cbc:PaymentID",
+   "cac:CardAccount",
+   "cac:PayeeFinancialAccount",
+   "cac:PaymentMandate"
+  ],
+  "cac:PaymentTermsType": [
+   "cbc:Note"
+  ],
+  "cac:PaymentType": [
+   "cbc:ID",
+   "cbc:PaidAmount",
+   "cbc:InstructionID"
+  ],
+  "cac:PeriodType": [
+   "cbc:StartDate",
+   "cbc:StartTime",
+   "cbc:EndDate",
+   "cbc:EndTime",
+   "cbc:DurationMeasure",
+   "cbc:DescriptionCode",
+   "cbc:Description"
+  ],
+  "cac:PriceListType": [
+   "cbc:ID",
+   "cbc:StatusCode",
+   "cac:ValidityPeriod",
+   "cac:PreviousPriceList"
+  ],
+  "cac:PriceType": [
+   "cbc:PriceAmount",
+   "cbc:BaseQuantity",
+   "cac:ValidityPeriod",
+   "cac:PriceList",
+   "cac:AllowanceCharge"
+  ],
+  "cac:ProjectReferenceType": [
+   "cbc:ID"
+  ],
+  "cac:ResponseType": [
+   "cbc:ReferenceID",
+   "cbc:ResponseCode",
+   "cbc:Description",
+   "cbc:EffectiveDate",
+   "cbc:EffectiveTime",
+   "cac:Status"
+  ],
+  "cac:StatusType": [
+   "cbc:ConditionCode",
+   "cbc:ReferenceDate",
+   "cbc:ReferenceTime",
+   "cbc:Description",
+   "cbc:StatusReasonCode",
+   "cbc:StatusReason",
+   "cbc:SequenceID",
+   "cbc:Text",
+   "cbc:IndicationIndicator",
+   "cbc:Percent",
+   "cbc:ReliabilityPercent",
+   "cac:Condition"
+  ],
+  "cac:SupplierPartyType": [
+   "cac:Party"
+  ],
+  "cac:TaxCategoryType": [
+   "cbc:ID",
+   "cbc:Percent",
+   "cbc:TaxExemptionReasonCode",
+   "cbc:TaxExemptionReason",
+   "cac:TaxScheme"
+  ],
+  "cac:TaxSchemeType": [
+   "cbc:ID"
+  ],
+  "cac:TaxSubtotalType": [
+   "cbc:TaxableAmount",
+   "cbc:TaxAmount",
+   "cac:TaxCategory"
+  ],
+  "cac:TaxTotalType": [
+   "cbc:TaxAmount",
+   "cac:TaxSubtotal"
+  ],
+  "cn:CreditNoteType": [
+   "cbc:UBLVersionID",
+   "cbc:CustomizationID",
+   "cbc:ProfileID",
+   "cbc:ID",
+   "cbc:IssueDate",
+   "cbc:TaxPointDate",
+   "cbc:CreditNoteTypeCode",
+   "cbc:Note",
+   "cbc:DocumentCurrencyCode",
+   "cbc:TaxCurrencyCode",
+   "cbc:AccountingCost",
+   "cbc:BuyerReference",
+   "cac:InvoicePeriod",
+   "cac:DiscrepancyResponse",
+   "cac:OrderReference",
+   "cac:BillingReference",
+   "cac:DespatchDocumentReference",
+   "cac:ReceiptDocumentReference",
+   "cac:ContractDocumentReference",
+   "cac:AdditionalDocumentReference",
+   "cac:OriginatorDocumentReference",
+   "cac:AccountingSupplierParty",
+   "cac:AccountingCustomerParty",
+   "cac:PayeeParty",
+   "cac:TaxRepresentativeParty",
+   "cac:Delivery",
+   "cac:PaymentMeans",
+   "cac:PaymentTerms",
+   "cac:AllowanceCharge",
+   "cac:TaxTotal",
+   "cac:LegalMonetaryTotal",
+   "cac:CreditNoteLine"
+  ],
+  "inv:InvoiceType": [
+   "cbc:UBLVersionID",
+   "cbc:CustomizationID",
+   "cbc:ProfileID",
+   "cbc:ID",
+   "cbc:IssueDate",
+   "cbc:DueDate",
+   "cbc:InvoiceTypeCode",
+   "cbc:Note",
+   "cbc:TaxPointDate",
+   "cbc:DocumentCurrencyCode",
+   "cbc:TaxCurrencyCode",
+   "cbc:AccountingCost",
+   "cbc:BuyerReference",
+   "cac:InvoicePeriod",
+   "cac:OrderReference",
+   "cac:BillingReference",
+   "cac:DespatchDocumentReference",
+   "cac:ReceiptDocumentReference",
+   "cac:OriginatorDocumentReference",
+   "cac:ContractDocumentReference",
+   "cac:AdditionalDocumentReference",
+   "cac:ProjectReference",
+   "cac:AccountingSupplierParty",
+   "cac:AccountingCustomerParty",
+   "cac:PayeeParty",
+   "cac:TaxRepresentativeParty",
+   "cac:Delivery",
+   "cac:PaymentMeans",
+   "cac:PaymentTerms",
+   "cac:PrepaidPayment",
+   "cac:AllowanceCharge",
+   "cac:TaxTotal",
+   "cac:LegalMonetaryTotal",
+   "cac:InvoiceLine"
+  ]
+ }
+}

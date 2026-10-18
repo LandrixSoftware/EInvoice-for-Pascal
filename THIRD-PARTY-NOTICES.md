@@ -36,3 +36,16 @@ validator configuration) and verifies them against the SHA-256 checksums in
 `tools/syntaxmodel/manifest.json`. The schema files in that package are the ones published
 with the ZUGFeRD 2.5.2 / Factur-X 1.09.2 release (https://www.ferd-net.de/standards/zugferd,
 https://fnfe-mpe.org/factur-x/), under the terms of their publishers.
+
+## OASIS UBL 2.1 schema and EN 16931 UBL rules
+
+`tools/syntaxmodel/ubl.json` and the units generated from it (`source/LandrixEInvoiceUBL.pas`,
+`LandrixEInvoiceUBLReader.pas`, `LandrixEInvoiceUBLWriter.pas`) describe the structure of the
+OASIS Universal Business Language (UBL) 2.1 Invoice and CreditNote schema, reduced to the positive
+list `tools/syntaxmodel/ubl-positive.json`. UBL 2.1 is an OASIS Standard
+(https://docs.oasis-open.org/ubl/UBL-2.1.html). The list was derived with the EN 16931 UBL
+syntax rules (UBL-CR) of the CEN validation artefacts. The schema and rule files are not part of
+this repository: `tools/syntaxmodel/extract-xsd.py` downloads them from the KoSIT validator
+configuration XRechnung 3.0.2 (https://github.com/itplr-kosit/validator-configuration-xrechnung,
+release v2026-08-31) and verifies them against the SHA-256 checksums in
+`tools/syntaxmodel/manifest.json`. The files remain under the terms of their publishers.

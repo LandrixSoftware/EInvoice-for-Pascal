@@ -58,7 +58,13 @@ type
     edk_InvalidValue,
     { A required element or attribute is missing.
       DE: Ein Pflichtelement oder Pflichtattribut fehlt. }
-    edk_MissingElement
+    edk_MissingElement,
+    { An extension block (UBL ext:UBLExtensions, e.g. a signature) that the
+      model does not keep; it was skipped as a whole and is never written.
+      DE: Ein Erweiterungsblock (UBL ext:UBLExtensions, z. B. eine Signatur),
+      den das Modell nicht behaelt; er wurde als Ganzes uebersprungen und
+      wird nie geschrieben. }
+    edk_SkippedExtension
   );
 
   { One diagnostic. Line, Column and Offset are 0 when there is no position
@@ -106,7 +112,7 @@ implementation
 const
   KindNames: array[TLandrixEInvoiceDiagnosticKind] of TLandrixEInvoiceString = (
     'UnknownElement', 'DuplicateElement', 'UnexpectedText', 'UnknownAttribute',
-    'InvalidValue', 'MissingElement');
+    'InvalidValue', 'MissingElement', 'SkippedExtension');
 
 function LandrixEInvoiceDiagnosticKindToStr(AKind: TLandrixEInvoiceDiagnosticKind): TLandrixEInvoiceString;
 begin

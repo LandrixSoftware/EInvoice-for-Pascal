@@ -19,8 +19,9 @@
   instructions, the document type, white-space-only text between elements,
   the XML declaration and the encoding. Elements without attributes, text
   and child elements (after this rule is applied to the children) count as
-  absent, as in the syntax model, where empty text means "not present".
-  Text is compared exactly. }
+  absent, as in the syntax model, where empty text means "not present";
+  the same holds for attributes with an empty value. Text is compared
+  exactly. }
 
 unit LandrixEInvoiceTestXmlCompare;
 
@@ -84,7 +85,7 @@ begin
 end;
 
 { Attributes as sorted lines "uri local=value" (byte order), without
-  namespace declarations and xsi attributes. }
+  namespace declarations, xsi attributes and empty values. }
 function AttributeLines(R: TLandrixXmlReader): TLandrixXmlUtf8;
 var
   Lines: array of TLandrixXmlUtf8;
@@ -99,6 +100,8 @@ begin
     if R.IsNamespaceDeclaration(I) then
       Continue;
     if R.AttributeNamespaceUriUtf8(I) = XsiNamespace then
+      Continue;
+    if R.AttributeValueUtf8(I) = '' then
       Continue;
     Line := R.AttributeNamespaceUriUtf8(I) + ' ' + R.AttributeLocalNameUtf8(I) +
       '=' + R.AttributeValueUtf8(I);
