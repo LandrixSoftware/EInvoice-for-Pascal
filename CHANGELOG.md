@@ -102,12 +102,21 @@ Supported invoice standards are documented per release.
   the new `...Other` fields of the model (`edk_UnknownCode`). Totals are taken from the model as
   they are. Line breaks in free text are written as LF. The output equals the 67 CII golden files
   of XRechnung-for-Delphi (XRechnung 3.0 CII, Factur-X 1.09 EN16931 and EXTENDED).
+- Mapping between the invoice model and the UBL syntax model (`LandrixEInvoiceMapUBL`:
+  `LandrixEInvoiceInvoiceToUBLInvoice`, `LandrixEInvoiceInvoiceToUBLCreditNote`,
+  `LandrixEInvoiceUBLInvoiceToInvoice`, `LandrixEInvoiceUBLCreditNoteToInvoice`, root choice
+  `LandrixEInvoiceUBLRootFor` with `TLandrixEInvoiceUBLRoot`: a credit note (381) becomes
+  `ubl:CreditNote`). Same reporting as for CII. The XRechnung extension identifier is written
+  only when the invoice has extension content (sub lines, embedded XML attachments, third-party
+  payments, the XR01 to XR03 schemes), never on a credit note. The output equals the 44 UBL
+  golden files of XRechnung-for-Delphi (XRechnung 3.0 UBL, Peppol BIS Billing 3.0); the 21
+  XRechnung scenarios convert between UBL and CII through the invoice model.
 - `LandrixEInvoiceLexical`: locale-independent conversion between typed values and the lexical
   text of the syntax models with fixed rules per business term (amounts 2 decimals, prices 2 or 4,
   quantities 4, base quantities up to 6, percentages 2; UBL and CII dates).
 - `LandrixEInvoiceCalc`: shared business layer (line status of sub lines, sub line tree from
   CII parent line references, the XRechnung text form of payment terms).
-- `LandrixEInvoiceRules`: rule table of the target specifications.
+- `LandrixEInvoiceRules`: rule table of the target specifications (CII and UBL).
 - Diagnostics: kinds `edk_ConversionFailed`, `edk_UnknownCode`, `edk_NotMapped`, `edk_NotAllowed`,
   a severity per entry (`eds_Info`, `eds_Warning`, `eds_Error`) and `HasErrors`.
 - Invoice model: a `...Other` text field next to each enumeration field with an external code

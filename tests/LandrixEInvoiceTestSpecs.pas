@@ -194,6 +194,13 @@ begin
   Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleElectronicAddressDefaultEM) = erl_Forbidden, 'EM Peppol');
   Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleElectronicAddressDefaultEM) = erl_Allowed, 'EM XRechnung');
   Check(LandrixEInvoiceRuleLevel(FxEn, 'No.Such.Key') = erl_Allowed, 'unknown key allowed');
+  Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleBuyerReferencePlaceholder) = erl_Allowed, 'placeholder Peppol');
+  Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleLineOrderNumber) = erl_Forbidden, 'line order number UBL');
+  Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleDeliveryNote) = erl_Forbidden, 'delivery note Peppol');
+  Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleBuyerIDWithGlobalID) = erl_Forbidden, 'one buyer ID UBL');
+  Check(LandrixEInvoiceRuleLevel(FxExt, LandrixEInvoiceRuleBuyerIDWithGlobalID) = erl_Allowed, 'buyer IDs EXTENDED');
+  Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleSellerIDWithGlobalID) = erl_Forbidden, 'one seller ID UBL');
+  Check(LandrixEInvoiceRuleLevel(XrCii, LandrixEInvoiceRuleSellerIDWithGlobalID) = erl_Allowed, 'seller IDs CII');
   Check(LandrixEInvoiceFindRule(Peppol, LandrixEInvoiceRuleLineSubLines, Rule) and (Rule.Source = 'UBL-CR-646 (warning)'),
     'rule with source');
   Check(LandrixEInvoiceRuleCount > 0, 'rules');

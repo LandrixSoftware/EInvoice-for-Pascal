@@ -431,6 +431,37 @@ begin
   end;
 end;
 
+{ BT-110 is written in the invoice currency; a differing VAT accounting
+  currency needs BT-111, which the model does not hold: an error. }
+procedure TestTaxCurrency;
+var
+  Invoice: TLandrixInvoice;
+  CII: TLandrixCIIInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.TaxCurrencyCode := 'SEK';
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), Spec), 'spec');
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    try
+      Xml := LandrixXmlUtf8ToString(WriteCII(CII));
+    finally
+      CII.Free;
+    end;
+    Check(Pos('<ram:TaxCurrencyCode>SEK', Xml) > 0, 'BT-6 written');
+    Check(Pos('currencyID="EUR"', Xml) > 0, 'BT-110 in the invoice currency');
+    CheckEquals(1, CountKind(D, edk_MissingElement, '/ram:TaxTotalAmount'), 'BT-111 missing');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure TestWrongSpec;
 var
   Invoice: TLandrixInvoice;
@@ -457,6 +488,7 @@ begin
   RegisterTest('MapCII.ReadReports', TestReadReports);
   RegisterTest('MapCII.WriteRules', TestWriteRules);
   RegisterTest('MapCII.WrongSpec', TestWrongSpec);
+  RegisterTest('MapCII.TaxCurrency', TestTaxCurrency);
   RegisterTest('MapCII.DiscountOnlyRoundTrip', TestDiscountOnlyRoundTrip);
 end;
 

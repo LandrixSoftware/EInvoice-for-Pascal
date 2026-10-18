@@ -503,8 +503,8 @@ begin
        'order number of line ' + ALine.ID) then
     AAgreement.BuyerOrderReferencedDocument.IssuerAssignedID.Value := ALine.OrderNumber;
   AAgreement.BuyerOrderReferencedDocument.LineID.Value := ALine.OrderLineReference;
-  HasBaseQuantity := (ALine.BaseQuantity <> 0) and
-    ((ALine.BaseQuantityUnitCode <> iuc_None) or (ALine.BaseQuantityUnitCodeOther <> ''));
+  { BT-150 is optional }
+  HasBaseQuantity := ALine.BaseQuantity <> 0;
   if HasBaseQuantity then
   begin
     BaseQuantity.Value := LandrixEInvoiceBaseQuantityToLexical(ALine.BaseQuantity);
@@ -567,7 +567,7 @@ var
   Charge: TLandrixCIITradeAllowanceCharge;
   Item: TLandrixInvoiceAllowanceCharge;
   Document: TLandrixCIIReferencedDocument;
-  ReasonOther: TLandrixEInvoiceString;
+  ReasonText, ReasonOther: TLandrixEInvoiceString;
   I: TLandrixEInvoiceListIndex;
 begin
   if not ((AStatus in [ilsrc_Group, ilsrc_Information]) and (ALine.TaxCategory = idtfcc_None) and
@@ -605,7 +605,8 @@ begin
       Charge.BasisAmount := CIIAmount(Item.BaseAmount);
     end;
     Charge.ActualAmount := CIIAmount(Item.Amount);
-    Charge.ReasonCode.Value := Code(AllowanceReasonCode(Item, ReasonOther), ReasonOther,
+    ReasonText := AllowanceReasonCode(Item, ReasonOther);
+    Charge.ReasonCode.Value := Code(ReasonText, ReasonOther,
       APath + '/ram:SpecifiedTradeAllowanceCharge/ram:ReasonCode');
     Charge.Reason := Txt(Item.Reason);
   end;
@@ -971,7 +972,7 @@ var
   I: TLandrixEInvoiceListIndex;
   Item: TLandrixInvoiceAllowanceCharge;
   Charge: TLandrixCIITradeAllowanceCharge;
-  ReasonOther: TLandrixEInvoiceString;
+  ReasonText, ReasonOther: TLandrixEInvoiceString;
 begin
   for I := 0 to FInvoice.AllowanceCharges.Count - 1 do
   begin
@@ -983,7 +984,8 @@ begin
     if Item.BaseAmount <> 0 then
       Charge.BasisAmount := CIIAmount(Item.BaseAmount);
     Charge.ActualAmount := CIIAmount(Item.Amount);
-    Charge.ReasonCode.Value := Code(AllowanceReasonCode(Item, ReasonOther), ReasonOther,
+    ReasonText := AllowanceReasonCode(Item, ReasonOther);
+    Charge.ReasonCode.Value := Code(ReasonText, ReasonOther,
       Settlement + '/ram:SpecifiedTradeAllowanceCharge/ram:ReasonCode');
     Charge.Reason := Txt(Item.Reason);
     Charge.CategoryTradeTax.TypeCode := 'VAT';
@@ -1092,11 +1094,15 @@ begin
 end;
 
 { BG-22 document totals, taken from the model as they are: BT-106, BT-108,
-  BT-107, BT-109, BT-110 (with the VAT accounting currency), BT-114 (only if
-  not 0), BT-112, BT-113, BT-115.
+  BT-107, BT-109, BT-110 (in the invoice currency), BT-114 (only if not 0),
+  BT-112, BT-113, BT-115. With a differing VAT accounting currency (BT-6)
+  BR-53 demands BT-111, which the invoice model does not hold: an error is
+  reported.
   DE: BG-22 Gesamtbetraege, unveraendert aus dem Modell: BT-106, BT-108,
-  BT-107, BT-109, BT-110 (mit der Steuerwaehrung), BT-114 (nur wenn nicht 0),
-  BT-112, BT-113, BT-115. }
+  BT-107, BT-109, BT-110 (in der Rechnungswaehrung), BT-114 (nur wenn nicht
+  0), BT-112, BT-113, BT-115. Bei abweichender Steuerwaehrung (BT-6)
+  verlangt BR-53 BT-111, den das Rechnungsmodell nicht haelt: es wird ein
+  Fehler gemeldet. }
 procedure TCIIWriteMapper.MapTotals;
 var
   Sum: TLandrixCIITradeSettlementHeaderMonetarySummation;
@@ -1108,10 +1114,12 @@ begin
   Sum.AllowanceTotalAmount := CIIAmount(FInvoice.AllowanceTotalAmount);
   Sum.TaxBasisTotalAmount := CIIAmount(FInvoice.TaxExclusiveAmount);
   TaxTotal := CIIAmount(FInvoice.TaxAmountTotal);
-  TaxTotal.CurrencyID := FInvoice.TaxCurrencyCode;
-  if TaxTotal.CurrencyID = '' then
-    TaxTotal.CurrencyID := FInvoice.InvoiceCurrencyCode;
+  TaxTotal.CurrencyID := FInvoice.InvoiceCurrencyCode;
   Sum.TaxTotalAmount.Add(TaxTotal);
+  if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
+    Report(edk_MissingElement, Settlement + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount',
+      'VAT total in the accounting currency ' + FInvoice.TaxCurrencyCode +
+      ' (BT-111, BR-53) is not in the invoice model', eds_Error);
   if FInvoice.PayableRoundingAmount <> 0 then
     Sum.RoundingAmount := CIIAmount(FInvoice.PayableRoundingAmount);
   Sum.GrandTotalAmount := CIIAmount(FInvoice.TaxInclusiveAmount);
@@ -2187,6 +2195,7 @@ var
   Sum: TLandrixCIITradeSettlementHeaderMonetarySummation;
   TaxTotal: TLandrixCIIAmount;
   Path: TLandrixEInvoiceString;
+  I, Chosen: TLandrixEInvoiceListIndex;
 begin
   Sum := ASettlement.SpecifiedTradeSettlementHeaderMonetarySummation;
   Path := Settlement + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation';
@@ -2194,17 +2203,27 @@ begin
   FInvoice.ChargeTotalAmount := Amount(Sum.ChargeTotalAmount, Path + '/ram:ChargeTotalAmount');
   FInvoice.AllowanceTotalAmount := Amount(Sum.AllowanceTotalAmount, Path + '/ram:AllowanceTotalAmount');
   FInvoice.TaxExclusiveAmount := Amount(Sum.TaxBasisTotalAmount, Path + '/ram:TaxBasisTotalAmount');
-  if Sum.TaxTotalAmount.Count > 0 then
+  { BT-110 is the total in the invoice currency (else the first); without
+    BT-6 the VAT accounting currency is its currency; another total is
+    BT-111 }
+  Chosen := -1;
+  for I := 0 to Sum.TaxTotalAmount.Count - 1 do
+    if (Chosen < 0) and ((Sum.TaxTotalAmount[I].CurrencyID = '') or
+       (Sum.TaxTotalAmount[I].CurrencyID = FInvoice.InvoiceCurrencyCode)) then
+      Chosen := I;
+  if (Chosen < 0) and (Sum.TaxTotalAmount.Count > 0) then
+    Chosen := 0;
+  for I := 0 to Sum.TaxTotalAmount.Count - 1 do
+    if I <> Chosen then
+      NotMapped(Path + '/ram:TaxTotalAmount', 'VAT total ' + Sum.TaxTotalAmount[I].Value + ' ' +
+        Sum.TaxTotalAmount[I].CurrencyID + ' (BT-111)');
+  if Chosen >= 0 then
   begin
+    TaxTotal := Sum.TaxTotalAmount[Chosen];
     if FInvoice.TaxCurrencyCode = '' then
-      FInvoice.TaxCurrencyCode := Sum.TaxTotalAmount[0].CurrencyID;
-    { BT-110 carries the VAT accounting currency, not the invoice currency }
-    TaxTotal := Sum.TaxTotalAmount[0];
-    TaxTotal.CurrencyID := '';
+      FInvoice.TaxCurrencyCode := TaxTotal.CurrencyID;
     FInvoice.TaxAmountTotal := Amount(TaxTotal, Path + '/ram:TaxTotalAmount');
   end;
-  if Sum.TaxTotalAmount.Count > 1 then
-    NotMapped(Path + '/ram:TaxTotalAmount', 'VAT total in a second currency (BT-111)');
   FInvoice.PayableRoundingAmount := Amount(Sum.RoundingAmount, Path + '/ram:RoundingAmount');
   FInvoice.TaxInclusiveAmount := Amount(Sum.GrandTotalAmount, Path + '/ram:GrandTotalAmount');
   FInvoice.PrepaidAmount := Amount(Sum.TotalPrepaidAmount, Path + '/ram:TotalPrepaidAmount');

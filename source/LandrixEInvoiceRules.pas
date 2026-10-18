@@ -117,6 +117,9 @@ const
   { Buyer identifier together with a global identifier (BT-46).
     DE: Kaeuferkennung zusammen mit einer globalen Kennung (BT-46). }
   LandrixEInvoiceRuleBuyerIDWithGlobalID = 'Buyer.IDWithGlobalID';
+  { Seller identifier together with a global identifier (BT-29).
+    DE: Verkaeuferkennung zusammen mit einer globalen Kennung (BT-29). }
+  LandrixEInvoiceRuleSellerIDWithGlobalID = 'Seller.IDWithGlobalID';
   { Buyer reference placeholder 'non-existent' (BT-10).
     DE: Platzhalter 'non-existent' fuer die Kaeuferreferenz (BT-10). }
   LandrixEInvoiceRuleBuyerReferencePlaceholder = 'Header.BuyerReferencePlaceholder';
@@ -155,7 +158,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..19] of TLandrixEInvoiceRule = (
+  Rules: array[0..22] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules }
     (Key: LandrixEInvoiceRuleLineSubLines; Standards: [est_FacturX]; Syntaxes: [esy_CII];
@@ -167,23 +170,23 @@ const
     (Key: LandrixEInvoiceRuleLineSubLines; Standards: [est_PeppolBIS]; Syntaxes: [esy_UBL];
      Profiles: AnyProfile; Level: erl_Discouraged; Terms: 'BG-DEX-01';
      Source: 'UBL-CR-646 (warning)'),
-    { EXTENDED-only content of the CII syntax }
-    (Key: LandrixEInvoiceRuleLineClassificationName; Standards: AnyStandard; Syntaxes: [esy_CII];
+    { EXTENDED-only content; UBL has no element for it }
+    (Key: LandrixEInvoiceRuleLineClassificationName; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-13';
-     Source: 'ram:ClassName only in Factur-X EXTENDED'),
-    (Key: LandrixEInvoiceRuleLineOrderNumber; Standards: AnyStandard; Syntaxes: [esy_CII];
+     Source: 'classification name only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleLineOrderNumber; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-21';
      Source: 'line order number only in Factur-X EXTENDED'),
-    (Key: LandrixEInvoiceRuleLineTaxExemptionReason; Standards: AnyStandard; Syntaxes: [esy_CII];
+    (Key: LandrixEInvoiceRuleLineTaxExemptionReason; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-96';
      Source: 'line exemption reason only in Factur-X EXTENDED'),
-    (Key: LandrixEInvoiceRuleLineDelivery; Standards: AnyStandard; Syntaxes: [esy_CII];
+    (Key: LandrixEInvoiceRuleLineDelivery; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-85, BG-X-83, BT-X-92, BT-X-93, BT-X-94';
      Source: 'line delivery only in Factur-X EXTENDED'),
-    (Key: LandrixEInvoiceRuleDespatchAdviceDate; Standards: AnyStandard; Syntaxes: [esy_CII];
+    (Key: LandrixEInvoiceRuleDespatchAdviceDate; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-200';
      Source: 'despatch advice date only in Factur-X EXTENDED'),
-    (Key: LandrixEInvoiceRuleDeliveryNote; Standards: AnyStandard; Syntaxes: [esy_CII];
+    (Key: LandrixEInvoiceRuleDeliveryNote; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-202, BT-X-203';
      Source: 'delivery note only in Factur-X EXTENDED'),
     (Key: LandrixEInvoiceRuleStructuredPaymentTerms; Standards: AnyStandard; Syntaxes: [esy_CII];
@@ -192,6 +195,14 @@ const
     (Key: LandrixEInvoiceRuleBuyerIDWithGlobalID; Standards: AnyStandard; Syntaxes: [esy_CII];
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-46';
      Source: 'CII-SR-450'),
+    (Key: LandrixEInvoiceRuleBuyerIDWithGlobalID; Standards: AnyStandard; Syntaxes: [esy_UBL];
+     Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-46';
+     Source: 'UBL-SR-16'),
+    { XRechnung-for-Delphi writes one seller identifier besides BT-90
+      (VD-Valitool-23); EN 16931 itself allows several }
+    (Key: LandrixEInvoiceRuleSellerIDWithGlobalID; Standards: AnyStandard; Syntaxes: [esy_UBL];
+     Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-29';
+     Source: 'one seller identifier in UBL (VD-Valitool-23)'),
     { UBL has no structured payment terms or line delivery of this kind }
     (Key: LandrixEInvoiceRuleStructuredPaymentTerms; Standards: AnyStandard; Syntaxes: [esy_UBL];
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BG-X-44';
@@ -203,9 +214,14 @@ const
     (Key: LandrixEInvoiceRuleBuyerReferencePlaceholder; Standards: [est_XRechnung]; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Allowed; Terms: 'BT-10';
      Source: 'XRechnung: buyer reference is mandatory'),
+    { XRechnung-for-Delphi writes the placeholder for Peppol too, where BT-10
+      or BT-13 is mandatory }
+    (Key: LandrixEInvoiceRuleBuyerReferencePlaceholder; Standards: [est_PeppolBIS]; Syntaxes: AnySyntax;
+     Profiles: AnyProfile; Level: erl_Allowed; Terms: 'BT-10';
+     Source: 'Peppol: BT-10 or BT-13 is mandatory (PEPPOL-EN16931-R003)'),
     (Key: LandrixEInvoiceRuleBuyerReferencePlaceholder; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-10';
-     Source: 'placeholder only for XRechnung'),
+     Source: 'placeholder only for XRechnung and Peppol'),
     (Key: LandrixEInvoiceRuleCreditNoteDueDate; Standards: [est_XRechnung]; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-9';
      Source: 'XRechnung credit note without due date'),
