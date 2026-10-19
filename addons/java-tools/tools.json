@@ -1,0 +1,86 @@
+{
+  "comment": "Downloads of addons/java-tools/install-tools.ps1. Every file is pinned by URL and SHA-256; to update a tool, change url, file and sha256 together. dir is relative to addons/java-tools; strip removes that many leading folders when unpacking.",
+  "tools": [
+    {
+      "name": "validator",
+      "url": "https://github.com/itplr-kosit/validator/releases/download/v1.6.3/validator-1.6.3-standalone.jar",
+      "file": "validator-1.6.3-standalone.jar",
+      "sha256": "799e64befca97d4080e03608c80b85dd5a5ecc5f4ae4f35d1116ec2855b9a7c9",
+      "dir": "validator"
+    },
+    {
+      "name": "validator-configuration-xrechnung",
+      "url": "https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v2026-08-31/xrechnung-3.0.2-validator-configuration-2026-08-31.zip",
+      "file": "xrechnung-3.0.2-validator-configuration-2026-08-31.zip",
+      "sha256": "2530cd107c414511c5d0462ec10f886910395abfca820db82e83d70bf01221a8",
+      "dir": "validator-configuration-xrechnung",
+      "unpack": true
+    },
+    {
+      "name": "validator-configuration-bis",
+      "url": "https://github.com/itplr-kosit/validator-configuration-bis/releases/download/release-3.0.21/validation-configuration-bis-3.0.21.zip",
+      "file": "validation-configuration-bis-3.0.21.zip",
+      "sha256": "399395de5f6240a76ccc5751e4ee9dd329e37f5f7cfe4ee5c93188294ce8cd68",
+      "dir": "validator-configuration-bis",
+      "unpack": true
+    },
+    {
+      "name": "validator-configuration-zugferd",
+      "url": "https://github.com/LandrixSoftware/validator-configuration-zugferd/releases/download/validation-configuration-zugferd-2.5.2/validation-configuration-zugferd-2.5.2-2026-10-15.zip",
+      "file": "validation-configuration-zugferd-2.5.2-2026-10-15.zip",
+      "sha256": "43487e76edad8b7276da8266f0b1473b597be23554d1ab7fb1c828a03036eafa",
+      "dir": "validator-configuration-zugferd",
+      "unpack": true
+    },
+    {
+      "name": "jre",
+      "platform": "windows-x64",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",
+      "file": "OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",
+      "sha256": "d35f31e712f0fcf6ac5a093edc90204fbff22f720ba3950bd09d331d5e621636",
+      "dir": "jre/windows-x64",
+      "unpack": true,
+      "strip": 1
+    },
+    {
+      "name": "jre",
+      "platform": "windows-aarch64",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_aarch64_windows_hotspot_21.0.12.1_1.zip",
+      "file": "OpenJDK21U-jre_aarch64_windows_hotspot_21.0.12.1_1.zip",
+      "sha256": "e82cc17e0bf89a25b0b0ed106d072f2ea420587d0a6870534b71b1dce3ae28c3",
+      "dir": "jre/windows-aarch64",
+      "unpack": true,
+      "strip": 1
+    },
+    {
+      "name": "jre",
+      "platform": "linux-x64",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+      "file": "OpenJDK21U-jre_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+      "sha256": "2413149700df0f7d440500a84a8f764c535f21e5a5e87d38328b64eec2c5b500",
+      "dir": "jre/linux-x64",
+      "unpack": true,
+      "strip": 1
+    },
+    {
+      "name": "jre",
+      "platform": "linux-aarch64",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_aarch64_linux_hotspot_21.0.12.1_1.tar.gz",
+      "file": "OpenJDK21U-jre_aarch64_linux_hotspot_21.0.12.1_1.tar.gz",
+      "sha256": "14be1f35ebdbd1f6e8d57eb911a3ffb74d6d9aa255abc5daf2b1302002cf2cf2",
+      "dir": "jre/linux-aarch64",
+      "unpack": true,
+      "strip": 1
+    },
+    {
+      "name": "jre",
+      "platform": "macos-aarch64",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+      "file": "OpenJDK21U-jre_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+      "sha256": "dec50fc6f9fcd4fe3ae8cabf5a5fa68f6afc48841f7698e468e9aa5d54beed84",
+      "dir": "jre/macos-aarch64",
+      "unpack": true,
+      "strip": 1
+    }
+  ]
+}

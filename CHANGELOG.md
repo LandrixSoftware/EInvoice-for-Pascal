@@ -157,4 +157,11 @@ Supported invoice standards are documented per release.
 - `tools/build.ps1`: builds and runs the tests with the local toolchains. After the runs, each
   local toolchain reads the scenario outputs the next one wrote (cross test: Delphi reads what
   Free Pascal wrote and the other way round, Ansi and Unicode string models included), and the
-  outputs of all these toolchains must be byte-identical.
+  outputs of all these toolchains must be byte-identical. `-Validate` adds the KoSIT validation
+  of the scenario output.
+- `addons/java-tools/install-tools.ps1` (PowerShell 7, Windows, Linux, macOS): downloads the KoSIT
+  validator 1.6.3, the configurations for XRechnung 3.0.2, Peppol BIS Billing 3.0.21 and
+  ZUGFeRD 2.5.2, and the Temurin 21 JRE of the current platform; every download pinned by URL and
+  SHA-256 in `tools.json`.
+- `tools/validate.ps1`: validates invoice files with these tools, the configuration chosen by file
+  name; all 111 scenario outputs are accepted.

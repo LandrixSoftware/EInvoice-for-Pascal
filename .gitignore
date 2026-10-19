@@ -104,3 +104,9 @@ E-Rechnung-Analyse-und-Fahrplan.md
 
 # Downloaded schema packages (tools/syntaxmodel/extract-xsd.py)
 tools/syntaxmodel/download/
+
+# Downloaded Java tools (addons/java-tools/install-tools.ps1)
+addons/java-tools/*
+!addons/java-tools/install-tools.ps1
+!addons/java-tools/tools.json
+!addons/java-tools/README.md

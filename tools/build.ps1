@@ -36,6 +36,10 @@
   all these toolchains must be byte-identical (rows "same output"). Needs at
   least two local toolchains; mac and d13-osxarm64 take no part.
 
+  -Validate: afterwards the KoSIT validator checks the cross output of the
+  first local toolchain (tools/validate.ps1; tools from
+  addons/java-tools/install-tools.ps1).
+
 .EXAMPLE
   ./tools/build.ps1                 # minimum set
   ./tools/build.ps1 all
@@ -45,7 +49,8 @@ param(
   [string[]]$Toolchains = @('min'),
   [string]$Program = 'tests/LandrixEInvoiceTests.dpr',
   [switch]$NoRun,
-  [switch]$AllowWarnings
+  [switch]$AllowWarnings,
+  [switch]$Validate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -248,6 +253,27 @@ if (-not $NoRun -and $ring.Count -ge 2) {
       & "build/$reader/$ProgramName.exe" $Root '-filter=Cross.Read' "-cross=$Root\build\$writer\cross" | Out-Host
     }
     $results += @{ Name = "cross $reader<-$writer"; Build = 0; Diag = 0; Run = $LASTEXITCODE }
+  }
+}
+
+if ($Validate -and -not $NoRun) {
+  $source = @($results | Where-Object {
+    $_.Build -eq 0 -and $_.Run -eq 0 -and $_.Name -notmatch '^(mac|d13-osxarm64)$' -and
+    (Test-Path "build/$($_.Name)/cross/*.xml")
+  }) | Select-Object -First 1
+  if ($null -eq $source) {
+    Write-Host 'validation skipped: no toolchain with cross output' -ForegroundColor Yellow
+    $results += @{ Name = 'KoSIT validation'; Build = 0; Diag = 0; Run = 1 }
+  } else {
+    Write-Host "=== KoSIT validation of $($source.Name) ===" -ForegroundColor Cyan
+    try {
+      & (Join-Path $PSScriptRoot 'validate.ps1') -Folder "build/$($source.Name)/cross" | Out-Host
+      $code = $LASTEXITCODE
+    } catch {
+      Write-Host "  $_" -ForegroundColor Red
+      $code = 1
+    }
+    $results += @{ Name = "KoSIT validation $($source.Name)"; Build = 0; Diag = 0; Run = $code }
   }
 }
 
