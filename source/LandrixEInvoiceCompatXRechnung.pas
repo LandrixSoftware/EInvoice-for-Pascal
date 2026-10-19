@@ -28,8 +28,8 @@
     functions.
   - Differences in behaviour are listed in CHANGELOG.md (e.g. text fields
     are TLandrixEInvoiceString, date fields TDateTime).
-  - The facade TXRechnungInvoiceAdapter (reading and writing) follows with
-    the new reader and writer.
+  - The facade TXRechnungInvoiceAdapter (reading and writing) is in
+    LandrixEInvoiceCompatXRechnungAdapter, which replaces intf.XRechnung.
   New code should use the TLandrix... names.
 
   DE: Kompatibilitaet mit XRechnung-for-Delphi (Unit intf.Invoice, in der
@@ -48,8 +48,8 @@
     Funktionen weiterreichen.
   - Verhaltensunterschiede stehen in CHANGELOG.md (z. B. Textfelder sind
     TLandrixEInvoiceString, Datumsfelder TDateTime).
-  - Die Fassade TXRechnungInvoiceAdapter (Lesen und Schreiben) folgt mit
-    den neuen Lesern und Schreibern.
+  - Die Fassade TXRechnungInvoiceAdapter (Lesen und Schreiben) liegt in
+    LandrixEInvoiceCompatXRechnungAdapter, die intf.XRechnung ersetzt.
   Neuer Code sollte die TLandrix...-Namen verwenden. }
 
 unit LandrixEInvoiceCompatXRechnung;

@@ -111,6 +111,15 @@ Supported invoice standards are documented per release.
   payments, the XR01 to XR03 schemes), never on a credit note. The output equals the 44 UBL
   golden files of XRechnung-for-Delphi (XRechnung 3.0 UBL, Peppol BIS Billing 3.0); the 21
   XRechnung scenarios convert between UBL and CII through the invoice model.
+- `LandrixEInvoiceCompatXRechnungAdapter`: the facade of XRechnung-for-Delphi
+  (`TXRechnungInvoiceAdapter`, `TXRechnungVersion`, `TXRechnungValidationHelper.GetXRechnungVersion`,
+  `ConsistencyCheck` codes), replaces `intf.XRechnung` next to `LandrixEInvoiceCompatXRechnung`
+  (replaces `intf.Invoice`). The original test cases and example generator of XRechnung-for-Delphi
+  compile against both units and produce output equal to the 111 golden files. Differences: the
+  `cc...` codes are unit constants (as in the Delphi 6 version), Save and Load take an optional
+  last parameter `_Diagnostics`, Load returns False only for documents that cannot be read, on
+  Delphi 6 to 2007 `SaveToXMLStr` returns UTF-8 bytes, no `IXMLDocument` overloads, no Java
+  validation and no PDF entries yet; messages are English.
 - `LandrixEInvoiceLexical`: locale-independent conversion between typed values and the lexical
   text of the syntax models with fixed rules per business term (amounts 2 decimals, prices 2 or 4,
   quantities 4, base quantities up to 6, percentages 2; UBL and CII dates).

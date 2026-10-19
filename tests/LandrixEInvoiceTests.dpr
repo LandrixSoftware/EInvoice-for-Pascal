@@ -38,7 +38,8 @@ uses
   LandrixEInvoiceTestUBL,
   LandrixEInvoiceTestScenarioRun,
   LandrixEInvoiceTestMapCII,
-  LandrixEInvoiceTestMapUBL;
+  LandrixEInvoiceTestMapUBL,
+  LandrixEInvoiceTestCompatAdapter;
 
 function FilterParam: string;
 var
@@ -63,5 +64,6 @@ begin
   LandrixEInvoiceTestScenarioRun.Register;
   LandrixEInvoiceTestMapCII.Register;
   LandrixEInvoiceTestMapUBL.Register;
+  LandrixEInvoiceTestCompatAdapter.Register;
   ExitCode := RunAllTests(FilterParam);
 end.
