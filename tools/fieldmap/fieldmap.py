@@ -322,6 +322,65 @@ def report(rows, corpus_files, corpus_count):
     return "\n".join(lines) + "\n"
 
 
+def export_profiles(fields, digest, path):
+    """Derived data for gen-syntaxmodel.py: per CII path the lowest profile that
+    contains it (a group: the lowest of itself and everything below) and the
+    profiles in which it is required over the whole ancestor chain."""
+    rows = {}
+    for f in fields:
+        for xp in f["xpath"].split("\n"):
+            xp = xp.strip()
+            if xp.startswith(ROOT):
+                rows[xp] = f
+    rank = {p: i for i, p in enumerate(PROFILES)}
+    lowest = {}
+    for xp, f in rows.items():
+        r = min(rank[p] for p in f["profiles"])
+        parts = xp.split("/")
+        for i in range(2, len(parts) + 1):
+            prefix = "/".join(parts[:i])
+            if prefix not in lowest or r < lowest[prefix]:
+                lowest[prefix] = r
+    missing = set()
+
+    def required_in(xp, prof):
+        parts = xp.split("/")
+        for i in range(3, len(parts) + 1):
+            prefix = "/".join(parts[:i])
+            f = rows.get(prefix)
+            if f is None:
+                missing.add(prefix)
+                return False
+            card = f["card"].get(prof, "")
+            if prof not in f["profiles"] or not card or card.startswith("0"):
+                return False
+        return True
+
+    out = []
+    for xp in sorted(lowest):
+        req = [p for p in PROFILES if xp in rows and required_in(xp, p)]
+        out.append([xp, PROFILES[lowest[xp]], req])
+    if missing:
+        print("warning: %d ancestor paths without a table row, treated as optional, e.g. %s" % (
+            len(missing), sorted(missing)[0]))
+    head = {"comment": "Derived from the Factur-X 1.09.2 field table by tools/fieldmap/fieldmap.py "
+                       "--export; input of gen-syntaxmodel.py (LandrixEInvoiceCIIProfiles.pas). Per path: "
+                       "lowest profile that contains it, profiles in which it is required over the whole "
+                       "ancestor chain.",
+            "table_sha256": digest,
+            "profiles": PROFILES}
+    lines = ["{"]
+    for k, v in head.items():
+        lines.append("  %s: %s," % (json.dumps(k), json.dumps(v)))
+    lines.append('  "paths": [')
+    lines += ["    %s%s" % (json.dumps(row), "," if i < len(out) - 1 else "") for i, row in enumerate(out)]
+    lines += ["  ]", "}"]
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    json.load(open(path, encoding="utf-8"))
+    print("exported %d paths to %s" % (len(out), path))
+
+
 def sha256(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -337,6 +396,8 @@ def main():
     ap.add_argument("--corpus", default=os.path.join(REPO, "tests", "data", "local", "cii"))
     ap.add_argument("--out", default=os.path.join(REPO, "build", "fieldmap"))
     ap.add_argument("--any-table", action="store_true", help="accept a table with another checksum")
+    ap.add_argument("--export", action="store_true",
+                    help="only write tools/syntaxmodel/cii-profiles.json (no probe needed)")
     args = ap.parse_args()
 
     with open(os.path.join(HERE, "manifest.json"), encoding="utf-8") as f:
@@ -347,6 +408,10 @@ def main():
         if not args.any_table:
             sys.exit(msg + " (use --any-table for another version)")
         print("warning: " + msg)
+    if args.export:
+        export_profiles(extract_fields(args.table, manifest), digest,
+                        os.path.join(REPO, "tools", "syntaxmodel", "cii-profiles.json"))
+        return
     if not os.path.isfile(args.probe):
         sys.exit("probe not found: %s (build it, see --help)" % args.probe)
     os.makedirs(args.out, exist_ok=True)

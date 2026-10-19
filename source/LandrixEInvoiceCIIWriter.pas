@@ -44,29 +44,37 @@ interface
 
 uses
   LandrixXmlWriter,
+  LandrixEInvoiceTypes,
   LandrixEInvoiceDiagnostics,
   LandrixEInvoiceCII;
 
 { Writes AInvoice (not nil) as root element to AWriter (the writer writes
   the XML declaration itself; call AWriter.EndDocument afterwards).
-  Diagnostics are added to ADiagnostics (nil: discarded).
+  Diagnostics are added to ADiagnostics (nil: discarded). A missing
+  required element or attribute is reported only if the Factur-X profile
+  AProfile contains it (LandrixEInvoiceCIIAllowed); the default
+  epr_Extended reports everything the EXTENDED schema requires.
   DE: Schreibt AInvoice (nicht nil) als Wurzelelement nach AWriter (die
   XML-Deklaration schreibt der Writer selbst; danach AWriter.EndDocument
-  aufrufen). Meldungen kommen in ADiagnostics (nil: verworfen). }
+  aufrufen). Meldungen kommen in ADiagnostics (nil: verworfen). Ein
+  fehlendes Pflichtelement oder -attribut wird nur gemeldet, wenn das
+  Factur-X-Profil AProfile es enthaelt (LandrixEInvoiceCIIAllowed); die
+  Vorgabe epr_Extended meldet alles, was das EXTENDED-Schema verlangt. }
 procedure LandrixEInvoiceWriteCII(AInvoice: TLandrixCIIInvoice; AWriter: TLandrixXmlWriter;
-  ADiagnostics: TLandrixEInvoiceDiagnostics);
+  ADiagnostics: TLandrixEInvoiceDiagnostics; AProfile: TLandrixEInvoiceProfile = epr_Extended);
 
 implementation
 
 uses
   LandrixXmlBase,
-  LandrixEInvoiceTypes;
+  LandrixEInvoiceCIIProfiles;
 
 type
   TCIIWriter = class(TObject)
   private
     FWriter: TLandrixXmlWriter;
     FDiagnostics: TLandrixEInvoiceDiagnostics;
+    FProfile: TLandrixEInvoiceProfile;
     procedure Missing(const APath: TLandrixEInvoiceString);
     procedure WriteAdvancePayment(AObject: TLandrixCIIAdvancePayment; const APath: TLandrixEInvoiceString);
     procedure WriteCreditorFinancialAccount(AObject: TLandrixCIICreditorFinancialAccount);
@@ -132,19 +140,24 @@ type
     procedure WriteMeasure(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIMeasure);
     procedure WriteQuantity(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIQuantity);
   public
-    constructor Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics);
+    constructor Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics;
+      AProfile: TLandrixEInvoiceProfile);
   end;
 
-constructor TCIIWriter.Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics);
+constructor TCIIWriter.Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics;
+  AProfile: TLandrixEInvoiceProfile);
 begin
   inherited Create;
   FWriter := AWriter;
   FDiagnostics := ADiagnostics;
+  FProfile := AProfile;
 end;
 
+{ only what the target profile contains is reported }
 procedure TCIIWriter.Missing(const APath: TLandrixEInvoiceString);
 begin
-  FDiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0, 'required element or attribute missing');
+  if LandrixEInvoiceCIIAllowed(APath, FProfile) then
+    FDiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0, 'required element or attribute missing');
 end;
 
 function CIIAllowanceChargeReasonCodeIsEmpty(const R: TLandrixCIIAllowanceChargeReasonCode): Boolean;
@@ -1605,7 +1618,7 @@ begin
 end;
 
 procedure LandrixEInvoiceWriteCII(AInvoice: TLandrixCIIInvoice; AWriter: TLandrixXmlWriter;
-  ADiagnostics: TLandrixEInvoiceDiagnostics);
+  ADiagnostics: TLandrixEInvoiceDiagnostics; AProfile: TLandrixEInvoiceProfile);
 var
   Own: TLandrixEInvoiceDiagnostics;
   W: TCIIWriter;
@@ -1618,7 +1631,7 @@ begin
       Own := TLandrixEInvoiceDiagnostics.Create;
       ADiagnostics := Own;
     end;
-    W := TCIIWriter.Create(AWriter, ADiagnostics);
+    W := TCIIWriter.Create(AWriter, ADiagnostics, AProfile);
     AWriter.StartElementNs(LandrixCIINamespaceRSM, 'rsm', 'CrossIndustryInvoice');
     AWriter.DeclareNamespace('qdt', LandrixCIINamespaceQDT);
     AWriter.DeclareNamespace('ram', LandrixCIINamespaceRAM);

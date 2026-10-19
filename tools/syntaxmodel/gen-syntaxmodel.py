@@ -5,6 +5,8 @@ from tools/syntaxmodel/cii.json and ubl.json (written by extract-xsd.py):
   source/LandrixEInvoiceCII.pas         classes, value records, lists
   source/LandrixEInvoiceCIIReader.pas   LandrixEInvoiceReadCII
   source/LandrixEInvoiceCIIWriter.pas   LandrixEInvoiceWriteCII
+  source/LandrixEInvoiceCIIProfiles.pas Factur-X profile per path, pruning
+                                        (from cii-profiles.json)
   source/LandrixEInvoiceUBL.pas         the same for UBL Invoice and CreditNote
   source/LandrixEInvoiceUBLReader.pas   LandrixEInvoiceReadUBLInvoice/CreditNote
   source/LandrixEInvoiceUBLWriter.pas   LandrixEInvoiceWriteUBLInvoice/CreditNote
@@ -53,6 +55,8 @@ SYNTAXES = [
         "entries": {"rsm:CrossIndustryInvoiceType": ("LandrixEInvoiceReadCII", "LandrixEInvoiceWriteCII",
                                                      "AInvoice")},
         "root_prefixed": True,
+        # Factur-X profiles per path (tools/fieldmap/fieldmap.py --export)
+        "profiles": "cii-profiles.json",
     },
     {
         "syn": "UBL",
@@ -1333,12 +1337,18 @@ UBL_WRITER_HEAD = """
 
 CII_WRITER_DECL = """{ Writes AInvoice (not nil) as root element to AWriter (the writer writes
   the XML declaration itself; call AWriter.EndDocument afterwards).
-  Diagnostics are added to ADiagnostics (nil: discarded).
+  Diagnostics are added to ADiagnostics (nil: discarded). A missing
+  required element or attribute is reported only if the Factur-X profile
+  AProfile contains it (LandrixEInvoiceCIIAllowed); the default
+  epr_Extended reports everything the EXTENDED schema requires.
   DE: Schreibt AInvoice (nicht nil) als Wurzelelement nach AWriter (die
   XML-Deklaration schreibt der Writer selbst; danach AWriter.EndDocument
-  aufrufen). Meldungen kommen in ADiagnostics (nil: verworfen). }
+  aufrufen). Meldungen kommen in ADiagnostics (nil: verworfen). Ein
+  fehlendes Pflichtelement oder -attribut wird nur gemeldet, wenn das
+  Factur-X-Profil AProfile es enthaelt (LandrixEInvoiceCIIAllowed); die
+  Vorgabe epr_Extended meldet alles, was das EXTENDED-Schema verlangt. }
 procedure LandrixEInvoiceWriteCII(AInvoice: TLandrixCIIInvoice; AWriter: TLandrixXmlWriter;
-  ADiagnostics: TLandrixEInvoiceDiagnostics);
+  ADiagnostics: TLandrixEInvoiceDiagnostics; AProfile: TLandrixEInvoiceProfile = epr_Extended);
 """
 
 
@@ -1363,7 +1373,10 @@ def writer_entry_impl(m, r, np, w):
     rp = m.pascal[r["type"]]
     syn = CFG["syn"]
     w("procedure %s(%s: %s; AWriter: TLandrixXmlWriter;" % (wn, par, rp))
-    w("  ADiagnostics: TLandrixEInvoiceDiagnostics);")
+    if CFG["syn"] == "CII":
+        w("  ADiagnostics: TLandrixEInvoiceDiagnostics; AProfile: TLandrixEInvoiceProfile);")
+    else:
+        w("  ADiagnostics: TLandrixEInvoiceDiagnostics);")
     w("var")
     w("  Own: TLandrixEInvoiceDiagnostics;")
     w("  W: T%sWriter;" % syn)
@@ -1376,7 +1389,7 @@ def writer_entry_impl(m, r, np, w):
     w("      Own := TLandrixEInvoiceDiagnostics.Create;")
     w("      ADiagnostics := Own;")
     w("    end;")
-    w("    W := T%sWriter.Create(AWriter, ADiagnostics);" % syn)
+    w("    W := T%sWriter.Create(AWriter, ADiagnostics%s);" % (syn, ", AProfile" if syn == "CII" else ""))
     if CFG["root_prefixed"]:
         w("    AWriter.StartElementNs(Landrix%sNamespace%s, '%s', '%s');" % (syn, r["ns"].upper(), r["ns"], r["name"]))
         path = "/%s:%s" % (r["ns"], r["name"])
@@ -1399,7 +1412,8 @@ def gen_writer(m):
     L = []
     w = L.append
     np = writer_needs_path(m)
-    w(HEADER + (CII_WRITER_HEAD if CFG["syn"] == "CII" else UBL_WRITER_HEAD) + """unit LandrixEInvoice%(syn)sWriter;
+    cii = CFG["syn"] == "CII"
+    w(HEADER + (CII_WRITER_HEAD if cii else UBL_WRITER_HEAD) + """unit LandrixEInvoice%(syn)sWriter;
 
 {$I LandrixEInvoice.inc}
 
@@ -1407,12 +1421,27 @@ interface
 
 uses
   LandrixXmlWriter,
-  LandrixEInvoiceDiagnostics,
+%(types)s  LandrixEInvoiceDiagnostics,
   LandrixEInvoice%(syn)s;
-""" % {"syn": CFG["syn"]})
+""" % {"syn": CFG["syn"], "types": "  LandrixEInvoiceTypes," + chr(10) if cii else ""})
     for r in m.roots:
         w(writer_entry_decl(m, r))
-    w("""implementation
+    if cii:
+        w("""implementation
+
+uses
+  LandrixXmlBase,
+  LandrixEInvoiceCIIProfiles;
+
+type
+  TCIIWriter = class(TObject)
+  private
+    FWriter: TLandrixXmlWriter;
+    FDiagnostics: TLandrixEInvoiceDiagnostics;
+    FProfile: TLandrixEInvoiceProfile;
+    procedure Missing(const APath: TLandrixEInvoiceString);""")
+    else:
+        w("""implementation
 
 uses
   LandrixXmlBase,
@@ -1430,7 +1459,30 @@ type
     for n in m.records():
         w("    procedure Write%s(const AQName: TLandrixXmlUtf8; const AValue: %s%s);" % (
             m.pascal[n][len(PREFIX):], m.pascal[n], "; const APath: TLandrixEInvoiceString" if n in np else ""))
-    w("""  public
+    if cii:
+        w("""  public
+    constructor Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics;
+      AProfile: TLandrixEInvoiceProfile);
+  end;
+
+constructor TCIIWriter.Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics;
+  AProfile: TLandrixEInvoiceProfile);
+begin
+  inherited Create;
+  FWriter := AWriter;
+  FDiagnostics := ADiagnostics;
+  FProfile := AProfile;
+end;
+
+{ only what the target profile contains is reported }
+procedure TCIIWriter.Missing(const APath: TLandrixEInvoiceString);
+begin
+  if LandrixEInvoiceCIIAllowed(APath, FProfile) then
+    FDiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0, 'required element or attribute missing');
+end;
+""")
+    else:
+        w("""  public
     constructor Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics);
   end;
 
@@ -1571,6 +1623,419 @@ end;
 
 
 # --------------------------------------------------------------------------
+# profile unit (CII only)
+# --------------------------------------------------------------------------
+
+PROFILE_ENUM = {"MINIMUM": "epr_Minimum", "BASIC WL": "epr_BasicWL", "BASIC": "epr_Basic",
+                "EN16931": "epr_EN16931", "EXTENDED": "epr_Extended"}
+
+PROFILES_HEAD = """{
+  EInvoice-for-Pascal
+
+  Copyright (C) 2026 Landrix Software GmbH & Co. KG
+
+  This file is dual-licensed under:
+  - GNU GPL version 3 or later; or
+  - the Landrix Software Commercial License.
+
+  See LICENSE and COMMERCIAL-LICENSE.md.
+
+  SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
+}
+
+{ GENERATED by tools/syntaxmodel/gen-syntaxmodel.py from
+  tools/syntaxmodel/cii-profiles.json (derived from the Factur-X 1.09.2
+  field table by tools/fieldmap/fieldmap.py --export) and
+  tools/syntaxmodel/cii.json - do not edit; change the generator and run it
+  again.
+  DE: ERZEUGT von tools/syntaxmodel/gen-syntaxmodel.py aus
+  tools/syntaxmodel/cii-profiles.json (abgeleitet aus der
+  Factur-X-1.09.2-Feldtabelle von tools/fieldmap/fieldmap.py --export) und
+  tools/syntaxmodel/cii.json - nicht von Hand aendern; den Generator aendern
+  und erneut ausfuehren.
+
+  Factur-X profiles of the CII paths: the profiles nest (MINIMUM in BASIC WL
+  in BASIC in EN16931 in EXTENDED), so a path is allowed in a profile if
+  the lowest profile containing it is not higher. Paths are written without
+  list index, e.g.
+  '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:Name', attributes as
+  '.../@schemeID'. The EXTENDED schema decides for EXTENDED and for targets
+  without a Factur-X profile.
+
+  DE: Factur-X-Profile der CII-Pfade: die Profile sind geschachtelt (MINIMUM
+  in BASIC WL in BASIC in EN16931 in EXTENDED), ein Pfad ist also in einem
+  Profil erlaubt, wenn das niedrigste Profil, das ihn enthaelt, nicht hoeher
+  ist. Pfade stehen ohne Listenindex, z. B.
+  '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:Name', Attribute als
+  '.../@schemeID'. Fuer EXTENDED und fuer Ziele ohne Factur-X-Profil
+  entscheidet das EXTENDED-Schema. }
+
+unit LandrixEInvoiceCIIProfiles;
+
+{$I LandrixEInvoice.inc}
+
+interface
+
+uses
+  LandrixEInvoiceTypes,
+  LandrixEInvoiceDiagnostics,
+  LandrixEInvoiceCII;
+
+{ Lowest Factur-X profile that contains APath; epr_None if the field table
+  does not know the path (then only the EXTENDED schema allows it).
+  DE: Niedrigstes Factur-X-Profil, das APath enthaelt; epr_None, wenn die
+  Feldtabelle den Pfad nicht kennt (dann erlaubt ihn nur das
+  EXTENDED-Schema). }
+function LandrixEInvoiceCIIMinProfile(const APath: TLandrixEInvoiceString): TLandrixEInvoiceProfile;
+
+{ True if APath is allowed in AProfile. For MINIMUM, BASIC WL, BASIC and
+  EN16931 the field table decides (an unknown path is not allowed); for
+  every other profile (EXTENDED, epr_None, epr_XRechnung) the result is
+  True, the schema decides.
+  DE: True, wenn APath in AProfile erlaubt ist. Fuer MINIMUM, BASIC WL, BASIC
+  und EN16931 entscheidet die Feldtabelle (ein unbekannter Pfad ist nicht
+  erlaubt); fuer alle anderen Profile (EXTENDED, epr_None, epr_XRechnung)
+  ist das Ergebnis True, das Schema entscheidet. }
+function LandrixEInvoiceCIIAllowed(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+
+{ True if APath is required in the Factur-X profile AProfile over the whole
+  ancestor chain (the path and every element above it have at least one
+  occurrence in that profile); False for unknown paths and for profiles
+  outside MINIMUM .. EXTENDED.
+  DE: True, wenn APath im Factur-X-Profil AProfile ueber die ganze
+  Ahnenkette Pflicht ist (der Pfad und jedes Element darueber kommen in dem
+  Profil mindestens einmal vor); False fuer unbekannte Pfade und fuer
+  Profile ausserhalb von MINIMUM .. EXTENDED. }
+function LandrixEInvoiceCIIRequired(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+
+{ Removes from AInvoice (not nil) everything the Factur-X profile AProfile
+  does not contain, at the highest element that is not allowed, and reports
+  each removed path once with the number of removed occurrences
+  (edk_NotAllowed, warning) in ADiagnostics (nil: discarded). Totals are not
+  recalculated. Returns the number of removed elements and attributes; 0 for
+  profiles outside MINIMUM .. EN16931.
+  DE: Entfernt aus AInvoice (nicht nil) alles, was das Factur-X-Profil
+  AProfile nicht enthaelt, am hoechsten nicht erlaubten Element, und meldet
+  jeden entfernten Pfad einmal mit der Anzahl entfernter Vorkommen
+  (edk_NotAllowed, Warnung) in ADiagnostics (nil: verworfen). Summen werden
+  nicht neu berechnet. Liefert die Anzahl entfernter Elemente und
+  Attribute; 0 fuer Profile ausserhalb von MINIMUM .. EN16931. }
+function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+
+implementation
+
+uses
+  SysUtils;
+
+type
+  TProfileSet = set of TLandrixEInvoiceProfile;
+
+  TPathEntry = record
+    Path: string;
+    MinProfile: TLandrixEInvoiceProfile;
+    Required: TProfileSet;
+  end;
+
+"""
+
+PROFILES_BODY = """
+const
+  CheckedProfiles = [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931];
+
+function ProfileName(AProfile: TLandrixEInvoiceProfile): string;
+begin
+  case AProfile of
+    epr_Minimum: Result := 'MINIMUM';
+    epr_BasicWL: Result := 'BASIC WL';
+    epr_Basic: Result := 'BASIC';
+    epr_EN16931: Result := 'EN16931';
+  else
+    Result := 'EXTENDED';
+  end;
+end;
+
+{ ordinal comparison; the table is sorted by code point }
+function ComparePath(const A: TLandrixEInvoiceString; const B: string): Integer;
+var
+  I, N: Integer;
+begin
+  N := Length(A);
+  if Length(B) < N then
+    N := Length(B);
+  for I := 1 to N do
+    if Ord(A[I]) <> Ord(B[I]) then
+    begin
+      Result := Ord(A[I]) - Ord(B[I]);
+      Exit;
+    end;
+  Result := Length(A) - Length(B);
+end;
+
+function FindPath(const APath: TLandrixEInvoiceString): Integer;
+var
+  Lo, Hi, Mid, C: Integer;
+begin
+  Lo := Low(Paths);
+  Hi := High(Paths);
+  while Lo <= Hi do
+  begin
+    Mid := (Lo + Hi) div 2;
+    C := ComparePath(APath, Paths[Mid].Path);
+    if C = 0 then
+    begin
+      Result := Mid;
+      Exit;
+    end;
+    if C < 0 then
+      Hi := Mid - 1
+    else
+      Lo := Mid + 1;
+  end;
+  Result := -1;
+end;
+
+function LandrixEInvoiceCIIMinProfile(const APath: TLandrixEInvoiceString): TLandrixEInvoiceProfile;
+var
+  I: Integer;
+begin
+  I := FindPath(APath);
+  if I < 0 then
+    Result := epr_None
+  else
+    Result := Paths[I].MinProfile;
+end;
+
+function LandrixEInvoiceCIIAllowed(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+var
+  MinProfile: TLandrixEInvoiceProfile;
+begin
+  if not (AProfile in CheckedProfiles) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  MinProfile := LandrixEInvoiceCIIMinProfile(APath);
+  Result := (MinProfile <> epr_None) and (MinProfile <= AProfile);
+end;
+
+function LandrixEInvoiceCIIRequired(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+var
+  I: Integer;
+begin
+  I := FindPath(APath);
+  Result := (I >= 0) and (AProfile in Paths[I].Required);
+end;
+
+{ --- pruning ------------------------------------------------------------- }
+
+type
+  TCIIPruner = class(TObject)
+  private
+    FProfile: TLandrixEInvoiceProfile;
+    FPaths: array of TLandrixEInvoiceString;
+    FCounts: array of Integer;
+    FTotal: Integer;
+    function Keep(const APath: TLandrixEInvoiceString; ACount: Integer): Boolean;
+"""
+
+
+def gen_profiles(m, data):
+    order = data["profiles"]
+    if [PROFILE_ENUM.get(p) for p in order] != list(PROFILE_ENUM.values()):
+        fail("cii-profiles.json: unexpected profile list %s" % order)
+    rows = data["paths"]
+    if [r[0] for r in rows] != sorted(r[0] for r in rows):
+        fail("cii-profiles.json: paths not sorted")
+    L = []
+    w = L.append
+    w(PROFILES_HEAD.rstrip("\n"))
+    w("const")
+    w("  Paths: array[0..%d] of TPathEntry = (" % (len(rows) - 1))
+    for i, (path, low, req) in enumerate(rows):
+        if len(path) > 250 or "'" in path:
+            fail("path not usable as literal: %s" % path)
+        w("    (Path: '%s';" % path)
+        w("     MinProfile: %s; Required: [%s])%s" % (
+            PROFILE_ENUM[low], ", ".join(PROFILE_ENUM[p] for p in req), "," if i < len(rows) - 1 else ""))
+    w("  );")
+    w(PROFILES_BODY.rstrip("\n"))
+    for n in m.classes():
+        w("    procedure Prune%s(AObject: %s; const APath: TLandrixEInvoiceString);" % (
+            m.pascal[n][len(PREFIX):], m.pascal[n]))
+    w("""  end;
+
+function TCIIPruner.Keep(const APath: TLandrixEInvoiceString; ACount: Integer): Boolean;
+var
+  I: Integer;
+begin
+  Result := LandrixEInvoiceCIIAllowed(APath, FProfile);
+  if Result then
+    Exit;
+  Inc(FTotal, ACount);
+  for I := 0 to Integer(Length(FPaths)) - 1 do
+    if FPaths[I] = APath then
+    begin
+      Inc(FCounts[I], ACount);
+      Exit;
+    end;
+  I := Integer(Length(FPaths));
+  SetLength(FPaths, I + 1);
+  SetLength(FCounts, I + 1);
+  FPaths[I] := APath;
+  FCounts[I] := ACount;
+end;
+""")
+    single = set()
+    with_fields = set()
+    for n in m.classes():
+        for c in m.types[n]["children"]:
+            if m.child_kind(c) == "record":
+                if c["max"] == 1:
+                    single.add(c["type"])
+                if m.record_fields(c["type"]):
+                    with_fields.add(c["type"])
+    for n in m.records():
+        if n not in single:
+            continue
+        p = m.pascal[n]
+        short = p[len("TLandrix"):]
+        w("function %sIsEmpty(const R: %s): Boolean;" % (short, p))
+        w("begin")
+        cond = ["(R.Value = '')"] + ["(R.%s = '')" % f for f, _, _ in m.record_fields(n)]
+        w("  Result := " + " and ".join(cond) + ";")
+        w("end;")
+        w("")
+        w("procedure %sClear(var R: %s);" % (short, p))
+        w("begin")
+        w("  R.Value := '';")
+        for f, _, _ in m.record_fields(n):
+            w("  R.%s := '';" % f)
+        w("end;")
+        w("")
+    for n in m.records():
+        if n not in with_fields:
+            continue
+        p = m.pascal[n]
+        fields = m.record_fields(n)
+        w("{ attributes of a kept %s value; True if one was removed }" % p)
+        w("function Prune%sFields(APruner: TCIIPruner; var R: %s;" % (p[len(PREFIX):], p))
+        w("  const APath: TLandrixEInvoiceString): Boolean;")
+        w("begin")
+        w("  Result := False;")
+        inner = ""
+        if m.kind[n] == "wrapper":
+            inner = "/%s:%s" % (m.wrapped[n][0]["ns"], m.wrapped[n][0]["name"])
+        for f, a, _ in fields:
+            w("  if (R.%s <> '') and not APruner.Keep(APath + '%s/@%s', 1) then" % (f, inner, a))
+            w("  begin")
+            w("    R.%s := '';" % f)
+            w("    Result := True;")
+            w("  end;")
+        w("end;")
+        w("")
+    for n in m.classes():
+        p = m.pascal[n]
+        children = m.types[n]["children"]
+        w("procedure TCIIPruner.Prune%s(AObject: %s; const APath: TLandrixEInvoiceString);" % (p[len(PREFIX):], p))
+        loops = [c for c in children if c["max"] != 1 and (
+            m.child_kind(c) == "class" or (m.child_kind(c) == "record" and c["type"] in with_fields))]
+        if loops:
+            w("var")
+            w("  I: TLandrixEInvoiceListIndex;")
+            for c in loops:
+                if m.child_kind(c) == "record":
+                    w("  R%s: %s;" % (c["pname"], m.pascal[c["type"]]))
+        w("begin")
+        for c in children:
+            k = m.child_kind(c)
+            pn = c["pname"]
+            cpath = "APath + '/%s'" % m.qname(c)
+            if k == "string" and c["max"] != 1:
+                w("  if (AObject.%s.Count > 0) and not Keep(%s, Integer(AObject.%s.Count)) then" % (pn, cpath, pn))
+                w("    AObject.%s.Clear;" % pn)
+            elif k == "string":
+                w("  if (AObject.%s <> '') and not Keep(%s, 1) then" % (pn, cpath))
+                w("    AObject.%s := '';" % pn)
+            elif k == "record" and c["max"] == 1:
+                short = m.pascal[c["type"]][len(PREFIX):]
+                rshort = m.pascal[c["type"]][len("TLandrix"):]
+                w("  if not %sIsEmpty(AObject.%s) then" % (rshort, pn))
+                if c["type"] in with_fields:
+                    w("    if Keep(%s, 1) then" % cpath)
+                    w("      Prune%sFields(Self, AObject.%s, %s)" % (short, pn, cpath))
+                    w("    else")
+                    w("      %sClear(AObject.%s);" % (rshort, pn))
+                else:
+                    w("    if not Keep(%s, 1) then" % cpath)
+                    w("      %sClear(AObject.%s);" % (rshort, pn))
+            elif k == "record" and c["type"] not in with_fields:
+                w("  if (AObject.%s.Count > 0) and not Keep(%s, Integer(AObject.%s.Count)) then" % (pn, cpath, pn))
+                w("    AObject.%s.Clear;" % pn)
+            elif k == "record":
+                short = m.pascal[c["type"]][len(PREFIX):]
+                w("  if AObject.%s.Count > 0 then" % pn)
+                w("    if Keep(%s, Integer(AObject.%s.Count)) then" % (cpath, pn))
+                w("      for I := 0 to AObject.%s.Count - 1 do" % pn)
+                w("      begin")
+                w("        R%s := AObject.%s[I];" % (pn, pn))
+                w("        if Prune%sFields(Self, R%s, %s) then" % (short, pn, cpath))
+                w("          AObject.%s[I] := R%s;" % (pn, pn))
+                w("      end")
+                w("    else")
+                w("      AObject.%s.Clear;" % pn)
+            elif c["max"] == 1:
+                short = m.pascal[c["type"]][len(PREFIX):]
+                w("  if not AObject.%s.IsEmpty then" % pn)
+                w("    if Keep(%s, 1) then" % cpath)
+                w("      Prune%s(AObject.%s, %s)" % (short, pn, cpath))
+                w("    else")
+                w("      AObject.%s.Clear;" % pn)
+            else:
+                short = m.pascal[c["type"]][len(PREFIX):]
+                w("  if AObject.%s.Count > 0 then" % pn)
+                w("    if Keep(%s, Integer(AObject.%s.Count)) then" % (cpath, pn))
+                w("      for I := 0 to AObject.%s.Count - 1 do" % pn)
+                w("        Prune%s(AObject.%s[I], %s)" % (short, pn, cpath))
+                w("    else")
+                w("      AObject.%s.Clear;" % pn)
+        w("end;")
+        w("")
+    root = m.roots[0]
+    path = "/%s:%s" % (root["ns"], root["name"])
+    w("""function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+var
+  Pruner: TCIIPruner;
+  I: Integer;
+begin
+  Result := 0;
+  if not (AProfile in CheckedProfiles) then
+    Exit;
+  Pruner := TCIIPruner.Create;
+  try
+    Pruner.FProfile := AProfile;
+    Pruner.PruneInvoice(AInvoice, '%s');
+    if ADiagnostics <> nil then
+      for I := 0 to Integer(Length(Pruner.FPaths)) - 1 do
+        ADiagnostics.AddDiagnostic(edk_NotAllowed, Pruner.FPaths[I], 0, 0, 0,
+          TLandrixEInvoiceString(IntToStr(Pruner.FCounts[I]) + ' occurrence(s) left out: not in Factur-X profile ' +
+          ProfileName(AProfile))).Severity := eds_Warning;
+    Result := Pruner.FTotal;
+  finally
+    Pruner.Free;
+  end;
+end;
+
+end.""" % path)
+    return L
+
+
+# --------------------------------------------------------------------------
 
 def finish(lines):
     text = syn_text("\n".join(lines) + "\n")
@@ -1595,6 +2060,9 @@ def main(argv):
         outputs[base + ".pas"] = finish(gen_model(m))
         outputs[base + "Reader.pas"] = finish(gen_reader(m))
         outputs[base + "Writer.pas"] = finish(gen_writer(m))
+        if cfg.get("profiles"):
+            pdata = json.load(io.open(os.path.join(HERE, cfg["profiles"]), encoding="utf-8"))
+            outputs[base + "Profiles.pas"] = finish(gen_profiles(m, pdata))
         counts.append("%s %d classes, %d records" % (cfg["syn"], len(m.classes()), len(m.records())))
     stale = []
     for rel, data_out in sorted(outputs.items()):

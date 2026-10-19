@@ -196,8 +196,16 @@ const
     'urn:xoev-de:kosit:codeliste:vatex_1 ' +
     'urn:xoev-de:xrechnung:codeliste:untdid.4461_3';
 
-  SpecCount = 5;
+  SpecCount = 8;
 
+  { Factur-X MINIMUM and BASIC WL have no invoice lines; in Germany they do
+    not count as e-invoices since 2025 (BMF letter of 15 October 2024), in
+    France they serve as booking aid. The library writes them when asked and
+    does not judge the jurisdiction.
+    DE: Factur-X MINIMUM und BASIC WL haben keine Positionen; in Deutschland
+    gelten sie seit 2025 nicht als E-Rechnung (BMF-Schreiben vom 15. Oktober
+    2024), in Frankreich dienen sie als Buchungshilfe. Die Bibliothek
+    schreibt sie auf Anforderung und beurteilt die Rechtslage nicht. }
   Specs: array[0..SpecCount - 1] of TLandrixEInvoiceSpec = (
     (Target: (Standard: est_XRechnung; Syntax: esy_UBL; Profile: epr_None; Version: '3.0');
      ExactVersion: '3.0.2';
@@ -221,6 +229,42 @@ const
      AttachmentFileName: 'xrechnung.xml';
      ZUGFeRDVersion: '2.5';
      CodeLists: CXRechnung302CodeLists;
+     CanRead: True;
+     CanWrite: True),
+    (Target: (Standard: est_FacturX; Syntax: esy_CII; Profile: epr_Minimum; Version: '1.09');
+     ExactVersion: '1.09.2';
+     CustomizationID: 'urn:factur-x.eu:1p0:minimum';
+     ExtensionCustomizationID: '';
+     ProfileID: '';
+     SyntaxVersion: 'CII D22B';
+     NormVersion: CNorm2017;
+     AttachmentFileName: 'factur-x.xml';
+     ZUGFeRDVersion: '2.5';
+     CodeLists: '';
+     CanRead: True;
+     CanWrite: True),
+    (Target: (Standard: est_FacturX; Syntax: esy_CII; Profile: epr_BasicWL; Version: '1.09');
+     ExactVersion: '1.09.2';
+     CustomizationID: 'urn:factur-x.eu:1p0:basicwl';
+     ExtensionCustomizationID: '';
+     ProfileID: '';
+     SyntaxVersion: 'CII D22B';
+     NormVersion: CNorm2017;
+     AttachmentFileName: 'factur-x.xml';
+     ZUGFeRDVersion: '2.5';
+     CodeLists: '';
+     CanRead: True;
+     CanWrite: True),
+    (Target: (Standard: est_FacturX; Syntax: esy_CII; Profile: epr_Basic; Version: '1.09');
+     ExactVersion: '1.09.2';
+     CustomizationID: 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic';
+     ExtensionCustomizationID: '';
+     ProfileID: '';
+     SyntaxVersion: 'CII D22B';
+     NormVersion: CNorm2017;
+     AttachmentFileName: 'factur-x.xml';
+     ZUGFeRDVersion: '2.5';
+     CodeLists: '';
      CanRead: True;
      CanWrite: True),
     (Target: (Standard: est_FacturX; Syntax: esy_CII; Profile: epr_EN16931; Version: '1.09');

@@ -447,7 +447,7 @@ begin
     begin
       CII := LandrixEInvoiceInvoiceToCII(AInvoice, Spec, ADiagnostics);
       try
-        LandrixEInvoiceWriteCII(CII, W, ADiagnostics);
+        LandrixEInvoiceWriteCII(CII, W, ADiagnostics, Spec.Target.Profile);
       finally
         CII.Free;
       end;

@@ -11,6 +11,9 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
 
 - One library for reading and writing electronic invoices according to EN 16931:
   XRechnung (UBL and CII), ZUGFeRD / Factur-X (MINIMUM to EXTENDED) and Peppol BIS Billing.
+  MINIMUM and BASIC WL carry no invoice lines; in Germany they do not count as e-invoices
+  since 2025, in France they serve as booking aid. The library writes them on request and
+  leaves the legal judgement to the application.
 - One code base for **Delphi 6 through Delphi 13** and **Free Pascal 3.2.2+**
   (Windows, Linux, macOS).
 - Three levels of access:

@@ -15,17 +15,20 @@
 { Mapping between the invoice model (TLandrixInvoice) and the CII syntax
   model (TLandrixCIIInvoice), one method per business group. What a target
   specification allows comes from the rule table (LandrixEInvoiceRules);
-  content it forbids is left out and reported (edk_NotAllowed). Values are
-  converted with LandrixEInvoiceLexical. Totals are taken from the invoice
-  model as they are.
+  content it forbids is left out and reported (edk_NotAllowed). For a
+  Factur-X profile below EXTENDED, LandrixEInvoicePruneCII then removes what
+  the profile does not contain. Values are converted with
+  LandrixEInvoiceLexical. Totals are taken from the invoice model as they
+  are.
 
   DE: Abbildung zwischen dem Rechnungsmodell (TLandrixInvoice) und dem
   CII-Syntaxmodell (TLandrixCIIInvoice), eine Methode je
   Geschaeftsgruppe. Was eine Zielspezifikation erlaubt, kommt aus der
   Regel-Tabelle (LandrixEInvoiceRules); verbotener Inhalt wird weggelassen
-  und gemeldet (edk_NotAllowed). Werte werden mit LandrixEInvoiceLexical
-  umgewandelt. Summen werden unveraendert aus dem Rechnungsmodell
-  uebernommen. }
+  und gemeldet (edk_NotAllowed). Fuer ein Factur-X-Profil unter EXTENDED
+  entfernt LandrixEInvoicePruneCII danach, was das Profil nicht enthaelt.
+  Werte werden mit LandrixEInvoiceLexical umgewandelt. Summen werden
+  unveraendert aus dem Rechnungsmodell uebernommen. }
 
 unit LandrixEInvoiceMapCII;
 
@@ -41,12 +44,18 @@ uses
 
 { Maps AInvoice to a new CII syntax model for ASpec (a CII specification,
   e.g. found with LandrixEInvoiceFindSpec). Diagnostics are added to
-  ADiagnostics (nil: discarded). Raises ELandrixEInvoiceError if ASpec is
-  not a CII specification the library can write. The caller frees the
-  result.
+  ADiagnostics (nil: discarded). For Factur-X MINIMUM, BASIC WL, BASIC and
+  EN16931 the result holds only what the profile contains
+  (LandrixEInvoicePruneCII); write it with that profile
+  (LandrixEInvoiceWriteCII, AProfile). Raises ELandrixEInvoiceError if
+  ASpec is not a CII specification the library can write. The caller frees
+  the result.
   DE: Bildet AInvoice auf ein neues CII-Syntaxmodell fuer ASpec ab (eine
   CII-Spezifikation, z. B. mit LandrixEInvoiceFindSpec gefunden). Meldungen
-  kommen in ADiagnostics (nil: verworfen). Loest ELandrixEInvoiceError aus,
+  kommen in ADiagnostics (nil: verworfen). Fuer Factur-X MINIMUM, BASIC WL,
+  BASIC und EN16931 enthaelt das Ergebnis nur, was das Profil enthaelt
+  (LandrixEInvoicePruneCII); geschrieben wird es mit diesem Profil
+  (LandrixEInvoiceWriteCII, AProfile). Loest ELandrixEInvoiceError aus,
   wenn ASpec keine CII-Spezifikation ist, die die Bibliothek schreiben
   kann. Der Aufrufer gibt das Ergebnis frei. }
 function LandrixEInvoiceInvoiceToCII(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
@@ -75,7 +84,8 @@ uses
   LandrixEInvoiceCodes,
   LandrixEInvoiceLexical,
   LandrixEInvoiceRules,
-  LandrixEInvoiceCalc;
+  LandrixEInvoiceCalc,
+  LandrixEInvoiceCIIProfiles;
 
 const
   Root = '/rsm:CrossIndustryInvoice';
@@ -2721,6 +2731,7 @@ begin
     finally
       Mapper.Free;
     end;
+    LandrixEInvoicePruneCII(Result, ASpec.Target.Profile, ADiagnostics);
   except
     Result.Free;
     raise;

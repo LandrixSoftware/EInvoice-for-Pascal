@@ -10,6 +10,8 @@
     *-ubl-30x.xml, *-cii-30x.xml                XRechnung 3.0.2
     *-ubl-peppol.xml                            Peppol BIS Billing 3.0
     *-ciiEN16931-25.xml, *-ciiextended-25.xml   ZUGFeRD 2.5.2 / Factur-X 1.09.2
+    *-ciiminimum-25.xml, *-ciibasicwl-25.xml,
+    *-ciibasic-25.xml                           the same, reduced profiles
   Other files fail the run. A file passes when the assessment in its report
   accepts it (rep:assessment/rep:accept: the acceptMatch of the XRechnung
   and ZUGFeRD scenarios; the BIS configuration has no acceptMatch, there its
@@ -45,7 +47,8 @@ $Tools = Join-Path $Root 'addons/java-tools'
 $Configurations = @(
   @{ Name = 'XRechnung 3.0.2'; Dir = 'validator-configuration-xrechnung'; Patterns = @('*-ubl-30x.xml', '*-cii-30x.xml') },
   @{ Name = 'Peppol BIS Billing 3.0'; Dir = 'validator-configuration-bis'; Patterns = @('*-ubl-peppol.xml') },
-  @{ Name = 'ZUGFeRD 2.5.2'; Dir = 'validator-configuration-zugferd'; Patterns = @('*-ciiEN16931-25.xml', '*-ciiextended-25.xml') }
+  @{ Name = 'ZUGFeRD 2.5.2'; Dir = 'validator-configuration-zugferd'; Patterns = @('*-ciiEN16931-25.xml', '*-ciiextended-25.xml',
+    '*-ciiminimum-25.xml', '*-ciibasicwl-25.xml', '*-ciibasic-25.xml') }
 )
 
 function Find-Java {

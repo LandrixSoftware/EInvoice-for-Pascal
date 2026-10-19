@@ -37,6 +37,13 @@ validator configuration) and verifies them against the SHA-256 checksums in
 with the ZUGFeRD 2.5.2 / Factur-X 1.09.2 release (https://www.ferd-net.de/standards/zugferd,
 https://fnfe-mpe.org/factur-x/), under the terms of their publishers.
 
+`tools/syntaxmodel/cii-profiles.json` and the unit generated from it
+(`source/LandrixEInvoiceCIIProfiles.pas`) record for each CII path the lowest Factur-X profile
+that contains it and the profiles in which it is required. They are derived by
+`tools/fieldmap/fieldmap.py --export` from the Factur-X 1.09.2 field table published with the
+same release (file `1_FACTUR-X 1.09.2 - EN FR.xlsx`; SHA-256 in `tools/fieldmap/manifest.json`).
+The table itself is not part of this repository.
+
 ## OASIS UBL 2.1 schema and EN 16931 UBL rules
 
 `tools/syntaxmodel/ubl.json` and the units generated from it (`source/LandrixEInvoiceUBL.pas`,

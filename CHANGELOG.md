@@ -168,7 +168,9 @@ Supported invoice standards are documented per release.
 - `tools/fieldmap/fieldmap.py` with the probe `FieldMapProbe.dpr`: measures which paths of the
   Factur-X field table (per profile, checksum in `manifest.json`; the table is not part of the
   repository) reach `TLandrixInvoice`, using a synthetic EXTENDED document with every path and
-  the local CII corpus for frequencies.
+  the local CII corpus for frequencies. `--export` writes `tools/syntaxmodel/cii-profiles.json`.
+- `tools/build.ps1 -Validate` also validates the reduced Factur-X profiles
+  (`build/<toolchain>/profiles/`, test `CIIProfiles.WriteScenarios`).
 - Invoice model, from a field comparison against the Factur-X 1.09.2 table: payee (BG-10),
   seller tax representative (BG-11) and invoicee (BG-X-36, EXTENDED) as the new class
   `TLandrixInvoiceParty` (`PayeeParty`, `TaxRepresentativeParty`, `InvoiceeParty`); VAT point
@@ -187,3 +189,14 @@ Supported invoice standards are documented per release.
   drops them), each discount term with its text.
 - The VAT point date code (BT-8) is left out with a warning when the VAT point date (BT-7) is
   set, since both are mutually exclusive (BR-CO-3).
+- Factur-X 1.09 / ZUGFeRD 2.5 MINIMUM, BASIC WL and BASIC: specification entries (read and
+  write). The generated unit `LandrixEInvoiceCIIProfiles` (from
+  `tools/syntaxmodel/cii-profiles.json`, derived from the Factur-X field table) knows the lowest
+  profile of every CII path: `LandrixEInvoiceCIIMinProfile`, `LandrixEInvoiceCIIAllowed`,
+  `LandrixEInvoiceCIIRequired` (required over the whole ancestor chain) and
+  `LandrixEInvoicePruneCII`, which removes from a CII model what a profile does not contain and
+  reports each path once with its count. The CII mapping prunes for every Factur-X profile below
+  EXTENDED; totals are not recalculated. `LandrixEInvoiceWriteCII` takes the profile as optional last
+  parameter (default `epr_Extended`) and reports missing required content only where the profile
+  contains it. The KoSIT validator accepts all 66 scenario outputs in
+  the three profiles.

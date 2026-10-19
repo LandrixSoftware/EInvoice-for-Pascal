@@ -39,7 +39,7 @@ var
   Ext: Boolean;
   Root: TLandrixEInvoiceString;
 begin
-  Check(LandrixEInvoiceSpecCount = 5, 'five entries');
+  Check(LandrixEInvoiceSpecCount = 8, 'eight entries');
   for I := 0 to LandrixEInvoiceSpecCount - 1 do
   begin
     Spec := LandrixEInvoiceSpec(I);
@@ -87,7 +87,14 @@ begin
   Check(not LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('.3.0', esy_UBL), Spec), 'leading dot');
   Check(not LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('2.3', esy_UBL), Spec), 'XRechnung 2.3 not writable');
   Check(not LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_None), Spec), 'no syntax');
-  Check(not LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_Basic), Spec), 'BASIC not yet');
+  Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_Basic), Spec), 'Factur-X 1.09 BASIC');
+  CheckEqualsInvoiceStr('urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic', Spec.CustomizationID,
+    'BASIC identifier');
+  Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_BasicWL), Spec), 'Factur-X 1.09 BASIC WL');
+  CheckEqualsInvoiceStr('urn:factur-x.eu:1p0:basicwl', Spec.CustomizationID, 'BASIC WL identifier');
+  Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_Minimum), Spec), 'Factur-X 1.09 MINIMUM');
+  CheckEqualsInvoiceStr('urn:factur-x.eu:1p0:minimum', Spec.CustomizationID, 'MINIMUM identifier');
+  CheckEqualsInvoiceStr('factur-x.xml', Spec.AttachmentFileName, 'MINIMUM attachment name');
   Check(not LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_None), Spec), 'Factur-X without profile');
   Check((Spec.Target.Standard = est_None) and not Spec.CanWrite and (Spec.CustomizationID = ''), 'empty entry when not found');
 end;
@@ -104,7 +111,8 @@ begin
   Check(LandrixEInvoiceSameTarget(TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_XRechnung),
     TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII)), 'ZUGFeRD XRECHNUNG profile');
   Check(LandrixEInvoiceSameTarget(TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_Basic),
-    TLandrixEInvoiceTargets.FacturX('1.09', epr_Basic)), 'known release, profile without entry');
+    TLandrixEInvoiceTargets.FacturX('1.09', epr_Basic)), 'ZUGFeRD 2.5 BASIC');
+  Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_Minimum), Spec), 'ZUGFeRD 2.5 MINIMUM');
   CheckEqualsInvoiceStr('XRechnung 3.0 CII', LandrixEInvoiceTargetToStr(TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_XRechnung)),
     'ZUGFeRD XRECHNUNG name');
   T := TLandrixEInvoiceTargets.ZUGFeRD('2.1', epr_EN16931);
@@ -144,6 +152,14 @@ begin
   Check(Spec.Target.Standard = est_XRechnung, 'XRechnung CII standard');
   Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:cen.eu:en16931:2017', Spec, Ext), 'Factur-X EN16931');
   Check(Spec.Target.Profile = epr_EN16931, 'EN16931 profile');
+  Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:factur-x.eu:1p0:minimum', Spec, Ext) and
+    (Spec.Target.Profile = epr_Minimum), 'Factur-X MINIMUM');
+  Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:factur-x.eu:1p0:basicwl', Spec, Ext) and
+    (Spec.Target.Profile = epr_BasicWL), 'Factur-X BASIC WL');
+  Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic',
+    Spec, Ext) and (Spec.Target.Profile = epr_Basic), 'Factur-X BASIC');
+  Check(not LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:zugferd.de:2p0:basic', Spec, Ext),
+    'ZUGFeRD 2.0 identifier not recognised');
   Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice',
     '  urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0 ',
     Spec, Ext), 'XRechnung CII with extension, surrounding white space');

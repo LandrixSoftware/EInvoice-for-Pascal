@@ -37,8 +37,9 @@
   least two local toolchains; mac and d13-osxarm64 take no part.
 
   -Validate: afterwards the KoSIT validator checks the cross output of the
-  first local toolchain (tools/validate.ps1; tools from
-  addons/java-tools/install-tools.ps1).
+  first local toolchain and its reduced Factur-X profiles in
+  build/<toolchain>/profiles/ (test CIIProfiles.WriteScenarios)
+  (tools/validate.ps1; tools from addons/java-tools/install-tools.ps1).
 
 .EXAMPLE
   ./tools/build.ps1                 # minimum set
@@ -112,6 +113,7 @@ function Invoke-Toolchain([string]$Name) {
   New-Item -ItemType Directory -Force $out | Out-Null
   # the cross test may only see what this run writes
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/cross"
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/profiles"
   $exe = $null
   $log = @()
   $runCmd = $null
@@ -265,15 +267,22 @@ if ($Validate -and -not $NoRun) {
     Write-Host 'validation skipped: no toolchain with cross output' -ForegroundColor Yellow
     $results += @{ Name = 'KoSIT validation'; Build = 0; Diag = 0; Run = 1 }
   } else {
-    Write-Host "=== KoSIT validation of $($source.Name) ===" -ForegroundColor Cyan
-    try {
-      & (Join-Path $PSScriptRoot 'validate.ps1') -Folder "build/$($source.Name)/cross" | Out-Host
-      $code = $LASTEXITCODE
-    } catch {
-      Write-Host "  $_" -ForegroundColor Red
-      $code = 1
+    foreach ($folder in @('cross', 'profiles')) {
+      # profiles/ needs the local attachments like cross/ (test CIIProfiles.WriteScenarios)
+      if (-not (Test-Path "build/$($source.Name)/$folder/*.xml")) {
+        Write-Host "validation of $folder skipped: no output" -ForegroundColor Yellow
+        continue
+      }
+      Write-Host "=== KoSIT validation of $($source.Name)/$folder ===" -ForegroundColor Cyan
+      try {
+        & (Join-Path $PSScriptRoot 'validate.ps1') -Folder "build/$($source.Name)/$folder" | Out-Host
+        $code = $LASTEXITCODE
+      } catch {
+        Write-Host "  $_" -ForegroundColor Red
+        $code = 1
+      }
+      $results += @{ Name = "KoSIT validation $($source.Name)/$folder"; Build = 0; Diag = 0; Run = $code }
     }
-    $results += @{ Name = "KoSIT validation $($source.Name)"; Build = 0; Diag = 0; Run = $code }
   }
 }
 
