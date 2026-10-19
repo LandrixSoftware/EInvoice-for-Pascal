@@ -27,7 +27,14 @@ unit LandrixEInvoiceTestMapCII;
 
 interface
 
+uses
+  LandrixEInvoiceInvoice;
+
 procedure Register;
+
+{ Fills an invoice with every field added in Phase 2 (field comparison
+  against the Factur-X 1.09.2 table); used by the CII and UBL tests. }
+procedure FillPhase2(AInvoice: TLandrixInvoice);
 
 implementation
 
@@ -40,7 +47,6 @@ uses
   LandrixEInvoiceTypes,
   LandrixEInvoiceDiagnostics,
   LandrixEInvoiceCodes,
-  LandrixEInvoiceInvoice,
   LandrixEInvoiceSpecs,
   LandrixEInvoiceCII,
   LandrixEInvoiceCIIReader,
@@ -327,7 +333,8 @@ begin
     finally
       CII.Free;
     end;
-    CheckEquals(1, CountKind(D, edk_NotMapped, '/rsm:ExchangedDocument/ram:Name'), 'document name not mapped');
+    CheckEquals(0, CountKind(D, edk_NotMapped, '/rsm:ExchangedDocument/ram:Name'), 'document name mapped');
+    CheckEqualsInvoiceStr('Doc name', Invoice.DocumentName, 'document name (BT-X-2)');
     CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:SpecifiedTradeProduct/ram:BrandName'), 'brand name not mapped');
     CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:SellerAssignedID/@schemeID'), 'identifier scheme not mapped');
     CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:BuyerTradeParty/ram:Description'), 'buyer description not mapped');
@@ -432,7 +439,7 @@ begin
 end;
 
 { BT-110 is written in the invoice currency; a differing VAT accounting
-  currency needs BT-111, which the model does not hold: an error. }
+  currency needs BT-111: an error without it, a second total with it. }
 procedure TestTaxCurrency;
 var
   Invoice: TLandrixInvoice;
@@ -456,6 +463,304 @@ begin
     Check(Pos('<ram:TaxCurrencyCode>SEK', Xml) > 0, 'BT-6 written');
     Check(Pos('currencyID="EUR"', Xml) > 0, 'BT-110 in the invoice currency');
     CheckEquals(1, CountKind(D, edk_MissingElement, '/ram:TaxTotalAmount'), 'BT-111 missing');
+    D.Clear;
+    Invoice.TaxAmountTotalInTaxCurrency.SetValue(1.5);
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    try
+      Xml := LandrixXmlUtf8ToString(WriteCII(CII));
+    finally
+      CII.Free;
+    end;
+    Check(Pos('<ram:TaxTotalAmount currencyID="SEK">1.50</ram:TaxTotalAmount>', Xml) > 0, 'BT-111 written');
+    Check(not D.HasErrors, 'no error with BT-111: ' + string(D.ToText));
+    D.Clear;
+    Invoice.TaxCurrencyCode := 'EUR';
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    CII.Free;
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:TaxTotalAmount'), 'BT-111 without differing BT-6 left out');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+procedure FillPhase2(AInvoice: TLandrixInvoice);
+var
+  Line: TLandrixInvoiceLine;
+  Attachment: TLandrixInvoiceAttachment;
+  Subtotal: TLandrixInvoiceTaxAmount;
+begin
+  AInvoice.InvoiceNumber := 'R-2';
+  AInvoice.InvoiceTypeCode := itc_CommercialInvoice;
+  AInvoice.InvoiceIssueDate := EncodeDate(2026, 10, 19);
+  AInvoice.InvoiceCurrencyCode := 'EUR';
+  AInvoice.TaxCurrencyCode := 'SEK';
+  AInvoice.TaxAmountTotal := 19;
+  AInvoice.TaxAmountTotalInTaxCurrency.SetValue(215.5);
+  AInvoice.TestIndicator.SetValue(True);
+  AInvoice.DocumentName := 'RECHNUNG';
+  AInvoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
+  AInvoice.TaxPointDateCode := '3';
+  AInvoice.SellerOrderReference := 'SO-1';
+  AInvoice.SellerOrderReferenceDate.SetValue(EncodeDate(2026, 9, 1));
+  AInvoice.PurchaseOrderReference := 'PO-1';
+  AInvoice.PurchaseOrderReferenceDate.SetValue(EncodeDate(2026, 9, 2));
+  AInvoice.AccountingSupplierParty.RegistrationName := 'Seller';
+  AInvoice.AccountingSupplierParty.CompanyID := 'HRB 1';
+  AInvoice.AccountingSupplierParty.CompanyIDSchemeID := '0002';
+  AInvoice.AccountingSupplierParty.ContactName := 'Ms Seller';
+  AInvoice.AccountingCustomerParty.RegistrationName := 'Buyer';
+  AInvoice.AccountingCustomerParty.ContactDepartment := 'Purchasing';
+  AInvoice.DeliveryInformation.LocationIdentifier := 'LOC-7';
+  AInvoice.DeliveryInformation.LocationIdentifierSchemeID := '';
+  AInvoice.DeliveryInformation.ContactName := 'Gate';
+  AInvoice.DeliveryInformation.ContactTelephone := '+49 1';
+  AInvoice.DeliveryInformation.ContactElectronicMail := 'gate@example.com';
+  AInvoice.PayeeParty.Name := 'Payee';
+  AInvoice.PayeeParty.Identifier := '4000001000005';
+  AInvoice.PayeeParty.IdentifierSchemeID := '0088';
+  AInvoice.PayeeParty.CompanyID := 'HRB 2';
+  AInvoice.PayeeParty.CompanyIDSchemeID := '0002';
+  AInvoice.PayeeParty.Address.City := 'Payee City';
+  AInvoice.PayeeParty.Address.CountryCode := 'DE';
+  AInvoice.TaxRepresentativeParty.Name := 'Representative';
+  AInvoice.TaxRepresentativeParty.VATCompanyID := 'DE123456789';
+  AInvoice.TaxRepresentativeParty.Address.City := 'Rep City';
+  AInvoice.TaxRepresentativeParty.Address.CountryCode := 'DE';
+  AInvoice.TaxRepresentativeParty.ContactName := 'Mr Rep';
+  AInvoice.InvoiceeParty.Name := 'Invoicee';
+  AInvoice.InvoiceeParty.Address.CountryCode := 'DE';
+  AInvoice.PaymentTermsType := iptt_CashDiscount1;
+  AInvoice.PaymentTermNetNote := 'Net 30 days';
+  AInvoice.PaymentTermCashDiscount1Days := 10;
+  AInvoice.PaymentTermCashDiscount1Percent := 2;
+  AInvoice.PaymentTermCashDiscount1Note := '2 % within 10 days';
+  Attachment := AInvoice.Attachments.AddAttachment(iat_application_None);
+  Attachment.TypeCode := iatc_130;
+  Attachment.ID := 'OBJ-1';
+  Attachment.IDSchemeID := 'AAG';
+  Subtotal := AInvoice.TaxAmountSubtotals.AddTaxAmount;
+  Subtotal.TaxableAmount := 100;
+  Subtotal.TaxAmount := 19;
+  Subtotal.TaxPercent := 19;
+  Subtotal.TaxCategory := idtfcc_S_StandardRate;
+  Subtotal := AInvoice.TaxAmountSubtotals.AddTaxAmount;
+  Subtotal.TaxableAmount := 0;
+  Subtotal.TaxAmount := 0;
+  Subtotal.TaxPercent := 7;
+  Subtotal.TaxCategory := idtfcc_S_StandardRate;
+  Line := AInvoice.InvoiceLines.AddInvoiceLine;
+  Line.ID := '1';
+  Line.Name := 'Item';
+  Line.Quantity := 1;
+  Line.UnitCode := iuc_piece;
+  Line.NetPriceAmount := 100;
+  Line.LineAmount := 100;
+  Line.TaxPercent := 19;
+  Line.TaxCategory := idtfcc_S_StandardRate;
+  Line.StandardItemIdentifier := '123456789';
+  Line.StandardItemIdentifierSchemeID := '0088';
+  Line.OrderLineReference := '10';
+  Line.OrderNumber := 'PO-1';
+  Line.OrderDate.SetValue(EncodeDate(2026, 9, 2));
+end;
+
+function Occurrences(const APattern, AText: string): Integer;
+var
+  P: Integer;
+  Remaining: string;
+begin
+  Result := 0;
+  Remaining := AText;
+  P := Pos(APattern, Remaining);
+  while P > 0 do
+  begin
+    Inc(Result);
+    Remaining := Copy(Remaining, P + Length(APattern), Length(Remaining));
+    P := Pos(APattern, Remaining);
+  end;
+end;
+
+function MapToCIIXml(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; ABack: TLandrixInvoice): string;
+var
+  Spec: TLandrixEInvoiceSpec;
+  CII: TLandrixCIIInvoice;
+  Xml: TLandrixXmlUtf8;
+begin
+  Check(LandrixEInvoiceFindSpec(ATarget, Spec), 'spec');
+  CII := LandrixEInvoiceInvoiceToCII(AInvoice, Spec, ADiagnostics);
+  try
+    Xml := WriteCII(CII);
+  finally
+    CII.Free;
+  end;
+  Result := LandrixXmlUtf8ToString(Xml);
+  if ABack <> nil then
+  begin
+    CII := ReadCII(Xml, ADiagnostics);
+    try
+      LandrixEInvoiceCIIToInvoice(CII, ABack, ADiagnostics);
+    finally
+      CII.Free;
+    end;
+  end;
+end;
+
+{ EXTENDED holds every Phase 2 field: write, read back, nothing lost. }
+procedure TestPhase2Extended;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    FillPhase2(Invoice);
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, Back);
+    CheckEquals(0, D.CountOf(edk_NotAllowed), 'nothing left out: ' + string(D.ToText));
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
+    Check(not D.HasErrors, 'no errors: ' + string(D.ToText));
+    Check(Pos('<ram:DueDateTypeCode>5</ram:DueDateTypeCode>', Xml) > 0, 'BT-8 3 written as 5');
+    CheckEquals(1, Occurrences('<ram:TaxPointDate>', Xml), 'BT-7 once (CII-SR-461)');
+    CheckEquals(1, Occurrences('<ram:DueDateTypeCode>', Xml), 'BT-8 once (CII-SR-462)');
+    Check(Pos('<ram:ID>LOC-7</ram:ID>', Xml) > 0, 'BT-71 without scheme as ram:ID');
+    Check(Pos('currencyID="SEK">215.50<', Xml) > 0, 'BT-111 in SEK');
+    Check(Back.TestIndicator.HasValue and Back.TestIndicator.Value, 'BT-X-1');
+    CheckEqualsInvoiceStr('RECHNUNG', Back.DocumentName, 'BT-X-2');
+    Check(Back.TaxPointDate.HasValue and (Back.TaxPointDate.Value = EncodeDate(2026, 10, 1)), 'BT-7');
+    CheckEqualsInvoiceStr('3', Back.TaxPointDateCode, 'BT-8 read back as 3');
+    Check(Back.TaxAmountTotalInTaxCurrency.HasValue and (Back.TaxAmountTotalInTaxCurrency.Value = 215.5), 'BT-111');
+    Check(Back.SellerOrderReferenceDate.Value = EncodeDate(2026, 9, 1), 'BT-X-146');
+    Check(Back.PurchaseOrderReferenceDate.Value = EncodeDate(2026, 9, 2), 'BT-X-147');
+    CheckEqualsInvoiceStr('0002', Back.AccountingSupplierParty.CompanyIDSchemeID, 'BT-30-1');
+    CheckEqualsInvoiceStr('Purchasing', Back.AccountingCustomerParty.ContactDepartment, 'BT-56-0');
+    CheckEqualsInvoiceStr('LOC-7', Back.DeliveryInformation.LocationIdentifier, 'BT-71');
+    CheckEqualsInvoiceStr('', Back.DeliveryInformation.LocationIdentifierSchemeID, 'BT-71 without scheme');
+    CheckEqualsInvoiceStr('Gate', Back.DeliveryInformation.ContactName, 'deliver to contact');
+    CheckEqualsInvoiceStr('gate@example.com', Back.DeliveryInformation.ContactElectronicMail, 'deliver to email');
+    CheckEqualsInvoiceStr('Payee', Back.PayeeParty.Name, 'BT-59');
+    CheckEqualsInvoiceStr('4000001000005', Back.PayeeParty.Identifier, 'BT-60');
+    CheckEqualsInvoiceStr('0088', Back.PayeeParty.IdentifierSchemeID, 'BT-60-1');
+    CheckEqualsInvoiceStr('HRB 2', Back.PayeeParty.CompanyID, 'BT-61');
+    CheckEqualsInvoiceStr('Payee City', Back.PayeeParty.Address.City, 'payee address (EXTENDED)');
+    CheckEqualsInvoiceStr('DE123456789', Back.TaxRepresentativeParty.VATCompanyID, 'BT-63');
+    CheckEqualsInvoiceStr('Rep City', Back.TaxRepresentativeParty.Address.City, 'BG-12');
+    CheckEqualsInvoiceStr('Mr Rep', Back.TaxRepresentativeParty.ContactName, 'tax representative contact');
+    CheckEqualsInvoiceStr('Invoicee', Back.InvoiceeParty.Name, 'invoicee');
+    Check(Back.PaymentTermsType = iptt_CashDiscount1, 'cash discount');
+    CheckEqualsInvoiceStr('2 % within 10 days', Back.PaymentTermCashDiscount1Note, 'text of the discount level');
+    CheckEqualsInvoiceStr('Net 30 days', Back.PaymentTermNetNote, 'net note');
+    CheckEqualsInvoiceStr('AAG', Back.Attachments[0].IDSchemeID, 'BT-18-1');
+    CheckEqualsInvoiceStr('123456789', Back.InvoiceLines[0].StandardItemIdentifier, 'BT-157');
+    CheckEqualsInvoiceStr('0088', Back.InvoiceLines[0].StandardItemIdentifierSchemeID, 'BT-157-1');
+    CheckEqualsInvoiceStr('', Back.InvoiceLines[0].GlobalID_EAN_GTIN, 'no GTIN for scheme 0088');
+    Check(Back.InvoiceLines[0].OrderDate.Value = EncodeDate(2026, 9, 2), 'BT-X-22');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ EN 16931 writes the EN 16931 part and reports every EXTENDED-only field. }
+procedure TestPhase2EN16931;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillPhase2(Invoice);
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), D, nil);
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:TestIndicator'), 'BT-X-1 left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/rsm:ExchangedDocument/ram:Name'), 'BT-X-2 left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ApplicableHeaderTradeAgreement'), 'order dates left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime'),
+      'line order date left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ShipToTradeParty/ram:DefinedTradeContact'),
+      'deliver to contact left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:InvoiceeTradeParty'), 'invoicee left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:PayeeTradeParty'), 'payee address left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SellerTaxRepresentativeTradeParty'),
+      'tax representative contact left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SpecifiedTradePaymentTerms/ram:Description'),
+      'text of the discount level left out');
+    Check(Pos('RECHNUNG', Xml) = 0, 'no document name');
+    Check(Pos('Invoicee', Xml) = 0, 'no invoicee');
+    Check(Pos('Payee City', Xml) = 0, 'no payee address');
+    Check(Pos('<ram:Name>Payee</ram:Name>', Xml) > 0, 'payee name written');
+    Check(Pos('<ram:GlobalID schemeID="0088">4000001000005</ram:GlobalID>', Xml) > 0, 'payee identifier written');
+    Check(Pos('Rep City', Xml) > 0, 'tax representative address written');
+    Check(Pos('DE123456789', Xml) > 0, 'tax representative VAT identifier written');
+    Check(Pos('Mr Rep', Xml) = 0, 'no tax representative contact');
+    Check(Pos('<ram:DepartmentName>Purchasing</ram:DepartmentName>', Xml) > 0, 'BT-56-0 written');
+    Check(Pos('<ram:ID schemeID="0002">HRB 1</ram:ID>', Xml) > 0, 'BT-30-1 written');
+    Check(Pos('<ram:ReferenceTypeCode>AAG</ram:ReferenceTypeCode>', Xml) > 0, 'BT-18-1 written');
+    Check(Pos('<udt:DateString format="102">20261001</udt:DateString>', Xml) > 0, 'BT-7 written');
+    Check(Pos('<ram:GlobalID schemeID="0088">123456789</ram:GlobalID>', Xml) > 0, 'BT-157 written');
+    Check(not D.HasErrors, 'no errors: ' + string(D.ToText));
+    D.Clear;
+    Invoice.AccountingSupplierParty.ContactDepartment := 'Accounts';
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), D, nil);
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName'),
+      'department besides a person name left out (CII-SR-465)');
+    Check(Pos('Accounts', Xml) = 0, 'department not written');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ Factur-X terms in the order discount, then net: the net term keeps the
+  discount, the discount keeps its text. }
+procedure TestPaymentTermsOrder;
+const
+  Xml =
+    '<rsm:CrossIndustryInvoice ' + Ns + '>' +
+    '<rsm:ExchangedDocumentContext><ram:GuidelineSpecifiedDocumentContextParameter>' +
+    '<ram:ID>urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended</ram:ID>' +
+    '</ram:GuidelineSpecifiedDocumentContextParameter></rsm:ExchangedDocumentContext>' +
+    '<rsm:ExchangedDocument><ram:ID>R-1</ram:ID><ram:TypeCode>380</ram:TypeCode>' +
+    '<ram:IssueDateTime><udt:DateTimeString format="102">20261019</udt:DateTimeString></ram:IssueDateTime>' +
+    '</rsm:ExchangedDocument>' +
+    '<rsm:SupplyChainTradeTransaction>' +
+    '<ram:ApplicableHeaderTradeAgreement/><ram:ApplicableHeaderTradeDelivery/>' +
+    '<ram:ApplicableHeaderTradeSettlement><ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>' +
+    '<ram:SpecifiedTradePaymentTerms><ram:Description>2 % until 29.10.</ram:Description>' +
+    '<ram:ApplicableTradePaymentDiscountTerms><ram:BasisPeriodMeasure unitCode="DAY">10</ram:BasisPeriodMeasure>' +
+    '<ram:CalculationPercent>2.00</ram:CalculationPercent></ram:ApplicableTradePaymentDiscountTerms>' +
+    '</ram:SpecifiedTradePaymentTerms>' +
+    '<ram:SpecifiedTradePaymentTerms><ram:Description>Net until 18.11.</ram:Description>' +
+    '<ram:DueDateDateTime><udt:DateTimeString format="102">20261118</udt:DateTimeString></ram:DueDateDateTime>' +
+    '</ram:SpecifiedTradePaymentTerms>' +
+    '<ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:DuePayableAmount>0.00</ram:DuePayableAmount>' +
+    '</ram:SpecifiedTradeSettlementHeaderMonetarySummation></ram:ApplicableHeaderTradeSettlement>' +
+    '</rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>';
+var
+  CII: TLandrixCIIInvoice;
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    CII := ReadCII(Xml, D);
+    try
+      LandrixEInvoiceCIIToInvoice(CII, Invoice, D);
+    finally
+      CII.Free;
+    end;
+    Check(Invoice.PaymentTermsType = iptt_CashDiscount1, 'the net term keeps the discount');
+    CheckEquals(10, Invoice.PaymentTermCashDiscount1Days, 'days');
+    CheckEqualsInvoiceStr('2 % until 29.10.', Invoice.PaymentTermCashDiscount1Note, 'text of the discount level');
+    CheckEqualsInvoiceStr('Net until 18.11.', Invoice.PaymentTermNetNote, 'net note');
+    Check(Invoice.InvoiceDueDate = EncodeDate(2026, 11, 18), 'due date');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
   finally
     Invoice.Free;
     D.Free;
@@ -490,6 +795,9 @@ begin
   RegisterTest('MapCII.WrongSpec', TestWrongSpec);
   RegisterTest('MapCII.TaxCurrency', TestTaxCurrency);
   RegisterTest('MapCII.DiscountOnlyRoundTrip', TestDiscountOnlyRoundTrip);
+  RegisterTest('MapCII.Phase2Extended', TestPhase2Extended);
+  RegisterTest('MapCII.Phase2EN16931', TestPhase2EN16931);
+  RegisterTest('MapCII.PaymentTermsOrder', TestPaymentTermsOrder);
 end;
 
 end.

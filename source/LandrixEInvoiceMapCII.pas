@@ -86,6 +86,11 @@ const
   LineItem = Transaction + '/ram:IncludedSupplyChainTradeLineItem';
 
 type
+  { Role of a TLandrixInvoiceParty; it decides which fields EN 16931 knows.
+    DE: Rolle einer TLandrixInvoiceParty; sie bestimmt, welche Felder
+    EN 16931 kennt. }
+  TFurtherPartyRole = (fpr_Payee, fpr_TaxRepresentative, fpr_Invoicee);
+
   { Writes one invoice into one CII model. DE: Schreibt eine Rechnung in ein
     CII-Modell. }
   TCIIWriteMapper = class(TObject)
@@ -111,11 +116,14 @@ type
     procedure MapLineSettlement(ALine: TLandrixInvoiceLine; AStatus: TLandrixInvoiceLineStatusReasonCode;
       ASettlement: TLandrixCIILineTradeSettlement; const APath: TLandrixEInvoiceString);
     procedure MapAddress(AAddress: TLandrixInvoiceAddress; ATarget: TLandrixCIITradeAddress);
-    procedure MapContact(AParty: TLandrixInvoiceAccountingParty; AParty2: TLandrixCIITradeParty);
+    procedure MapContact(AParty: TLandrixInvoiceAccountingParty; AParty2: TLandrixCIITradeParty;
+      const APath: TLandrixEInvoiceString);
     procedure MapElectronicAddress(AParty: TLandrixInvoiceAccountingParty; AParty2: TLandrixCIITradeParty;
       const APath: TLandrixEInvoiceString);
     procedure MapSeller;
     procedure MapBuyer;
+    procedure MapFurtherParty(AParty: TLandrixInvoiceParty; ATarget: TLandrixCIITradeParty;
+      const APath: TLandrixEInvoiceString; ARole: TFurtherPartyRole);
     procedure MapReferences;
     procedure MapAttachments;
     procedure MapDelivery;
@@ -138,6 +146,14 @@ type
 function DateSet(AValue: TDateTime): Boolean;
 begin
   Result := AValue > 0;
+end;
+
+{ Sets an optional date from a read value; 0 (not set or not converted)
+  leaves it empty. }
+procedure SetDate(var ADate: TLandrixEInvoiceDate; AValue: TDateTime);
+begin
+  if AValue > 0 then
+    ADate.SetValue(AValue);
 end;
 
 { Periods: the invoice model of XRechnung-for-Delphi treats values up to 100
@@ -339,9 +355,18 @@ begin
     MapLine(FInvoice.InvoiceLines[I], '', LineItem);
   MapSeller;
   MapBuyer;
+  MapFurtherParty(FInvoice.TaxRepresentativeParty,
+    FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.SellerTaxRepresentativeTradeParty,
+    Agreement + '/ram:SellerTaxRepresentativeTradeParty', fpr_TaxRepresentative);
   MapReferences;
   MapAttachments;
   MapDelivery;
+  MapFurtherParty(FInvoice.InvoiceeParty,
+    FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.InvoiceeTradeParty,
+    Settlement + '/ram:InvoiceeTradeParty', fpr_Invoicee);
+  MapFurtherParty(FInvoice.PayeeParty,
+    FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.PayeeTradeParty,
+    Settlement + '/ram:PayeeTradeParty', fpr_Payee);
   MapPaymentMeans;
   MapTaxBreakdown;
   MapAllowanceCharges;
@@ -354,13 +379,19 @@ begin
   MapThirdPartyPayments;
 end;
 
-{ BT-23 business process, BT-24 specification identifier.
-  DE: BT-23 Geschaeftsprozess, BT-24 Spezifikationskennung. }
+{ BT-X-1 test indicator (EXTENDED), BT-23 business process, BT-24
+  specification identifier.
+  DE: BT-X-1 Testkennzeichen (EXTENDED), BT-23 Geschaeftsprozess, BT-24
+  Spezifikationskennung. }
 procedure TCIIWriteMapper.MapContext;
 var
   Context: TLandrixCIIExchangedDocumentContext;
 begin
   Context := FCII.ExchangedDocumentContext;
+  if FInvoice.TestIndicator.HasValue and
+     Permit(LandrixEInvoiceRuleTestIndicator, Root + '/rsm:ExchangedDocumentContext/ram:TestIndicator',
+       'test indicator') then
+    Context.TestIndicator := BoolText(FInvoice.TestIndicator.Value);
   if FInvoice.ProfileID <> '' then
     Context.BusinessProcessSpecifiedDocumentContextParameter.ID.Value := FInvoice.ProfileID
   else
@@ -368,8 +399,10 @@ begin
   Context.GuidelineSpecifiedDocumentContextParameter.ID.Value := FSpec.CustomizationID;
 end;
 
-{ BT-1 number, BT-3 type, BT-2 issue date, BG-1 notes.
-  DE: BT-1 Nummer, BT-3 Art, BT-2 Rechnungsdatum, BG-1 Bemerkungen. }
+{ BT-1 number, BT-X-2 document name (EXTENDED), BT-3 type, BT-2 issue date,
+  BG-1 notes.
+  DE: BT-1 Nummer, BT-X-2 Dokumentname (EXTENDED), BT-3 Art, BT-2
+  Rechnungsdatum, BG-1 Bemerkungen. }
 procedure TCIIWriteMapper.MapDocument;
 var
   Doc: TLandrixCIIExchangedDocument;
@@ -378,6 +411,9 @@ var
 begin
   Doc := FCII.ExchangedDocument;
   Doc.ID.Value := FInvoice.InvoiceNumber;
+  if (FInvoice.DocumentName <> '') and
+     Permit(LandrixEInvoiceRuleDocumentName, Root + '/rsm:ExchangedDocument/ram:Name', 'document name') then
+    Doc.Name := Txt(FInvoice.DocumentName);
   Doc.TypeCode := Code(LandrixEInvoiceTypeCodeToStr(FInvoice.InvoiceTypeCode), FInvoice.InvoiceTypeCodeOther,
     Root + '/rsm:ExchangedDocument/ram:TypeCode');
   if DateSet(FInvoice.InvoiceIssueDate) then
@@ -434,14 +470,14 @@ begin
     MapLine(ALine.SubInvoiceLines[I], ALine.ID, APath);
 end;
 
-{ BG-31 item information: BT-157 standard identifier (GTIN, scheme 0160),
-  BT-155/BT-156 identifiers, BT-153 name, BT-154 description, BG-32
-  attributes, BT-158 classifications (BR-65: only with a scheme), BT-159
-  country of origin.
-  DE: BG-31 Artikelinformationen: BT-157 Standardkennung (GTIN, Schema
-  0160), BT-155/BT-156 Kennungen, BT-153 Name, BT-154 Beschreibung, BG-32
-  Eigenschaften, BT-158 Klassifizierungen (BR-65: nur mit Schema), BT-159
-  Herkunftsland. }
+{ BG-31 item information: BT-157 standard identifier (see
+  StandardItemIdentifierOf), BT-155/BT-156 identifiers, BT-153 name, BT-154
+  description, BG-32 attributes, BT-158 classifications (BR-65: only with a
+  scheme), BT-159 country of origin.
+  DE: BG-31 Artikelinformationen: BT-157 Standardkennung (siehe
+  StandardItemIdentifierOf), BT-155/BT-156 Kennungen, BT-153 Name, BT-154
+  Beschreibung, BG-32 Eigenschaften, BT-158 Klassifizierungen (BR-65: nur
+  mit Schema), BT-159 Herkunftsland. }
 procedure TCIIWriteMapper.MapLineProduct(ALine: TLandrixInvoiceLine; AProduct: TLandrixCIITradeProduct;
   const APath: TLandrixEInvoiceString);
 var
@@ -449,9 +485,17 @@ var
   Classification: TLandrixInvoiceLineItemClassification;
   Target: TLandrixCIIProductClassification;
   Characteristic: TLandrixCIIProductCharacteristic;
+  Value, Scheme, Conflict: TLandrixEInvoiceString;
 begin
-  if ALine.GlobalID_EAN_GTIN <> '' then
-    AProduct.GlobalID := CIIID(ALine.GlobalID_EAN_GTIN, '0160');
+  if LandrixEInvoiceStandardItemIdentifierOf(ALine, Value, Scheme, Conflict) then
+  begin
+    AProduct.GlobalID := CIIID(Value, Scheme);
+    if Scheme = '' then
+      Report(edk_MissingElement, APath + '/ram:GlobalID/@schemeID', 'item standard identifier ' + Value +
+        ' of line ' + ALine.ID + ' without scheme (BR-64)', eds_Error);
+    if Conflict <> '' then
+      Report(edk_NotAllowed, APath + '/ram:GlobalID', Conflict, eds_Warning);
+  end;
   AProduct.SellerAssignedID.Value := ALine.SellersItemIdentification;
   AProduct.BuyerAssignedID.Value := ALine.BuyersItemIdentification;
   AProduct.Name := Txt(ALine.Name);
@@ -503,6 +547,10 @@ begin
        'order number of line ' + ALine.ID) then
     AAgreement.BuyerOrderReferencedDocument.IssuerAssignedID.Value := ALine.OrderNumber;
   AAgreement.BuyerOrderReferencedDocument.LineID.Value := ALine.OrderLineReference;
+  if ALine.OrderDate.HasValue and
+     Permit(LandrixEInvoiceRuleLineOrderDate, APath + '/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime',
+       'order date of line ' + ALine.ID) then
+    AAgreement.BuyerOrderReferencedDocument.FormattedIssueDateTime := CIIFormattedDate(ALine.OrderDate.Value);
   { BT-150 is optional }
   HasBaseQuantity := ALine.BaseQuantity <> 0;
   if HasBaseQuantity then
@@ -633,14 +681,28 @@ begin
   ATarget.CountrySubDivisionName := AAddress.CountrySubentity;
 end;
 
-procedure TCIIWriteMapper.MapContact(AParty: TLandrixInvoiceAccountingParty; AParty2: TLandrixCIITradeParty);
+{ BG-6/BG-9 contact: BT-41/BT-56 as person name or, without one, as
+  department (CII-SR-465/466 allow only one of both), BT-42/BT-57,
+  BT-43/BT-58.
+  DE: BG-6/BG-9 Kontakt: BT-41/BT-56 als Personenname oder, ohne diesen,
+  als Abteilung (CII-SR-465/466 erlauben nur eines von beiden),
+  BT-42/BT-57, BT-43/BT-58. }
+procedure TCIIWriteMapper.MapContact(AParty: TLandrixInvoiceAccountingParty; AParty2: TLandrixCIITradeParty;
+  const APath: TLandrixEInvoiceString);
 var
   Contact: TLandrixCIITradeContact;
 begin
-  if (AParty.ContactName = '') and (AParty.ContactTelephone = '') and (AParty.ContactElectronicMail = '') then
+  if (AParty.ContactName = '') and (AParty.ContactDepartment = '') and (AParty.ContactTelephone = '') and
+     (AParty.ContactElectronicMail = '') then
     Exit;
   Contact := AParty2.DefinedTradeContact.Add;
   Contact.PersonName := AParty.ContactName;
+  if AParty.ContactName = '' then
+    Contact.DepartmentName := AParty.ContactDepartment
+  else if AParty.ContactDepartment <> '' then
+    Report(edk_NotAllowed, APath + '/ram:DefinedTradeContact/ram:DepartmentName', 'contact department ' +
+      AParty.ContactDepartment + ' left out: CII allows a person name or a department (CII-SR-465, CII-SR-466)',
+      eds_Warning);
   Contact.TelephoneUniversalCommunication.CompleteNumber := AParty.ContactTelephone;
   Contact.EmailURIUniversalCommunication.URIID.Value := AParty.ContactElectronicMail;
 end;
@@ -692,9 +754,10 @@ begin
   end;
   Target.Name := Txt(Party.RegistrationName);
   Target.Description := Txt(Party.AdditionalLegalInformationSeller);
-  Target.SpecifiedLegalOrganization.ID.Value := Party.CompanyID;
+  if Party.CompanyID <> '' then
+    Target.SpecifiedLegalOrganization.ID := CIIID(Party.CompanyID, Party.CompanyIDSchemeID);
   Target.SpecifiedLegalOrganization.TradingBusinessName := Txt(Party.Name);
-  MapContact(Party, Target);
+  MapContact(Party, Target, Agreement + '/ram:SellerTradeParty');
   MapAddress(Party.Address, Target.PostalTradeAddress);
   MapElectronicAddress(Party, Target, Agreement + '/ram:SellerTradeParty');
   if Party.VATCompanyID <> '' then
@@ -735,15 +798,85 @@ begin
     Target.GlobalID.Add(CIIID(Party.GlobalIdentifierSellerBuyer, Scheme));
   end;
   Target.Name := Txt(Party.RegistrationName);
-  Target.SpecifiedLegalOrganization.ID.Value := Party.CompanyID;
+  if Party.CompanyID <> '' then
+    Target.SpecifiedLegalOrganization.ID := CIIID(Party.CompanyID, Party.CompanyIDSchemeID);
   Target.SpecifiedLegalOrganization.TradingBusinessName := Txt(Party.Name);
-  MapContact(Party, Target);
+  MapContact(Party, Target, Agreement + '/ram:BuyerTradeParty');
   MapAddress(Party.Address, Target.PostalTradeAddress);
   MapElectronicAddress(Party, Target, Agreement + '/ram:BuyerTradeParty');
   if Party.VATCompanyID <> '' then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyID, 'VA')
   else if Party.VATCompanyNumber <> '' then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyNumber, 'FC');
+end;
+
+{ BG-10 payee (BT-59 name, BT-60 identifier, BT-61 legal registration),
+  BG-11 seller tax representative (BT-62 name, BG-12 address, BT-63 VAT
+  identifier) and BG-X-36 invoicee. EN 16931 knows only these fields; the
+  rest of a payee or tax representative (and the invoicee as a whole) is
+  written in EXTENDED only. An identifier with scheme is a global
+  identifier.
+  DE: BG-10 Zahlungsempfaenger (BT-59 Name, BT-60 Kennung, BT-61
+  Registernummer), BG-11 Steuervertreter des Verkaeufers (BT-62 Name, BG-12
+  Anschrift, BT-63 USt-IdNr.) und BG-X-36 Rechnungsempfaenger. EN 16931
+  kennt nur diese Felder; der Rest eines Zahlungsempfaengers oder
+  Steuervertreters (und der Rechnungsempfaenger insgesamt) wird nur in
+  EXTENDED geschrieben. Eine Kennung mit Schema ist eine globale Kennung. }
+procedure TCIIWriteMapper.MapFurtherParty(AParty: TLandrixInvoiceParty; ATarget: TLandrixCIITradeParty;
+  const APath: TLandrixEInvoiceString; ARole: TFurtherPartyRole);
+var
+  HasContact, HasExtra, Full: Boolean;
+  Contact: TLandrixCIITradeContact;
+begin
+  if AParty.IsEmpty then
+    Exit;
+  HasContact := (AParty.ContactName <> '') or (AParty.ContactDepartment <> '') or
+    (AParty.ContactTelephone <> '') or (AParty.ContactElectronicMail <> '');
+  case ARole of
+    fpr_Payee:
+      begin
+        HasExtra := HasContact or AddressSet(AParty.Address) or (AParty.VATCompanyID <> '');
+        Full := HasExtra and Permit(LandrixEInvoiceRulePayeeExtended, APath,
+          'address, contact or VAT identifier of the payee');
+      end;
+    fpr_TaxRepresentative:
+      begin
+        HasExtra := HasContact or (AParty.Identifier <> '') or (AParty.CompanyID <> '');
+        Full := HasExtra and Permit(LandrixEInvoiceRuleTaxRepresentativeExtended, APath,
+          'identifier or contact of the tax representative');
+      end;
+  else
+    begin
+      if not Permit(LandrixEInvoiceRuleInvoicee, APath, 'invoicee') then
+        Exit;
+      Full := True;
+    end;
+  end;
+  if (ARole <> fpr_TaxRepresentative) or Full then
+  begin
+    if AParty.Identifier <> '' then
+    begin
+      if AParty.IdentifierSchemeID = '' then
+        ATarget.ID.Add(CIIID(AParty.Identifier, ''))
+      else
+        ATarget.GlobalID.Add(CIIID(AParty.Identifier, AParty.IdentifierSchemeID));
+    end;
+    if AParty.CompanyID <> '' then
+      ATarget.SpecifiedLegalOrganization.ID := CIIID(AParty.CompanyID, AParty.CompanyIDSchemeID);
+  end;
+  ATarget.Name := Txt(AParty.Name);
+  if Full and HasContact then
+  begin
+    Contact := ATarget.DefinedTradeContact.Add;
+    Contact.PersonName := AParty.ContactName;
+    Contact.DepartmentName := AParty.ContactDepartment;
+    Contact.TelephoneUniversalCommunication.CompleteNumber := AParty.ContactTelephone;
+    Contact.EmailURIUniversalCommunication.URIID.Value := AParty.ContactElectronicMail;
+  end;
+  if ((ARole <> fpr_Payee) or Full) and AddressSet(AParty.Address) then
+    MapAddress(AParty.Address, ATarget.PostalTradeAddress);
+  if ((ARole <> fpr_Payee) or Full) and (AParty.VATCompanyID <> '') then
+    ATarget.SpecifiedTaxRegistration.Add.ID := CIIID(AParty.VATCompanyID, 'VA');
 end;
 
 { BT-10 buyer reference (the placeholder 'non-existent' only for XRechnung),
@@ -765,6 +898,16 @@ begin
     Target.BuyerReference := FInvoice.BuyerReference;
   Target.SellerOrderReferencedDocument.IssuerAssignedID.Value := FInvoice.SellerOrderReference;
   Target.BuyerOrderReferencedDocument.IssuerAssignedID.Value := FInvoice.PurchaseOrderReference;
+  if (FInvoice.SellerOrderReferenceDate.HasValue or FInvoice.PurchaseOrderReferenceDate.HasValue) and
+     Permit(LandrixEInvoiceRuleOrderDates, Agreement, 'date of the sales or purchase order') then
+  begin
+    if FInvoice.SellerOrderReferenceDate.HasValue then
+      Target.SellerOrderReferencedDocument.FormattedIssueDateTime :=
+        CIIFormattedDate(FInvoice.SellerOrderReferenceDate.Value);
+    if FInvoice.PurchaseOrderReferenceDate.HasValue then
+      Target.BuyerOrderReferencedDocument.FormattedIssueDateTime :=
+        CIIFormattedDate(FInvoice.PurchaseOrderReferenceDate.Value);
+  end;
   Target.ContractReferencedDocument.IssuerAssignedID.Value := FInvoice.ContractDocumentReference;
   if FInvoice.ProjectReference <> '' then
   begin
@@ -818,6 +961,11 @@ begin
     Target.URIID.Value := Attachment.ExternalReference;
     Target.TypeCode := Code(LandrixEInvoiceAttachmentTypeCodeToStr(Attachment.TypeCode), Attachment.TypeCodeOther,
       Path + '/ram:TypeCode');
+    if Attachment.TypeCode = iatc_130 then
+      Target.ReferenceTypeCode := Attachment.IDSchemeID
+    else if Attachment.IDSchemeID <> '' then
+      Report(edk_NotAllowed, Path + '/ram:ReferenceTypeCode', 'scheme ' + Attachment.IDSchemeID + ' of attachment ' +
+        Attachment.ID + ' left out: only the invoiced object identifier (BT-18) has one', eds_Warning);
     Target.Name := Txt(Attachment.DocumentDescription);
     if Attachment.ContainsBinaryObject then
     begin
@@ -829,30 +977,41 @@ begin
   end;
 end;
 
-{ BG-13 delivery: BG-15 delivery address with BT-71 location (default
-  scheme 0088) and BT-70 name, BT-72 delivery date, BT-16 despatch advice
-  (its date BT-X-200 only in EXTENDED), BT-15 receiving advice, BT-X-202/
-  BT-X-203 delivery note (EXTENDED).
-  DE: BG-13 Lieferung: BG-15 Lieferanschrift mit BT-71 Ort (Vorgabeschema
-  0088) und BT-70 Name, BT-72 Lieferdatum, BT-16 Versandanzeige (ihr Datum
-  BT-X-200 nur in EXTENDED), BT-15 Wareneingangsmeldung, BT-X-202/BT-X-203
+{ BG-13 delivery: BG-15 delivery address with BT-71 location (with scheme
+  as global identifier, without as identifier) and BT-70 name, BG-X-26
+  contact (EXTENDED), BT-72 delivery date, BT-16 despatch advice (its date
+  BT-X-200 only in EXTENDED), BT-15 receiving advice, BT-X-202/BT-X-203
+  delivery note (EXTENDED).
+  DE: BG-13 Lieferung: BG-15 Lieferanschrift mit BT-71 Ort (mit Schema als
+  globale Kennung, ohne als Kennung) und BT-70 Name, BG-X-26 Kontakt
+  (EXTENDED), BT-72 Lieferdatum, BT-16 Versandanzeige (ihr Datum BT-X-200
+  nur in EXTENDED), BT-15 Wareneingangsmeldung, BT-X-202/BT-X-203
   Lieferschein (EXTENDED). }
 procedure TCIIWriteMapper.MapDelivery;
 var
   Info: TLandrixInvoiceDeliveryInformation;
   Target: TLandrixCIIHeaderTradeDelivery;
-  Scheme: TLandrixEInvoiceString;
+  Contact: TLandrixCIITradeContact;
 begin
   Info := FInvoice.DeliveryInformation;
   Target := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeDelivery;
   if Info.LocationIdentifier <> '' then
   begin
-    Scheme := Info.LocationIdentifierSchemeID;
-    if Scheme = '' then
-      Scheme := '0088';
-    Target.ShipToTradeParty.GlobalID.Add(CIIID(Info.LocationIdentifier, Scheme));
+    if Info.LocationIdentifierSchemeID = '' then
+      Target.ShipToTradeParty.ID.Add(CIIID(Info.LocationIdentifier, ''))
+    else
+      Target.ShipToTradeParty.GlobalID.Add(CIIID(Info.LocationIdentifier, Info.LocationIdentifierSchemeID));
   end;
   Target.ShipToTradeParty.Name := Txt(Info.Name);
+  if ((Info.ContactName <> '') or (Info.ContactTelephone <> '') or (Info.ContactElectronicMail <> '')) and
+     Permit(LandrixEInvoiceRuleDeliveryContact, Delivery + '/ram:ShipToTradeParty/ram:DefinedTradeContact',
+       'deliver to contact') then
+  begin
+    Contact := Target.ShipToTradeParty.DefinedTradeContact.Add;
+    Contact.PersonName := Info.ContactName;
+    Contact.TelephoneUniversalCommunication.CompleteNumber := Info.ContactTelephone;
+    Contact.EmailURIUniversalCommunication.URIID.Value := Info.ContactElectronicMail;
+  end;
   if AddressSet(Info.Address) then
     MapAddress(Info.Address, Target.ShipToTradeParty.PostalTradeAddress);
   if DateSet(Info.ActualDeliveryDate) then
@@ -926,17 +1085,31 @@ begin
 end;
 
 { BG-23 VAT breakdown: BT-117 tax amount, BT-120 exemption reason, BT-116
-  taxable amount, BT-118 category, BT-121 exemption code, BT-119 rate (also
-  for category O, BR-DE-14).
+  taxable amount, BT-118 category, BT-121 exemption code, BT-7 VAT point
+  date and BT-8 its code (document level in the model, written in the
+  first breakdown only: CII-SR-461, CII-SR-462), BT-119 rate (also for
+  category O, BR-DE-14).
   DE: BG-23 Steueraufschluesselung: BT-117 Steuerbetrag, BT-120
   Befreiungsgrund, BT-116 Bemessungsgrundlage, BT-118 Kategorie, BT-121
-  Befreiungscode, BT-119 Steuersatz (auch fuer Kategorie O, BR-DE-14). }
+  Befreiungscode, BT-7 Steuerdatum und BT-8 sein Code (im Modell auf
+  Dokumentebene, nur in der ersten Aufschluesselung geschrieben:
+  CII-SR-461, CII-SR-462), BT-119 Steuersatz (auch fuer Kategorie O,
+  BR-DE-14). }
 procedure TCIIWriteMapper.MapTaxBreakdown;
 var
   I: TLandrixEInvoiceListIndex;
   Subtotal: TLandrixInvoiceTaxAmount;
   Tax: TLandrixCIITradeTax;
+  PointCode: TLandrixEInvoiceString;
 begin
+  PointCode := '';
+  if (FInvoice.TaxPointDateCode <> '') and
+     not LandrixEInvoiceTaxPointDateCodeToCII(FInvoice.TaxPointDateCode, PointCode) then
+    Report(edk_UnknownCode, Settlement + '/ram:ApplicableTradeTax/ram:DueDateTypeCode', 'VAT point date code ' +
+      FInvoice.TaxPointDateCode + ' (BT-8) is none of 3, 35, 432; written unchanged', eds_Warning);
+  if (FInvoice.TaxPointDate.HasValue or (PointCode <> '')) and (FInvoice.TaxAmountSubtotals.Count = 0) then
+    Report(edk_NotAllowed, Settlement + '/ram:ApplicableTradeTax', 'VAT point date (BT-7, BT-8) left out: ' +
+      'CII carries it in the VAT breakdown, which is empty', eds_Warning);
   for I := 0 to FInvoice.TaxAmountSubtotals.Count - 1 do
   begin
     Subtotal := FInvoice.TaxAmountSubtotals[I];
@@ -948,6 +1121,13 @@ begin
     Tax.CategoryCode := Code(LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(Subtotal.TaxCategory),
       Subtotal.TaxCategoryOther, Settlement + '/ram:ApplicableTradeTax/ram:CategoryCode');
     Tax.ExemptionReasonCode.Value := Subtotal.TaxExemptionReasonCode;
+    if (I = 0) and FInvoice.TaxPointDate.HasValue then
+    begin
+      Tax.TaxPointDate.Value := LandrixEInvoiceDateToCII(FInvoice.TaxPointDate.Value);
+      Tax.TaxPointDate.Format := '102';
+    end;
+    if I = 0 then
+      Tax.DueDateTypeCode := PointCode;
     Tax.RateApplicablePercent := LandrixEInvoicePercentToLexical(Subtotal.TaxPercent);
   end;
   if (PeriodDateSet(FInvoice.InvoicePeriodStartDate) or PeriodDateSet(FInvoice.InvoicePeriodEndDate)) and
@@ -1008,6 +1188,9 @@ procedure TCIIWriteMapper.MapPaymentTerms;
 var
   Terms: TLandrixCIITradePaymentTerms;
 begin
+  if LandrixEInvoiceCashDiscountNotesSet(FInvoice) then
+    Permit(LandrixEInvoiceRuleCashDiscountNote, Settlement + '/ram:SpecifiedTradePaymentTerms/ram:Description',
+      'text of a cash discount level');
   Terms := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradePaymentTerms.Add;
   Terms.Description := Txt(LandrixEInvoicePaymentTermsText(FInvoice));
   if DateSet(FInvoice.InvoiceDueDate) then
@@ -1026,18 +1209,19 @@ begin
 end;
 
 { EXTENDED: one payment term with BT-20 note, BT-9 due date and BT-89
-  mandate, and one term per cash discount (BG-X-44) with its due date, the
-  issue date as basis, the period in days and the rate.
+  mandate, and one term per cash discount (BG-X-44) with its text, its due
+  date, the issue date as basis, the period in days and the rate.
   DE: EXTENDED: eine Zahlungsbedingung mit BT-20 Hinweis, BT-9
   Faelligkeitsdatum und BT-89 Mandat sowie eine Bedingung je Skonto
-  (BG-X-44) mit Faelligkeit, dem Rechnungsdatum als Basis, der Frist in
-  Tagen und dem Satz. }
+  (BG-X-44) mit Text, Faelligkeit, dem Rechnungsdatum als Basis, der Frist
+  in Tagen und dem Satz. }
 procedure TCIIWriteMapper.MapStructuredPaymentTerms;
 var
   Terms: TLandrixCIITradePaymentTerms;
   K, Count, Days: Integer;
   Percent: Double;
   Base, Actual: Currency;
+  Note: TLandrixEInvoiceString;
 begin
   if DateSet(FInvoice.InvoiceDueDate) or (FInvoice.PaymentMandateID <> '') or
      (FInvoice.PaymentTermNetNote <> '') then
@@ -1064,6 +1248,7 @@ begin
           Percent := FInvoice.PaymentTermCashDiscount1Percent;
           Base := FInvoice.PaymentTermCashDiscount1Base;
           Actual := FInvoice.PaymentTermCashDiscount1ActualAmount;
+          Note := FInvoice.PaymentTermCashDiscount1Note;
         end;
       2:
         begin
@@ -1071,6 +1256,7 @@ begin
           Percent := FInvoice.PaymentTermCashDiscount2Percent;
           Base := FInvoice.PaymentTermCashDiscount2Base;
           Actual := FInvoice.PaymentTermCashDiscount2ActualAmount;
+          Note := FInvoice.PaymentTermCashDiscount2Note;
         end;
     else
       begin
@@ -1078,9 +1264,11 @@ begin
         Percent := FInvoice.PaymentTermCashDiscount3Percent;
         Base := FInvoice.PaymentTermCashDiscount3Base;
         Actual := FInvoice.PaymentTermCashDiscount3ActualAmount;
+        Note := FInvoice.PaymentTermCashDiscount3Note;
       end;
     end;
     Terms := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradePaymentTerms.Add;
+    Terms.Description := Txt(Note);
     Terms.DueDateDateTime := CIIDate(FInvoice.InvoiceIssueDate + Days);
     Terms.ApplicableTradePaymentDiscountTerms.BasisDateTime := CIIDate(FInvoice.InvoiceIssueDate);
     Terms.ApplicableTradePaymentDiscountTerms.BasisPeriodMeasure.Value := IntText(Days);
@@ -1094,21 +1282,23 @@ begin
 end;
 
 { BG-22 document totals, taken from the model as they are: BT-106, BT-108,
-  BT-107, BT-109, BT-110 (in the invoice currency), BT-114 (only if not 0),
-  BT-112, BT-113, BT-115. With a differing VAT accounting currency (BT-6)
-  BR-53 demands BT-111, which the invoice model does not hold: an error is
-  reported.
+  BT-107, BT-109, BT-110 (in the invoice currency), BT-111 (in the VAT
+  accounting currency, only when BT-6 differs), BT-114 (only if not 0),
+  BT-112, BT-113, BT-115. A differing BT-6 without BT-111 is an error
+  (BR-53).
   DE: BG-22 Gesamtbetraege, unveraendert aus dem Modell: BT-106, BT-108,
-  BT-107, BT-109, BT-110 (in der Rechnungswaehrung), BT-114 (nur wenn nicht
-  0), BT-112, BT-113, BT-115. Bei abweichender Steuerwaehrung (BT-6)
-  verlangt BR-53 BT-111, den das Rechnungsmodell nicht haelt: es wird ein
-  Fehler gemeldet. }
+  BT-107, BT-109, BT-110 (in der Rechnungswaehrung), BT-111 (in der
+  Steuerwaehrung, nur wenn BT-6 abweicht), BT-114 (nur wenn nicht 0),
+  BT-112, BT-113, BT-115. Ein abweichendes BT-6 ohne BT-111 ist ein Fehler
+  (BR-53). }
 procedure TCIIWriteMapper.MapTotals;
 var
   Sum: TLandrixCIITradeSettlementHeaderMonetarySummation;
   TaxTotal: TLandrixCIIAmount;
+  Path: TLandrixEInvoiceString;
 begin
   Sum := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation;
+  Path := Settlement + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount';
   Sum.LineTotalAmount := CIIAmount(FInvoice.LineAmount);
   Sum.ChargeTotalAmount := CIIAmount(FInvoice.ChargeTotalAmount);
   Sum.AllowanceTotalAmount := CIIAmount(FInvoice.AllowanceTotalAmount);
@@ -1117,9 +1307,20 @@ begin
   TaxTotal.CurrencyID := FInvoice.InvoiceCurrencyCode;
   Sum.TaxTotalAmount.Add(TaxTotal);
   if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
-    Report(edk_MissingElement, Settlement + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount',
-      'VAT total in the accounting currency ' + FInvoice.TaxCurrencyCode +
-      ' (BT-111, BR-53) is not in the invoice model', eds_Error);
+  begin
+    if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
+    begin
+      TaxTotal := CIIAmount(FInvoice.TaxAmountTotalInTaxCurrency.Value);
+      TaxTotal.CurrencyID := FInvoice.TaxCurrencyCode;
+      Sum.TaxTotalAmount.Add(TaxTotal);
+    end
+    else
+      Report(edk_MissingElement, Path, 'VAT total in the accounting currency ' + FInvoice.TaxCurrencyCode +
+        ' (BT-111, BR-53) is missing', eds_Error);
+  end
+  else if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
+    Report(edk_NotAllowed, Path, 'VAT total in the accounting currency (BT-111) left out: the VAT accounting ' +
+      'currency (BT-6) does not differ from the invoice currency', eds_Warning);
   if FInvoice.PayableRoundingAmount <> 0 then
     Sum.RoundingAmount := CIIAmount(FInvoice.PayableRoundingAmount);
   Sum.GrandTotalAmount := CIIAmount(FInvoice.TaxInclusiveAmount);
@@ -1216,6 +1417,8 @@ type
       const APath: TLandrixEInvoiceString);
     procedure ReadParty(AParty: TLandrixInvoiceAccountingParty; ASource: TLandrixCIITradeParty;
       const APath: TLandrixEInvoiceString; AIsSeller: Boolean);
+    procedure ReadFurtherParty(AParty: TLandrixInvoiceParty; ASource: TLandrixCIITradeParty;
+      const APath: TLandrixEInvoiceString);
     procedure ReadAgreement;
     procedure ReadAttachments;
     procedure ReadDelivery;
@@ -1421,21 +1624,28 @@ begin
   ReadDelivery;
 end;
 
-{ BT-23 business process; BT-24 identifies the specification (detected by
-  the caller, not kept in the invoice model).
-  DE: BT-23 Geschaeftsprozess; BT-24 bestimmt die Spezifikation (vom
-  Aufrufer erkannt, nicht im Rechnungsmodell gehalten). }
+{ BT-X-1 test indicator, BT-23 business process; BT-24 identifies the
+  specification (detected by the caller, not kept in the invoice model).
+  DE: BT-X-1 Testkennzeichen, BT-23 Geschaeftsprozess; BT-24 bestimmt die
+  Spezifikation (vom Aufrufer erkannt, nicht im Rechnungsmodell gehalten). }
 procedure TCIIReadMapper.ReadContext;
 var
   Context: TLandrixCIIExchangedDocumentContext;
 begin
   Context := FCII.ExchangedDocumentContext;
+  if (Context.TestIndicator = 'true') or (Context.TestIndicator = '1') then
+    FInvoice.TestIndicator.SetValue(True)
+  else if (Context.TestIndicator = 'false') or (Context.TestIndicator = '0') then
+    FInvoice.TestIndicator.SetValue(False)
+  else if Context.TestIndicator <> '' then
+    Report(edk_ConversionFailed, Root + '/rsm:ExchangedDocumentContext/ram:TestIndicator',
+      'indicator "' + Context.TestIndicator + '" not converted; not set', eds_Error);
   FInvoice.ProfileID := IDValue(Context.BusinessProcessSpecifiedDocumentContextParameter.ID,
     Root + '/rsm:ExchangedDocumentContext/ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID');
   Context.BusinessProcessSpecifiedDocumentContextParameter.ListFilledChildren(FFilled);
   Rest(Root + '/rsm:ExchangedDocumentContext/ram:BusinessProcessSpecifiedDocumentContextParameter', ['ram:ID']);
   Context.ListFilledChildren(FFilled);
-  Rest(Root + '/rsm:ExchangedDocumentContext', ['ram:BusinessProcessSpecifiedDocumentContextParameter',
+  Rest(Root + '/rsm:ExchangedDocumentContext', ['ram:TestIndicator', 'ram:BusinessProcessSpecifiedDocumentContextParameter',
     'ram:GuidelineSpecifiedDocumentContextParameter']);
 end;
 
@@ -1450,6 +1660,7 @@ begin
   Doc := FCII.ExchangedDocument;
   Path := Root + '/rsm:ExchangedDocument';
   FInvoice.InvoiceNumber := IDValue(Doc.ID, Path + '/ram:ID');
+  FInvoice.DocumentName := Doc.Name;
   if (Doc.TypeCode <> '') and not LandrixEInvoiceTypeCodeFromStr(Doc.TypeCode, FInvoice.InvoiceTypeCode) then
   begin
     FInvoice.InvoiceTypeCode := itc_None;
@@ -1470,7 +1681,7 @@ begin
     Rest(Path + '/ram:IncludedNote', ['ram:Content', 'ram:SubjectCode']);
   end;
   Doc.ListFilledChildren(FFilled);
-  Rest(Path, ['ram:ID', 'ram:TypeCode', 'ram:IssueDateTime', 'ram:IncludedNote']);
+  Rest(Path, ['ram:ID', 'ram:Name', 'ram:TypeCode', 'ram:IssueDateTime', 'ram:IncludedNote']);
 end;
 
 procedure TCIIReadMapper.ReadLines;
@@ -1551,8 +1762,10 @@ begin
     'ram:SpecifiedLineTradeDelivery', 'ram:SpecifiedLineTradeSettlement']);
 end;
 
-{ BG-31: BT-157 is kept only with scheme 0160 (GTIN).
-  DE: BG-31: BT-157 wird nur mit Schema 0160 (GTIN) uebernommen. }
+{ BG-31: BT-157 goes to StandardItemIdentifier, with scheme 0160 (GTIN)
+  also to GlobalID_EAN_GTIN.
+  DE: BG-31: BT-157 kommt nach StandardItemIdentifier, mit Schema 0160
+  (GTIN) auch nach GlobalID_EAN_GTIN. }
 procedure TCIIReadMapper.ReadLineProduct(ALine: TLandrixInvoiceLine; AProduct: TLandrixCIITradeProduct;
   const APath: TLandrixEInvoiceString);
 var
@@ -1568,15 +1781,11 @@ begin
   Taken[4] := 'ram:ApplicableProductCharacteristic';
   Taken[5] := 'ram:DesignatedProductClassification';
   Taken[6] := 'ram:OriginTradeCountry';
-  Taken[7] := '';
-  if AProduct.GlobalID.Value <> '' then
-  begin
-    if AProduct.GlobalID.SchemeID = '0160' then
-    begin
-      ALine.GlobalID_EAN_GTIN := AProduct.GlobalID.Value;
-      Taken[7] := 'ram:GlobalID';
-    end;
-  end;
+  Taken[7] := 'ram:GlobalID';
+  ALine.StandardItemIdentifier := AProduct.GlobalID.Value;
+  ALine.StandardItemIdentifierSchemeID := AProduct.GlobalID.SchemeID;
+  if AProduct.GlobalID.SchemeID = '0160' then
+    ALine.GlobalID_EAN_GTIN := AProduct.GlobalID.Value;
   ALine.SellersItemIdentification := IDValue(AProduct.SellerAssignedID, APath + '/ram:SellerAssignedID');
   ALine.BuyersItemIdentification := IDValue(AProduct.BuyerAssignedID, APath + '/ram:BuyerAssignedID');
   ALine.Name := AProduct.Name;
@@ -1619,8 +1828,12 @@ begin
     APath + '/ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID');
   ALine.OrderLineReference := IDValue(AAgreement.BuyerOrderReferencedDocument.LineID,
     APath + '/ram:BuyerOrderReferencedDocument/ram:LineID');
+  if AAgreement.BuyerOrderReferencedDocument.FormattedIssueDateTime.Value <> '' then
+    SetDate(ALine.OrderDate, FormattedDate(AAgreement.BuyerOrderReferencedDocument.FormattedIssueDateTime,
+      APath + '/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime'));
   AAgreement.BuyerOrderReferencedDocument.ListFilledChildren(FFilled);
-  Rest(APath + '/ram:BuyerOrderReferencedDocument', ['ram:IssuerAssignedID', 'ram:LineID']);
+  Rest(APath + '/ram:BuyerOrderReferencedDocument', ['ram:IssuerAssignedID', 'ram:LineID',
+    'ram:FormattedIssueDateTime']);
   Net := AAgreement.NetPriceProductTradePrice;
   ALine.NetPriceAmount := Price(Net.ChargeAmount, APath + '/ram:NetPriceProductTradePrice/ram:ChargeAmount');
   if Net.BasisQuantity.Value <> '' then
@@ -1831,7 +2044,8 @@ begin
   AParty.RegistrationName := ASource.Name;
   if AIsSeller then
     AParty.AdditionalLegalInformationSeller := ASource.Description;
-  AParty.CompanyID := IDValue(ASource.SpecifiedLegalOrganization.ID, APath + '/ram:SpecifiedLegalOrganization/ram:ID');
+  AParty.CompanyID := ASource.SpecifiedLegalOrganization.ID.Value;
+  AParty.CompanyIDSchemeID := ASource.SpecifiedLegalOrganization.ID.SchemeID;
   AParty.Name := ASource.SpecifiedLegalOrganization.TradingBusinessName;
   ASource.SpecifiedLegalOrganization.ListFilledChildren(FFilled);
   Rest(APath + '/ram:SpecifiedLegalOrganization', ['ram:ID', 'ram:TradingBusinessName']);
@@ -1839,6 +2053,7 @@ begin
   begin
     Contact := ASource.DefinedTradeContact[0];
     AParty.ContactName := Contact.PersonName;
+    AParty.ContactDepartment := Contact.DepartmentName;
     AParty.ContactTelephone := Contact.TelephoneUniversalCommunication.CompleteNumber;
     AParty.ContactElectronicMail := IDValue(Contact.EmailURIUniversalCommunication.URIID,
       APath + '/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID');
@@ -1847,8 +2062,8 @@ begin
     Contact.EmailURIUniversalCommunication.ListFilledChildren(FFilled);
     Rest(APath + '/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication', ['ram:URIID']);
     Contact.ListFilledChildren(FFilled);
-    Rest(APath + '/ram:DefinedTradeContact', ['ram:PersonName', 'ram:TelephoneUniversalCommunication',
-      'ram:EmailURIUniversalCommunication']);
+    Rest(APath + '/ram:DefinedTradeContact', ['ram:PersonName', 'ram:DepartmentName',
+      'ram:TelephoneUniversalCommunication', 'ram:EmailURIUniversalCommunication']);
   end;
   Excess(ASource.DefinedTradeContact.Count, APath + '/ram:DefinedTradeContact');
   ReadAddress(AParty.Address, ASource.PostalTradeAddress, APath + '/ram:PostalTradeAddress');
@@ -1881,6 +2096,72 @@ begin
     Taken[8] := 'ram:Description';
   ASource.ListFilledChildren(FFilled);
   Rest(APath, Taken);
+end;
+
+{ BG-10 payee, BG-11 tax representative, BG-X-36 invoicee: the first
+  identifier (an identifier or a global identifier), name, legal
+  registration with scheme, first contact, address and VAT identifier
+  (scheme VA).
+  DE: BG-10 Zahlungsempfaenger, BG-11 Steuervertreter, BG-X-36
+  Rechnungsempfaenger: die erste Kennung (Kennung oder globale Kennung),
+  Name, Registernummer mit Schema, erster Kontakt, Anschrift und USt-IdNr.
+  (Schema VA). }
+procedure TCIIReadMapper.ReadFurtherParty(AParty: TLandrixInvoiceParty; ASource: TLandrixCIITradeParty;
+  const APath: TLandrixEInvoiceString);
+var
+  I: TLandrixEInvoiceListIndex;
+  Contact: TLandrixCIITradeContact;
+  Registration: TLandrixCIIID;
+begin
+  if ASource.ID.Count > 0 then
+  begin
+    AParty.Identifier := ASource.ID[0].Value;
+    AParty.IdentifierSchemeID := ASource.ID[0].SchemeID;
+  end;
+  Excess(ASource.ID.Count, APath + '/ram:ID');
+  for I := 0 to ASource.GlobalID.Count - 1 do
+    if AParty.Identifier = '' then
+    begin
+      AParty.Identifier := ASource.GlobalID[I].Value;
+      AParty.IdentifierSchemeID := ASource.GlobalID[I].SchemeID;
+    end
+    else
+      NotMapped(APath + '/ram:GlobalID', 'further identifier ' + ASource.GlobalID[I].Value);
+  AParty.Name := ASource.Name;
+  AParty.CompanyID := ASource.SpecifiedLegalOrganization.ID.Value;
+  AParty.CompanyIDSchemeID := ASource.SpecifiedLegalOrganization.ID.SchemeID;
+  ASource.SpecifiedLegalOrganization.ListFilledChildren(FFilled);
+  Rest(APath + '/ram:SpecifiedLegalOrganization', ['ram:ID']);
+  if ASource.DefinedTradeContact.Count > 0 then
+  begin
+    Contact := ASource.DefinedTradeContact[0];
+    AParty.ContactName := Contact.PersonName;
+    AParty.ContactDepartment := Contact.DepartmentName;
+    AParty.ContactTelephone := Contact.TelephoneUniversalCommunication.CompleteNumber;
+    AParty.ContactElectronicMail := IDValue(Contact.EmailURIUniversalCommunication.URIID,
+      APath + '/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID');
+    Contact.TelephoneUniversalCommunication.ListFilledChildren(FFilled);
+    Rest(APath + '/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication', ['ram:CompleteNumber']);
+    Contact.EmailURIUniversalCommunication.ListFilledChildren(FFilled);
+    Rest(APath + '/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication', ['ram:URIID']);
+    Contact.ListFilledChildren(FFilled);
+    Rest(APath + '/ram:DefinedTradeContact', ['ram:PersonName', 'ram:DepartmentName',
+      'ram:TelephoneUniversalCommunication', 'ram:EmailURIUniversalCommunication']);
+  end;
+  Excess(ASource.DefinedTradeContact.Count, APath + '/ram:DefinedTradeContact');
+  ReadAddress(AParty.Address, ASource.PostalTradeAddress, APath + '/ram:PostalTradeAddress');
+  for I := 0 to ASource.SpecifiedTaxRegistration.Count - 1 do
+  begin
+    Registration := ASource.SpecifiedTaxRegistration[I].ID;
+    if (Registration.SchemeID = 'VA') and (AParty.VATCompanyID = '') then
+      AParty.VATCompanyID := Registration.Value
+    else
+      NotMapped(APath + '/ram:SpecifiedTaxRegistration', 'tax registration ' + Registration.Value +
+        ' (scheme ' + Registration.SchemeID + ')');
+  end;
+  ASource.ListFilledChildren(FFilled);
+  Rest(APath, ['ram:ID', 'ram:GlobalID', 'ram:Name', 'ram:SpecifiedLegalOrganization', 'ram:DefinedTradeContact',
+    'ram:PostalTradeAddress', 'ram:SpecifiedTaxRegistration']);
 end;
 
 { BG-24 attachments and BT-17/BT-18 references.
@@ -1924,7 +2205,14 @@ begin
       end;
     end;
     Source.ListFilledChildren(FFilled);
-    Rest(Path, ['ram:IssuerAssignedID', 'ram:URIID', 'ram:TypeCode', 'ram:Name', 'ram:AttachmentBinaryObject']);
+    if Attachment.TypeCode = iatc_130 then
+    begin
+      Attachment.IDSchemeID := Source.ReferenceTypeCode;
+      Rest(Path, ['ram:IssuerAssignedID', 'ram:URIID', 'ram:TypeCode', 'ram:Name', 'ram:AttachmentBinaryObject',
+        'ram:ReferenceTypeCode']);
+    end
+    else
+      Rest(Path, ['ram:IssuerAssignedID', 'ram:URIID', 'ram:TypeCode', 'ram:Name', 'ram:AttachmentBinaryObject']);
   end;
 end;
 
@@ -1936,14 +2224,20 @@ begin
   FInvoice.BuyerReference := Source.BuyerReference;
   ReadParty(FInvoice.AccountingSupplierParty, Source.SellerTradeParty, Agreement + '/ram:SellerTradeParty', True);
   ReadParty(FInvoice.AccountingCustomerParty, Source.BuyerTradeParty, Agreement + '/ram:BuyerTradeParty', False);
+  ReadFurtherParty(FInvoice.TaxRepresentativeParty, Source.SellerTaxRepresentativeTradeParty,
+    Agreement + '/ram:SellerTaxRepresentativeTradeParty');
   FInvoice.SellerOrderReference := IDValue(Source.SellerOrderReferencedDocument.IssuerAssignedID,
     Agreement + '/ram:SellerOrderReferencedDocument/ram:IssuerAssignedID');
+  SetDate(FInvoice.SellerOrderReferenceDate, FormattedDate(Source.SellerOrderReferencedDocument.FormattedIssueDateTime,
+    Agreement + '/ram:SellerOrderReferencedDocument/ram:FormattedIssueDateTime'));
   Source.SellerOrderReferencedDocument.ListFilledChildren(FFilled);
-  Rest(Agreement + '/ram:SellerOrderReferencedDocument', ['ram:IssuerAssignedID']);
+  Rest(Agreement + '/ram:SellerOrderReferencedDocument', ['ram:IssuerAssignedID', 'ram:FormattedIssueDateTime']);
   FInvoice.PurchaseOrderReference := IDValue(Source.BuyerOrderReferencedDocument.IssuerAssignedID,
     Agreement + '/ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID');
+  SetDate(FInvoice.PurchaseOrderReferenceDate, FormattedDate(Source.BuyerOrderReferencedDocument.FormattedIssueDateTime,
+    Agreement + '/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime'));
   Source.BuyerOrderReferencedDocument.ListFilledChildren(FFilled);
-  Rest(Agreement + '/ram:BuyerOrderReferencedDocument', ['ram:IssuerAssignedID']);
+  Rest(Agreement + '/ram:BuyerOrderReferencedDocument', ['ram:IssuerAssignedID', 'ram:FormattedIssueDateTime']);
   FInvoice.ContractDocumentReference := IDValue(Source.ContractReferencedDocument.IssuerAssignedID,
     Agreement + '/ram:ContractReferencedDocument/ram:IssuerAssignedID');
   Source.ContractReferencedDocument.ListFilledChildren(FFilled);
@@ -1958,28 +2252,62 @@ begin
   Rest(Agreement + '/ram:SpecifiedProcuringProject', ['ram:ID', 'ram:Name']);
   Source.ListFilledChildren(FFilled);
   Rest(Agreement, ['ram:BuyerReference', 'ram:SellerTradeParty', 'ram:BuyerTradeParty',
-    'ram:SellerOrderReferencedDocument', 'ram:BuyerOrderReferencedDocument', 'ram:ContractReferencedDocument',
+    'ram:SellerTaxRepresentativeTradeParty', 'ram:SellerOrderReferencedDocument', 'ram:BuyerOrderReferencedDocument', 'ram:ContractReferencedDocument',
     'ram:AdditionalReferencedDocument', 'ram:SpecifiedProcuringProject']);
 end;
 
+{ BG-13: BT-71 from the global identifier (BT-71-0), else from the
+  identifier; BT-70, BG-15, BG-X-26 contact, BT-72, BT-16, BT-15, delivery
+  note.
+  DE: BG-13: BT-71 aus der globalen Kennung (BT-71-0), sonst aus der
+  Kennung; BT-70, BG-15, BG-X-26 Kontakt, BT-72, BT-16, BT-15,
+  Lieferschein. }
 procedure TCIIReadMapper.ReadDelivery;
 var
   Source: TLandrixCIIHeaderTradeDelivery;
   Info: TLandrixInvoiceDeliveryInformation;
+  ShipTo: TLandrixCIITradeParty;
+  Contact: TLandrixCIITradeContact;
+  Path: TLandrixEInvoiceString;
 begin
   Source := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeDelivery;
   Info := FInvoice.DeliveryInformation;
-  if Source.ShipToTradeParty.GlobalID.Count > 0 then
+  ShipTo := Source.ShipToTradeParty;
+  Path := Delivery + '/ram:ShipToTradeParty';
+  if ShipTo.GlobalID.Count > 0 then
   begin
-    Info.LocationIdentifier := Source.ShipToTradeParty.GlobalID[0].Value;
-    Info.LocationIdentifierSchemeID := Source.ShipToTradeParty.GlobalID[0].SchemeID;
+    Info.LocationIdentifier := ShipTo.GlobalID[0].Value;
+    Info.LocationIdentifierSchemeID := ShipTo.GlobalID[0].SchemeID;
+    if ShipTo.ID.Count > 0 then
+      NotMapped(Path + '/ram:ID', 'location identifier ' + ShipTo.ID[0].Value + ' besides a global identifier');
+  end
+  else if ShipTo.ID.Count > 0 then
+  begin
+    Info.LocationIdentifier := ShipTo.ID[0].Value;
+    Info.LocationIdentifierSchemeID := ShipTo.ID[0].SchemeID;
   end;
-  Excess(Source.ShipToTradeParty.GlobalID.Count, Delivery + '/ram:ShipToTradeParty/ram:GlobalID');
-  Info.Name := Source.ShipToTradeParty.Name;
-  ReadAddress(Info.Address, Source.ShipToTradeParty.PostalTradeAddress,
-    Delivery + '/ram:ShipToTradeParty/ram:PostalTradeAddress');
-  Source.ShipToTradeParty.ListFilledChildren(FFilled);
-  Rest(Delivery + '/ram:ShipToTradeParty', ['ram:GlobalID', 'ram:Name', 'ram:PostalTradeAddress']);
+  Excess(ShipTo.GlobalID.Count, Path + '/ram:GlobalID');
+  Excess(ShipTo.ID.Count, Path + '/ram:ID');
+  Info.Name := ShipTo.Name;
+  if ShipTo.DefinedTradeContact.Count > 0 then
+  begin
+    Contact := ShipTo.DefinedTradeContact[0];
+    Info.ContactName := Contact.PersonName;
+    Info.ContactTelephone := Contact.TelephoneUniversalCommunication.CompleteNumber;
+    Info.ContactElectronicMail := IDValue(Contact.EmailURIUniversalCommunication.URIID,
+      Path + '/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID');
+    Contact.TelephoneUniversalCommunication.ListFilledChildren(FFilled);
+    Rest(Path + '/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication', ['ram:CompleteNumber']);
+    Contact.EmailURIUniversalCommunication.ListFilledChildren(FFilled);
+    Rest(Path + '/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication', ['ram:URIID']);
+    Contact.ListFilledChildren(FFilled);
+    Rest(Path + '/ram:DefinedTradeContact', ['ram:PersonName', 'ram:TelephoneUniversalCommunication',
+      'ram:EmailURIUniversalCommunication']);
+  end;
+  Excess(ShipTo.DefinedTradeContact.Count, Path + '/ram:DefinedTradeContact');
+  ReadAddress(Info.Address, ShipTo.PostalTradeAddress, Path + '/ram:PostalTradeAddress');
+  ShipTo.ListFilledChildren(FFilled);
+  Rest(Path, ['ram:ID', 'ram:GlobalID', 'ram:Name', 'ram:DefinedTradeContact', 'ram:PostalTradeAddress']);
   Info.ActualDeliveryDate := Date(Source.ActualDeliverySupplyChainEvent.OccurrenceDateTime,
     Delivery + '/ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime');
   Source.ActualDeliverySupplyChainEvent.ListFilledChildren(FFilled);
@@ -2069,12 +2397,14 @@ end;
 
 { BT-20/BT-9/BT-89: one term with a due date or #SKONTO# text is the
   XRechnung form; otherwise the Factur-X form: the first term without
-  discount terms is the net term, terms with discount terms become cash
-  discounts 1 to 3, their days counted from the issue date.
+  discount terms is the net term (in any position), terms with discount
+  terms become cash discounts 1 to 3 with their text, their days counted
+  from the issue date.
   DE: BT-20/BT-9/BT-89: eine Bedingung mit Faelligkeit oder #SKONTO#-Text
   ist die XRechnung-Form; sonst die Factur-X-Form: die erste Bedingung ohne
-  Skontoangaben ist die Nettobedingung, Bedingungen mit Skontoangaben
-  werden zu Skonto 1 bis 3, ihre Tage ab Rechnungsdatum gezaehlt. }
+  Skontoangaben ist die Nettobedingung (an beliebiger Stelle), Bedingungen
+  mit Skontoangaben werden zu Skonto 1 bis 3 mit ihrem Text, ihre Tage ab
+  Rechnungsdatum gezaehlt. }
 procedure TCIIReadMapper.ReadPaymentTerms(ASettlement: TLandrixCIIHeaderTradeSettlement);
 var
   Terms: TLandrixCIITradePaymentTermsList;
@@ -2115,7 +2445,9 @@ begin
         Continue;
       end;
       NetFound := True;
-      FInvoice.PaymentTermsType := iptt_Net;
+      { a net term after the discount terms keeps them }
+      if FInvoice.PaymentTermsType = iptt_None then
+        FInvoice.PaymentTermsType := iptt_Net;
       FInvoice.PaymentTermNetNote := Term.Description;
       FInvoice.InvoiceDueDate := Date(Term.DueDateDateTime, Path + '/ram:DueDateDateTime');
       if (I > 0) and (Term.DirectDebitMandateID.Value <> '') then
@@ -2163,6 +2495,7 @@ begin
           FInvoice.PaymentTermCashDiscount1Percent := Percent;
           FInvoice.PaymentTermCashDiscount1Base := Base;
           FInvoice.PaymentTermCashDiscount1ActualAmount := Actual;
+          FInvoice.PaymentTermCashDiscount1Note := Term.Description;
         end;
       iptt_CashDiscount1:
         begin
@@ -2171,6 +2504,7 @@ begin
           FInvoice.PaymentTermCashDiscount2Percent := Percent;
           FInvoice.PaymentTermCashDiscount2Base := Base;
           FInvoice.PaymentTermCashDiscount2ActualAmount := Actual;
+          FInvoice.PaymentTermCashDiscount2Note := Term.Description;
         end;
     else
       begin
@@ -2179,6 +2513,7 @@ begin
         FInvoice.PaymentTermCashDiscount3Percent := Percent;
         FInvoice.PaymentTermCashDiscount3Base := Base;
         FInvoice.PaymentTermCashDiscount3ActualAmount := Actual;
+        FInvoice.PaymentTermCashDiscount3Note := Term.Description;
       end;
     end;
     Discount.ListFilledChildren(FFilled);
@@ -2186,7 +2521,8 @@ begin
       'ram:BasisAmount', 'ram:CalculationPercent', 'ram:ActualDiscountAmount']);
     { the due date of a discount term follows from basis and period }
     Term.ListFilledChildren(FFilled);
-    Rest(Path, ['ram:DueDateDateTime', 'ram:ApplicableTradePaymentDiscountTerms', 'ram:DirectDebitMandateID']);
+    Rest(Path, ['ram:Description', 'ram:DueDateDateTime', 'ram:ApplicableTradePaymentDiscountTerms',
+      'ram:DirectDebitMandateID']);
   end;
 end;
 
@@ -2196,6 +2532,8 @@ var
   TaxTotal: TLandrixCIIAmount;
   Path: TLandrixEInvoiceString;
   I, Chosen: TLandrixEInvoiceListIndex;
+  Value, Check: Currency;
+  Rounded: Boolean;
 begin
   Sum := ASettlement.SpecifiedTradeSettlementHeaderMonetarySummation;
   Path := Settlement + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation';
@@ -2204,8 +2542,8 @@ begin
   FInvoice.AllowanceTotalAmount := Amount(Sum.AllowanceTotalAmount, Path + '/ram:AllowanceTotalAmount');
   FInvoice.TaxExclusiveAmount := Amount(Sum.TaxBasisTotalAmount, Path + '/ram:TaxBasisTotalAmount');
   { BT-110 is the total in the invoice currency (else the first); without
-    BT-6 the VAT accounting currency is its currency; another total is
-    BT-111 }
+    BT-6 the VAT accounting currency is its currency; the first other
+    total in the differing BT-6 is BT-111 }
   Chosen := -1;
   for I := 0 to Sum.TaxTotalAmount.Count - 1 do
     if (Chosen < 0) and ((Sum.TaxTotalAmount[I].CurrencyID = '') or
@@ -2215,8 +2553,21 @@ begin
     Chosen := 0;
   for I := 0 to Sum.TaxTotalAmount.Count - 1 do
     if I <> Chosen then
-      NotMapped(Path + '/ram:TaxTotalAmount', 'VAT total ' + Sum.TaxTotalAmount[I].Value + ' ' +
-        Sum.TaxTotalAmount[I].CurrencyID + ' (BT-111)');
+    begin
+      TaxTotal := Sum.TaxTotalAmount[I];
+      if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) and
+         (TaxTotal.CurrencyID = FInvoice.TaxCurrencyCode) and not FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
+      begin
+        TaxTotal.CurrencyID := '';
+        Value := Amount(TaxTotal, Path + '/ram:TaxTotalAmount');
+        { not set when the text is no amount (reported by Amount) }
+        if LandrixEInvoiceTryLexicalToCurrency(TaxTotal.Value, Check, Rounded) then
+          FInvoice.TaxAmountTotalInTaxCurrency.SetValue(Value);
+      end
+      else
+        NotMapped(Path + '/ram:TaxTotalAmount', 'VAT total ' + TaxTotal.Value + ' ' + TaxTotal.CurrencyID +
+          ' (BT-111)');
+    end;
   if Chosen >= 0 then
   begin
     TaxTotal := Sum.TaxTotalAmount[Chosen];
@@ -2234,6 +2585,10 @@ begin
     'ram:DuePayableAmount']);
 end;
 
+{ BT-7 and BT-8 are kept once per invoice: the first value of the VAT
+  breakdowns is taken, a differing one is reported.
+  DE: BT-7 und BT-8 gibt es je Rechnung einmal: der erste Wert der
+  Steueraufschluesselungen wird uebernommen, ein abweichender gemeldet. }
 procedure TCIIReadMapper.ReadSettlement;
 var
   Source: TLandrixCIIHeaderTradeSettlement;
@@ -2241,7 +2596,11 @@ var
   Tax: TLandrixCIITradeTax;
   Subtotal: TLandrixInvoiceTaxAmount;
   Reference: TLandrixInvoicePrecedingInvoiceReference;
+  PointDate: TDateTime;
+  PointCode, FirstPointDate, FirstPointCode: TLandrixEInvoiceString;
 begin
+  FirstPointDate := '';
+  FirstPointCode := '';
   Source := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement;
   FInvoice.InvoiceCurrencyCode := Source.InvoiceCurrencyCode;
   FInvoice.TaxCurrencyCode := Source.TaxCurrencyCode;
@@ -2263,10 +2622,44 @@ begin
     Subtotal.TaxPercent := Decimal(Tax.RateApplicablePercent, Settlement + '/ram:ApplicableTradeTax/ram:RateApplicablePercent');
     if (Tax.TypeCode <> '') and (Tax.TypeCode <> 'VAT') then
       NotMapped(Settlement + '/ram:ApplicableTradeTax/ram:TypeCode', 'tax type ' + Tax.TypeCode);
+    if Tax.TaxPointDate.Value <> '' then
+    begin
+      if FirstPointDate = '' then
+      begin
+        FirstPointDate := Tax.TaxPointDate.Value;
+        PointDate := 0;
+        if LandrixEInvoiceTryCIIToDate(Tax.TaxPointDate.Value, Tax.TaxPointDate.Format, PointDate) then
+          FInvoice.TaxPointDate.SetValue(PointDate)
+        else
+          Report(edk_ConversionFailed, Settlement + '/ram:ApplicableTradeTax/ram:TaxPointDate',
+            'date "' + Tax.TaxPointDate.Value + '" (format ' + Tax.TaxPointDate.Format + ') not converted; not set',
+            eds_Error);
+      end
+      else if Tax.TaxPointDate.Value <> FirstPointDate then
+        NotMapped(Settlement + '/ram:ApplicableTradeTax/ram:TaxPointDate', 'differing VAT point date ' +
+          Tax.TaxPointDate.Value);
+    end;
+    if Tax.DueDateTypeCode <> '' then
+    begin
+      if FirstPointCode = '' then
+      begin
+        FirstPointCode := Tax.DueDateTypeCode;
+        if not LandrixEInvoiceTaxPointDateCodeFromCII(Tax.DueDateTypeCode, PointCode) then
+          Report(edk_UnknownCode, Settlement + '/ram:ApplicableTradeTax/ram:DueDateTypeCode', 'VAT point date code ' +
+            Tax.DueDateTypeCode + ' is none of 5, 29, 72; kept unchanged', eds_Info);
+        FInvoice.TaxPointDateCode := PointCode;
+      end
+      else if Tax.DueDateTypeCode <> FirstPointCode then
+        NotMapped(Settlement + '/ram:ApplicableTradeTax/ram:DueDateTypeCode', 'differing VAT point date code ' +
+          Tax.DueDateTypeCode);
+    end;
     Tax.ListFilledChildren(FFilled);
     Rest(Settlement + '/ram:ApplicableTradeTax', ['ram:CalculatedAmount', 'ram:TypeCode', 'ram:ExemptionReason',
-      'ram:BasisAmount', 'ram:CategoryCode', 'ram:ExemptionReasonCode', 'ram:RateApplicablePercent']);
+      'ram:BasisAmount', 'ram:CategoryCode', 'ram:ExemptionReasonCode', 'ram:TaxPointDate', 'ram:DueDateTypeCode',
+      'ram:RateApplicablePercent']);
   end;
+  ReadFurtherParty(FInvoice.InvoiceeParty, Source.InvoiceeTradeParty, Settlement + '/ram:InvoiceeTradeParty');
+  ReadFurtherParty(FInvoice.PayeeParty, Source.PayeeTradeParty, Settlement + '/ram:PayeeTradeParty');
   FInvoice.InvoicePeriodStartDate := Date(Source.BillingSpecifiedPeriod.StartDateTime,
     Settlement + '/ram:BillingSpecifiedPeriod/ram:StartDateTime');
   FInvoice.InvoicePeriodEndDate := Date(Source.BillingSpecifiedPeriod.EndDateTime,
@@ -2298,7 +2691,7 @@ begin
   end;
   Source.ListFilledChildren(FFilled);
   Rest(Settlement, ['ram:CreditorReferenceID', 'ram:PaymentReference', 'ram:TaxCurrencyCode', 'ram:InvoiceCurrencyCode',
-    'ram:SpecifiedTradeSettlementPaymentMeans', 'ram:ApplicableTradeTax', 'ram:BillingSpecifiedPeriod',
+    'ram:InvoiceeTradeParty', 'ram:PayeeTradeParty', 'ram:SpecifiedTradeSettlementPaymentMeans', 'ram:ApplicableTradeTax', 'ram:BillingSpecifiedPeriod',
     'ram:SpecifiedTradeAllowanceCharge', 'ram:SpecifiedTradePaymentTerms',
     'ram:SpecifiedTradeSettlementHeaderMonetarySummation', 'ram:InvoiceReferencedDocument',
     'ram:ReceivableSpecifiedTradeAccountingAccount']);

@@ -125,6 +125,7 @@ type
     ID: PUBLID;
     IssueDate: PText;
     DueDate: PText;
+    TaxPointDate: PText;
     TypeCode: PUBLCode;
     DocumentCurrencyCode: PUBLCode;
     TaxCurrencyCode: PUBLCode;
@@ -142,6 +143,8 @@ type
     ProjectReference: TLandrixUBLProjectReferenceList;
     AccountingSupplierParty: TLandrixUBLSupplierParty;
     AccountingCustomerParty: TLandrixUBLCustomerParty;
+    PayeeParty: TLandrixUBLParty;
+    TaxRepresentativeParty: TLandrixUBLParty;
     Delivery: TLandrixUBLDeliveryList;
     PaymentMeans: TLandrixUBLPaymentMeansList;
     PaymentTerms: TLandrixUBLPaymentTermsList;
@@ -184,6 +187,7 @@ begin
   Result.ID := @AInvoice.ID;
   Result.IssueDate := @AInvoice.IssueDate;
   Result.DueDate := @AInvoice.DueDate;
+  Result.TaxPointDate := @AInvoice.TaxPointDate;
   Result.TypeCode := @AInvoice.InvoiceTypeCode;
   Result.DocumentCurrencyCode := @AInvoice.DocumentCurrencyCode;
   Result.TaxCurrencyCode := @AInvoice.TaxCurrencyCode;
@@ -201,6 +205,8 @@ begin
   Result.ProjectReference := AInvoice.ProjectReference;
   Result.AccountingSupplierParty := AInvoice.AccountingSupplierParty;
   Result.AccountingCustomerParty := AInvoice.AccountingCustomerParty;
+  Result.PayeeParty := AInvoice.PayeeParty;
+  Result.TaxRepresentativeParty := AInvoice.TaxRepresentativeParty;
   Result.Delivery := AInvoice.Delivery;
   Result.PaymentMeans := AInvoice.PaymentMeans;
   Result.PaymentTerms := AInvoice.PaymentTerms;
@@ -222,6 +228,7 @@ begin
   Result.ID := @ACreditNote.ID;
   Result.IssueDate := @ACreditNote.IssueDate;
   Result.DueDate := nil;
+  Result.TaxPointDate := @ACreditNote.TaxPointDate;
   Result.TypeCode := @ACreditNote.CreditNoteTypeCode;
   Result.DocumentCurrencyCode := @ACreditNote.DocumentCurrencyCode;
   Result.TaxCurrencyCode := @ACreditNote.TaxCurrencyCode;
@@ -239,6 +246,8 @@ begin
   Result.ProjectReference := nil;
   Result.AccountingSupplierParty := ACreditNote.AccountingSupplierParty;
   Result.AccountingCustomerParty := ACreditNote.AccountingCustomerParty;
+  Result.PayeeParty := ACreditNote.PayeeParty;
+  Result.TaxRepresentativeParty := ACreditNote.TaxRepresentativeParty;
   Result.Delivery := ACreditNote.Delivery;
   Result.PaymentMeans := ACreditNote.PaymentMeans;
   Result.PaymentTerms := ACreditNote.PaymentTerms;
@@ -378,6 +387,19 @@ begin
   Result.SchemeID := AScheme;
 end;
 
+function UBLCode(const AValue: TLandrixEInvoiceString): TLandrixUBLCode;
+begin
+  Result.Value := AValue;
+end;
+
+{ Sets an optional date from a read value; 0 (not set or not converted)
+  leaves it empty. }
+procedure SetDate(var ADate: TLandrixEInvoiceDate; AValue: TDateTime);
+begin
+  if AValue > 0 then
+    ADate.SetValue(AValue);
+end;
+
 function BoolText(AValue: Boolean): TLandrixEInvoiceString;
 begin
   if AValue then
@@ -466,6 +488,11 @@ end;
 { --- TUBLWriteMapper ---------------------------------------------------------- }
 
 type
+  { Role of a TLandrixInvoiceParty; it decides which fields EN 16931 knows.
+    DE: Rolle einer TLandrixInvoiceParty; sie bestimmt, welche Felder
+    EN 16931 kennt. }
+  TFurtherPartyRole = (fpr_Payee, fpr_TaxRepresentative, fpr_Invoicee);
+
   { Writes one invoice into one UBL document. DE: Schreibt eine Rechnung in
     ein UBL-Dokument. }
   TUBLWriteMapper = class(TObject)
@@ -487,6 +514,8 @@ type
     procedure MapAddress(AAddress: TLandrixInvoiceAddress; ATarget: TLandrixUBLAddress);
     procedure MapParty(AParty: TLandrixInvoiceAccountingParty; ATarget: TLandrixUBLParty;
       const APath: TLandrixEInvoiceString; AIsSeller: Boolean);
+    procedure MapFurtherParty(AParty: TLandrixInvoiceParty; ATarget: TLandrixUBLParty;
+      const APath: TLandrixEInvoiceString; ARole: TFurtherPartyRole);
     procedure MapDelivery;
     procedure MapPaymentMeans;
     procedure MapPaymentTerms;
@@ -634,6 +663,10 @@ begin
     FDoc.Path + '/cac:AccountingSupplierParty/cac:Party', True);
   MapParty(FInvoice.AccountingCustomerParty, FDoc.AccountingCustomerParty.Party,
     FDoc.Path + '/cac:AccountingCustomerParty/cac:Party', False);
+  MapFurtherParty(FInvoice.PayeeParty, FDoc.PayeeParty, FDoc.Path + '/cac:PayeeParty', fpr_Payee);
+  MapFurtherParty(FInvoice.TaxRepresentativeParty, FDoc.TaxRepresentativeParty,
+    FDoc.Path + '/cac:TaxRepresentativeParty', fpr_TaxRepresentative);
+  MapFurtherParty(FInvoice.InvoiceeParty, nil, FDoc.Path, fpr_Invoicee);
   MapDelivery;
   MapPaymentMeans;
   MapPaymentTerms;
@@ -649,18 +682,21 @@ end;
   business process, BT-1 number, BT-2 issue date, BT-9 due date (not on a
   credit note), BT-3 type, BG-1 notes (subject code as '#code#' prefix),
   BT-5 currency, BT-6 VAT accounting currency (only when it differs), BT-19
-  buyer accounting reference, BG-14 invoice period.
+  buyer accounting reference, BT-7 VAT point date, BG-14 invoice period
+  with BT-8 VAT point date code. BT-X-1 and BT-X-2 have no element.
   DE: BT-24 Spezifikationskennung (mit Extension, wenn verwendet), BT-23
   Geschaeftsprozess, BT-1 Nummer, BT-2 Rechnungsdatum, BT-9
   Faelligkeitsdatum (nicht auf einer Gutschrift), BT-3 Art, BG-1 Bemerkungen
   (Betreffcode als Praefix '#Code#'), BT-5 Waehrung, BT-6
   Steuerwaehrung (nur wenn abweichend), BT-19 Buchungsreferenz des
-  Kaeufers, BG-14 Rechnungszeitraum. }
+  Kaeufers, BT-7 Steuerdatum, BG-14 Rechnungszeitraum mit BT-8 Code des
+  Steuerdatums. BT-X-1 und BT-X-2 haben kein Element. }
 procedure TUBLWriteMapper.MapDocument;
 var
   I: TLandrixEInvoiceListIndex;
   Text, Subject: TLandrixEInvoiceString;
   Period: TLandrixUBLPeriod;
+  HasPeriod: Boolean;
 begin
   if UsesExtension then
     FDoc.CustomizationID^.Value := FSpec.ExtensionCustomizationID
@@ -698,14 +734,24 @@ begin
   if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
     FDoc.TaxCurrencyCode^.Value := FInvoice.TaxCurrencyCode;
   FDoc.AccountingCost^ := FInvoice.BuyerAccountingReference;
-  if PeriodSet(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate) then
+  if FInvoice.TaxPointDate.HasValue then
+    FDoc.TaxPointDate^ := LandrixEInvoiceDateToUBL(FInvoice.TaxPointDate.Value);
+  { BT-8 lives in the invoice period (BG-14) }
+  HasPeriod := PeriodSet(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate);
+  if HasPeriod or (FInvoice.TaxPointDateCode <> '') then
   begin
     Period := FDoc.InvoicePeriod.Add;
-    if PeriodDateSet(FInvoice.InvoicePeriodStartDate) then
+    if HasPeriod and PeriodDateSet(FInvoice.InvoicePeriodStartDate) then
       Period.StartDate := LandrixEInvoiceDateToUBL(FInvoice.InvoicePeriodStartDate);
-    if PeriodDateSet(FInvoice.InvoicePeriodEndDate) then
+    if HasPeriod and PeriodDateSet(FInvoice.InvoicePeriodEndDate) then
       Period.EndDate := LandrixEInvoiceDateToUBL(FInvoice.InvoicePeriodEndDate);
+    if FInvoice.TaxPointDateCode <> '' then
+      Period.DescriptionCode.Add(UBLCode(FInvoice.TaxPointDateCode));
   end;
+  if FInvoice.TestIndicator.HasValue then
+    Permit(LandrixEInvoiceRuleTestIndicator, FDoc.Path, 'test indicator');
+  if FInvoice.DocumentName <> '' then
+    Permit(LandrixEInvoiceRuleDocumentName, FDoc.Path, 'document name');
 end;
 
 { BT-10 buyer reference (the placeholder 'non-existent' only for XRechnung
@@ -742,6 +788,8 @@ begin
       FDoc.OrderReference.ID.Value := FInvoice.PurchaseOrderReference;
     FDoc.OrderReference.SalesOrderID.Value := FInvoice.SellerOrderReference;
   end;
+  if FInvoice.SellerOrderReferenceDate.HasValue or FInvoice.PurchaseOrderReferenceDate.HasValue then
+    Permit(LandrixEInvoiceRuleOrderDates, FDoc.Path + '/cac:OrderReference', 'date of the sales or purchase order');
   for I := 0 to FInvoice.PrecedingInvoiceReferences.Count - 1 do
   begin
     Reference := FInvoice.PrecedingInvoiceReferences[I];
@@ -825,6 +873,11 @@ begin
     end;
     Target := FDoc.AdditionalDocumentReference.Add;
     Target.ID.Value := Attachment.ID;
+    if Attachment.TypeCode = iatc_130 then
+      Target.ID.SchemeID := Attachment.IDSchemeID
+    else if Attachment.IDSchemeID <> '' then
+      Report(edk_NotAllowed, Path + '/cbc:ID/@schemeID', 'scheme ' + Attachment.IDSchemeID + ' of attachment ' +
+        Attachment.ID + ' left out: only the invoiced object identifier (BT-18) has one', eds_Warning);
     if Attachment.TypeCode = iatc_130 then
       Target.DocumentTypeCode.Value := '130'
     else if (Attachment.TypeCode <> iatc_916) or (Attachment.TypeCodeOther <> '') then
@@ -936,25 +989,86 @@ begin
   end;
   LegalEntity := ATarget.PartyLegalEntity.Add;
   LegalEntity.RegistrationName := Txt(AParty.RegistrationName);
-  LegalEntity.CompanyID.Value := AParty.CompanyID;
+  if AParty.CompanyID <> '' then
+    LegalEntity.CompanyID := UBLID(AParty.CompanyID, AParty.CompanyIDSchemeID);
   if AIsSeller then
     LegalEntity.CompanyLegalForm := Txt(AParty.AdditionalLegalInformationSeller);
   ATarget.Contact.Name := AParty.ContactName;
   ATarget.Contact.Telephone := AParty.ContactTelephone;
   ATarget.Contact.ElectronicMail := AParty.ContactElectronicMail;
+  if AParty.ContactDepartment <> '' then
+    Permit(LandrixEInvoiceRuleContactDepartment, APath + '/cac:Contact', 'contact department ' +
+      AParty.ContactDepartment);
 end;
 
-{ BG-13 delivery: BT-72 delivery date, BT-71 location (default scheme 0088),
-  BG-15 delivery address, BT-70 name of the party delivered to.
-  DE: BG-13 Lieferung: BT-72 Lieferdatum, BT-71 Ort (Vorgabeschema 0088),
-  BG-15 Lieferanschrift, BT-70 Name des Belieferten. }
+{ BG-10 payee (cac:PayeeParty: BT-60 identifier, BT-59 name, BT-61 legal
+  registration) and BG-11 tax representative (cac:TaxRepresentativeParty:
+  BT-62 name, BG-12 address, BT-63 VAT identifier). Everything else of
+  these parties and the invoicee (BG-X-36) exists in Factur-X EXTENDED only
+  and is reported as left out.
+  DE: BG-10 Zahlungsempfaenger (cac:PayeeParty: BT-60 Kennung, BT-59 Name,
+  BT-61 Registernummer) und BG-11 Steuervertreter
+  (cac:TaxRepresentativeParty: BT-62 Name, BG-12 Anschrift, BT-63
+  USt-IdNr.). Alles Weitere dieser Parteien und der Rechnungsempfaenger
+  (BG-X-36) gibt es nur in Factur-X EXTENDED; es wird als weggelassen
+  gemeldet. }
+procedure TUBLWriteMapper.MapFurtherParty(AParty: TLandrixInvoiceParty; ATarget: TLandrixUBLParty;
+  const APath: TLandrixEInvoiceString; ARole: TFurtherPartyRole);
+var
+  HasContact: Boolean;
+  TaxScheme: TLandrixUBLPartyTaxScheme;
+begin
+  if AParty.IsEmpty then
+    Exit;
+  if ARole = fpr_Invoicee then
+  begin
+    Permit(LandrixEInvoiceRuleInvoicee, APath, 'invoicee');
+    Exit;
+  end;
+  HasContact := (AParty.ContactName <> '') or (AParty.ContactDepartment <> '') or
+    (AParty.ContactTelephone <> '') or (AParty.ContactElectronicMail <> '');
+  if ARole = fpr_Payee then
+  begin
+    if HasContact or AddressSet(AParty.Address) or (AParty.VATCompanyID <> '') then
+      Permit(LandrixEInvoiceRulePayeeExtended, APath, 'address, contact or VAT identifier of the payee');
+    if AParty.Identifier <> '' then
+      ATarget.PartyIdentification.Add.ID := UBLID(AParty.Identifier, AParty.IdentifierSchemeID);
+    if AParty.Name <> '' then
+      ATarget.PartyName.Add.Name := Txt(AParty.Name);
+    if AParty.CompanyID <> '' then
+      ATarget.PartyLegalEntity.Add.CompanyID := UBLID(AParty.CompanyID, AParty.CompanyIDSchemeID);
+  end
+  else
+  begin
+    if HasContact or (AParty.Identifier <> '') or (AParty.CompanyID <> '') then
+      Permit(LandrixEInvoiceRuleTaxRepresentativeExtended, APath, 'identifier or contact of the tax representative');
+    if AParty.Name <> '' then
+      ATarget.PartyName.Add.Name := Txt(AParty.Name);
+    if AddressSet(AParty.Address) then
+      MapAddress(AParty.Address, ATarget.PostalAddress);
+    if AParty.VATCompanyID <> '' then
+    begin
+      TaxScheme := ATarget.PartyTaxScheme.Add;
+      TaxScheme.CompanyID.Value := AParty.VATCompanyID;
+      TaxScheme.TaxScheme.ID.Value := 'VAT';
+    end;
+  end;
+end;
+
+{ BG-13 delivery: BT-72 delivery date, BT-71 location (with or without
+  scheme), BG-15 delivery address, BT-70 name of the party delivered to;
+  the contact (BG-X-26) has no element.
+  DE: BG-13 Lieferung: BT-72 Lieferdatum, BT-71 Ort (mit oder ohne
+  Schema), BG-15 Lieferanschrift, BT-70 Name des Belieferten; der Kontakt
+  (BG-X-26) hat kein Element. }
 procedure TUBLWriteMapper.MapDelivery;
 var
   Info: TLandrixInvoiceDeliveryInformation;
   Target: TLandrixUBLDelivery;
-  Scheme: TLandrixEInvoiceString;
 begin
   Info := FInvoice.DeliveryInformation;
+  if (Info.ContactName <> '') or (Info.ContactTelephone <> '') or (Info.ContactElectronicMail <> '') then
+    Permit(LandrixEInvoiceRuleDeliveryContact, FDoc.Path + '/cac:Delivery', 'deliver to contact');
   if not (DateSet(Info.ActualDeliveryDate) or (Info.LocationIdentifier <> '') or (Info.Name <> '') or
      AddressSet(Info.Address)) then
     Exit;
@@ -962,12 +1076,7 @@ begin
   if DateSet(Info.ActualDeliveryDate) then
     Target.ActualDeliveryDate := LandrixEInvoiceDateToUBL(Info.ActualDeliveryDate);
   if Info.LocationIdentifier <> '' then
-  begin
-    Scheme := Info.LocationIdentifierSchemeID;
-    if Scheme = '' then
-      Scheme := '0088';
-    Target.DeliveryLocation.ID := UBLID(Info.LocationIdentifier, Scheme);
-  end;
+    Target.DeliveryLocation.ID := UBLID(Info.LocationIdentifier, Info.LocationIdentifierSchemeID);
   if AddressSet(Info.Address) then
     MapAddress(Info.Address, Target.DeliveryLocation.Address);
   if Info.Name <> '' then
@@ -1044,6 +1153,9 @@ procedure TUBLWriteMapper.MapPaymentTerms;
 var
   Text: TLandrixEInvoiceString;
 begin
+  if LandrixEInvoiceCashDiscountNotesSet(FInvoice) then
+    Permit(LandrixEInvoiceRuleCashDiscountNote, FDoc.Path + '/cac:PaymentTerms/cbc:Note',
+      'text of a cash discount level');
   Text := LandrixEInvoicePaymentTermsText(FInvoice);
   if Text <> '' then
     FDoc.PaymentTerms.Add.Note.Add(Txt(Text));
@@ -1121,28 +1233,39 @@ end;
 { BT-110 VAT total in the invoice currency and BG-23 VAT breakdown: BT-116
   taxable amount, BT-117 tax amount, BT-118 category, BT-119 rate (also for
   category O, BR-DE-14), BT-121 exemption code, BT-120 exemption reason.
-  With a differing VAT accounting currency (BT-6) BR-53 demands BT-111, the
-  VAT total in that currency, which the invoice model does not hold: an
-  error is reported.
+  With a differing VAT accounting currency (BT-6) a second tax total
+  without breakdown carries BT-111; without BT-111 an error is reported
+  (BR-53).
   DE: BT-110 Steuergesamtbetrag in der Rechnungswaehrung und BG-23
   Steueraufschluesselung: BT-116 Bemessungsgrundlage, BT-117 Steuerbetrag,
   BT-118 Kategorie, BT-119 Steuersatz (auch fuer Kategorie O, BR-DE-14),
   BT-121 Befreiungscode, BT-120 Befreiungsgrund. Bei abweichender
-  Steuerwaehrung (BT-6) verlangt BR-53 BT-111, den Steuergesamtbetrag in
-  dieser Waehrung, den das Rechnungsmodell nicht haelt: es wird ein Fehler
-  gemeldet. }
+  Steuerwaehrung (BT-6) traegt ein zweiter Steuergesamtbetrag ohne
+  Aufschluesselung BT-111; fehlt BT-111, wird ein Fehler gemeldet (BR-53). }
 procedure TUBLWriteMapper.MapTax;
 var
   I: TLandrixEInvoiceListIndex;
   Subtotal: TLandrixInvoiceTaxAmount;
-  Total: TLandrixUBLTaxTotal;
+  Total, AccountingTotal: TLandrixUBLTaxTotal;
   Target: TLandrixUBLTaxSubtotal;
 begin
   Total := FDoc.TaxTotal.Add;
   Total.TaxAmount := Money(FInvoice.TaxAmountTotal);
   if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
-    Report(edk_MissingElement, FDoc.Path + '/cac:TaxTotal', 'VAT total in the accounting currency ' +
-      FInvoice.TaxCurrencyCode + ' (BT-111, BR-53) is not in the invoice model', eds_Error);
+  begin
+    if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
+    begin
+      AccountingTotal := FDoc.TaxTotal.Add;
+      AccountingTotal.TaxAmount := Money(FInvoice.TaxAmountTotalInTaxCurrency.Value);
+      AccountingTotal.TaxAmount.CurrencyID := FInvoice.TaxCurrencyCode;
+    end
+    else
+      Report(edk_MissingElement, FDoc.Path + '/cac:TaxTotal', 'VAT total in the accounting currency ' +
+        FInvoice.TaxCurrencyCode + ' (BT-111, BR-53) is missing', eds_Error);
+  end
+  else if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
+    Report(edk_NotAllowed, FDoc.Path + '/cac:TaxTotal', 'VAT total in the accounting currency (BT-111) left ' +
+      'out: the VAT accounting currency (BT-6) does not differ from the invoice currency', eds_Warning);
   for I := 0 to FInvoice.TaxAmountSubtotals.Count - 1 do
   begin
     Subtotal := FInvoice.TaxAmountSubtotals[I];
@@ -1224,6 +1347,8 @@ begin
     ATarget.OrderLineReference.Add.LineID.Value := ALine.OrderLineReference;
   if ALine.OrderNumber <> '' then
     Permit(LandrixEInvoiceRuleLineOrderNumber, APath + '/cac:OrderLineReference', 'order number of line ' + ALine.ID);
+  if ALine.OrderDate.HasValue then
+    Permit(LandrixEInvoiceRuleLineOrderDate, APath + '/cac:OrderLineReference', 'order date of line ' + ALine.ID);
   if ALine.ObjectIdentifier <> '' then
   begin
     Document := ATarget.DocumentReference.Add;
@@ -1269,14 +1394,14 @@ begin
 end;
 
 { BG-31 item: BT-154 description, BT-153 name, BT-156/BT-155 identifiers,
-  BT-157 standard identifier (GTIN, scheme 0160), BT-159 country of origin,
-  BT-158 classifications (BR-65: only with a scheme), BG-30 line VAT (no
-  rate for category O), BG-32 attributes.
+  BT-157 standard identifier (see LandrixEInvoiceStandardItemIdentifierOf),
+  BT-159 country of origin, BT-158 classifications (BR-65: only with a
+  scheme), BG-30 line VAT (no rate for category O), BG-32 attributes.
   DE: BG-31 Artikel: BT-154 Beschreibung, BT-153 Name, BT-156/BT-155
-  Kennungen, BT-157 Standardkennung (GTIN, Schema 0160), BT-159
-  Herkunftsland, BT-158 Klassifizierungen (BR-65: nur mit Schema), BG-30
-  Umsatzsteuer der Position (kein Satz fuer Kategorie O), BG-32
-  Eigenschaften. }
+  Kennungen, BT-157 Standardkennung (siehe
+  LandrixEInvoiceStandardItemIdentifierOf), BT-159 Herkunftsland, BT-158
+  Klassifizierungen (BR-65: nur mit Schema), BG-30 Umsatzsteuer der
+  Position (kein Satz fuer Kategorie O), BG-32 Eigenschaften. }
 procedure TUBLWriteMapper.MapLineItem(ALine: TLandrixInvoiceLine; AItem: TLandrixUBLItem;
   const APath: TLandrixEInvoiceString);
 var
@@ -1285,14 +1410,22 @@ var
   Target: TLandrixUBLCommodityClassification;
   Category: TLandrixUBLTaxCategory;
   Attribute: TLandrixUBLItemProperty;
+  Value, Scheme, Conflict: TLandrixEInvoiceString;
 begin
   if ALine.Description <> '' then
     AItem.Description.Add(Txt(ALine.Description));
   AItem.Name := Txt(ALine.Name);
   AItem.BuyersItemIdentification.ID.Value := ALine.BuyersItemIdentification;
   AItem.SellersItemIdentification.ID.Value := ALine.SellersItemIdentification;
-  if ALine.GlobalID_EAN_GTIN <> '' then
-    AItem.StandardItemIdentification.ID := UBLID(ALine.GlobalID_EAN_GTIN, '0160');
+  if LandrixEInvoiceStandardItemIdentifierOf(ALine, Value, Scheme, Conflict) then
+  begin
+    AItem.StandardItemIdentification.ID := UBLID(Value, Scheme);
+    if Scheme = '' then
+      Report(edk_MissingElement, APath + '/cac:StandardItemIdentification/cbc:ID/@schemeID',
+        'item standard identifier ' + Value + ' of line ' + ALine.ID + ' without scheme (BR-64)', eds_Error);
+    if Conflict <> '' then
+      Report(edk_NotAllowed, APath + '/cac:StandardItemIdentification', Conflict, eds_Warning);
+  end;
   AItem.OriginCountry.IdentificationCode.Value := ALine.OriginTradeCountry;
   for I := 0 to ALine.ItemClassifications.Count - 1 do
   begin
@@ -1400,6 +1533,8 @@ type
       const APath: TLandrixEInvoiceString);
     procedure ReadParty(AParty: TLandrixInvoiceAccountingParty; ASource: TLandrixUBLParty;
       const APath: TLandrixEInvoiceString; AIsSeller: Boolean);
+    procedure ReadFurtherParty(AParty: TLandrixInvoiceParty; ASource: TLandrixUBLParty;
+      const APath: TLandrixEInvoiceString);
     procedure ReadDelivery;
     procedure ReadPaymentMeans;
     procedure ReadPaymentTerms;
@@ -1645,6 +1780,9 @@ begin
     FDoc.Path + '/cac:AccountingCustomerParty/cac:Party', False);
   FDoc.AccountingCustomerParty.ListFilledChildren(FFilled);
   Rest(FDoc.Path + '/cac:AccountingCustomerParty', ['cac:Party']);
+  ReadFurtherParty(FInvoice.PayeeParty, FDoc.PayeeParty, FDoc.Path + '/cac:PayeeParty');
+  ReadFurtherParty(FInvoice.TaxRepresentativeParty, FDoc.TaxRepresentativeParty,
+    FDoc.Path + '/cac:TaxRepresentativeParty');
   ReadDelivery;
   ReadPaymentMeans;
   ReadPaymentTerms;
@@ -1658,11 +1796,12 @@ begin
     ReadLine(FInvoice.InvoiceLines.AddInvoiceLine, LineAt(FDoc, I), FDoc.Path + '/' + FDoc.LineName);
   ListDocumentChildren(FDoc, FFilled);
   Rest(FDoc.Path, ['cbc:CustomizationID', 'cbc:ProfileID', 'cbc:ID', 'cbc:IssueDate', 'cbc:DueDate',
-    'cbc:InvoiceTypeCode', 'cbc:CreditNoteTypeCode', 'cbc:Note', 'cbc:DocumentCurrencyCode', 'cbc:TaxCurrencyCode',
-    'cbc:AccountingCost', 'cbc:BuyerReference', 'cac:InvoicePeriod', 'cac:OrderReference', 'cac:BillingReference',
-    'cac:DespatchDocumentReference', 'cac:ReceiptDocumentReference', 'cac:OriginatorDocumentReference',
-    'cac:ContractDocumentReference', 'cac:AdditionalDocumentReference', 'cac:ProjectReference',
-    'cac:AccountingSupplierParty', 'cac:AccountingCustomerParty', 'cac:Delivery', 'cac:PaymentMeans',
+    'cbc:InvoiceTypeCode', 'cbc:CreditNoteTypeCode', 'cbc:TaxPointDate', 'cbc:Note', 'cbc:DocumentCurrencyCode',
+    'cbc:TaxCurrencyCode', 'cbc:AccountingCost', 'cbc:BuyerReference', 'cac:InvoicePeriod', 'cac:OrderReference',
+    'cac:BillingReference', 'cac:DespatchDocumentReference', 'cac:ReceiptDocumentReference',
+    'cac:OriginatorDocumentReference', 'cac:ContractDocumentReference', 'cac:AdditionalDocumentReference',
+    'cac:ProjectReference', 'cac:AccountingSupplierParty', 'cac:AccountingCustomerParty', 'cac:PayeeParty',
+    'cac:TaxRepresentativeParty', 'cac:Delivery', 'cac:PaymentMeans',
     'cac:PaymentTerms', 'cac:PrepaidPayment', 'cac:AllowanceCharge', 'cac:TaxTotal', 'cac:LegalMonetaryTotal',
     'cac:InvoiceLine', 'cac:CreditNoteLine']);
 end;
@@ -1712,13 +1851,17 @@ begin
   FInvoice.TaxCurrencyCode := CodeValue(FDoc.TaxCurrencyCode^, FDoc.Path + '/cbc:TaxCurrencyCode');
   FInvoice.BuyerAccountingReference := FDoc.AccountingCost^;
   FInvoice.BuyerReference := FDoc.BuyerReference^;
+  SetDate(FInvoice.TaxPointDate, Date(FDoc.TaxPointDate^, FDoc.Path + '/cbc:TaxPointDate'));
   if FDoc.InvoicePeriod.Count > 0 then
   begin
     Period := FDoc.InvoicePeriod[0];
     FInvoice.InvoicePeriodStartDate := Date(Period.StartDate, FDoc.Path + '/cac:InvoicePeriod/cbc:StartDate');
     FInvoice.InvoicePeriodEndDate := Date(Period.EndDate, FDoc.Path + '/cac:InvoicePeriod/cbc:EndDate');
+    if Period.DescriptionCode.Count > 0 then
+      FInvoice.TaxPointDateCode := CodeValue(Period.DescriptionCode[0], FDoc.Path + '/cac:InvoicePeriod/cbc:DescriptionCode');
+    Excess(Period.DescriptionCode.Count, FDoc.Path + '/cac:InvoicePeriod/cbc:DescriptionCode');
     Period.ListFilledChildren(FFilled);
-    Rest(FDoc.Path + '/cac:InvoicePeriod', ['cbc:StartDate', 'cbc:EndDate']);
+    Rest(FDoc.Path + '/cac:InvoicePeriod', ['cbc:StartDate', 'cbc:EndDate', 'cbc:DescriptionCode']);
   end;
   Excess(FDoc.InvoicePeriod.Count, FDoc.Path + '/cac:InvoicePeriod');
 end;
@@ -1805,12 +1948,19 @@ begin
       Continue;
     end;
     Attachment := FInvoice.Attachments.AddAttachment(iat_application_None);
-    Attachment.ID := IDValue(Source.ID, Path + '/cbc:ID');
     if (TypeText <> '') and not LandrixEInvoiceAttachmentTypeCodeFromStr(TypeText, Attachment.TypeCode) then
     begin
       Attachment.TypeCode := iatc_None;
       UnknownCode(TypeText, Path + '/cbc:DocumentTypeCode', Attachment.TypeCodeOther);
     end;
+    { BT-18-1: only the invoiced object identifier keeps its scheme }
+    if Attachment.TypeCode = iatc_130 then
+    begin
+      Attachment.ID := Source.ID.Value;
+      Attachment.IDSchemeID := Source.ID.SchemeID;
+    end
+    else
+      Attachment.ID := IDValue(Source.ID, Path + '/cbc:ID');
     Attachment.DocumentDescription := FirstText(Source.DocumentDescription, Path + '/cbc:DocumentDescription');
     Attachment.ExternalReference := IDValue(Source.Attachment.ExternalReference.URI,
       Path + '/cac:Attachment/cac:ExternalReference/cbc:URI');
@@ -1937,7 +2087,8 @@ begin
   begin
     LegalEntity := ASource.PartyLegalEntity[0];
     AParty.RegistrationName := LegalEntity.RegistrationName;
-    AParty.CompanyID := IDValue(LegalEntity.CompanyID, APath + '/cac:PartyLegalEntity/cbc:CompanyID');
+    AParty.CompanyID := LegalEntity.CompanyID.Value;
+    AParty.CompanyIDSchemeID := LegalEntity.CompanyID.SchemeID;
     Taken[0] := 'cbc:RegistrationName';
     Taken[1] := 'cbc:CompanyID';
     Taken[2] := '';
@@ -1958,6 +2109,79 @@ begin
   ASource.ListFilledChildren(FFilled);
   Rest(APath, ['cbc:EndpointID', 'cac:PartyIdentification', 'cac:PartyName', 'cac:PostalAddress',
     'cac:PartyTaxScheme', 'cac:PartyLegalEntity', 'cac:Contact']);
+end;
+
+{ BG-10 payee and BG-11 tax representative: the first identifier (with or
+  without scheme), name, address, VAT identifier (scheme VAT), legal
+  registration with scheme, contact. An identifier with scheme SEPA is the
+  creditor identifier BT-90, which the EN 16931 UBL binding also allows in
+  the payee; it goes to the seller like there.
+  DE: BG-10 Zahlungsempfaenger und BG-11 Steuervertreter: die erste
+  Kennung (mit oder ohne Schema), Name, Anschrift, USt-IdNr. (Schema VAT),
+  Registernummer mit Schema, Kontakt. Eine Kennung mit Schema SEPA ist die
+  Glaeubiger-ID BT-90, die die UBL-Bindung von EN 16931 auch beim
+  Zahlungsempfaenger erlaubt; sie kommt wie dort zum Verkaeufer. }
+procedure TUBLReadMapper.ReadFurtherParty(AParty: TLandrixInvoiceParty; ASource: TLandrixUBLParty;
+  const APath: TLandrixEInvoiceString);
+var
+  I: TLandrixEInvoiceListIndex;
+  ID: TLandrixUBLID;
+  TaxScheme: TLandrixUBLPartyTaxScheme;
+  LegalEntity: TLandrixUBLPartyLegalEntity;
+begin
+  for I := 0 to ASource.PartyIdentification.Count - 1 do
+  begin
+    ID := ASource.PartyIdentification[I].ID;
+    if SameAscii(ID.SchemeID, 'SEPA') and (FInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier = '') then
+      FInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := ID.Value
+    else if (AParty.Identifier = '') and not SameAscii(ID.SchemeID, 'SEPA') then
+    begin
+      AParty.Identifier := ID.Value;
+      AParty.IdentifierSchemeID := ID.SchemeID;
+    end
+    else
+      NotMapped(APath + '/cac:PartyIdentification', 'further identifier ' + ID.Value);
+    ASource.PartyIdentification[I].ListFilledChildren(FFilled);
+    Rest(APath + '/cac:PartyIdentification', ['cbc:ID']);
+  end;
+  if ASource.PartyName.Count > 0 then
+  begin
+    AParty.Name := ASource.PartyName[0].Name;
+    ASource.PartyName[0].ListFilledChildren(FFilled);
+    Rest(APath + '/cac:PartyName', ['cbc:Name']);
+  end;
+  Excess(ASource.PartyName.Count, APath + '/cac:PartyName');
+  ReadAddress(AParty.Address, ASource.PostalAddress, APath + '/cac:PostalAddress');
+  for I := 0 to ASource.PartyTaxScheme.Count - 1 do
+  begin
+    TaxScheme := ASource.PartyTaxScheme[I];
+    if (TaxScheme.TaxScheme.ID.Value = 'VAT') and (AParty.VATCompanyID = '') then
+      AParty.VATCompanyID := IDValue(TaxScheme.CompanyID, APath + '/cac:PartyTaxScheme/cbc:CompanyID')
+    else
+      NotMapped(APath + '/cac:PartyTaxScheme', 'tax registration ' + TaxScheme.CompanyID.Value +
+        ' (scheme ' + TaxScheme.TaxScheme.ID.Value + ')');
+    TaxScheme.TaxScheme.ListFilledChildren(FFilled);
+    Rest(APath + '/cac:PartyTaxScheme/cac:TaxScheme', ['cbc:ID']);
+    TaxScheme.ListFilledChildren(FFilled);
+    Rest(APath + '/cac:PartyTaxScheme', ['cbc:CompanyID', 'cac:TaxScheme']);
+  end;
+  if ASource.PartyLegalEntity.Count > 0 then
+  begin
+    LegalEntity := ASource.PartyLegalEntity[0];
+    AParty.CompanyID := LegalEntity.CompanyID.Value;
+    AParty.CompanyIDSchemeID := LegalEntity.CompanyID.SchemeID;
+    LegalEntity.ListFilledChildren(FFilled);
+    Rest(APath + '/cac:PartyLegalEntity', ['cbc:CompanyID']);
+  end;
+  Excess(ASource.PartyLegalEntity.Count, APath + '/cac:PartyLegalEntity');
+  AParty.ContactName := ASource.Contact.Name;
+  AParty.ContactTelephone := ASource.Contact.Telephone;
+  AParty.ContactElectronicMail := ASource.Contact.ElectronicMail;
+  ASource.Contact.ListFilledChildren(FFilled);
+  Rest(APath + '/cac:Contact', ['cbc:Name', 'cbc:Telephone', 'cbc:ElectronicMail']);
+  ASource.ListFilledChildren(FFilled);
+  Rest(APath, ['cac:PartyIdentification', 'cac:PartyName', 'cac:PostalAddress', 'cac:PartyTaxScheme',
+    'cac:PartyLegalEntity', 'cac:Contact']);
 end;
 
 procedure TUBLReadMapper.ReadDelivery;
@@ -2164,16 +2388,19 @@ end;
 
 { BT-110 and BG-23 from the tax total with the breakdown (else the one in
   the invoice currency, else the first); without BT-6 the VAT accounting
-  currency is its currency. Another tax total (BT-111) has no place in the
-  model.
+  currency is its currency. A further tax total without breakdown in the
+  differing BT-6 is BT-111.
   DE: BT-110 und BG-23 aus dem Steuergesamtbetrag mit Aufschluesselung
   (sonst dem in Rechnungswaehrung, sonst dem ersten); ohne BT-6 ist seine
-  Waehrung die Steuerwaehrung. Ein weiterer Steuergesamtbetrag (BT-111)
-  hat im Modell keinen Platz. }
+  Waehrung die Steuerwaehrung. Ein weiterer Steuergesamtbetrag ohne
+  Aufschluesselung in der abweichenden BT-6 ist BT-111. }
 procedure TUBLReadMapper.ReadTax;
 var
   I, Chosen: TLandrixEInvoiceListIndex;
-  Total: TLandrixUBLTaxTotal;
+  Total, Other: TLandrixUBLTaxTotal;
+  Amount111: TLandrixUBLAmount;
+  Value, Check: Currency;
+  Rounded: Boolean;
   Source: TLandrixUBLTaxSubtotal;
   Subtotal: TLandrixInvoiceTaxAmount;
   Path, CategoryPath: TLandrixEInvoiceString;
@@ -2190,13 +2417,31 @@ begin
       Chosen := I;
   if Chosen < 0 then
     Chosen := 0;
-  for I := 0 to FDoc.TaxTotal.Count - 1 do
-    if I <> Chosen then
-      NotMapped(Path, 'VAT total ' + FDoc.TaxTotal[I].TaxAmount.Value + ' ' +
-        FDoc.TaxTotal[I].TaxAmount.CurrencyID + ' (BT-111)');
   Total := FDoc.TaxTotal[Chosen];
   if FInvoice.TaxCurrencyCode = '' then
     FInvoice.TaxCurrencyCode := Total.TaxAmount.CurrencyID;
+  { the first other total without breakdown in the differing BT-6 is
+    BT-111 }
+  for I := 0 to FDoc.TaxTotal.Count - 1 do
+    if I <> Chosen then
+    begin
+      Other := FDoc.TaxTotal[I];
+      if (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) and
+         (Other.TaxAmount.CurrencyID = FInvoice.TaxCurrencyCode) and (Other.TaxSubtotal.Count = 0) and
+         not FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
+      begin
+        Amount111 := Other.TaxAmount;
+        Amount111.CurrencyID := '';
+        Value := Amount(Amount111, Path + '/cbc:TaxAmount');
+        { not set when the text is no amount (reported by Amount) }
+        if LandrixEInvoiceTryLexicalToCurrency(Amount111.Value, Check, Rounded) then
+          FInvoice.TaxAmountTotalInTaxCurrency.SetValue(Value);
+        Other.ListFilledChildren(FFilled);
+        Rest(Path, ['cbc:TaxAmount']);
+      end
+      else
+        NotMapped(Path, 'VAT total ' + Other.TaxAmount.Value + ' ' + Other.TaxAmount.CurrencyID + ' (BT-111)');
+    end;
   FInvoice.TaxAmountTotal := Amount(Total.TaxAmount, Path + '/cbc:TaxAmount');
   CategoryPath := Path + '/cac:TaxSubtotal/cac:TaxCategory';
   for I := 0 to Total.TaxSubtotal.Count - 1 do
@@ -2306,10 +2551,11 @@ begin
     'cac:AllowanceCharge', 'cac:Item', 'cac:Price', 'cac:SubInvoiceLine', 'cac:SubCreditNoteLine']);
 end;
 
-{ BG-31: BT-157 is kept only with scheme 0160 (GTIN); BG-30 from the first
-  classified tax category.
-  DE: BG-31: BT-157 wird nur mit Schema 0160 (GTIN) uebernommen; BG-30 aus
-  der ersten Steuerkategorie. }
+{ BG-31: BT-157 goes to StandardItemIdentifier, with scheme 0160 (GTIN)
+  also to GlobalID_EAN_GTIN; BG-30 from the first classified tax category.
+  DE: BG-31: BT-157 kommt nach StandardItemIdentifier, mit Schema 0160
+  (GTIN) auch nach GlobalID_EAN_GTIN; BG-30 aus der ersten
+  Steuerkategorie. }
 procedure TUBLReadMapper.ReadLineItem(ALine: TLandrixInvoiceLine; AItem: TLandrixUBLItem;
   const APath: TLandrixEInvoiceString);
 var
@@ -2328,7 +2574,7 @@ begin
   Taken[5] := 'cac:CommodityClassification';
   Taken[6] := 'cac:ClassifiedTaxCategory';
   Taken[7] := 'cac:AdditionalItemProperty';
-  Taken[8] := '';
+  Taken[8] := 'cac:StandardItemIdentification';
   ALine.Description := FirstText(AItem.Description, APath + '/cbc:Description');
   ALine.Name := AItem.Name;
   ALine.BuyersItemIdentification := IDValue(AItem.BuyersItemIdentification.ID,
@@ -2339,13 +2585,12 @@ begin
     APath + '/cac:SellersItemIdentification/cbc:ID');
   AItem.SellersItemIdentification.ListFilledChildren(FFilled);
   Rest(APath + '/cac:SellersItemIdentification', ['cbc:ID']);
-  if AItem.StandardItemIdentification.ID.SchemeID = '0160' then
-  begin
-    ALine.GlobalID_EAN_GTIN := AItem.StandardItemIdentification.ID.Value;
-    AItem.StandardItemIdentification.ListFilledChildren(FFilled);
-    Rest(APath + '/cac:StandardItemIdentification', ['cbc:ID']);
-    Taken[8] := 'cac:StandardItemIdentification';
-  end;
+  ALine.StandardItemIdentifier := AItem.StandardItemIdentification.ID.Value;
+  ALine.StandardItemIdentifierSchemeID := AItem.StandardItemIdentification.ID.SchemeID;
+  if ALine.StandardItemIdentifierSchemeID = '0160' then
+    ALine.GlobalID_EAN_GTIN := ALine.StandardItemIdentifier;
+  AItem.StandardItemIdentification.ListFilledChildren(FFilled);
+  Rest(APath + '/cac:StandardItemIdentification', ['cbc:ID']);
   ALine.OriginTradeCountry := CodeValue(AItem.OriginCountry.IdentificationCode,
     APath + '/cac:OriginCountry/cbc:IdentificationCode');
   AItem.OriginCountry.ListFilledChildren(FFilled);

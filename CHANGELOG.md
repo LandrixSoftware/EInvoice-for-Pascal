@@ -165,3 +165,19 @@ Supported invoice standards are documented per release.
   SHA-256 in `tools.json`.
 - `tools/validate.ps1`: validates invoice files with these tools, the configuration chosen by file
   name; all 111 scenario outputs are accepted.
+- Invoice model, from a field comparison against the Factur-X 1.09.2 table: payee (BG-10),
+  seller tax representative (BG-11) and invoicee (BG-X-36, EXTENDED) as the new class
+  `TLandrixInvoiceParty` (`PayeeParty`, `TaxRepresentativeParty`, `InvoiceeParty`); VAT point
+  date and code (`TaxPointDate`, `TaxPointDateCode`, BT-7/BT-8; CII writes the UNTDID 2475 codes),
+  VAT total in the accounting currency (`TaxAmountTotalInTaxCurrency`, BT-111), scheme of the
+  legal registration (`CompanyIDSchemeID`, BT-30-1/BT-47-1), contact department
+  (`ContactDepartment`, BT-41-0/BT-56-0, CII only and only without a person name), item standard
+  identifier with any scheme (`StandardItemIdentifier`/`...SchemeID`, BT-157; takes precedence
+  over `GlobalID_EAN_GTIN`), scheme of the invoiced object identifier (`IDSchemeID`, BT-18-1);
+  EXTENDED only: test indicator, document name, order dates of the document and the line,
+  deliver to contact, a text per cash discount level. New date, amount and boolean fields use
+  the optional value types. Targets that do not know a field leave it out and report it.
+- BT-71 without scheme is written as plain identifier (CII `ram:ID`, UBL `cbc:ID` without
+  `schemeID`) and read from `ram:ID`; with a scheme it stays a global identifier.
+- Factur-X payment terms are read in any order (a net term after the discount terms no longer
+  drops them), each discount term with its text.

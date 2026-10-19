@@ -66,6 +66,12 @@ function LandrixEInvoicePaymentTermsText(AInvoice: TLandrixInvoice): TLandrixEIn
 procedure LandrixEInvoiceReadPaymentTermsText(AInvoice: TLandrixInvoice;
   const AText: TLandrixEInvoiceString);
 
+{ True if a cash discount level that PaymentTermsType uses has a text
+  (PaymentTermCashDiscount1Note to 3Note).
+  DE: True, wenn eine Skontostufe, die PaymentTermsType verwendet, einen
+  Text hat (PaymentTermCashDiscount1Note bis 3Note). }
+function LandrixEInvoiceCashDiscountNotesSet(AInvoice: TLandrixInvoice): Boolean;
+
 { Builds the sub line tree from the flat CII line list (Factur-X EXTENDED,
   BT-X-304): ALines holds the lines in document order as they were added
   to AInvoice.InvoiceLines, AParentIDs the parent line identifier of each
@@ -91,6 +97,28 @@ procedure LandrixEInvoiceReadPaymentTermsText(AInvoice: TLandrixInvoice;
 procedure LandrixEInvoiceBuildSubLines(AInvoice: TLandrixInvoice; ALines: TObjectList;
   AParentIDs: TLandrixEInvoiceStringList; ANoAmountLines: TObjectList;
   ADiagnostics: TLandrixEInvoiceDiagnostics);
+
+{ BT-157 of a line as written: StandardItemIdentifier with its scheme when
+  set, otherwise GlobalID_EAN_GTIN with scheme 0160. False if neither is
+  set. AConflict describes an ignored GlobalID_EAN_GTIN that differs from
+  the identifier written ('' otherwise).
+  DE: BT-157 einer Position, wie geschrieben: StandardItemIdentifier mit
+  seinem Schema, wenn gesetzt, sonst GlobalID_EAN_GTIN mit Schema 0160.
+  False, wenn keines gesetzt ist. AConflict beschreibt ein uebergangenes
+  GlobalID_EAN_GTIN, das von der geschriebenen Kennung abweicht (sonst ''). }
+function LandrixEInvoiceStandardItemIdentifierOf(ALine: TLandrixInvoiceLine;
+  out AValue, AScheme, AConflict: TLandrixEInvoiceString): Boolean;
+
+{ BT-8 VAT point date code: the model holds UNTDID 2005 (3, 35, 432), CII
+  uses UNTDID 2475 (5, 29, 72; EN 16931-3-3). Other codes pass unchanged
+  and the functions return False.
+  DE: BT-8 Code fuer das Steuerdatum: das Modell haelt UNTDID 2005 (3, 35,
+  432), CII verwendet UNTDID 2475 (5, 29, 72; EN 16931-3-3). Andere Codes
+  bleiben unveraendert, die Funktionen liefern dann False. }
+function LandrixEInvoiceTaxPointDateCodeToCII(const ACode: TLandrixEInvoiceString;
+  out ACIICode: TLandrixEInvoiceString): Boolean;
+function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoiceString;
+  out ACode: TLandrixEInvoiceString): Boolean;
 
 implementation
 
@@ -384,6 +412,92 @@ begin
   for I := 0 to ANoAmountLines.Count - 1 do
     TLandrixInvoiceLine(ANoAmountLines[I]).LineAmount :=
       GroupAmount(TLandrixInvoiceLine(ANoAmountLines[I]), ANoAmountLines);
+end;
+
+function LandrixEInvoiceCashDiscountNotesSet(AInvoice: TLandrixInvoice): Boolean;
+begin
+  case AInvoice.PaymentTermsType of
+    iptt_CashDiscount1:
+      Result := AInvoice.PaymentTermCashDiscount1Note <> '';
+    iptt_CashDiscount2:
+      Result := (AInvoice.PaymentTermCashDiscount1Note <> '') or (AInvoice.PaymentTermCashDiscount2Note <> '');
+    iptt_CashDiscount3:
+      Result := (AInvoice.PaymentTermCashDiscount1Note <> '') or (AInvoice.PaymentTermCashDiscount2Note <> '') or
+        (AInvoice.PaymentTermCashDiscount3Note <> '');
+  else
+    Result := False;
+  end;
+end;
+
+function LandrixEInvoiceStandardItemIdentifierOf(ALine: TLandrixInvoiceLine;
+  out AValue, AScheme, AConflict: TLandrixEInvoiceString): Boolean;
+begin
+  AConflict := '';
+  if ALine.StandardItemIdentifier <> '' then
+  begin
+    AValue := ALine.StandardItemIdentifier;
+    AScheme := ALine.StandardItemIdentifierSchemeID;
+    if (ALine.GlobalID_EAN_GTIN <> '') and ((ALine.GlobalID_EAN_GTIN <> AValue) or (AScheme <> '0160')) then
+      AConflict := 'GTIN ' + ALine.GlobalID_EAN_GTIN + ' of line ' + ALine.ID +
+        ' ignored: the item standard identifier ' + AValue + ' (scheme ' + AScheme + ') is written';
+  end
+  else if ALine.GlobalID_EAN_GTIN <> '' then
+  begin
+    AValue := ALine.GlobalID_EAN_GTIN;
+    AScheme := '0160';
+  end
+  else
+  begin
+    AValue := '';
+    AScheme := '';
+  end;
+  Result := AValue <> '';
+end;
+
+type
+  TTaxPointCodePair = record
+    Code: string;
+    CIICode: string;
+  end;
+
+const
+  { EN 16931-3-3, BT-8 }
+  TaxPointCodes: array[0..2] of TTaxPointCodePair = (
+    (Code: '3'; CIICode: '5'),
+    (Code: '35'; CIICode: '29'),
+    (Code: '432'; CIICode: '72')
+  );
+
+function LandrixEInvoiceTaxPointDateCodeToCII(const ACode: TLandrixEInvoiceString;
+  out ACIICode: TLandrixEInvoiceString): Boolean;
+var
+  I: Integer;
+begin
+  for I := Low(TaxPointCodes) to High(TaxPointCodes) do
+    if ACode = TLandrixEInvoiceString(TaxPointCodes[I].Code) then
+    begin
+      ACIICode := TLandrixEInvoiceString(TaxPointCodes[I].CIICode);
+      Result := True;
+      Exit;
+    end;
+  ACIICode := ACode;
+  Result := False;
+end;
+
+function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoiceString;
+  out ACode: TLandrixEInvoiceString): Boolean;
+var
+  I: Integer;
+begin
+  for I := Low(TaxPointCodes) to High(TaxPointCodes) do
+    if ACIICode = TLandrixEInvoiceString(TaxPointCodes[I].CIICode) then
+    begin
+      ACode := TLandrixEInvoiceString(TaxPointCodes[I].Code);
+      Result := True;
+      Exit;
+    end;
+  ACode := ACIICode;
+  Result := False;
 end;
 
 end.

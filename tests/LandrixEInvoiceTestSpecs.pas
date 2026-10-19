@@ -201,6 +201,13 @@ begin
   Check(LandrixEInvoiceRuleLevel(FxExt, LandrixEInvoiceRuleBuyerIDWithGlobalID) = erl_Allowed, 'buyer IDs EXTENDED');
   Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleSellerIDWithGlobalID) = erl_Forbidden, 'one seller ID UBL');
   Check(LandrixEInvoiceRuleLevel(XrCii, LandrixEInvoiceRuleSellerIDWithGlobalID) = erl_Allowed, 'seller IDs CII');
+  Check(LandrixEInvoiceRuleLevel(FxExt, LandrixEInvoiceRuleTestIndicator) = erl_Allowed, 'test indicator EXTENDED');
+  Check(LandrixEInvoiceRuleLevel(FxEn, LandrixEInvoiceRuleTestIndicator) = erl_Forbidden, 'test indicator EN16931');
+  Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleInvoicee) = erl_Forbidden, 'invoicee UBL');
+  Check(LandrixEInvoiceRuleLevel(FxExt, LandrixEInvoiceRulePayeeExtended) = erl_Allowed, 'payee details EXTENDED');
+  Check(LandrixEInvoiceRuleLevel(XrCii, LandrixEInvoiceRulePayeeExtended) = erl_Forbidden, 'payee details XRechnung');
+  Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleContactDepartment) = erl_Forbidden, 'department UBL');
+  Check(LandrixEInvoiceRuleLevel(FxEn, LandrixEInvoiceRuleContactDepartment) = erl_Allowed, 'department CII');
   Check(LandrixEInvoiceFindRule(Peppol, LandrixEInvoiceRuleLineSubLines, Rule) and (Rule.Source = 'UBL-CR-646 (warning)'),
     'rule with source');
   Check(LandrixEInvoiceRuleCount > 0, 'rules');

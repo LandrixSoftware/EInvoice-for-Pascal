@@ -133,6 +133,35 @@ const
   { Third-party payments (XRechnung extension BG-DEX-09, UBL cac:PrepaidPayment).
     DE: Zahlungen Dritter (XRechnung-Extension BG-DEX-09, UBL cac:PrepaidPayment). }
   LandrixEInvoiceRuleThirdPartyPayments = 'Payment.ThirdPartyPayments';
+  { Test indicator (BT-X-1). DE: Testkennzeichen (BT-X-1). }
+  LandrixEInvoiceRuleTestIndicator = 'Header.TestIndicator';
+  { Document name (BT-X-2). DE: Dokumentname (BT-X-2). }
+  LandrixEInvoiceRuleDocumentName = 'Header.DocumentName';
+  { Dates of the sales order and the purchase order (BT-X-146, BT-X-147).
+    DE: Datum des Auftrags und der Bestellung (BT-X-146, BT-X-147). }
+  LandrixEInvoiceRuleOrderDates = 'Header.OrderDates';
+  { Date of the buyer's order of a line (BT-X-22).
+    DE: Datum der Bestellung je Position (BT-X-22). }
+  LandrixEInvoiceRuleLineOrderDate = 'Line.OrderDate';
+  { Department of a seller or buyer contact (BT-41-0, BT-56-0).
+    DE: Abteilung eines Verkaeufer- oder Kaeuferkontakts (BT-41-0, BT-56-0). }
+  LandrixEInvoiceRuleContactDepartment = 'Party.ContactDepartment';
+  { Contact of the party delivered to (BG-X-26).
+    DE: Kontakt des Warenempfaengers (BG-X-26). }
+  LandrixEInvoiceRuleDeliveryContact = 'Delivery.Contact';
+  { Invoicee (BG-X-36). DE: Rechnungsempfaenger (BG-X-36). }
+  LandrixEInvoiceRuleInvoicee = 'Party.Invoicee';
+  { Payee content beyond BT-59 to BT-61 (address, contact, VAT identifier).
+    DE: Angaben zum Zahlungsempfaenger ueber BT-59 bis BT-61 hinaus
+    (Anschrift, Kontakt, USt-IdNr.). }
+  LandrixEInvoiceRulePayeeExtended = 'Payee.Extended';
+  { Tax representative content beyond BT-62, BT-63 and BG-12 (identifiers,
+    contact). DE: Angaben zum Steuervertreter ueber BT-62, BT-63 und BG-12
+    hinaus (Kennungen, Kontakt). }
+  LandrixEInvoiceRuleTaxRepresentativeExtended = 'TaxRepresentative.Extended';
+  { Text of a cash discount level (BT-20 of a discount term).
+    DE: Text einer Skontostufe (BT-20 einer Skontobedingung). }
+  LandrixEInvoiceRuleCashDiscountNote = 'Payment.CashDiscountNote';
 
 { Level of AKey for ASpec (erl_Allowed if no row matches).
   DE: Stufe von AKey fuer ASpec (erl_Allowed, wenn keine Zeile passt). }
@@ -158,7 +187,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..22] of TLandrixEInvoiceRule = (
+  Rules: array[0..33] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules }
     (Key: LandrixEInvoiceRuleLineSubLines; Standards: [est_FacturX]; Syntaxes: [esy_CII];
@@ -238,7 +267,42 @@ const
      Source: 'XRechnung extension (UBL cac:PrepaidPayment)'),
     (Key: LandrixEInvoiceRuleThirdPartyPayments; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BG-DEX-09';
-     Source: 'only in the XRechnung extension of UBL')
+     Source: 'only in the XRechnung extension of UBL'),
+    { further EXTENDED-only content (Factur-X 1.09.2 field table) }
+    (Key: LandrixEInvoiceRuleTestIndicator; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-1';
+     Source: 'test indicator only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleDocumentName; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-2';
+     Source: 'document name only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleOrderDates; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-146, BT-X-147';
+     Source: 'order dates only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleLineOrderDate; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-22';
+     Source: 'line order date only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleDeliveryContact; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BG-X-26';
+     Source: 'deliver to contact only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleInvoicee; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BG-X-36';
+     Source: 'invoicee only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRulePayeeExtended; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BG-10';
+     Source: 'payee address, contact and VAT identifier only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleTaxRepresentativeExtended; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BG-11';
+     Source: 'tax representative identifiers and contact only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleCashDiscountNote; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-20';
+     Source: 'text per cash discount level only in the structured terms of Factur-X EXTENDED'),
+    { UBL cac:Contact has no department }
+    (Key: LandrixEInvoiceRuleContactDepartment; Standards: AnyStandard; Syntaxes: [esy_UBL];
+     Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-41-0, BT-56-0';
+     Source: 'not in the UBL syntax of EN 16931'),
+    (Key: LandrixEInvoiceRuleContactDepartment; Standards: AnyStandard; Syntaxes: [esy_CII];
+     Profiles: AnyProfile; Level: erl_Allowed; Terms: 'BT-41-0, BT-56-0';
+     Source: 'EN 16931 CII')
   );
 
 function Matches(const ARule: TLandrixEInvoiceRule; const ASpec: TLandrixEInvoiceSpec): Boolean;

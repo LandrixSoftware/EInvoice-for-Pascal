@@ -52,6 +52,7 @@ uses
   LandrixEInvoiceCIIWriter,
   LandrixEInvoiceMapCII,
   LandrixEInvoiceTestFramework,
+  LandrixEInvoiceTestMapCII,
   LandrixEInvoiceTestXmlCompare,
   LandrixEInvoiceTestScenarios;
 
@@ -562,13 +563,17 @@ begin
       UBL.Free;
     end;
     CheckEquals(1, CountKind(D, edk_NotMapped, '/Invoice/cbc:UBLVersionID'), 'UBL version not mapped');
-    CheckEquals(1, CountKind(D, edk_NotMapped, '/Invoice/cac:PayeeParty'), 'payee not mapped');
+    CheckEquals(0, CountKind(D, edk_NotMapped, '/Invoice/cac:PayeeParty'), 'payee mapped');
+    CheckEqualsInvoiceStr('Payee', Invoice.PayeeParty.Name, 'payee name (BT-59)');
     CheckEquals(1, CountKind(D, edk_NotMapped, '/cac:PartyLegalEntity/cbc:CompanyLegalForm'),
       'legal form of the buyer not mapped');
     CheckEquals(1, CountKind(D, edk_NotMapped, '/cac:SellersItemIdentification/cbc:ID/@schemeID'),
       'identifier scheme not mapped');
-    CheckEquals(1, CountKind(D, edk_NotMapped, '/cac:Item/cac:StandardItemIdentification'),
-      'standard identifier without GTIN scheme not mapped');
+    CheckEquals(0, CountKind(D, edk_NotMapped, '/cac:Item/cac:StandardItemIdentification'),
+      'standard identifier with any scheme mapped');
+    CheckEqualsInvoiceStr('4000001000005', Invoice.InvoiceLines[0].StandardItemIdentifier, 'BT-157');
+    CheckEqualsInvoiceStr('0088', Invoice.InvoiceLines[0].StandardItemIdentifierSchemeID, 'BT-157-1');
+    CheckEqualsInvoiceStr('', Invoice.InvoiceLines[0].GlobalID_EAN_GTIN, 'no GTIN for scheme 0088');
     CheckEquals(1, CountKind(D, edk_UnknownCode, '/cbc:InvoicedQuantity/@unitCode'), 'unknown unit');
     CheckEquals(1, CountKind(D, edk_UnknownCode, '/cbc:InvoiceTypeCode'), 'unknown type code');
     CheckEquals(1, CountKind(D, edk_UnknownCode, '/cbc:Note'), 'unknown note subject');
@@ -743,7 +748,7 @@ begin
 end;
 
 { BT-110 and BG-23 come from the tax total with the breakdown, even when the
-  BT-111 total comes first. }
+  BT-111 total comes first; the other total is BT-111. }
 procedure TestTaxTotalOrder;
 const
   Xml =
@@ -772,8 +777,151 @@ begin
     Check(Invoice.TaxAmountTotal = 9.5, 'BT-110 from the total with the breakdown');
     Check(Invoice.TaxAmountSubtotals.Count = 1, 'breakdown read');
     CheckEqualsInvoiceStr('SEK', Invoice.TaxCurrencyCode, 'BT-6');
-    CheckEquals(1, CountKind(D, edk_NotMapped, '/Invoice/cac:TaxTotal'), 'BT-111 reported');
+    CheckEquals(0, CountKind(D, edk_NotMapped, '/Invoice/cac:TaxTotal'), 'BT-111 mapped');
+    Check(Invoice.TaxAmountTotalInTaxCurrency.HasValue and (Invoice.TaxAmountTotalInTaxCurrency.Value = 100),
+      'BT-111 read');
     CheckEquals(0, CountKind(D, edk_NotMapped, '/@currencyID'), 'no currency report');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ XRechnung UBL writes the EN 16931 part of the Phase 2 fields, reads it
+  back without loss and reports every Factur-X EXTENDED field. }
+procedure TestPhase2Fields;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Xml: TLandrixXmlUtf8;
+  Text, Root: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    FillPhase2(Invoice);
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec), 'spec');
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := LandrixXmlUtf8ToString(Xml);
+    CheckEquals(3, CountKind(D, edk_NotAllowed, '/Invoice'), 'BT-X-1, BT-X-2 and the invoicee left out: ' +
+      LeftOut(D));
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:OrderReference'), 'order dates left out');
+    CheckEquals(2, CountKind(D, edk_NotAllowed, '/cac:InvoiceLine/cac:OrderLineReference'),
+      'line order number and date left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:Delivery'), 'deliver to contact left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:PayeeParty'), 'payee address left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:TaxRepresentativeParty'), 'tax representative contact left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:AccountingCustomerParty/cac:Party/cac:Contact'),
+      'contact department left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:PaymentTerms/cbc:Note'), 'text of the discount level left out');
+    Check(Pos('<cbc:TaxPointDate>2026-10-01</cbc:TaxPointDate>', Text) > 0, 'BT-7 written');
+    Check(Pos('<cbc:DescriptionCode>3</cbc:DescriptionCode>', Text) > 0, 'BT-8 written');
+    Check(Pos('<cbc:ID>LOC-7</cbc:ID>', Text) > 0, 'BT-71 without scheme');
+    Check(Pos('<cbc:TaxAmount currencyID="SEK">215.50</cbc:TaxAmount>', Text) > 0, 'BT-111 written');
+    Check(Pos('Payee City', Text) = 0, 'no payee address');
+    Check(Pos('Invoicee', Text) = 0, 'no invoicee');
+    Check(Pos('Purchasing', Text) = 0, 'no contact department');
+    Check(not D.HasErrors, 'no errors: ' + string(D.ToText));
+    D.Clear;
+    ReadAndMap(Xml, Back, D, Root);
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
+    Check(Back.TaxPointDate.HasValue and (Back.TaxPointDate.Value = EncodeDate(2026, 10, 1)), 'BT-7');
+    CheckEqualsInvoiceStr('3', Back.TaxPointDateCode, 'BT-8');
+    Check(Back.TaxAmountTotalInTaxCurrency.HasValue and (Back.TaxAmountTotalInTaxCurrency.Value = 215.5), 'BT-111');
+    CheckEqualsInvoiceStr('0002', Back.AccountingSupplierParty.CompanyIDSchemeID, 'BT-30-1');
+    CheckEqualsInvoiceStr('LOC-7', Back.DeliveryInformation.LocationIdentifier, 'BT-71');
+    CheckEqualsInvoiceStr('', Back.DeliveryInformation.LocationIdentifierSchemeID, 'BT-71 without scheme');
+    CheckEqualsInvoiceStr('Payee', Back.PayeeParty.Name, 'BT-59');
+    CheckEqualsInvoiceStr('4000001000005', Back.PayeeParty.Identifier, 'BT-60');
+    CheckEqualsInvoiceStr('0088', Back.PayeeParty.IdentifierSchemeID, 'BT-60-1');
+    CheckEqualsInvoiceStr('HRB 2', Back.PayeeParty.CompanyID, 'BT-61');
+    CheckEqualsInvoiceStr('0002', Back.PayeeParty.CompanyIDSchemeID, 'BT-61-1');
+    CheckEqualsInvoiceStr('Representative', Back.TaxRepresentativeParty.Name, 'BT-62');
+    CheckEqualsInvoiceStr('DE123456789', Back.TaxRepresentativeParty.VATCompanyID, 'BT-63');
+    CheckEqualsInvoiceStr('Rep City', Back.TaxRepresentativeParty.Address.City, 'BG-12');
+    CheckEqualsInvoiceStr('AAG', Back.Attachments[0].IDSchemeID, 'BT-18-1');
+    CheckEqualsInvoiceStr('123456789', Back.InvoiceLines[0].StandardItemIdentifier, 'BT-157');
+    CheckEqualsInvoiceStr('0088', Back.InvoiceLines[0].StandardItemIdentifierSchemeID, 'BT-157-1');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ BT-157: the identifier with scheme wins over the GTIN, a differing GTIN
+  is reported; the GTIN alone is written with scheme 0160. }
+procedure TestStandardItemIdentifier;
+var
+  Invoice: TLandrixInvoice;
+  Line: TLandrixInvoiceLine;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Text: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    Line := Invoice.InvoiceLines.AddInvoiceLine;
+    Line.ID := '1';
+    Line.GlobalID_EAN_GTIN := '4006381333931';
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.PeppolBIS('3.0'), Spec), 'spec');
+    Text := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
+    Check(Pos('<cbc:ID schemeID="0160">4006381333931</cbc:ID>', Text) > 0, 'GTIN with scheme 0160');
+    CheckEquals(0, CountKind(D, edk_NotAllowed, '/cac:StandardItemIdentification'), 'no conflict');
+    D.Clear;
+    Line.StandardItemIdentifier := '123';
+    Line.StandardItemIdentifierSchemeID := '0088';
+    Text := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
+    Check(Pos('<cbc:ID schemeID="0088">123</cbc:ID>', Text) > 0, 'standard identifier wins');
+    Check(Pos('4006381333931', Text) = 0, 'GTIN not written');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:StandardItemIdentification'), 'conflict reported');
+    D.Clear;
+    Line.StandardItemIdentifierSchemeID := '';
+    MapAndWrite(Invoice, Spec, D);
+    CheckEquals(1, CountKind(D, edk_MissingElement, '/cac:StandardItemIdentification/cbc:ID/@schemeID'),
+      'missing scheme is an error (BR-64)');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ BT-90 may sit in the payee (EN 16931 UBL binding, XRechnung example
+  direct-debit-bt-90-payee): it goes to the seller, the other identifier is
+  BT-60, nothing is lost. }
+procedure TestPayeeCreditorIdentifier;
+const
+  Xml =
+    '<Invoice ' + Ns + '>' +
+    '<cbc:CustomizationID>urn:cen.eu:en16931:2017</cbc:CustomizationID>' +
+    '<cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>' +
+    '<cac:PayeeParty>' +
+    '<cac:PartyIdentification><cbc:ID schemeID="SEPA">DE98ZZZ09999999999</cbc:ID></cac:PartyIdentification>' +
+    '<cac:PartyIdentification><cbc:ID>601234567</cbc:ID></cac:PartyIdentification>' +
+    '<cac:PartyName><cbc:Name>Payee</cbc:Name></cac:PartyName></cac:PayeeParty>' +
+    '</Invoice>';
+var
+  UBL: TLandrixUBLInvoice;
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    UBL := ReadUBLInvoice(Xml, D);
+    try
+      LandrixEInvoiceUBLInvoiceToInvoice(UBL, Invoice, D);
+    finally
+      UBL.Free;
+    end;
+    CheckEqualsInvoiceStr('DE98ZZZ09999999999', Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier,
+      'BT-90 from the payee');
+    CheckEqualsInvoiceStr('601234567', Invoice.PayeeParty.Identifier, 'BT-60');
+    CheckEqualsInvoiceStr('', Invoice.PayeeParty.IdentifierSchemeID, 'BT-60 without scheme');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
   finally
     Invoice.Free;
     D.Free;
@@ -822,6 +970,9 @@ begin
   RegisterTest('MapUBL.CreditNote', TestCreditNote);
   RegisterTest('MapUBL.RoundTripDetails', TestRoundTripDetails);
   RegisterTest('MapUBL.TaxTotalOrder', TestTaxTotalOrder);
+  RegisterTest('MapUBL.Phase2Fields', TestPhase2Fields);
+  RegisterTest('MapUBL.StandardItemIdentifier', TestStandardItemIdentifier);
+  RegisterTest('MapUBL.PayeeCreditorIdentifier', TestPayeeCreditorIdentifier);
   RegisterTest('MapUBL.WrongSpec', TestWrongSpec);
 end;
 

@@ -133,6 +133,11 @@ type
     Data: TMemoryStream;
     { BT-124 external reference (URL). DE: BT-124 externer Verweis (URL). }
     ExternalReference: TLandrixEInvoiceString;
+    { BT-18-1 scheme of the invoiced object identifier (TypeCode 130 only,
+      e.g. 'AAG'); other attachments carry no scheme.
+      DE: BT-18-1 Schema der Objektkennung (nur TypeCode 130, z. B. 'AAG');
+      andere Anhaenge tragen kein Schema. }
+    IDSchemeID: TLandrixEInvoiceString;
   public
     constructor Create(AAttachmentType: TLandrixInvoiceAttachmentType);
     destructor Destroy; override;
@@ -350,9 +355,23 @@ type
   public
     { BT-126 line identifier. DE: BT-126 Positionsnummer. }
     ID: TLandrixEInvoiceString;
-    { BT-157 item standard identifier (GTIN/EAN). DE: BT-157 Kennung des
-      Artikels nach registriertem Schema (GTIN/EAN). }
+    { BT-157 item standard identifier as GTIN/EAN (scheme 0160). Writers
+      use it only while StandardItemIdentifier is empty; readers fill it
+      when the scheme is 0160.
+      DE: BT-157 Kennung des Artikels als GTIN/EAN (Schema 0160). Die
+      Schreiber verwenden es nur, solange StandardItemIdentifier leer ist;
+      die Leser fuellen es, wenn das Schema 0160 ist. }
     GlobalID_EAN_GTIN: TLandrixEInvoiceString;
+    { BT-157 item standard identifier with any scheme; takes precedence over
+      GlobalID_EAN_GTIN when writing. Readers always fill it.
+      DE: BT-157 Kennung des Artikels mit beliebigem Schema; hat beim
+      Schreiben Vorrang vor GlobalID_EAN_GTIN. Die Leser fuellen es immer. }
+    StandardItemIdentifier: TLandrixEInvoiceString;
+    { BT-157-1 scheme of StandardItemIdentifier (ISO/IEC 6523 ICD, e.g.
+      0160 GTIN); required with it (BR-64). DE: BT-157-1 Schema von
+      StandardItemIdentifier (ISO/IEC 6523 ICD, z. B. 0160 GTIN); dazu
+      Pflicht (BR-64). }
+    StandardItemIdentifierSchemeID: TLandrixEInvoiceString;
     { BT-127 line note. DE: BT-127 Hinweis zur Position. }
     Note: TLandrixEInvoiceString;
     { BT-128 object identifier at line level, assigned by the seller.
@@ -388,6 +407,10 @@ type
     { BT-X-21 buyer's order number, ZUGFeRD/Factur-X only. DE: BT-X-21
       Bestellnummer des Kaeufers, nur ZUGFeRD/Factur-X. }
     OrderNumber: TLandrixEInvoiceString;
+    { BT-X-22 date of the buyer's order of the line, Factur-X EXTENDED only.
+      DE: BT-X-22 Datum der Bestellung des Kaeufers zur Position, nur
+      Factur-X EXTENDED. }
+    OrderDate: TLandrixEInvoiceDate;
     { BT-132 referenced purchase order line. DE: BT-132 Referenz auf die
       Bestellposition, vom Kaeufer vergeben. }
     OrderLineReference: TLandrixEInvoiceString;
@@ -630,6 +653,10 @@ type
     { BT-30/BT-47 legal registration identifier (commercial register
       number). DE: BT-30/BT-47 Registernummer (Handelsregisternummer). }
     CompanyID: TLandrixEInvoiceString;
+    { BT-30-1/BT-47-1 scheme of the legal registration identifier (ISO/IEC
+      6523 ICD, e.g. 0002), optional. DE: BT-30-1/BT-47-1 Schema der
+      Registernummer (ISO/IEC 6523 ICD, z. B. 0002), optional. }
+    CompanyIDSchemeID: TLandrixEInvoiceString;
 
     { Postal address (owned). DE: Postanschrift (gehoert dem Objekt). }
     Address: TLandrixInvoiceAddress;
@@ -685,6 +712,13 @@ type
 
     { BT-41/BT-56 contact point. DE: BT-41/BT-56 Kontaktstelle. }
     ContactName: TLandrixEInvoiceString;
+    { BT-41-0/BT-56-0 department of the contact, an alternative to
+      ContactName: CII writes it only when ContactName is empty
+      (CII-SR-465/466); UBL has no element for it.
+      DE: BT-41-0/BT-56-0 Abteilung des Kontakts, eine Alternative zu
+      ContactName: CII schreibt sie nur, wenn ContactName leer ist
+      (CII-SR-465/466); UBL hat dafuer kein Element. }
+    ContactDepartment: TLandrixEInvoiceString;
     { BT-42/BT-57 contact telephone number. DE: BT-42/BT-57 Telefonnummer
       des Kontakts. }
     ContactTelephone: TLandrixEInvoiceString;
@@ -711,26 +745,92 @@ type
     procedure Clear;
   end;
 
+  { A further party of the invoice: payee (BG-10), seller tax
+    representative (BG-11) or invoicee (BG-X-36, Factur-X EXTENDED). Which
+    fields a target can write depends on the role and the profile; the
+    mapping reports content it leaves out. A party counts as present when
+    any field is set (see IsEmpty).
+    DE: Eine weitere Partei der Rechnung: Zahlungsempfaenger (BG-10),
+    Steuervertreter des Verkaeufers (BG-11) oder Rechnungsempfaenger
+    (BG-X-36, Factur-X EXTENDED). Welche Felder ein Ziel schreiben kann,
+    haengt von Rolle und Profil ab; die Abbildung meldet, was sie weglaesst.
+    Eine Partei gilt als vorhanden, sobald ein Feld gesetzt ist (siehe
+    IsEmpty). }
+  TLandrixInvoiceParty = class(TObject)
+  public
+    { BT-59 payee name, BT-62 tax representative name. DE: BT-59 Name des
+      Zahlungsempfaengers, BT-62 Name des Steuervertreters. }
+    Name: TLandrixEInvoiceString;
+    { BT-60 payee identifier; with a scheme it is a global identifier.
+      DE: BT-60 Kennung des Zahlungsempfaengers; mit Schema eine globale
+      Kennung. }
+    Identifier: TLandrixEInvoiceString;
+    { BT-60-1 scheme of the identifier (ISO/IEC 6523 ICD, e.g. 0088), empty
+      for an identifier without scheme. DE: BT-60-1 Schema der Kennung
+      (ISO/IEC 6523 ICD, z. B. 0088), leer fuer eine Kennung ohne Schema. }
+    IdentifierSchemeID: TLandrixEInvoiceString;
+    { BT-61 legal registration identifier of the payee. DE: BT-61
+      Registernummer des Zahlungsempfaengers. }
+    CompanyID: TLandrixEInvoiceString;
+    { BT-61-1 scheme of the legal registration identifier. DE: BT-61-1
+      Schema der Registernummer. }
+    CompanyIDSchemeID: TLandrixEInvoiceString;
+    { BT-63 VAT identifier of the tax representative. DE: BT-63
+      Umsatzsteuer-Identifikationsnummer des Steuervertreters. }
+    VATCompanyID: TLandrixEInvoiceString;
+    { BG-12 address of the tax representative (owned). DE: BG-12 Anschrift
+      des Steuervertreters (gehoert dem Objekt). }
+    Address: TLandrixInvoiceAddress;
+    { Contact (Factur-X EXTENDED): name, department, telephone, email.
+      DE: Kontakt (Factur-X EXTENDED): Name, Abteilung, Telefon, E-Mail. }
+    ContactName: TLandrixEInvoiceString;
+    ContactDepartment: TLandrixEInvoiceString;
+    ContactTelephone: TLandrixEInvoiceString;
+    ContactElectronicMail: TLandrixEInvoiceString;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    { Resets all fields to the values after Create; owned objects are
+      cleared, not replaced. DE: Setzt alle Felder auf die Werte nach Create
+      zurueck; eigene Unterobjekte werden geleert, nicht ersetzt. }
+    procedure Clear;
+    { True if no field is set. DE: True, wenn kein Feld gesetzt ist. }
+    function IsEmpty: Boolean;
+  end;
+
   { Delivery information (BG-13). DE: Lieferinformationen (BG-13). }
   TLandrixInvoiceDeliveryInformation = class(TObject)
   public
     { BT-70 deliver to party name. DE: BT-70 Name des Warenempfaengers. }
     Name: TLandrixEInvoiceString;
-    { BT-71 deliver to location identifier (CII BT-71-0), optional: the
-      place where the goods are delivered or the services rendered.
-      DE: BT-71 Kennung des Lieferorts (CII BT-71-0), optional: Ort, an den
-      die Waren geliefert oder an dem die Dienstleistungen erbracht werden. }
+    { BT-71 deliver to location identifier, optional: the place where the
+      goods are delivered or the services rendered. With a scheme it is
+      written as global identifier (CII ram:GlobalID, BT-71-0), without one
+      as plain identifier (CII ram:ID, UBL cbc:ID without schemeID).
+      DE: BT-71 Kennung des Lieferorts, optional: Ort, an den die Waren
+      geliefert oder an dem die Dienstleistungen erbracht werden. Mit
+      Schema wird sie als globale Kennung geschrieben (CII ram:GlobalID,
+      BT-71-0), ohne als einfache Kennung (CII ram:ID, UBL cbc:ID ohne
+      schemeID). }
     LocationIdentifier: TLandrixEInvoiceString;
     { BT-71-1 scheme of the location identifier, default 0088 (GLN, ISO/IEC
-      6523); values: 0021 SWIFT, 0088 EAN, 0060 DUNS, 0177 ODETTE.
+      6523); values: 0021 SWIFT, 0088 EAN, 0060 DUNS, 0177 ODETTE; empty for
+      an identifier without scheme.
       DE: BT-71-1 Schema der Lieferortkennung, Standard 0088 (GLN, ISO/IEC
-      6523); Werte: 0021 SWIFT, 0088 EAN, 0060 DUNS, 0177 ODETTE. }
+      6523); Werte: 0021 SWIFT, 0088 EAN, 0060 DUNS, 0177 ODETTE; leer fuer
+      eine Kennung ohne Schema. }
     LocationIdentifierSchemeID: TLandrixEInvoiceString;
     { BG-15 deliver to address (owned). DE: BG-15 Lieferanschrift (gehoert
       dem Objekt). }
     Address: TLandrixInvoiceAddress;
     { BT-72 actual delivery date. DE: BT-72 Lieferdatum. }
     ActualDeliveryDate: TDateTime;
+    { BG-X-26 deliver to contact (Factur-X EXTENDED): name, telephone,
+      email. DE: BG-X-26 Kontakt des Warenempfaengers (Factur-X EXTENDED):
+      Name, Telefon, E-Mail. }
+    ContactName: TLandrixEInvoiceString;
+    ContactTelephone: TLandrixEInvoiceString;
+    ContactElectronicMail: TLandrixEInvoiceString;
   public
     constructor Create;
     destructor Destroy; override;
@@ -868,8 +968,15 @@ type
       Geschaeftsprozesstyp: identifiziert den Geschaeftsprozesskontext, damit
       der Kaeufer die Rechnung angemessen bearbeiten kann. }
     ProfileID: TLandrixEInvoiceString;
+    { BT-X-1 test indicator, Factur-X EXTENDED only: True marks a test
+      invoice. DE: BT-X-1 Testkennzeichen, nur Factur-X EXTENDED: True
+      kennzeichnet eine Testrechnung. }
+    TestIndicator: TLandrixEInvoiceBoolean;
     { BT-1 invoice number. DE: BT-1 Rechnungsnummer. }
     InvoiceNumber: TLandrixEInvoiceString;
+    { BT-X-2 document name, e.g. 'RECHNUNG', Factur-X EXTENDED only.
+      DE: BT-X-2 Dokumentname, z. B. 'RECHNUNG', nur Factur-X EXTENDED. }
+    DocumentName: TLandrixEInvoiceString;
     { BT-2 invoice issue date. DE: BT-2 Rechnungsdatum. }
     InvoiceIssueDate: TDateTime;
     { BT-9 payment due date. DE: BT-9 Faelligkeitsdatum. }
@@ -897,6 +1004,19 @@ type
     { BT-6 VAT accounting currency code. DE: BT-6 Waehrung fuer die
       Umsatzsteuer. }
     TaxCurrencyCode: TLandrixEInvoiceString;
+    { BT-7 VAT point date, if it differs from the issue date; excludes BT-8
+      (BR-CO-3). CII carries it in the first VAT breakdown.
+      DE: BT-7 Steuerdatum, wenn es vom Rechnungsdatum abweicht; schliesst
+      BT-8 aus (BR-CO-3). CII traegt es in der ersten
+      Steueraufschluesselung. }
+    TaxPointDate: TLandrixEInvoiceDate;
+    { BT-8 VAT point date code, UNTDID 2005: 3 issue date, 35 delivery date,
+      432 paid to date. CII writes the UNTDID 2475 equivalents 5, 29 and 72
+      and reads them back as 3, 35 and 432.
+      DE: BT-8 Code fuer das Steuerdatum, UNTDID 2005: 3 Rechnungsdatum, 35
+      Lieferdatum, 432 Zahlungsdatum. CII schreibt die Entsprechungen aus
+      UNTDID 2475, 5, 29 und 72, und liest sie als 3, 35 und 432 zurueck. }
+    TaxPointDateCode: TLandrixEInvoiceString;
     { BT-10 buyer reference; in XRechnung required, the Leitweg-ID
       (https://leitweg-id.de/home/) provided by the recipient.
       DE: BT-10 Kaeuferreferenz; in XRechnung Pflicht, die Leitweg-ID
@@ -909,9 +1029,15 @@ type
     { BT-14 sales order reference. DE: BT-14 Auftragsnummer des
       Verkaeufers. }
     SellerOrderReference: TLandrixEInvoiceString;
+    { BT-X-146 date of the sales order, Factur-X EXTENDED only. DE: BT-X-146
+      Datum des Auftrags, nur Factur-X EXTENDED. }
+    SellerOrderReferenceDate: TLandrixEInvoiceDate;
     { BT-13 purchase order reference. DE: BT-13 Bestellnummer des
       Kaeufers. }
     PurchaseOrderReference: TLandrixEInvoiceString;
+    { BT-X-147 date of the purchase order, Factur-X EXTENDED only.
+      DE: BT-X-147 Datum der Bestellung, nur Factur-X EXTENDED. }
+    PurchaseOrderReferenceDate: TLandrixEInvoiceDate;
     { BT-11 project reference. DE: BT-11 Projektreferenz. }
     ProjectReference: TLandrixEInvoiceString;
     { BT-15 receiving advice reference. DE: BT-15 Referenz auf die
@@ -948,6 +1074,20 @@ type
     { BG-13 delivery information (owned). DE: BG-13 Lieferinformationen
       (gehoert dem Objekt). }
     DeliveryInformation: TLandrixInvoiceDeliveryInformation;
+    { BG-10 payee, if different from the seller (owned): BT-59 name, BT-60
+      identifier, BT-61 legal registration identifier.
+      DE: BG-10 Zahlungsempfaenger, wenn abweichend vom Verkaeufer (gehoert
+      dem Objekt): BT-59 Name, BT-60 Kennung, BT-61 Registernummer. }
+    PayeeParty: TLandrixInvoiceParty;
+    { BG-11 seller tax representative (owned): BT-62 name, BT-63 VAT
+      identifier, BG-12 address.
+      DE: BG-11 Steuervertreter des Verkaeufers (gehoert dem Objekt): BT-62
+      Name, BT-63 USt-IdNr., BG-12 Anschrift. }
+    TaxRepresentativeParty: TLandrixInvoiceParty;
+    { BG-X-36 invoicee, if different from the buyer, Factur-X EXTENDED only
+      (owned). DE: BG-X-36 Rechnungsempfaenger, wenn abweichend vom Kaeufer,
+      nur Factur-X EXTENDED (gehoert dem Objekt). }
+    InvoiceeParty: TLandrixInvoiceParty;
 
     { BT-83 remittance information (payment reference). DE: BT-83
       Verwendungszweck der Ueberweisung oder Lastschrift. }
@@ -984,6 +1124,15 @@ type
     PaymentTermCashDiscount3Percent: Double;
     PaymentTermCashDiscount3Base: Currency;
     PaymentTermCashDiscount3ActualAmount: Currency;
+    { Text of cash discount levels 1 to 3 (BT-20 of the discount term).
+      Only the structured payment terms of Factur-X EXTENDED carry it; the
+      #SKONTO# text form of XRechnung has no text per level.
+      DE: Text der Skontostufen 1 bis 3 (BT-20 der Skontobedingung). Nur die
+      strukturierten Zahlungsbedingungen von Factur-X EXTENDED tragen ihn;
+      die #SKONTO#-Textform von XRechnung hat keinen Text je Stufe. }
+    PaymentTermCashDiscount1Note: TLandrixEInvoiceString;
+    PaymentTermCashDiscount2Note: TLandrixEInvoiceString;
+    PaymentTermCashDiscount3Note: TLandrixEInvoiceString;
 
     { BG-25 invoice lines (owned). DE: BG-25 Rechnungspositionen (gehoeren
       dem Objekt). }
@@ -1008,6 +1157,11 @@ type
     { BT-110 invoice total VAT amount. DE: BT-110 Gesamtbetrag der
       Umsatzsteuer. }
     TaxAmountTotal: Currency;
+    { BT-111 invoice total VAT amount in the VAT accounting currency (BT-6);
+      required when BT-6 differs from the invoice currency (BR-53).
+      DE: BT-111 Gesamtbetrag der Umsatzsteuer in der Steuerwaehrung (BT-6);
+      Pflicht, wenn BT-6 von der Rechnungswaehrung abweicht (BR-53). }
+    TaxAmountTotalInTaxCurrency: TLandrixEInvoiceAmount;
     { BG-23 VAT breakdown (owned). DE: BG-23 Umsatzsteueraufschluesselung
       (gehoert dem Objekt). }
     TaxAmountSubtotals: TLandrixInvoiceTaxAmounts;
@@ -1484,6 +1638,7 @@ begin
   AttachmentType := AAttachmentType;
   Data := TMemoryStream.Create;
   ExternalReference := '';
+  IDSchemeID := '';
 end;
 
 destructor TLandrixInvoiceAttachment.Destroy;
@@ -1798,6 +1953,8 @@ procedure TLandrixInvoiceLine.Clear;
 begin
   ID := '';
   GlobalID_EAN_GTIN := '';
+  StandardItemIdentifier := '';
+  StandardItemIdentifierSchemeID := '';
   Note := '';
   ObjectIdentifier := '';
   ObjectIdentifierSchemeID := '';
@@ -1809,6 +1966,7 @@ begin
   SellersItemIdentification := '';
   BuyersItemIdentification := '';
   OrderNumber := '';
+  OrderDate.Clear;
   OrderLineReference := '';
   BuyerAccountingReference := '';
   TaxPercent := 0;
@@ -1992,6 +2150,7 @@ begin
   Name := '';
   RegistrationName := '';
   CompanyID := '';
+  CompanyIDSchemeID := '';
   Address.Clear;
   IdentifierSellerBuyer := '';
   GlobalIdentifierSellerBuyer := '';
@@ -2000,11 +2159,53 @@ begin
   VATCompanyID := '';
   VATCompanyNumber := '';
   ContactName := '';
+  ContactDepartment := '';
   ContactTelephone := '';
   ContactElectronicMail := '';
   AdditionalLegalInformationSeller := '';
   ElectronicAddressSellerBuyer := '';
   ElectronicAddressSellerBuyerSchemeID := '';
+end;
+
+{ --- TLandrixInvoiceParty ------------------------------------------------ }
+
+constructor TLandrixInvoiceParty.Create;
+begin
+  inherited Create;
+  Address := TLandrixInvoiceAddress.Create;
+  Clear;
+end;
+
+destructor TLandrixInvoiceParty.Destroy;
+begin
+  Address.Free;
+  Address := nil;
+  inherited;
+end;
+
+procedure TLandrixInvoiceParty.Clear;
+begin
+  Name := '';
+  Identifier := '';
+  IdentifierSchemeID := '';
+  CompanyID := '';
+  CompanyIDSchemeID := '';
+  VATCompanyID := '';
+  Address.Clear;
+  ContactName := '';
+  ContactDepartment := '';
+  ContactTelephone := '';
+  ContactElectronicMail := '';
+end;
+
+function TLandrixInvoiceParty.IsEmpty: Boolean;
+begin
+  Result := (Name = '') and (Identifier = '') and (IdentifierSchemeID = '') and (CompanyID = '') and
+    (CompanyIDSchemeID = '') and (VATCompanyID = '') and (Address.StreetName = '') and
+    (Address.AdditionalStreetName = '') and (Address.City = '') and (Address.PostalZone = '') and
+    (Address.CountrySubentity = '') and (Address.AddressLine = '') and (Address.CountryCode = '') and
+    (ContactName = '') and (ContactDepartment = '') and (ContactTelephone = '') and
+    (ContactElectronicMail = '');
 end;
 
 { --- TLandrixInvoiceDeliveryInformation --------------------------------- }
@@ -2030,6 +2231,9 @@ begin
   LocationIdentifierSchemeID := '0088';
   Address.Clear;
   ActualDeliveryDate := 0;
+  ContactName := '';
+  ContactTelephone := '';
+  ContactElectronicMail := '';
 end;
 
 { --- TLandrixInvoicePrecedingInvoiceReferences -------------------------- }
@@ -2222,6 +2426,9 @@ begin
   AccountingSupplierParty := TLandrixInvoiceAccountingParty.Create;
   AccountingCustomerParty := TLandrixInvoiceAccountingParty.Create;
   DeliveryInformation := TLandrixInvoiceDeliveryInformation.Create;
+  PayeeParty := TLandrixInvoiceParty.Create;
+  TaxRepresentativeParty := TLandrixInvoiceParty.Create;
+  InvoiceeParty := TLandrixInvoiceParty.Create;
   Clear;
 end;
 
@@ -2249,13 +2456,21 @@ begin
   AccountingCustomerParty := nil;
   DeliveryInformation.Free;
   DeliveryInformation := nil;
+  PayeeParty.Free;
+  PayeeParty := nil;
+  TaxRepresentativeParty.Free;
+  TaxRepresentativeParty := nil;
+  InvoiceeParty.Free;
+  InvoiceeParty := nil;
   inherited;
 end;
 
 procedure TLandrixInvoice.Clear;
 begin
   ProfileID := 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0';
+  TestIndicator.Clear;
   InvoiceNumber := '';
+  DocumentName := '';
   InvoiceIssueDate := 0;
   InvoiceDueDate := 0;
   InvoicePeriodStartDate := 0;
@@ -2264,10 +2479,14 @@ begin
   InvoiceTypeCodeOther := '';
   InvoiceCurrencyCode := '';
   TaxCurrencyCode := '';
+  TaxPointDate.Clear;
+  TaxPointDateCode := '';
   BuyerReference := '';
   Notes.Clear;
   SellerOrderReference := '';
+  SellerOrderReferenceDate.Clear;
   PurchaseOrderReference := '';
+  PurchaseOrderReferenceDate.Clear;
   ProjectReference := '';
   ReceiptDocumentReference := '';
   ContractDocumentReference := '';
@@ -2280,6 +2499,9 @@ begin
   AccountingSupplierParty.Clear;
   AccountingCustomerParty.Clear;
   DeliveryInformation.Clear;
+  PayeeParty.Clear;
+  TaxRepresentativeParty.Clear;
+  InvoiceeParty.Clear;
 
   PaymentID := '';
   PaymentTypes.Clear;
@@ -2299,6 +2521,9 @@ begin
   PaymentTermCashDiscount3Percent := 0;
   PaymentTermCashDiscount3Base := 0;
   PaymentTermCashDiscount3ActualAmount := 0;
+  PaymentTermCashDiscount1Note := '';
+  PaymentTermCashDiscount2Note := '';
+  PaymentTermCashDiscount3Note := '';
 
   InvoiceLines.Clear;
   Attachments.Clear;
@@ -2307,6 +2532,7 @@ begin
   PrecedingInvoiceReferences.Clear;
 
   TaxAmountTotal := 0;
+  TaxAmountTotalInTaxCurrency.Clear;
   TaxAmountSubtotals.Clear;
 
   LineAmount := 0;

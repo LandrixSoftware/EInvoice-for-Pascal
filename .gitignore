@@ -110,3 +110,6 @@ addons/java-tools/*
 !addons/java-tools/install-tools.ps1
 !addons/java-tools/tools.json
 !addons/java-tools/README.md
+
+# Local backlog (never commit)
+BACKLOG.md
