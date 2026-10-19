@@ -2245,8 +2245,15 @@ begin
   Source := FDoc.Delivery[0];
   Info := FInvoice.DeliveryInformation;
   Info.ActualDeliveryDate := Date(Source.ActualDeliveryDate, Path + '/cbc:ActualDeliveryDate');
-  Info.LocationIdentifier := Source.DeliveryLocation.ID.Value;
-  Info.LocationIdentifierSchemeID := Source.DeliveryLocation.ID.SchemeID;
+  { the scheme only with an identifier: without one the model keeps its
+    default, as the CII reader does
+    DE: das Schema nur mit Kennung: ohne Kennung behaelt das Modell seine
+    Vorgabe, wie beim CII-Leser }
+  if Source.DeliveryLocation.ID.Value <> '' then
+  begin
+    Info.LocationIdentifier := Source.DeliveryLocation.ID.Value;
+    Info.LocationIdentifierSchemeID := Source.DeliveryLocation.ID.SchemeID;
+  end;
   ReadAddress(Info.Address, Source.DeliveryLocation.Address, Path + '/cac:DeliveryLocation/cac:Address');
   Source.DeliveryLocation.ListFilledChildren(FFilled);
   Rest(Path + '/cac:DeliveryLocation', ['cbc:ID', 'cac:Address']);

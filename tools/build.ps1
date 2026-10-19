@@ -38,7 +38,8 @@
 
   -Validate: afterwards the KoSIT validator checks the cross output of the
   first local toolchain and its reduced Factur-X profiles in
-  build/<toolchain>/profiles/ (test CIIProfiles.WriteScenarios)
+  build/<toolchain>/profiles/ (test CIIProfiles.WriteScenarios) and the
+  business cases in build/<toolchain>/cases/ (tests Cases.*)
   (tools/validate.ps1; tools from addons/java-tools/install-tools.ps1),
   and tools/testdata/xr-compare.py compares the sweep sources and outputs
   in the KoSIT XR form (test Sweep.Official, local corpora needed).
@@ -119,6 +120,7 @@ function Invoke-Toolchain([string]$Name) {
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep"
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep-source"
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep-cross"
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/cases"
   $exe = $null
   $log = @()
   $runCmd = $null
@@ -272,8 +274,9 @@ if ($Validate -and -not $NoRun) {
     Write-Host 'validation skipped: no toolchain with cross output' -ForegroundColor Yellow
     $results += @{ Name = 'KoSIT validation'; Build = 0; Diag = 0; Run = 1 }
   } else {
-    foreach ($folder in @('cross', 'profiles')) {
-      # profiles/ needs the local attachments like cross/ (test CIIProfiles.WriteScenarios)
+    foreach ($folder in @('cross', 'profiles', 'cases')) {
+      # profiles/ needs the local attachments like cross/ (test CIIProfiles.WriteScenarios);
+      # cases/ comes from the business cases (Cases.*)
       if (-not (Test-Path "build/$($source.Name)/$folder/*.xml")) {
         Write-Host "validation of $folder skipped: no output" -ForegroundColor Yellow
         continue

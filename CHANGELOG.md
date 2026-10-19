@@ -215,6 +215,17 @@ Supported invoice standards are documented per release.
   `addons/java-tools/tools.json`) and compares them business term by business term, also for
   XRechnung written in the other syntax (`build/<toolchain>/sweep-cross/`); known differences in
   `tests/data/xr-exceptions.txt`. `tools/build.ps1 -Validate` runs it.
+- Business test cases per business group (`tests/LandrixEInvoiceTestBusinessCases.pas`, 24
+  cases), written from EN 16931 and its bindings: VAT categories Z, E, G, AE, K, O and mixed rates
+  with a line allowance, document allowance and charge, prepaid and rounding amount, tax currency,
+  payment means 10/30/42/57/97/ZZZ, SEPA direct debit, payment card, cash discount, contact
+  department, payee and tax representative, delivery, credit note with preceding invoice, notes,
+  referenced and embedded attachment, line details, gross price, negative line. Each runs through
+  XRechnung UBL and CII, Peppol and Factur-X EN16931 and EXTENDED with hand-written expectations on
+  the XML (element paths from the bindings) and a field-by-field read-back; `tools/build.ps1
+  -Validate` lets the KoSIT validator check all 145 outputs.
+- UBL: the scheme of the delivery location (BT-71-1) is read only with an identifier; a delivery
+  without location no longer clears the default scheme.
 - Card payments: codes 48 and 55 are written as payment card (BG-18) like 54 (BR-DE-24).
 - CII: BT-84 without IBAN is read from and written to `ram:ProprietaryID`; BT-86 is written next
   to a direct debit; BT-149 is read from the gross price when the net price has none.
