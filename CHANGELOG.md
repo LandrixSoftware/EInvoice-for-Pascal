@@ -200,6 +200,16 @@ Supported invoice standards are documented per release.
   parameter (default `epr_Extended`) and reports missing required content only where the profile
   contains it. The KoSIT validator accepts all 66 scenario outputs in
   the three profiles.
+- Semantic sweep over the official test material (test `Sweep.Official`): the KoSIT XRechnung
+  3.0.2 testsuite, the ZUGFeRD 2.5.2 examples of every profile and the Peppol BIS examples, copied
+  by `tools/testdata/sync-local.py` into the git-ignored `tests/data/local/sweep/` (file names
+  and SHA-256 in `tools/testdata/corpora.json`). Every file is read, written in its detected
+  specification, read again and compared field by field; findings fail unless
+  `tests/data/sweep-exceptions.txt` lists them with a reason.
+- `tools/model/gen-invoice-compare.py` generates the test unit `LandrixEInvoiceTestInvoiceCompare`
+  from the model declarations: comparison of all 206 fields of `TLandrixInvoice`, a canonical
+  dump, a fill procedure and one mutation per leaf; tests show that every leaf is detected and
+  that `Clear` resets every field.
 - Card payments: codes 48 and 55 are written as payment card (BG-18) like 54 (BR-DE-24).
 - CII: BT-84 without IBAN is read from and written to `ram:ProprietaryID`; BT-86 is written next
   to a direct debit; BT-149 is read from the gross price when the net price has none.

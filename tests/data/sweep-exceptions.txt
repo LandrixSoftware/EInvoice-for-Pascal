@@ -1,0 +1,42 @@
+# Sweep exceptions (tests/LandrixEInvoiceTestSweep.pas): corpus/file<TAB>finding prefix.
+# Every line needs a reason in the comment above it; an unused line fails the sweep.
+
+# The buyer has one tax registration in EN 16931 (BT-48, 0..1); the KoSIT example carries a
+# tax number (scheme FC / '???') besides the VAT identifier. Read into the model, the writers
+# keep the VAT identifier only.
+kosit-xr302/standard_01.21a-INVOICE_ubl.xml	compare AccountingCustomerParty.VATCompanyNumber
+kosit-xr302/standard_01.21a-INVOICE_uncefact.xml	compare AccountingCustomerParty.VATCompanyNumber
+# Exemption reason per line exists only in Factur-X EXTENDED (BT-X-96); XRechnung CII has no BT.
+kosit-xr302/standard_01.21a-INVOICE_uncefact.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:ExemptionReason
+kosit-xr302/standard_01.21a-INVOICE_uncefact.xml	compare InvoiceLines[0].TaxExemptionReason
+# BT-29 is 0..n, the model holds one identifier and one global identifier (plan, Phase 2
+# step 1: known deviation until Phase 4).
+kosit-xr302/standard_03.01a-INVOICE_ubl.xml	read NotMapped /Invoice/cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification
+kosit-xr302/standard_03.01a-INVOICE_uncefact.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID
+kosit-xr302/standard_03.07a-INVOICE_uncefact.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID
+kosit-xr302/technical-cases_cius_01.01_comprehensive_test_uncefact.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID
+# cbc:NetworkID is required by the UBL schema but carries no business term; it stays in the
+# UBL model, the writer puts 'NA'.
+kosit-xr302/standard_03.02a-INVOICE_ubl.xml	read NotMapped /Invoice/cac:PaymentMeans/cac:CardAccount/cbc:NetworkID
+kosit-xr302/standard_03.03a-INVOICE_ubl.xml	read NotMapped /Invoice/cac:PaymentMeans/cac:CardAccount/cbc:NetworkID
+kosit-xr302/technical-cases_cius_01.03_comprehensive_test_ubl.xml	read NotMapped /Invoice/cac:PaymentMeans/cac:CardAccount/cbc:NetworkID
+# ram:Name of the procuring project is required by the CII schema but carries no business term
+# (BT-11 is the identifier); it stays in the CII model.
+zugferd252/E08_01_Elektron_Anlage_XML.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SpecifiedProcuringProject/ram:Name
+zugferd252/XRECHNUNG_Elektron.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SpecifiedProcuringProject/ram:Name
+# XRechnung CVD (vehicle data CIUS 0.9) and XRechnung 2.1 are no specification of the library.
+kosit-xr302/technical-cases_cvd_02.01a-cvd_INVOICE_ubl.xml	detect urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#compliant#urn:xeinkauf.de:kosit:xrechnung:cvd_0.9
+kosit-xr302/technical-cases_cvd_02.01a-cvd_INVOICE_uncefact.xml	detect urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#compliant#urn:xeinkauf.de:kosit:xrechnung:cvd_0.9
+zugferd252/XRECHNUNG_Betriebskostenabrechnung.xml	detect urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.1
+# Two invoiced object identifiers (BT-18) in EXTENDED; like XRechnung-for-Delphi only the first
+# is written (golden files). Open question in the backlog.
+zugferd252/X14_01_Rechnungskorrektur.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument
+zugferd252/X14_01_Rechnungskorrektur.xml	compare Attachments (BG-24).Count
+# The sources carry person name and department together, which CII-SR-465 forbids (the KoSIT
+# validator rejects these three examples); the writer keeps the person name.
+zugferd252/XRECHNUNG_Einfach.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName
+zugferd252/XRECHNUNG_Einfach.xml	compare AccountingSupplierParty.ContactDepartment
+zugferd252/XRECHNUNG_Elektron.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName
+zugferd252/XRECHNUNG_Elektron.xml	compare AccountingSupplierParty.ContactDepartment
+zugferd252/XRECHNUNG_Reisekostenabrechnung.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName
+zugferd252/XRECHNUNG_Reisekostenabrechnung.xml	compare AccountingSupplierParty.ContactDepartment

@@ -32,7 +32,8 @@ uses
   LandrixEInvoiceTypes,
   LandrixEInvoiceCodes,
   LandrixEInvoiceInvoice,
-  LandrixEInvoiceTestFramework;
+  LandrixEInvoiceTestFramework,
+  LandrixEInvoiceTestInvoiceCompare;
 
 { --- code lists --------------------------------------------------------- }
 
@@ -941,6 +942,102 @@ begin
   end;
 end;
 
+{ --- generated all-field comparison --------------------------------------- }
+
+{ Every leaf of the generated comparison is detected: two filled invoices
+  are equal, and changing one leaf gives exactly one difference at its path. }
+procedure TestCompareComplete;
+var
+  A, B: TLandrixInvoice;
+  Diffs: TStringList;
+  I, Failed: Integer;
+  Path: string;
+begin
+  A := TLandrixInvoice.Create;
+  Diffs := TStringList.Create;
+  try
+    FillInvoiceAll(A);
+    Failed := 0;
+    for I := 0 to InvoiceLeafCount - 1 do
+    begin
+      B := TLandrixInvoice.Create;
+      try
+        FillInvoiceAll(B);
+        Diffs.Clear;
+        if I = 0 then
+        begin
+          CompareInvoices(A, B, Diffs);
+          CheckEquals(0, Diffs.Count, 'filled invoices equal: ' + Diffs.Text);
+        end;
+        MutateInvoiceLeaf(B, I, Path);
+        Diffs.Clear;
+        CompareInvoices(A, B, Diffs);
+        if (Diffs.Count <> 1) or (Pos(Path, Diffs[0]) <> 1) then
+        begin
+          Inc(Failed);
+          WriteLn('  leaf ', I, ' ', Path, ': ', Diffs.Text);
+        end;
+      finally
+        B.Free;
+      end;
+    end;
+    Check(InvoiceLeafCount > 200, 'leaves: ' + IntToStr(InvoiceLeafCount));
+    CheckEquals(0, Failed, 'leaves not detected exactly once');
+  finally
+    Diffs.Free;
+    A.Free;
+  end;
+end;
+
+{ Clear resets every field: a filled and cleared invoice equals a new one. }
+procedure TestClearAll;
+var
+  A, B: TLandrixInvoice;
+  Diffs: TStringList;
+begin
+  A := TLandrixInvoice.Create;
+  B := TLandrixInvoice.Create;
+  Diffs := TStringList.Create;
+  try
+    FillInvoiceAll(A);
+    CompareInvoices(A, B, Diffs);
+    { lists are compared up to the shorter count: an empty list is one difference }
+    Check(Diffs.Count > 100, 'filled invoice differs from a new one: ' + IntToStr(Diffs.Count));
+    A.Clear;
+    Diffs.Clear;
+    CompareInvoices(A, B, Diffs);
+    CheckEquals(0, Diffs.Count, 'cleared invoice equals a new one: ' + Diffs.Text);
+  finally
+    Diffs.Free;
+    B.Free;
+    A.Free;
+  end;
+end;
+
+{ The dump of a new invoice holds only the defaults; a filled one every field. }
+procedure TestDump;
+var
+  A: TLandrixInvoice;
+  Lines: TStringList;
+  Empty: Integer;
+begin
+  A := TLandrixInvoice.Create;
+  Lines := TStringList.Create;
+  try
+    DumpInvoice(A, Lines);
+    Empty := Lines.Count;
+    Lines.Clear;
+    FillInvoiceAll(A);
+    DumpInvoice(A, Lines);
+    Check(Lines.Count > Empty + 200, 'filled dump: ' + IntToStr(Lines.Count) + ' lines');
+    Check(Pos('InvoiceLines[0].SubInvoiceLines[0].ID (BT-126) = "', Lines.Text) > 0,
+      'sub line with path and term: ' + Lines.Text);
+  finally
+    Lines.Free;
+    A.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Codes.TypeCode', TestTypeCodes);
@@ -963,6 +1060,9 @@ begin
   RegisterTest('Model.InvoiceClear', TestInvoiceClear);
   RegisterTest('Model.FurtherPartyIsEmpty', TestFurtherPartyIsEmpty);
   RegisterTest('Model.LineClear', TestLineClear);
+  RegisterTest('Model.CompareComplete', TestCompareComplete);
+  RegisterTest('Model.ClearAll', TestClearAll);
+  RegisterTest('Model.Dump', TestDump);
 end;
 
 end.

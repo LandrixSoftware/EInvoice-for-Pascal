@@ -114,6 +114,8 @@ function Invoke-Toolchain([string]$Name) {
   # the cross test may only see what this run writes
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/cross"
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/profiles"
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep"
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep-source"
   $exe = $null
   $log = @()
   $runCmd = $null
