@@ -200,3 +200,20 @@ Supported invoice standards are documented per release.
   parameter (default `epr_Extended`) and reports missing required content only where the profile
   contains it. The KoSIT validator accepts all 66 scenario outputs in
   the three profiles.
+- Card payments: codes 48 and 55 are written as payment card (BG-18) like 54 (BR-DE-24).
+- CII: BT-84 without IBAN is read from and written to `ram:ProprietaryID`; BT-86 is written next
+  to a direct debit; BT-149 is read from the gross price when the net price has none.
+- UBL: any tax scheme other than VAT is the tax registration (BT-32), as in the KoSIT examples.
+- The base amount of a line allowance or charge (BT-137/BT-142) is written also without a
+  percentage.
+- MINIMUM: totals the profile does not contain are not written when they are 0.
+
+### Changed
+- Prices (`GrossPriceAmount`, `DiscountOnTheGrossPrice`, `NetPriceAmount`; BT-146 to BT-148) are
+  `Double` instead of `Currency`: EN 16931 does not limit their decimals and the KoSIT testsuite
+  has prices with 5 and 9 decimals. `LandrixEInvoicePriceToLexical` takes a `Double` and writes
+  more than 4 decimals only when the value needs them.
+- The readers no longer derive the VAT accounting currency (BT-6) from a VAT total in the invoice
+  currency; `TaxCurrencyCode` stays empty then.
+- CII-SR-450 (buyer identifier and global identifier not together) applies to XRechnung CII only;
+  the Factur-X schematron has no such rule.

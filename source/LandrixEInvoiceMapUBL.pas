@@ -506,7 +506,7 @@ type
     function Permit(const AKey: string; const APath, AWhat: TLandrixEInvoiceString): Boolean;
     function Code(const AEnumText, AOther, APath: TLandrixEInvoiceString): TLandrixEInvoiceString;
     function Money(AValue: Currency): TLandrixUBLAmount;
-    function PriceMoney(AValue: Currency): TLandrixUBLAmount;
+    function PriceMoney(AValue: Double): TLandrixUBLAmount;
     function UsesExtension: Boolean;
     procedure MapDocument;
     procedure MapReferences;
@@ -600,7 +600,7 @@ begin
   Result.CurrencyID := FInvoice.InvoiceCurrencyCode;
 end;
 
-function TUBLWriteMapper.PriceMoney(AValue: Currency): TLandrixUBLAmount;
+function TUBLWriteMapper.PriceMoney(AValue: Double): TLandrixUBLAmount;
 begin
   Result.Value := LandrixEInvoicePriceToLexical(AValue);
   Result.CurrencyID := FInvoice.InvoiceCurrencyCode;
@@ -1094,6 +1094,13 @@ begin
     Target.DeliveryParty.PartyName.Add.Name := Txt(Info.Name);
 end;
 
+{ BG-18 belongs to the card codes 48, 54 and 55 (BR-DE-24).
+  DE: BG-18 gehoert zu den Kartencodes 48, 54 und 55 (BR-DE-24). }
+function IsCardPayment(ACode: TLandrixInvoicePaymentMeansCode): Boolean;
+begin
+  Result := ACode in [ipmc_BankCard, ipmc_CreditCard, ipmc_DebitCard];
+end;
+
 { BG-16 payment instructions, one per payment type with a code: BT-81
   means, BT-82 text, BT-83 remittance information, BG-19 direct debit
   (BT-89 mandate, BT-91 debited account), BG-18 card (BT-87, BT-88; the
@@ -1134,8 +1141,11 @@ begin
       Target.PaymentMandate.ID.Value := FInvoice.PaymentMandateID;
       Target.PaymentMandate.PayerFinancialAccount.ID.Value := Payment.FinancialAccount;
       MandateWritten := True;
+      if Payment.FinancialInstitutionBranch <> '' then
+        Report(edk_NotAllowed, Path + '/cac:PayeeFinancialAccount/cac:FinancialInstitutionBranch',
+          'BIC (BT-86) next to a direct debit left out: UBL carries it in the payee account', eds_Warning);
     end
-    else if Payment.PaymentMeansCode = ipmc_CreditCard then
+    else if IsCardPayment(Payment.PaymentMeansCode) then
     begin
       Target.CardAccount.PrimaryAccountNumberID.Value := Payment.FinancialAccount;
       Target.CardAccount.NetworkID.Value := 'NA';
@@ -1377,10 +1387,11 @@ begin
     if Item.Reason <> '' then
       Charge.AllowanceChargeReason.Add(Txt(Item.Reason));
     if Item.MultiplierFactorNumeric <> 0 then
-    begin
       Charge.MultiplierFactorNumeric := LandrixEInvoiceDecimalToLexical(Item.MultiplierFactorNumeric, 2);
+    { BT-137 also without BT-138, as on document level
+      DE: BT-137 auch ohne BT-138, wie auf Dokumentebene }
+    if (Item.MultiplierFactorNumeric <> 0) or (Item.BaseAmount <> 0) then
       Charge.BaseAmount := Money(Item.BaseAmount);
-    end;
     Charge.Amount := Money(Item.Amount);
   end;
   MapLineItem(ALine, ATarget.Item, APath + '/cac:Item');
@@ -1523,6 +1534,7 @@ type
     procedure Rest(const APath: TLandrixEInvoiceString; const ATaken: array of string);
     procedure Excess(ACount: TLandrixEInvoiceListIndex; const APath: TLandrixEInvoiceString);
     function Amount(const AValue: TLandrixUBLAmount; const APath: TLandrixEInvoiceString): Currency;
+    function Price(const AValue: TLandrixUBLAmount; const APath: TLandrixEInvoiceString): Double;
     function Decimal(const AText, APath: TLandrixEInvoiceString): Double;
     function Date(const AText, APath: TLandrixEInvoiceString): TDateTime;
     function IDValue(const AValue: TLandrixUBLID; const APath: TLandrixEInvoiceString): TLandrixEInvoiceString;
@@ -1633,6 +1645,16 @@ begin
     Report(edk_ConversionFailed, APath, 'amount "' + AValue.Value + '" not converted; 0 used', eds_Error)
   else if Rounded then
     Report(edk_ConversionFailed, APath, 'amount "' + AValue.Value + '" rounded to 4 decimals', eds_Warning);
+end;
+
+{ BT-146 to BT-148 without rounding: prices may have any number of decimals
+  DE: BT-146 bis BT-148 ohne Rundung: Preise duerfen beliebig viele
+  Nachkommastellen haben }
+function TUBLReadMapper.Price(const AValue: TLandrixUBLAmount; const APath: TLandrixEInvoiceString): Double;
+begin
+  if (AValue.CurrencyID <> '') and (AValue.CurrencyID <> FInvoice.InvoiceCurrencyCode) then
+    NotMapped(APath + '/@currencyID', 'currency ' + AValue.CurrencyID);
+  Result := Decimal(AValue.Value, APath);
 end;
 
 function TUBLReadMapper.Decimal(const AText, APath: TLandrixEInvoiceString): Double;
@@ -2084,7 +2106,11 @@ begin
     Scheme := TaxScheme.TaxScheme.ID.Value;
     if (Scheme = 'VAT') and (AParty.VATCompanyID = '') then
       AParty.VATCompanyID := IDValue(TaxScheme.CompanyID, APath + '/cac:PartyTaxScheme/cbc:CompanyID')
-    else if (Scheme = 'FC') and (AParty.VATCompanyNumber = '') then
+    { BT-32: the binding fixes only VAT for BT-31; any other scheme (FC,
+      the KoSIT examples use '???') is the tax registration.
+      DE: BT-32: die Bindung legt nur VAT fuer BT-31 fest; jedes andere
+      Schema (FC, die KoSIT-Beispiele nutzen '???') ist die Steuernummer. }
+    else if (Scheme <> '') and (Scheme <> 'VAT') and (AParty.VATCompanyNumber = '') then
       AParty.VATCompanyNumber := IDValue(TaxScheme.CompanyID, APath + '/cac:PartyTaxScheme/cbc:CompanyID')
     else
       NotMapped(APath + '/cac:PartyTaxScheme', 'tax registration ' + TaxScheme.CompanyID.Value +
@@ -2429,7 +2455,9 @@ begin
   if Chosen < 0 then
     Chosen := 0;
   Total := FDoc.TaxTotal[Chosen];
-  if FInvoice.TaxCurrencyCode = '' then
+  { BT-6 only when it differs, as in CII
+    DE: BT-6 nur, wenn abweichend, wie in CII }
+  if (FInvoice.TaxCurrencyCode = '') and (Total.TaxAmount.CurrencyID <> FInvoice.InvoiceCurrencyCode) then
     FInvoice.TaxCurrencyCode := Total.TaxAmount.CurrencyID;
   { the first other total without breakdown in the differing BT-6 is
     BT-111 }
@@ -2654,7 +2682,7 @@ procedure TUBLReadMapper.ReadLinePrice(ALine: TLandrixInvoiceLine; APrice: TLand
 var
   Discount: TLandrixUBLAllowanceCharge;
 begin
-  ALine.NetPriceAmount := Amount(APrice.PriceAmount, APath + '/cbc:PriceAmount');
+  ALine.NetPriceAmount := Price(APrice.PriceAmount, APath + '/cbc:PriceAmount');
   if APrice.BaseQuantity.Value <> '' then
     ALine.BaseQuantity := Quantity(APrice.BaseQuantity, APath + '/cbc:BaseQuantity', ALine.BaseQuantityUnitCode,
       ALine.BaseQuantityUnitCodeOther);
@@ -2665,8 +2693,8 @@ begin
       NotMapped(APath + '/cac:AllowanceCharge', 'charge on the price')
     else
     begin
-      ALine.GrossPriceAmount := Amount(Discount.BaseAmount, APath + '/cac:AllowanceCharge/cbc:BaseAmount');
-      ALine.DiscountOnTheGrossPrice := Amount(Discount.Amount, APath + '/cac:AllowanceCharge/cbc:Amount');
+      ALine.GrossPriceAmount := Price(Discount.BaseAmount, APath + '/cac:AllowanceCharge/cbc:BaseAmount');
+      ALine.DiscountOnTheGrossPrice := Price(Discount.Amount, APath + '/cac:AllowanceCharge/cbc:Amount');
       Discount.ListFilledChildren(FFilled);
       Rest(APath + '/cac:AllowanceCharge', ['cbc:ChargeIndicator', 'cbc:Amount', 'cbc:BaseAmount']);
     end;

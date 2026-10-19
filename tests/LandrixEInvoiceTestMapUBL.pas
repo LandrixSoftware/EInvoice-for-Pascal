@@ -587,7 +587,7 @@ begin
     CheckEqualsInvoiceStr('SO-1', Invoice.SellerOrderReference, 'sales order');
     CheckEqualsInvoiceStr('DE98ZZZ09999999999', Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier,
       'creditor identifier');
-    CheckEqualsInvoiceStr('EUR', Invoice.TaxCurrencyCode, 'VAT currency from the tax total');
+    CheckEqualsInvoiceStr('', Invoice.TaxCurrencyCode, 'no BT-6 from a tax total in the invoice currency');
     Check(Invoice.InvoiceLines[0].LineAmount = 0, 'invalid amount gives 0');
     CheckEqualsInvoiceStr('A1', Invoice.InvoiceLines[0].SellersItemIdentification, 'value taken');
   finally

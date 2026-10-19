@@ -143,6 +143,7 @@ type
     procedure MapPaymentTerms;
     procedure MapStructuredPaymentTerms;
     procedure MapTotals;
+    function TotalWanted(const AName: TLandrixEInvoiceString; AValue: Currency): Boolean;
     procedure MapPrecedingInvoices;
     procedure MapThirdPartyPayments;
   public
@@ -199,7 +200,7 @@ begin
   Result.CurrencyID := '';
 end;
 
-function CIIPrice(AValue: Currency): TLandrixCIIAmount;
+function CIIPrice(AValue: Double): TLandrixCIIAmount;
 begin
   Result.Value := LandrixEInvoicePriceToLexical(AValue);
   Result.CurrencyID := '';
@@ -658,10 +659,11 @@ begin
     Charge := ASettlement.SpecifiedTradeAllowanceCharge.Add;
     Charge.ChargeIndicator := BoolText(Item.ChargeIndicator);
     if Item.MultiplierFactorNumeric <> 0 then
-    begin
       Charge.CalculationPercent := LandrixEInvoiceDecimalToLexical(Item.MultiplierFactorNumeric, 4);
+    { BT-137 also without BT-138, as on document level
+      DE: BT-137 auch ohne BT-138, wie auf Dokumentebene }
+    if (Item.MultiplierFactorNumeric <> 0) or (Item.BaseAmount <> 0) then
       Charge.BasisAmount := CIIAmount(Item.BaseAmount);
-    end;
     Charge.ActualAmount := CIIAmount(Item.Amount);
     ReasonText := AllowanceReasonCode(Item, ReasonOther);
     Charge.ReasonCode.Value := Code(ReasonText, ReasonOther,
@@ -1045,6 +1047,49 @@ begin
   end;
 end;
 
+{ BT-84 as ram:IBANID when it has the form of an IBAN (two letters, two
+  digits, up to 30 letters or digits; spaces and lower case ignored), else
+  as ram:ProprietaryID.
+  DE: BT-84 als ram:IBANID, wenn es die Form einer IBAN hat (zwei
+  Buchstaben, zwei Ziffern, bis zu 30 Buchstaben oder Ziffern; Leerzeichen
+  und Kleinschreibung zaehlen nicht), sonst als ram:ProprietaryID. }
+function LooksLikeIBAN(const AValue: TLandrixEInvoiceString): Boolean;
+var
+  I, N: Integer;
+  C: WideChar;
+  Compact: TLandrixEInvoiceString;
+begin
+  Compact := '';
+  for N := 1 to Length(AValue) do
+    if AValue[N] <> ' ' then
+    begin
+      C := AValue[N];
+      if (C >= 'a') and (C <= 'z') then
+        C := WideChar(Ord(C) - 32);
+      Compact := Compact + C;
+    end;
+  Result := (Length(Compact) >= 15) and (Length(Compact) <= 34);
+  I := 1;
+  while Result and (I <= Length(Compact)) do
+  begin
+    C := Compact[I];
+    if I <= 2 then
+      Result := (C >= 'A') and (C <= 'Z')
+    else if I <= 4 then
+      Result := (C >= '0') and (C <= '9')
+    else
+      Result := ((C >= 'A') and (C <= 'Z')) or ((C >= '0') and (C <= '9'));
+    Inc(I);
+  end;
+end;
+
+{ BG-18 belongs to the card codes 48, 54 and 55 (BR-DE-24).
+  DE: BG-18 gehoert zu den Kartencodes 48, 54 und 55 (BR-DE-24). }
+function IsCardPayment(ACode: TLandrixInvoicePaymentMeansCode): Boolean;
+begin
+  Result := ACode in [ipmc_BankCard, ipmc_CreditCard, ipmc_DebitCard];
+end;
+
 { BT-90 creditor identifier, BT-83 remittance information, BT-5 currency,
   BG-16 payment instructions: BT-81 means, BT-82 text, BG-19 direct debit
   (BT-91 debited account), BG-18 card (BT-87, BT-88), BG-17 credit transfer
@@ -1076,20 +1121,29 @@ begin
     Target.TypeCode := Code(LandrixEInvoicePaymentMeansCodeToStr(Payment.PaymentMeansCode),
       Payment.PaymentMeansCodeOther, Settlement + '/ram:SpecifiedTradeSettlementPaymentMeans/ram:TypeCode');
     Target.Information := Txt(Payment.PaymentMeansInformation);
+    { BT-86 belongs to the payee's account; next to a direct debit it is
+      written without one (ZUGFeRD example X01)
+      DE: BT-86 gehoert zum Konto des Zahlungsempfaengers; neben einer
+      Lastschrift wird es auch ohne Konto geschrieben (ZUGFeRD-Beispiel X01) }
+    if not IsCardPayment(Payment.PaymentMeansCode) and
+       ((Payment.FinancialAccount <> '') or (Payment.PaymentMeansCode = ipmc_SEPADirectDebit)) then
+      Target.PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := Payment.FinancialInstitutionBranch;
     if Payment.FinancialAccount = '' then
       Continue;
     if Payment.PaymentMeansCode = ipmc_SEPADirectDebit then
       Target.PayerPartyDebtorFinancialAccount.IBANID.Value := Payment.FinancialAccount
-    else if Payment.PaymentMeansCode = ipmc_CreditCard then
+    else if IsCardPayment(Payment.PaymentMeansCode) then
     begin
       Target.ApplicableTradeSettlementFinancialCard.ID.Value := Payment.FinancialAccount;
       Target.ApplicableTradeSettlementFinancialCard.CardholderName := Payment.FinancialAccountName;
     end
     else
     begin
-      Target.PayeePartyCreditorFinancialAccount.IBANID.Value := Payment.FinancialAccount;
+      if LooksLikeIBAN(Payment.FinancialAccount) then
+        Target.PayeePartyCreditorFinancialAccount.IBANID.Value := Payment.FinancialAccount
+      else
+        Target.PayeePartyCreditorFinancialAccount.ProprietaryID.Value := Payment.FinancialAccount;
       Target.PayeePartyCreditorFinancialAccount.AccountName := Payment.FinancialAccountName;
-      Target.PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := Payment.FinancialInstitutionBranch;
     end;
   end;
 end;
@@ -1314,9 +1368,12 @@ var
 begin
   Sum := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementHeaderMonetarySummation;
   Path := Settlement + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount';
-  Sum.LineTotalAmount := CIIAmount(FInvoice.LineAmount);
-  Sum.ChargeTotalAmount := CIIAmount(FInvoice.ChargeTotalAmount);
-  Sum.AllowanceTotalAmount := CIIAmount(FInvoice.AllowanceTotalAmount);
+  if TotalWanted('ram:LineTotalAmount', FInvoice.LineAmount) then
+    Sum.LineTotalAmount := CIIAmount(FInvoice.LineAmount);
+  if TotalWanted('ram:ChargeTotalAmount', FInvoice.ChargeTotalAmount) then
+    Sum.ChargeTotalAmount := CIIAmount(FInvoice.ChargeTotalAmount);
+  if TotalWanted('ram:AllowanceTotalAmount', FInvoice.AllowanceTotalAmount) then
+    Sum.AllowanceTotalAmount := CIIAmount(FInvoice.AllowanceTotalAmount);
   Sum.TaxBasisTotalAmount := CIIAmount(FInvoice.TaxExclusiveAmount);
   TaxTotal := CIIAmount(FInvoice.TaxAmountTotal);
   TaxTotal.CurrencyID := FInvoice.InvoiceCurrencyCode;
@@ -1339,8 +1396,20 @@ begin
   if FInvoice.PayableRoundingAmount <> 0 then
     Sum.RoundingAmount := CIIAmount(FInvoice.PayableRoundingAmount);
   Sum.GrandTotalAmount := CIIAmount(FInvoice.TaxInclusiveAmount);
-  Sum.TotalPrepaidAmount := CIIAmount(FInvoice.PrepaidAmount);
+  if TotalWanted('ram:TotalPrepaidAmount', FInvoice.PrepaidAmount) then
+    Sum.TotalPrepaidAmount := CIIAmount(FInvoice.PrepaidAmount);
   Sum.DuePayableAmount := CIIAmount(FInvoice.PayableAmount);
+end;
+
+{ A total the profile does not contain (MINIMUM: BT-106, BT-107, BT-108,
+  BT-113) is written only when it is not 0; then the pruning reports it.
+  DE: Eine Summe, die das Profil nicht enthaelt (MINIMUM: BT-106, BT-107,
+  BT-108, BT-113), wird nur geschrieben, wenn sie nicht 0 ist; dann meldet
+  das Kuerzen sie. }
+function TCIIWriteMapper.TotalWanted(const AName: TLandrixEInvoiceString; AValue: Currency): Boolean;
+begin
+  Result := (AValue <> 0) or LandrixEInvoiceCIIAllowed(Settlement +
+    '/ram:SpecifiedTradeSettlementHeaderMonetarySummation/' + AName, FSpec.Target.Profile);
 end;
 
 { BG-3 preceding invoices (BT-25, BT-26); XRechnung CII allows one, BT-19
@@ -1400,7 +1469,7 @@ type
     procedure Rest(const APath: TLandrixEInvoiceString; const ATaken: array of string);
     procedure Excess(ACount: TLandrixEInvoiceListIndex; const APath: TLandrixEInvoiceString);
     function Amount(const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString): Currency;
-    function Price(const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString): Currency;
+    function Price(const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString): Double;
     function Decimal(const AText, APath: TLandrixEInvoiceString): Double;
     function Date(const AValue: TLandrixCIIDateTime; const APath: TLandrixEInvoiceString): TDateTime;
     function FormattedDate(const AValue: TLandrixCIIFormattedDateTime; const APath: TLandrixEInvoiceString): TDateTime;
@@ -1519,9 +1588,14 @@ begin
     Report(edk_ConversionFailed, APath, 'amount "' + AValue.Value + '" rounded to 4 decimals', eds_Warning);
 end;
 
-function TCIIReadMapper.Price(const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString): Currency;
+{ BT-146 to BT-148 without rounding: prices may have any number of decimals
+  DE: BT-146 bis BT-148 ohne Rundung: Preise duerfen beliebig viele
+  Nachkommastellen haben }
+function TCIIReadMapper.Price(const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString): Double;
 begin
-  Result := Amount(AValue, APath);
+  if (AValue.CurrencyID <> '') and (AValue.CurrencyID <> FInvoice.InvoiceCurrencyCode) then
+    NotMapped(APath + '/@currencyID', 'currency ' + AValue.CurrencyID);
+  Result := Decimal(AValue.Value, APath);
 end;
 
 function TCIIReadMapper.Decimal(const AText, APath: TLandrixEInvoiceString): Double;
@@ -1877,7 +1951,18 @@ begin
         ['ram:ChargeIndicator', 'ram:ActualAmount']);
       Excess(Gross.AppliedTradeAllowanceCharge.Count, APath + '/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge');
     end;
-    if (Gross.BasisQuantity.Value <> '') and ((Gross.BasisQuantity.Value <> Net.BasisQuantity.Value) or
+    { BT-149 may sit at the gross price only (KoSIT testsuite 03.07a); it is
+      the base quantity of both prices.
+      DE: BT-149 darf nur am Bruttopreis stehen (KoSIT-Testsuite 03.07a); es
+      ist die Basismenge beider Preise. }
+    if (Gross.BasisQuantity.Value <> '') and (Net.BasisQuantity.Value = '') then
+    begin
+      ALine.BaseQuantity := Decimal(Gross.BasisQuantity.Value,
+        APath + '/ram:GrossPriceProductTradePrice/ram:BasisQuantity');
+      ReadUnit(Gross.BasisQuantity.UnitCode, APath + '/ram:GrossPriceProductTradePrice/ram:BasisQuantity/@unitCode',
+        ALine.BaseQuantityUnitCode, ALine.BaseQuantityUnitCodeOther);
+    end
+    else if (Gross.BasisQuantity.Value <> '') and ((Gross.BasisQuantity.Value <> Net.BasisQuantity.Value) or
        (Gross.BasisQuantity.UnitCode <> Net.BasisQuantity.UnitCode)) then
       NotMapped(APath + '/ram:GrossPriceProductTradePrice/ram:BasisQuantity',
         'base quantity of the gross price that differs from the net price');
@@ -2392,11 +2477,22 @@ begin
         NotMapped(Path + '/ram:PayeePartyCreditorFinancialAccount', 'second account of one payment means')
       else
       begin
-        Payment.FinancialAccount := IDValue(Source.PayeePartyCreditorFinancialAccount.IBANID,
-          Path + '/ram:PayeePartyCreditorFinancialAccount/ram:IBANID');
+        { BT-84 is the IBAN or, without one, the proprietary identifier
+          DE: BT-84 ist die IBAN oder, ohne IBAN, die proprietaere Kennung }
         Payment.FinancialAccountName := Source.PayeePartyCreditorFinancialAccount.AccountName;
         Source.PayeePartyCreditorFinancialAccount.ListFilledChildren(FFilled);
-        Rest(Path + '/ram:PayeePartyCreditorFinancialAccount', ['ram:IBANID', 'ram:AccountName']);
+        if Source.PayeePartyCreditorFinancialAccount.IBANID.Value <> '' then
+        begin
+          Payment.FinancialAccount := IDValue(Source.PayeePartyCreditorFinancialAccount.IBANID,
+            Path + '/ram:PayeePartyCreditorFinancialAccount/ram:IBANID');
+          Rest(Path + '/ram:PayeePartyCreditorFinancialAccount', ['ram:IBANID', 'ram:AccountName']);
+        end
+        else
+        begin
+          Payment.FinancialAccount := IDValue(Source.PayeePartyCreditorFinancialAccount.ProprietaryID,
+            Path + '/ram:PayeePartyCreditorFinancialAccount/ram:ProprietaryID');
+          Rest(Path + '/ram:PayeePartyCreditorFinancialAccount', ['ram:ProprietaryID', 'ram:AccountName']);
+        end;
       end;
     end;
     Payment.FinancialInstitutionBranch := IDValue(Source.PayeeSpecifiedCreditorFinancialInstitution.BICID,
@@ -2586,7 +2682,11 @@ begin
   if Chosen >= 0 then
   begin
     TaxTotal := Sum.TaxTotalAmount[Chosen];
-    if FInvoice.TaxCurrencyCode = '' then
+    { BT-6 only when it differs: a BT-110 in the invoice currency says nothing
+      about a VAT accounting currency
+      DE: BT-6 nur, wenn abweichend: ein BT-110 in der Rechnungswaehrung sagt
+      nichts ueber eine Steuerwaehrung }
+    if (FInvoice.TaxCurrencyCode = '') and (TaxTotal.CurrencyID <> FInvoice.InvoiceCurrencyCode) then
       FInvoice.TaxCurrencyCode := TaxTotal.CurrencyID;
     FInvoice.TaxAmountTotal := Amount(TaxTotal, Path + '/ram:TaxTotalAmount');
   end;

@@ -66,6 +66,10 @@ begin
   CheckText('4.1250', LandrixEInvoicePriceToLexical(Cur(41250)), '3 decimals written as 4');
   CheckText('-0.01', LandrixEInvoicePriceToLexical(Cur(-100)), 'negative exact');
   CheckText('100.00', LandrixEInvoicePriceToLexical(100), 'integer');
+  { KoSIT testsuite 03.04a and 03.05a: prices with 5 and 9 decimals, as integer
+    quotients (Delphi 13 Win64 warns W1066 for such float literals) }
+  CheckText('0.01146', LandrixEInvoicePriceToLexical(1146 / 100000), '5 decimals kept');
+  CheckText('0.061232374', LandrixEInvoicePriceToLexical(61232374 / 1000000000), '9 decimals kept');
 end;
 
 procedure TestQuantity;

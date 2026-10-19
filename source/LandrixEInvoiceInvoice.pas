@@ -432,16 +432,20 @@ type
     { VAT exemption reason of the line. DE: Grund der Steuerbefreiung der
       Position. }
     TaxExemptionReason: TLandrixEInvoiceString;
-    { BT-148 item gross price (BG-29). DE: BT-148 Brutto-Einzelpreis
-      (BG-29). }
-    GrossPriceAmount: Currency;
+    { BT-148 item gross price (BG-29). Prices are Double, not Currency:
+      EN 16931 limits their decimals not (e.g. 0.061232374 per kWh); exact
+      up to 15 significant digits.
+      DE: BT-148 Brutto-Einzelpreis (BG-29). Preise sind Double, nicht
+      Currency: EN 16931 begrenzt ihre Nachkommastellen nicht (z. B.
+      0.061232374 je kWh); exakt bis 15 signifikante Stellen. }
+    GrossPriceAmount: Double;
     { BT-147 price discount on the gross price, giving the net price. Only
       one discount, because UBL allows only one (CII allows several).
       DE: BT-147 Rabatt auf den Bruttopreis, ergibt den Nettopreis. Nur ein
       Rabatt, weil UBL nur einen erlaubt (CII mehrere). }
-    DiscountOnTheGrossPrice: Currency;
+    DiscountOnTheGrossPrice: Double;
     { BT-146 item net price. DE: BT-146 Netto-Einzelpreis. }
-    NetPriceAmount: Currency;
+    NetPriceAmount: Double;
     { BT-149 item price base quantity. DE: BT-149 Preiseinheit. }
     BaseQuantity: Double;
     { BT-150 unit of the price base quantity. DE: BT-150 Mengeneinheit der

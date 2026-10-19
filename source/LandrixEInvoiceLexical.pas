@@ -70,11 +70,14 @@ uses
   DE: Betrag mit genau 2 Nachkommastellen, z. B. 100 -> '100.00'. }
 function LandrixEInvoiceAmountToLexical(AValue: Currency): TLandrixEInvoiceString;
 
-{ Price with 2 decimals if it has no more, otherwise 4, e.g. 4.1 -> '4.10',
-  4.1235 -> '4.1235', 4.125 -> '4.1250'.
-  DE: Preis mit 2 Nachkommastellen, wenn er nicht mehr hat, sonst 4, z. B.
-  4.1 -> '4.10', 4.1235 -> '4.1235', 4.125 -> '4.1250'. }
-function LandrixEInvoicePriceToLexical(AValue: Currency): TLandrixEInvoiceString;
+{ Price with 2 decimals if it has no more, 4 if it has 3 or 4, otherwise as
+  many as it needs (up to 10, 15 significant digits), e.g. 4.1 -> '4.10',
+  4.1235 -> '4.1235', 4.125 -> '4.1250', 0.01146 -> '0.01146'.
+  DE: Preis mit 2 Nachkommastellen, wenn er nicht mehr hat, 4 bei 3 oder 4,
+  sonst so vielen, wie er braucht (bis 10, 15 signifikante Stellen), z. B.
+  4.1 -> '4.10', 4.1235 -> '4.1235', 4.125 -> '4.1250', 0.01146 ->
+  '0.01146'. }
+function LandrixEInvoicePriceToLexical(AValue: Double): TLandrixEInvoiceString;
 
 { Quantity with exactly 4 decimals, e.g. 1 -> '1.0000'.
   DE: Menge mit genau 4 Nachkommastellen, z. B. 1 -> '1.0000'. }
@@ -155,16 +158,15 @@ begin
   Result := Text(LandrixXmlFormatCurrency(AValue, 2));
 end;
 
-function LandrixEInvoicePriceToLexical(AValue: Currency): TLandrixEInvoiceString;
+function LandrixEInvoicePriceToLexical(AValue: Double): TLandrixEInvoiceString;
 var
-  Scaled: Int64;
+  P: Integer;
 begin
-  { Currency is a scaled Int64 (1/10000); 2 decimals if the last two are 0 }
-  Scaled := PInt64(@AValue)^;
-  if Scaled mod 100 = 0 then
-    Result := Text(LandrixXmlFormatCurrency(AValue, 2))
-  else
-    Result := Text(LandrixXmlFormatCurrency(AValue, 4));
+  Result := Text(LandrixXmlFormatDoubleTrim(AValue, 2, 10));
+  { 3 decimals are written as 4, as before }
+  P := Pos('.', Result);
+  if (P > 0) and (Length(Result) - P = 3) then
+    Result := Result + '0';
 end;
 
 function LandrixEInvoiceQuantityToLexical(AValue: Double): TLandrixEInvoiceString;

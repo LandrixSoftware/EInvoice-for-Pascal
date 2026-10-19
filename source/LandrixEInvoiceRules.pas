@@ -224,8 +224,10 @@ const
     (Key: LandrixEInvoiceRuleStructuredPaymentTerms; Standards: AnyStandard; Syntaxes: [esy_CII];
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BG-X-44';
      Source: 'one payment term in EN 16931; discount terms only in Factur-X EXTENDED'),
-    (Key: LandrixEInvoiceRuleBuyerIDWithGlobalID; Standards: AnyStandard; Syntaxes: [esy_CII];
-     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-46';
+    { CII-SR-450 is in the EN 16931 CII schematron (XRechnung), not in the
+      Factur-X schematron of any profile (ZUGFeRD 2.5.2 example B01 has both) }
+    (Key: LandrixEInvoiceRuleBuyerIDWithGlobalID; Standards: [est_XRechnung]; Syntaxes: [esy_CII];
+     Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-46';
      Source: 'CII-SR-450'),
     (Key: LandrixEInvoiceRuleBuyerIDWithGlobalID; Standards: AnyStandard; Syntaxes: [esy_UBL];
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-46';
