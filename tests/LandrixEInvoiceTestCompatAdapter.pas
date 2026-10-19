@@ -19,7 +19,11 @@
     unchanged;
   - ConsistencyCheck codes, due date correction, load errors, XML text and
     stream behaviour;
-  - the PDF entries and the old names of intf.XRechnungPdfExtract. }
+  - the PDF entries and the old names of intf.XRechnungPdfExtract;
+  - cross test between compilers: Cross.Write saves every scenario to
+    <program folder>/cross/, Cross.Read (only with -cross=<folder>) loads the
+    files another compiler wrote and saves them again byte for byte
+    (tools/build.ps1 runs it in a ring over the toolchains). }
 
 unit LandrixEInvoiceTestCompatAdapter;
 
@@ -580,6 +584,99 @@ begin
   end;
 end;
 
+{ --- cross test between compilers --------------------------------------------- }
+
+function CrossOutDir: string;
+begin
+  Result := ExtractFilePath(ParamStr(0)) + 'cross' + PathDelim;
+end;
+
+{ The folder given with -cross=<folder>, '' if none. }
+function CrossInDir: string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to ParamCount do
+    if Copy(ParamStr(I), 1, 7) = '-cross=' then
+      Result := IncludeTrailingPathDelimiter(Copy(ParamStr(I), 8, MaxInt));
+end;
+
+procedure CrossSink(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  const AFileName: string; AData: Pointer);
+begin
+  TXRechnungInvoiceAdapter.SaveToFile(AInvoice, VersionOfTarget(ATarget), TXRechnungString(CrossOutDir + AFileName));
+  Inc(PInteger(AData)^);
+end;
+
+{ Writes every scenario as the toolchain under test produces it. }
+procedure TestCrossWrite;
+var
+  Files: Integer;
+begin
+  if not DirectoryExists(LocalDir('attachments')) then
+  begin
+    Skip('no local attachments');
+    Exit;
+  end;
+  { tools/build.ps1 clears the folder before each run }
+  Check(ForceDirectories(CrossOutDir), 'cross folder');
+  Files := 0;
+  RunAllScenarios(CrossSink, @Files, LocalDir('attachments'));
+  CheckEquals(111, Files, 'scenario outputs');
+end;
+
+{ Reads what another compiler wrote: detected version, LoadFromFile, saved
+  again it must give the same bytes. }
+procedure TestCrossRead;
+var
+  Dir: string;
+  SR: TSearchRec;
+  Invoice: TLandrixInvoice;
+  Version: TXRechnungVersion;
+  Error: TXRechnungString;
+  Files, Failed: Integer;
+  Original: TLandrixXmlUtf8;
+begin
+  Dir := CrossInDir;
+  Files := 0;
+  Failed := 0;
+  if FindFirst(Dir + '*.xml', faAnyFile, SR) = 0 then
+    try
+      repeat
+        Inc(Files);
+        Version := VersionOfFileName(SR.Name);
+        if TXRechnungValidationHelper.GetXRechnungVersion(TXRechnungString(Dir + SR.Name)) <> Version then
+        begin
+          Inc(Failed);
+          WriteLn('  ', SR.Name, ': version not detected');
+          Continue;
+        end;
+        Invoice := TLandrixInvoice.Create;
+        try
+          if not TXRechnungInvoiceAdapter.LoadFromFile(Invoice, TXRechnungString(Dir + SR.Name), Error) then
+          begin
+            Inc(Failed);
+            WriteLn('  ', SR.Name, ': ', string(Error));
+            Continue;
+          end;
+          Original := LoadFile(Dir + SR.Name);
+          if SaveToBytes(Invoice, Version, nil) <> Original then
+          begin
+            Inc(Failed);
+            WriteLn('  ', SR.Name, ': saved again with different bytes');
+          end;
+        finally
+          Invoice.Free;
+        end;
+      until FindNext(SR) <> 0;
+    finally
+      FindClose(SR);
+    end;
+  CheckEquals(111, Files, 'files in ' + Dir);
+  CheckEquals(0, Failed, IntToStr(Files) + ' files of another compiler, failed');
+end;
+
 procedure Register;
 begin
   RegisterTest('CompatAdapter.GoldenSave', TestGoldenSave);
@@ -589,6 +686,9 @@ begin
   RegisterTest('CompatAdapter.LoadErrors', TestLoadErrors);
   RegisterTest('CompatAdapter.TextAndStream', TestTextAndStream);
   RegisterTest('CompatAdapter.Pdf', TestPdf);
+  RegisterTest('Cross.Write', TestCrossWrite);
+  if CrossInDir <> '' then
+    RegisterTest('Cross.Read', TestCrossRead);
 end;
 
 end.

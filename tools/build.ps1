@@ -28,6 +28,14 @@
   Sets: min (fpc322-linux, fpc322-linux-checked, d6, d13-win32),
         all (everything above plus d6-checked and d13-win64-checked).
 
+  Cross test: every test run writes all scenarios to build/<toolchain>/cross/
+  (test Cross.Write, needs tests/data/local). After the runs, each local
+  toolchain that ran reads the files of the next one in the list
+  (-filter=Cross.Read -cross=<folder>, the last reads the first), so Delphi
+  reads what FPC wrote and the other way round. Before that, the outputs of
+  all these toolchains must be byte-identical (rows "same output"). Needs at
+  least two local toolchains; mac and d13-osxarm64 take no part.
+
 .EXAMPLE
   ./tools/build.ps1                 # minimum set
   ./tools/build.ps1 all
@@ -97,6 +105,8 @@ function Count-OwnDiagnostics([string[]]$Lines) {
 function Invoke-Toolchain([string]$Name) {
   $out = "build/$Name"
   New-Item -ItemType Directory -Force $out | Out-Null
+  # the cross test may only see what this run writes
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/cross"
   $exe = $null
   $log = @()
   $runCmd = $null
@@ -200,6 +210,47 @@ foreach ($t in $expanded) {
   }
 }
 
+# Cross test: each local toolchain reads what the next one wrote.
+$ring = @($results | Where-Object {
+  $_.Build -eq 0 -and $_.Run -eq 0 -and $_.Name -notmatch '^(mac|d13-osxarm64)$' -and
+  (Test-Path "build/$($_.Name)/cross/*.xml")
+})
+if (-not $NoRun -and $ring.Count -lt 2) {
+  Write-Host "cross test skipped: $($ring.Count) local toolchain(s) with cross output" -ForegroundColor Yellow
+}
+if (-not $NoRun -and $ring.Count -ge 2) {
+  # every toolchain must have written the same files
+  $first = $ring[0].Name
+  $reference = @{}
+  Get-ChildItem "build/$first/cross" -Filter *.xml | ForEach-Object { $reference[$_.Name] = (Get-FileHash $_.FullName).Hash }
+  foreach ($member in $ring) {
+    $same = $true
+    $files = @(Get-ChildItem "build/$($member.Name)/cross" -Filter *.xml)
+    if ($files.Count -ne $reference.Count) {
+      Write-Host "  $($member.Name): $($files.Count) files, $first has $($reference.Count)" -ForegroundColor Red
+      $same = $false
+    }
+    foreach ($f in $files) {
+      if ($reference[$f.Name] -ne (Get-FileHash $f.FullName).Hash) {
+        Write-Host "  $($member.Name): $($f.Name) differs from $first" -ForegroundColor Red
+        $same = $false
+      }
+    }
+    $results += @{ Name = "same output $($member.Name)"; Build = 0; Diag = 0; Run = $(if ($same) { 0 } else { 1 }) }
+  }
+  for ($i = 0; $i -lt $ring.Count; $i++) {
+    $reader = $ring[$i].Name
+    $writer = $ring[($i + 1) % $ring.Count].Name
+    Write-Host "=== cross: $reader reads $writer ===" -ForegroundColor Cyan
+    if ($reader -match '-linux') {
+      & wsl.exe -e bash -lc "cd '$WslRoot' && './build/$reader/$ProgramName' '$WslRoot' -filter=Cross.Read '-cross=$WslRoot/build/$writer/cross'" | Out-Host
+    } else {
+      & "build/$reader/$ProgramName.exe" $Root '-filter=Cross.Read' "-cross=$Root\build\$writer\cross" | Out-Host
+    }
+    $results += @{ Name = "cross $reader<-$writer"; Build = 0; Diag = 0; Run = $LASTEXITCODE }
+  }
+}
+
 Write-Host ''
 Write-Host 'Summary' -ForegroundColor Cyan
 $failed = $false
@@ -208,6 +259,6 @@ foreach ($r in $results) {
   if ($r.Build -ne 0) { $state = 'BUILD FAILED'; $failed = $true }
   elseif ($r.Diag -gt 0 -and -not $AllowWarnings) { $state = "WARNINGS ($($r.Diag))"; $failed = $true }
   if ($r.Build -eq 0 -and $null -ne $r.Run -and $r.Run -ne 0) { $state = "TESTS FAILED"; $failed = $true }
-  '{0,-22} {1}' -f $r.Name, $state | Write-Host
+  '{0,-46} {1}' -f $r.Name, $state | Write-Host
 }
 if ($failed) { exit 1 } else { exit 0 }

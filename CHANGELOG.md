@@ -154,5 +154,8 @@ Supported invoice standards are documented per release.
 - `TLandrixEInvoiceStringList`: list of `TLandrixEInvoiceString` (UTF-16 on every compiler), used
   for repeated plain text such as `cbc:Note`.
 - Framework-free console test runner `tests/LandrixEInvoiceTests.dpr`.
-- `tools/build.ps1`: builds and runs the tests with the local toolchains.
+- `tools/build.ps1`: builds and runs the tests with the local toolchains. After the runs, each
+  local toolchain reads the scenario outputs the next one wrote (cross test: Delphi reads what
+  Free Pascal wrote and the other way round, Ansi and Unicode string models included), and the
+  outputs of all these toolchains must be byte-identical.
 - CI with Free Pascal 3.2.2 on Linux (manual start only for now).
