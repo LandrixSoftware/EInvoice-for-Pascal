@@ -210,6 +210,11 @@ Supported invoice standards are documented per release.
   from the model declarations: comparison of all 206 fields of `TLandrixInvoice`, a canonical
   dump, a fill procedure and one mutation per leaf; tests show that every leaf is detected and
   that `Clear` resets every field.
+- `tools/testdata/xr-compare.py`: independent oracle for the sweep. It turns sources and outputs
+  into the syntax-neutral XR form of the KoSIT XRechnung visualization (now pinned in
+  `addons/java-tools/tools.json`) and compares them business term by business term, also for
+  XRechnung written in the other syntax (`build/<toolchain>/sweep-cross/`); known differences in
+  `tests/data/xr-exceptions.txt`. `tools/build.ps1 -Validate` runs it.
 - Card payments: codes 48 and 55 are written as payment card (BG-18) like 54 (BR-DE-24).
 - CII: BT-84 without IBAN is read from and written to `ram:ProprietaryID`; BT-86 is written next
   to a direct debit; BT-149 is read from the gross price when the net price has none.
@@ -227,3 +232,6 @@ Supported invoice standards are documented per release.
   currency; `TaxCurrencyCode` stays empty then.
 - CII-SR-450 (buyer identifier and global identifier not together) applies to XRechnung CII only;
   the Factur-X schematron has no such rule.
+- UBL: a contact department without a person name is written as the contact point
+  (`cac:Contact/cbc:Name`, BT-41/BT-56) instead of being left out; XRechnung requires BT-41
+  (BR-DE-5), and a valid CII invoice whose seller contact is a department became invalid UBL.

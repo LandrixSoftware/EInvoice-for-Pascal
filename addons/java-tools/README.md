@@ -19,6 +19,7 @@ platform, into the same folder if it is shared.
 | `validator-configuration-xrechnung/` | KoSIT configuration for XRechnung 3.0.2 |
 | `validator-configuration-bis/` | KoSIT configuration for Peppol BIS Billing 3.0 |
 | `validator-configuration-zugferd/` | configuration for ZUGFeRD 2.5.2 / Factur-X 1.09.2 |
+| `xrechnung-visualization/` | KoSIT XRechnung visualization 2026-01-31; its `xsl/*-xr.xsl` turn UBL and CII into the syntax-neutral XR form (`tools/testdata/xr-compare.py`) |
 | `jre/<os>-<arch>/` | Eclipse Temurin 21 JRE: `windows-x64`, `windows-aarch64`, `linux-x64`, `linux-aarch64`, `macos-aarch64` |
 | `download/` | downloaded files (cache) |
 

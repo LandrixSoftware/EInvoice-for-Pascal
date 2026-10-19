@@ -1004,12 +1004,23 @@ begin
     LegalEntity.CompanyID := UBLID(AParty.CompanyID, AParty.CompanyIDSchemeID);
   if AIsSeller then
     LegalEntity.CompanyLegalForm := Txt(AParty.AdditionalLegalInformationSeller);
-  ATarget.Contact.Name := AParty.ContactName;
+  { BT-41/BT-56 is the contact point: without a person name the department is
+    it (as in CII, where it is the alternative to the name; XRechnung needs
+    BT-41, BR-DE-5); next to a name UBL has no place for it.
+    DE: BT-41/BT-56 ist die Kontaktstelle: ohne Personennamen ist es die
+    Abteilung (wie in CII, wo sie die Alternative zum Namen ist; XRechnung
+    verlangt BT-41, BR-DE-5); neben einem Namen hat UBL keinen Platz dafuer. }
+  if AParty.ContactName <> '' then
+  begin
+    ATarget.Contact.Name := AParty.ContactName;
+    if AParty.ContactDepartment <> '' then
+      Permit(LandrixEInvoiceRuleContactDepartment, APath + '/cac:Contact', 'contact department ' +
+        AParty.ContactDepartment);
+  end
+  else
+    ATarget.Contact.Name := AParty.ContactDepartment;
   ATarget.Contact.Telephone := AParty.ContactTelephone;
   ATarget.Contact.ElectronicMail := AParty.ContactElectronicMail;
-  if AParty.ContactDepartment <> '' then
-    Permit(LandrixEInvoiceRuleContactDepartment, APath + '/cac:Contact', 'contact department ' +
-      AParty.ContactDepartment);
 end;
 
 { BG-10 payee (cac:PayeeParty: BT-60 identifier, BT-59 name, BT-61 legal

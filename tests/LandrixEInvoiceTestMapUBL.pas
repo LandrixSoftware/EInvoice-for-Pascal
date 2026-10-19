@@ -813,15 +813,15 @@ begin
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:Delivery'), 'deliver to contact left out');
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:PayeeParty'), 'payee address left out');
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:TaxRepresentativeParty'), 'tax representative contact left out');
-    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:AccountingCustomerParty/cac:Party/cac:Contact'),
-      'contact department left out');
+    CheckEquals(0, CountKind(D, edk_NotAllowed, '/cac:AccountingCustomerParty/cac:Party/cac:Contact'),
+      'department without person name is the contact point');
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:PaymentTerms/cbc:Note'), 'text of the discount level left out');
     Check(Pos('<cbc:TaxPointDate>2026-10-01</cbc:TaxPointDate>', Text) > 0, 'BT-7 written');
     Check(Pos('<cbc:ID>LOC-7</cbc:ID>', Text) > 0, 'BT-71 without scheme');
     Check(Pos('<cbc:TaxAmount currencyID="SEK">215.50</cbc:TaxAmount>', Text) > 0, 'BT-111 written');
     Check(Pos('Payee City', Text) = 0, 'no payee address');
     Check(Pos('Invoicee', Text) = 0, 'no invoicee');
-    Check(Pos('Purchasing', Text) = 0, 'no contact department');
+    Check(Pos('<cbc:Name>Purchasing</cbc:Name>', Text) > 0, 'department as contact point (BT-56)');
     Check(not D.HasErrors, 'no errors: ' + string(D.ToText));
     D.Clear;
     ReadAndMap(Xml, Back, D, Root);

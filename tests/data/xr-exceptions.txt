@@ -1,0 +1,68 @@
+# XR oracle exceptions (tools/testdata/xr-compare.py): sweep output file<TAB>finding prefix.
+# Every line needs a reason in the comment above it; an unused line is an error.
+
+# The CII writer does not write the XRechnung extension identifier (backlog).
+kosit-xr302_extension_04.05a-INVOICE_uncefact-cii-30x.xml	lost BG-2[1]/BT-24 =
+kosit-xr302_extension_04.05a-INVOICE_uncefact-cii-30x.xml	added BG-2[1]/BT-24 =
+# BT-29 is 0..n, the model holds one identifier and one global identifier (known deviation until
+# Phase 4).
+kosit-xr302_standard_03.01a-INVOICE_ubl-ubl-30x.xml	lost BG-4[1]/BT-29 =
+kosit-xr302_standard_03.01a-INVOICE_uncefact-cii-30x.xml	lost BG-4[1]/BT-29 =
+kosit-xr302_standard_03.07a-INVOICE_uncefact-cii-30x.xml	lost BG-4[1]/BT-29 =
+kosit-xr302_technical-cases_cius_01.01_comprehensive_test_uncefact-cii-30x.xml	lost BG-4[1]/BT-29 =
+# Direct debit with a payee account besides the debited account: the model holds one account per
+# payment means (backlog); the BIC is written, but XR shows BT-86 only inside BG-17.
+zugferd252_X01_01_600700800900_Dauermietrechnung_unbefristet_-ciiextended-25.xml	lost BG-16[1]/BG-17[1]/
+zugferd252_X01_02_600700801000_NK_Abrechnung_zur_Dauermietrechnung-ciiextended-25.xml	lost BG-16[1]/BG-17[1]/
+zugferd252_X01_03_7600700800900_Dauermietrechnung_KorrekturRE_-ciiextended-25.xml	lost BG-16[1]/BG-17[1]/
+# The writer derives the due date of a cash discount level from its basis date and days
+# (Factur-X EXTENDED structured terms); the source states only the days.
+zugferd252_X04_01_Sammelrechnung_3_Bestellungen-ciiextended-25.xml	lost BT-9 =
+zugferd252_X04_01_Sammelrechnung_3_Bestellungen-ciiextended-25.xml	added BT-9 =
+zugferd252_X08_01_Herkunftsland_Zolltarif-Nummer__HS___UNSPSC__TST___eCl_ss__STQ-ciiextended-25.xml	lost BT-9 =
+zugferd252_X08_01_Herkunftsland_Zolltarif-Nummer__HS___UNSPSC__TST___eCl_ss__STQ-ciiextended-25.xml	added BT-9 =
+zugferd252_X11_01_Kostenrechnung-ciiextended-25.xml	added BT-9 =
+zugferd252_X19_01_Warenrechnung-ciiextended-25.xml	added BT-9 =
+# Two payment terms without discount terms: the model holds one net term and up to three cash
+# discount levels; the second term is reported as not mapped.
+zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	lost BT-20 =
+zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	lost BT-9 =
+zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	added BT-20 =
+zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	added BT-9 =
+# Several discounts on the gross price (EXTENDED): the model holds one (plan, Phase 2 step 1).
+zugferd252_X14_01_Rechnungskorrektur-ciiextended-25.xml	lost BG-25[2]/BG-29[1]/BT-147 =
+zugferd252_X19_01_Warenrechnung-ciiextended-25.xml	lost BG-25[3]/BG-29[1]/BT-147 =
+# Two invoiced object identifiers (BT-18) in EXTENDED; only the first is written (backlog).
+zugferd252_X14_01_Rechnungskorrektur-ciiextended-25.xml	lost BT-18 =
+# The sources carry person name and department together (CII-SR-465, KoSIT rejects them); the
+# writer keeps the person name.
+zugferd252_XRECHNUNG_Einfach-cii-30x.xml	lost BG-4[1]/BG-6[1]/BT-41 =
+zugferd252_XRECHNUNG_Elektron-cii-30x.xml	lost BG-4[1]/BG-6[1]/BT-41 =
+zugferd252_XRECHNUNG_Reisekostenabrechnung-cii-30x.xml	lost BG-4[1]/BG-6[1]/BT-41 =
+
+# --- across syntaxes (sweep-cross: XRechnung written in the other syntax) ---
+# XRechnung CII has no sub lines (BG-DEX-01) and no third party payments (BG-DEX-09); the CII
+# writer does not write the extension identifier (backlog).
+cross kosit-xr302_extension_04.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+cross kosit-xr302_extension_04.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
+cross kosit-xr302_extension_04.02a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+cross kosit-xr302_extension_04.02a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
+cross kosit-xr302_extension_04.03a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+cross kosit-xr302_extension_04.03a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
+cross kosit-xr302_extension_04.04a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+cross kosit-xr302_extension_04.04a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
+cross kosit-xr302_extension_05.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
+cross kosit-xr302_extension_05.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-DEX-09[
+# XRechnung CII carries one preceding invoice reference (BG-3).
+cross kosit-xr302_extension_04.03a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-3[
+cross kosit-xr302_technical-cases_cius_01.01_comprehensive_test_ubl-ubl-30x-x-cii-30x.xml	* BG-3[
+# BT-29 is 0..n, the model holds one identifier and one global identifier.
+cross kosit-xr302_extension_04.05a-INVOICE_uncefact-cii-30x-x-ubl-30x.xml	lost BG-4[1]/BT-29 =
+cross kosit-xr302_standard_03.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-4[1]/BT-29 =
+cross kosit-xr302_standard_03.01a-INVOICE_uncefact-cii-30x-x-ubl-30x.xml	lost BG-4[1]/BT-29 =
+cross kosit-xr302_standard_03.07a-INVOICE_uncefact-cii-30x-x-ubl-30x.xml	lost BG-4[1]/BT-29 =
+cross kosit-xr302_technical-cases_cius_01.01_comprehensive_test_uncefact-cii-30x-x-ubl-30x.xml	lost BG-4[1]/BT-29 =
+# UBL has no department next to a person name; these sources carry both (CII-SR-465).
+cross zugferd252_XRECHNUNG_Einfach-cii-30x-x-ubl-30x.xml	lost BG-4[1]/BG-6[1]/BT-41 =
+cross zugferd252_XRECHNUNG_Elektron-cii-30x-x-ubl-30x.xml	lost BG-4[1]/BG-6[1]/BT-41 =
+cross zugferd252_XRECHNUNG_Reisekostenabrechnung-cii-30x-x-ubl-30x.xml	lost BG-4[1]/BG-6[1]/BT-41 =

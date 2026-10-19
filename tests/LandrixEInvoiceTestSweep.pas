@@ -89,6 +89,14 @@ begin
   Result := ExtractFilePath(ParamStr(0)) + 'sweep-source' + PathDelim;
 end;
 
+{ XRechnung sources written in the other syntax, named '<source without
+  .xml>-x<suffix of the other syntax>',
+  for the XR comparison across syntaxes (tools/testdata/xr-compare.py). }
+function CrossDir: string;
+begin
+  Result := ExtractFilePath(ParamStr(0)) + 'sweep-cross' + PathDelim;
+end;
+
 function LoadFile(const AFileName: string): TLandrixXmlUtf8;
 var
   S: TFileStream;
@@ -324,7 +332,9 @@ var
   A, B: TLandrixInvoice;
   D: TLandrixEInvoiceDiagnostics;
   Findings, Diffs: TStringList;
-  Spec, Again: TLandrixEInvoiceSpec;
+  Spec, Again, CrossSpec: TLandrixEInvoiceSpec;
+  Other: TLandrixEInvoiceSyntax;
+  K: TLandrixEInvoiceListIndex;
   Ext, Complete: Boolean;
   CustomizationID: TLandrixEInvoiceString;
   I: Integer;
@@ -363,6 +373,25 @@ begin
         CompareInvoices(A, B, Diffs);
         for I := 0 to Diffs.Count - 1 do
           Findings.Add('compare ' + Diffs[I]);
+        if Spec.Target.Standard = est_XRechnung then
+        begin
+          if Spec.Target.Syntax = esy_UBL then
+            Other := esy_CII
+          else
+            Other := esy_UBL;
+          if LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', Other), CrossSpec) then
+          begin
+            D.Clear;
+            SaveFile(CrossDir + ACorpus + '_' + ChangeFileExt(AName, '') + ChangeFileExt(Suffix(Spec), '') + '-x' +
+              Suffix(CrossSpec), WriteModel(A, CrossSpec, D));
+            { content the other syntax lacks is the XR comparison's business; errors
+              (missing required content) are findings here }
+            for K := 0 to D.Count - 1 do
+              if D[K].Severity = eds_Error then
+                Findings.Add('cross ' + string(LandrixEInvoiceDiagnosticKindToStr(D[K].Kind)) + ' ' +
+                  string(D[K].Path));
+          end;
+        end;
       end;
     except
       on E: Exception do
@@ -397,7 +426,8 @@ begin
     Skip('no local sweep corpora (tools/testdata/sync-local.py) in ' + LocalSweepDir);
     Exit;
   end;
-  Check(ForceDirectories(OutDir) and ForceDirectories(SourceDir), 'sweep output folders');
+  Check(ForceDirectories(OutDir) and ForceDirectories(SourceDir) and ForceDirectories(CrossDir),
+    'sweep output folders');
   Exceptions := TObjectList.Create;
   Manifest := TStringList.Create;
   try

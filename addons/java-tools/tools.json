@@ -33,6 +33,14 @@
       "unpack": true
     },
     {
+      "name": "xrechnung-visualization",
+      "url": "https://github.com/itplr-kosit/xrechnung-visualization/releases/download/v2026-01-31/xrechnung-3.0.2-visualization-2026-01-31.zip",
+      "file": "xrechnung-3.0.2-visualization-2026-01-31.zip",
+      "sha256": "af9f0be80db3035d9beaeee4c066bdc7a3ccbec2e25a428c460c25b9f894b383",
+      "dir": "xrechnung-visualization",
+      "unpack": true
+    },
+    {
       "name": "jre",
       "platform": "windows-x64",
       "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",

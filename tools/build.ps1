@@ -39,7 +39,9 @@
   -Validate: afterwards the KoSIT validator checks the cross output of the
   first local toolchain and its reduced Factur-X profiles in
   build/<toolchain>/profiles/ (test CIIProfiles.WriteScenarios)
-  (tools/validate.ps1; tools from addons/java-tools/install-tools.ps1).
+  (tools/validate.ps1; tools from addons/java-tools/install-tools.ps1),
+  and tools/testdata/xr-compare.py compares the sweep sources and outputs
+  in the KoSIT XR form (test Sweep.Official, local corpora needed).
 
 .EXAMPLE
   ./tools/build.ps1                 # minimum set
@@ -116,6 +118,7 @@ function Invoke-Toolchain([string]$Name) {
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/profiles"
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep"
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep-source"
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$out/sweep-cross"
   $exe = $null
   $log = @()
   $runCmd = $null
@@ -284,6 +287,18 @@ if ($Validate -and -not $NoRun) {
         $code = 1
       }
       $results += @{ Name = "KoSIT validation $($source.Name)/$folder"; Build = 0; Diag = 0; Run = $code }
+    }
+    # independent oracle: sweep sources and outputs in the KoSIT XR form
+    if (Test-Path "build/$($source.Name)/sweep/*.xml") {
+      Write-Host "=== XR comparison of $($source.Name)/sweep ===" -ForegroundColor Cyan
+      try {
+        & python (Join-Path $PSScriptRoot 'testdata/xr-compare.py') --toolchain $source.Name | Out-Host
+        $code = $LASTEXITCODE
+      } catch {
+        Write-Host "  $_" -ForegroundColor Red
+        $code = 1
+      }
+      $results += @{ Name = "XR comparison $($source.Name)/sweep"; Build = 0; Diag = 0; Run = $code }
     }
   }
 }
