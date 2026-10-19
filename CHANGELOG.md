@@ -158,4 +158,3 @@ Supported invoice standards are documented per release.
   local toolchain reads the scenario outputs the next one wrote (cross test: Delphi reads what
   Free Pascal wrote and the other way round, Ansi and Unicode string models included), and the
   outputs of all these toolchains must be byte-identical.
-- CI with Free Pascal 3.2.2 on Linux (manual start only for now).

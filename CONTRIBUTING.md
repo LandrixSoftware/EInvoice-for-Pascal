@@ -47,7 +47,7 @@ All library code must compile unchanged with Delphi 6 through Delphi 13 and Free
 * No dependency on the current locale. Numbers and dates are converted with the locale-independent helpers.
 * Source files contain only ASCII characters; use `#$xx` constants for other characters.
 
-`tools/check-forbidden.py` checks these rules; it also runs in CI.
+`tools/check-forbidden.py` checks these rules.
 
 Where differences between Delphi and Free Pascal are required, use conditional compilation in the central include file and keep the common implementation shared.
 
