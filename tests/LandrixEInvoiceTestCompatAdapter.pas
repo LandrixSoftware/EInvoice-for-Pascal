@@ -18,7 +18,8 @@
   - every golden file is detected as its version, loaded and saved again
     unchanged;
   - ConsistencyCheck codes, due date correction, load errors, XML text and
-    stream behaviour. }
+    stream behaviour;
+  - the PDF entries and the old names of intf.XRechnungPdfExtract. }
 
 unit LandrixEInvoiceTestCompatAdapter;
 
@@ -40,7 +41,9 @@ uses
   LandrixEInvoiceInvoice,
   LandrixEInvoiceSpecs,
   LandrixEInvoiceCompatXRechnungAdapter,
+  LandrixEInvoiceCompatXRechnungPdf,
   LandrixEInvoiceTestFramework,
+  LandrixEInvoiceTestPdf,
   LandrixEInvoiceTestXmlCompare,
   LandrixEInvoiceTestScenarios;
 
@@ -75,8 +78,9 @@ begin
     TXRechnungInvoiceAdapter.SaveToStream(AInvoice, AVersion, M, ADiagnostics);
     Result := '';
     SetLength(Result, Integer(M.Size));
+    M.Position := 0;
     if M.Size > 0 then
-      Move(M.Memory^, PAnsiChar(Result)^, Integer(M.Size));
+      M.ReadBuffer(PAnsiChar(Result)^, Integer(M.Size));
   finally
     M.Free;
   end;
@@ -457,6 +461,125 @@ begin
   end;
 end;
 
+function BytesStream(const S: AnsiString): TMemoryStream;
+begin
+  Result := TMemoryStream.Create;
+  if S <> '' then
+    Result.WriteBuffer(PAnsiChar(S)^, Length(S));
+  Result.Position := 0;
+end;
+
+{ An invoice saved through the facade, embedded in a PDF, is read back
+  through LoadFromPdfStream/File and through LoadFromStream/File with
+  _ProcessPdfFiles, detected by GetXRechnungVersion, and extracted through
+  the old names of intf.XRechnungPdfExtract. }
+procedure TestPdf;
+var
+  Invoice, Back: TLandrixInvoice;
+  Xml: TLandrixXmlUtf8;
+  Pdf: AnsiString;
+  M: TMemoryStream;
+  Error, Name: TXRechnungString;
+  FileName: string;
+  F: TFileStream;
+  Bytes: TXRechnungPdfBytes;
+  Info: TXRechnungPdfExtractInfo;
+  List: TXRechnungPdfAttachmentList;
+  I: Integer;
+begin
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    FillValid(Invoice);
+    Xml := SaveToBytes(Invoice, ZUGFeRDEN16931Version_250, nil);
+    Pdf := '';
+    SetLength(Pdf, Length(Xml));
+    for I := 1 to Length(Xml) do
+      Pdf[I] := Xml[I];
+    Pdf := BuildInvoicePdf(Pdf);
+
+    M := BytesStream(Pdf);
+    try
+      Check(TXRechnungInvoiceAdapter.LoadFromPdfStream(Back, M, Error, Name), 'from PDF stream: ' + string(Error));
+      Check(Name = 'factur-x.xml', 'attachment name');
+      CheckEqualsUtf8(Xml, SaveToBytes(Back, ZUGFeRDEN16931Version_250, nil), 'saved again unchanged');
+
+      M.Position := 0;
+      Check(not TXRechnungInvoiceAdapter.LoadFromStream(Back, M, Error), 'PDF without _ProcessPdfFiles');
+      M.Position := 0;
+      Check(TXRechnungInvoiceAdapter.LoadFromStream(Back, M, Error, True), 'PDF with _ProcessPdfFiles: ' + string(Error));
+
+      M.Position := 0;
+      Check(TXRechnungValidationHelper.GetXRechnungVersion(M) = XRechnungVersion_Unknown, 'version without flag');
+      Check(TXRechnungValidationHelper.GetXRechnungVersion(M, True) = ZUGFeRDEN16931Version_250, 'version of the PDF');
+      CheckEquals(0, Integer(M.Position), 'position kept');
+
+      M.Position := 0;
+      Check(TXRechnungPdfExtractor.ExtractInvoiceFromStream(M, Bytes, Name, Info), 'old names: ' + string(Info.Error));
+      CheckEquals(Length(Xml), Integer(Length(Bytes)), 'old names: length');
+      for I := 0 to Integer(Length(Bytes)) - 1 do
+        if Bytes[I] <> Ord(Xml[I + 1]) then
+        begin
+          Fail('old names: byte ' + IntToStr(I));
+          Break;
+        end;
+      M.Position := 0;
+      List := TXRechnungPdfAttachmentList.Create;
+      try
+        Check(TXRechnungPdfExtractor.ExtractAllFromStream(M, List, Info), 'old names: all');
+        Check((List.Count = 1) and (List[0].Kind = pakInvoice), 'old names: kind');
+        CheckEquals(0, TXRechnungPdfExtractor.FindInvoiceIndex(List), 'old names: index');
+      finally
+        List.Free;
+      end;
+    finally
+      M.Free;
+    end;
+
+    FileName := ExtractFilePath(ParamStr(0)) + 'compat-pdf-test.pdf';
+    F := TFileStream.Create(FileName, fmCreate);
+    try
+      F.WriteBuffer(PAnsiChar(Pdf)^, Length(Pdf));
+    finally
+      F.Free;
+    end;
+    { the file stays in the build folder and is overwritten by the next run }
+    begin
+      Check(TXRechnungInvoiceAdapter.LoadFromPdfFile(Back, TXRechnungString(FileName), Error, Name),
+        'from PDF file: ' + string(Error));
+      Check(TXRechnungInvoiceAdapter.LoadFromFile(Back, TXRechnungString(FileName), Error, True),
+        'file with _ProcessPdfFiles: ' + string(Error));
+      Check(not TXRechnungInvoiceAdapter.LoadFromFile(Back, TXRechnungString(FileName), Error),
+        'file without _ProcessPdfFiles');
+      Check(TXRechnungValidationHelper.GetXRechnungVersion(TXRechnungString(FileName), True) =
+        ZUGFeRDEN16931Version_250, 'version of the PDF file');
+      Check(TXRechnungPdfExtractor.IsPdfFile(TXRechnungString(FileName)), 'old names: PDF file');
+      Check(TXRechnungPdfExtractor.ExtractInvoiceFromFile(TXRechnungString(FileName), Bytes, Name, Info),
+        'old names: from file');
+    end;
+    Check(not TXRechnungInvoiceAdapter.LoadFromPdfFile(Back, 'no-such-file.pdf', Error, Name), 'missing PDF');
+    Check(Pos('not found', string(Error)) > 0, 'missing PDF message');
+
+    M := BytesStream(BuildInvoicePdf('<Order/>'));
+    try
+      Check(not TXRechnungInvoiceAdapter.LoadFromPdfStream(Back, M, Error, Name), 'PDF without invoice');
+      Check(Pos('No embedded invoice', string(Error)) > 0, 'message: ' + string(Error));
+    finally
+      M.Free;
+    end;
+    M := BytesStream(BuildInvoicePdf('<rsm:CrossIndustryInvoice xmlns:rsm="urn:wrong"/>'));
+    try
+      Check(not TXRechnungInvoiceAdapter.LoadFromPdfStream(Back, M, Error, Name), 'unreadable embedded invoice');
+      Check(Pos('Embedded file factur-x.xml', string(Error)) > 0, 'message: ' + string(Error));
+    finally
+      M.Free;
+    end;
+  finally
+    Back.Free;
+    Invoice.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('CompatAdapter.GoldenSave', TestGoldenSave);
@@ -465,6 +588,7 @@ begin
   RegisterTest('CompatAdapter.CorrectDueDate', TestCorrectDueDate);
   RegisterTest('CompatAdapter.LoadErrors', TestLoadErrors);
   RegisterTest('CompatAdapter.TextAndStream', TestTextAndStream);
+  RegisterTest('CompatAdapter.Pdf', TestPdf);
 end;
 
 end.

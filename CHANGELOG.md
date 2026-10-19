@@ -118,8 +118,28 @@ Supported invoice standards are documented per release.
   compile against both units and produce output equal to the 111 golden files. Differences: the
   `cc...` codes are unit constants (as in the Delphi 6 version), Save and Load take an optional
   last parameter `_Diagnostics`, Load returns False only for documents that cannot be read, on
-  Delphi 6 to 2007 `SaveToXMLStr` returns UTF-8 bytes, no `IXMLDocument` overloads, no Java
-  validation and no PDF entries yet; messages are English.
+  Delphi 6 to 2007 `SaveToXMLStr` returns UTF-8 bytes, no `IXMLDocument` overloads and no Java
+  validation; messages are English. The PDF entries of the old facade are back:
+  `LoadFromPdfStream`, `LoadFromPdfFile` and `_ProcessPdfFiles` on `LoadFromStream`,
+  `LoadFromFile` and `GetXRechnungVersion`; in `LoadFromStream` and `LoadFromFile`
+  `_Diagnostics` follows `_ProcessPdfFiles`, so calls passing diagnostics as fourth argument
+  need `False` in between.
+- `LandrixEInvoicePdf`: extraction of the embedded invoice and of all embedded files from a
+  ZUGFeRD, Factur-X or XRechnung PDF in plain Pascal (`TLandrixEInvoicePdfExtractor`,
+  `TLandrixEInvoicePdfAttachment`, `TLandrixEInvoicePdfAttachmentList`,
+  `TLandrixEInvoicePdfExtractInfo`), ported from XRechnung-for-Delphi and now available on
+  Delphi 6 to 2007 as well. It follows the xref chain (incremental updates, hybrid files, object
+  streams), rebuilds a broken object table by a scan, decodes FlateDecode with an own inflate
+  (no compiler zlib), LZWDecode, ASCIIHexDecode, ASCII85Decode and RunLengthDecode with
+  predictors, and reads RC4-encrypted files with an empty user password. Damaged or hostile
+  input gives False with an English `Info.Error`; embedded files left out because a filter
+  failed or a size limit was reached are counted in `Info.SkippedAttachments` with
+  `Info.Warning` (the old unit left them out silently). Attachment data and the extracted
+  invoice are streams instead of `TBytes`; file names in UTF-8 text strings (PDF 2.0) and the
+  PDFDocEncoding characters outside Latin-1 are decoded.
+- `LandrixEInvoiceCompatXRechnungPdf`: the old names of `intf.XRechnungPdfExtract`
+  (`TXRechnungPdfExtractor` with `TBytes` results, `TXRechnungPdfAttachmentList`,
+  `pakInvoice` ...); `TXRechnungPdfAttachment.Data` is a `TMemoryStream`.
 - `LandrixEInvoiceLexical`: locale-independent conversion between typed values and the lexical
   text of the syntax models with fixed rules per business term (amounts 2 decimals, prices 2 or 4,
   quantities 4, base quantities up to 6, percentages 2; UBL and CII dates).

@@ -22,14 +22,17 @@
   Differences to the old unit:
   - The ConsistencyCheck codes (ccOK ...) are unit constants, as in the
     Delphi 6 version; TXRechnungInvoiceAdapter.ccOK does not compile.
-  - Save and Load take an optional last parameter ADiagnostics that receives
-    the messages of mapping, reader and writer. Save writes what the mapping
-    produced, as before; Load returns False only when the document cannot
-    be read (not well-formed, unknown format, exception).
+  - Save and Load take an optional last parameter _Diagnostics that
+    receives the messages of mapping, reader and writer. Save writes what
+    the mapping produced, as before; Load returns False only when the
+    document cannot be read (not well-formed, unknown format, exception).
+    In LoadFromStream and LoadFromFile it follows _ProcessPdfFiles, so old
+    calls with that flag compile unchanged.
   - On Delphi 6 to 2007 SaveToXMLStr returns UTF-8 bytes (as the XML
     declaration says) and LoadFromXMLStr takes bytes in the encoding of the
     declaration.
-  - No IXMLDocument overloads, no Java validation, no PDF entries yet.
+  - No IXMLDocument overloads, no Java validation. The PDF extraction is
+    LandrixEInvoicePdf (old names: LandrixEInvoiceCompatXRechnungPdf).
   - Messages are English.
   - As before, SaveToFile writes nothing for a file name without folder.
     On FPC file names pass the RTL as AnsiString: characters outside the
@@ -46,16 +49,19 @@
   Unterschiede zur alten Unit:
   - Die ConsistencyCheck-Codes (ccOK ...) sind Unit-Konstanten wie in der
     Delphi-6-Fassung; TXRechnungInvoiceAdapter.ccOK kompiliert nicht.
-  - Save und Load haben einen optionalen letzten Parameter ADiagnostics,
+  - Save und Load haben einen optionalen letzten Parameter _Diagnostics,
     der die Meldungen von Abbildung, Leser und Schreiber aufnimmt. Save
     schreibt wie bisher, was die Abbildung ergibt; Load liefert False nur,
     wenn das Dokument nicht gelesen werden kann (nicht wohlgeformt,
-    unbekanntes Format, Ausnahme).
+    unbekanntes Format, Ausnahme). In LoadFromStream und LoadFromFile folgt
+    er auf _ProcessPdfFiles, damit alte Aufrufe mit diesem Schalter
+    unveraendert kompilieren.
   - Unter Delphi 6 bis 2007 liefert SaveToXMLStr UTF-8-Bytes (wie die
     XML-Deklaration sagt), LoadFromXMLStr nimmt Bytes in der Kodierung der
     Deklaration.
-  - Keine IXMLDocument-Ueberladungen, keine Java-Validierung, noch keine
-    PDF-Einstiege.
+  - Keine IXMLDocument-Ueberladungen, keine Java-Validierung. Die
+    PDF-Extraktion ist LandrixEInvoicePdf (alte Namen:
+    LandrixEInvoiceCompatXRechnungPdf).
   - Meldungen sind englisch.
   - Wie bisher schreibt SaveToFile nichts fuer einen Dateinamen ohne
     Ordner. Unter FPC gehen Dateinamen als AnsiString an die RTL: Zeichen
@@ -167,8 +173,13 @@ type
       erhalten) oder eines XML-Texts, nach Wurzelelement und
       Spezifikationskennung (BT-24) wie in XRechnung-for-Delphi;
       XRechnungVersion_Unknown, wenn nicht lesbar. }
-    class function GetXRechnungVersion(const _Filename: TXRechnungString): TXRechnungVersion; overload;
-    class function GetXRechnungVersion(_Stream: TStream): TXRechnungVersion; overload;
+    { With _ProcessPdfFiles a ZUGFeRD or Factur-X PDF is recognized and the
+      version of its embedded invoice returned.
+      DE: Mit _ProcessPdfFiles wird ein ZUGFeRD- oder Factur-X-PDF erkannt
+      und die Version seiner eingebetteten Rechnung geliefert. }
+    class function GetXRechnungVersion(const _Filename: TXRechnungString;
+      _ProcessPdfFiles: Boolean = False): TXRechnungVersion; overload;
+    class function GetXRechnungVersion(_Stream: TStream; _ProcessPdfFiles: Boolean = False): TXRechnungVersion; overload;
     class function GetXRechnungVersionFromString(const _XML: TXRechnungString): TXRechnungVersion;
   end;
 
@@ -210,12 +221,30 @@ type
       CII (jede bekannte Wurzel, auch mit unbekannter
       Spezifikationskennung). False mit _Error, wenn das Dokument nicht
       gelesen werden kann. }
+    { With _ProcessPdfFiles a PDF (recognized by %PDF- at the start) is read
+      through LoadFromPdfStream / LoadFromPdfFile.
+      DE: Mit _ProcessPdfFiles wird ein PDF (erkannt an %PDF- am Anfang)
+      ueber LoadFromPdfStream / LoadFromPdfFile gelesen. }
     class function LoadFromStream(_Invoice: TLandrixInvoice; _Stream: TStream; out _Error: TXRechnungString;
-      _Diagnostics: TLandrixEInvoiceDiagnostics = nil): Boolean;
+      _ProcessPdfFiles: Boolean = False; _Diagnostics: TLandrixEInvoiceDiagnostics = nil): Boolean;
     class function LoadFromFile(_Invoice: TLandrixInvoice; const _Filename: TXRechnungString;
-      out _Error: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics = nil): Boolean;
+      out _Error: TXRechnungString; _ProcessPdfFiles: Boolean = False;
+      _Diagnostics: TLandrixEInvoiceDiagnostics = nil): Boolean;
     class function LoadFromXMLStr(_Invoice: TLandrixInvoice; const _XML: TXRechnungString;
       out _Error: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics = nil): Boolean;
+
+    { Read the invoice embedded in a ZUGFeRD or Factur-X PDF (see
+      LandrixEInvoicePdf); _AttachmentName is the name of the embedded file,
+      e.g. factur-x.xml. The stream is read from its position to the end.
+      DE: Lesen die in ein ZUGFeRD- oder Factur-X-PDF eingebettete Rechnung
+      (siehe LandrixEInvoicePdf); _AttachmentName ist der Name der
+      eingebetteten Datei, z. B. factur-x.xml. Der Datenstrom wird ab seiner
+      Position bis zum Ende gelesen. }
+    class function LoadFromPdfStream(_Invoice: TLandrixInvoice; _Stream: TStream; out _Error: TXRechnungString;
+      out _AttachmentName: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics = nil): Boolean;
+    class function LoadFromPdfFile(_Invoice: TLandrixInvoice; const _Filename: TXRechnungString;
+      out _Error: TXRechnungString; out _AttachmentName: TXRechnungString;
+      _Diagnostics: TLandrixEInvoiceDiagnostics = nil): Boolean;
   end;
 
 implementation
@@ -238,6 +267,7 @@ uses
   LandrixEInvoiceUBL,
   LandrixEInvoiceUBLReader,
   LandrixEInvoiceUBLWriter,
+  LandrixEInvoicePdf,
   LandrixEInvoiceMapUBL;
 
 { --- helpers ---------------------------------------------------------------- }
@@ -512,13 +542,30 @@ end;
 
 { --- TXRechnungValidationHelper --------------------------------------------- }
 
-class function TXRechnungValidationHelper.GetXRechnungVersion(const _Filename: TXRechnungString): TXRechnungVersion;
+class function TXRechnungValidationHelper.GetXRechnungVersion(const _Filename: TXRechnungString;
+  _ProcessPdfFiles: Boolean): TXRechnungVersion;
 var
   R: TLandrixXmlReader;
+  Stream: TFileStream;
 begin
   Result := XRechnungVersion_Unknown;
   if not FileExists(NativeFileName(_Filename)) then
     Exit;
+  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfFile(NativeFileName(_Filename)) then
+  begin
+    try
+      Stream := TFileStream.Create(NativeFileName(_Filename), fmOpenRead or fmShareDenyWrite);
+      try
+        Result := GetXRechnungVersion(Stream, True);
+      finally
+        Stream.Free;
+      end;
+    except
+      on Exception do
+        Result := XRechnungVersion_Unknown;
+    end;
+    Exit;
+  end;
   R := TLandrixXmlReader.Create;
   try
     try
@@ -533,15 +580,34 @@ begin
   end;
 end;
 
-class function TXRechnungValidationHelper.GetXRechnungVersion(_Stream: TStream): TXRechnungVersion;
+class function TXRechnungValidationHelper.GetXRechnungVersion(_Stream: TStream;
+  _ProcessPdfFiles: Boolean): TXRechnungVersion;
 var
   R: TLandrixXmlReader;
   Position: Int64;
+  Xml: TMemoryStream;
+  Name: TLandrixEInvoiceString;
+  Info: TLandrixEInvoicePdfExtractInfo;
 begin
   Result := XRechnungVersion_Unknown;
   if _Stream = nil then
     Exit;
   Position := _Stream.Position;
+  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfStream(_Stream) then
+  begin
+    Xml := TMemoryStream.Create;
+    try
+      if TLandrixEInvoicePdfExtractor.ExtractInvoiceFromStream(_Stream, Xml, Name, Info) then
+      begin
+        Xml.Position := 0;
+        Result := GetXRechnungVersion(Xml, False);
+      end;
+    finally
+      Xml.Free;
+      _Stream.Position := Position;
+    end;
+    Exit;
+  end;
   R := TLandrixXmlReader.Create;
   try
     try
@@ -827,14 +893,20 @@ begin
 end;
 
 class function TXRechnungInvoiceAdapter.LoadFromStream(_Invoice: TLandrixInvoice; _Stream: TStream;
-  out _Error: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+  out _Error: TXRechnungString; _ProcessPdfFiles: Boolean; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
   R: TLandrixXmlReader;
+  AttachmentName: TXRechnungString;
 begin
   Result := False;
   _Error := '';
   if (_Invoice = nil) or (_Stream = nil) then
     Exit;
+  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfStream(_Stream) then
+  begin
+    Result := LoadFromPdfStream(_Invoice, _Stream, _Error, AttachmentName, _Diagnostics);
+    Exit;
+  end;
   R := TLandrixXmlReader.Create;
   try
     try
@@ -853,9 +925,10 @@ begin
 end;
 
 class function TXRechnungInvoiceAdapter.LoadFromFile(_Invoice: TLandrixInvoice; const _Filename: TXRechnungString;
-  out _Error: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+  out _Error: TXRechnungString; _ProcessPdfFiles: Boolean; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
   R: TLandrixXmlReader;
+  AttachmentName: TXRechnungString;
 begin
   Result := False;
   _Error := '';
@@ -864,6 +937,11 @@ begin
   if not FileExists(NativeFileName(_Filename)) then
   begin
     _Error := 'File not found: ' + _Filename;
+    Exit;
+  end;
+  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfFile(NativeFileName(_Filename)) then
+  begin
+    Result := LoadFromPdfFile(_Invoice, _Filename, _Error, AttachmentName, _Diagnostics);
     Exit;
   end;
   R := TLandrixXmlReader.Create;
@@ -908,6 +986,75 @@ begin
     Result := LoadFromReader(_Invoice, R, _Error, _Diagnostics);
   finally
     R.Free;
+  end;
+end;
+
+class function TXRechnungInvoiceAdapter.LoadFromPdfStream(_Invoice: TLandrixInvoice; _Stream: TStream;
+  out _Error: TXRechnungString; out _AttachmentName: TXRechnungString;
+  _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+var
+  Xml: TMemoryStream;
+  Name: TLandrixEInvoiceString;
+  Info: TLandrixEInvoicePdfExtractInfo;
+begin
+  Result := False;
+  _Error := '';
+  _AttachmentName := '';
+  if (_Invoice = nil) or (_Stream = nil) then
+    Exit;
+  Xml := TMemoryStream.Create;
+  try
+    if not TLandrixEInvoicePdfExtractor.ExtractInvoiceFromStream(_Stream, Xml, Name, Info) then
+    begin
+      _Error := TXRechnungString(Info.Error);
+      if _Error = '' then
+        _Error := 'No embedded invoice found in the PDF';
+      Exit;
+    end;
+    _AttachmentName := TXRechnungString(Name);
+    if Xml.Size = 0 then
+    begin
+      _Error := 'The embedded invoice is empty';
+      Exit;
+    end;
+    Xml.Position := 0;
+    Result := LoadFromStream(_Invoice, Xml, _Error, False, _Diagnostics);
+    if not Result then
+      _Error := 'Embedded file ' + _AttachmentName + ': ' + _Error;
+  finally
+    Xml.Free;
+  end;
+end;
+
+class function TXRechnungInvoiceAdapter.LoadFromPdfFile(_Invoice: TLandrixInvoice; const _Filename: TXRechnungString;
+  out _Error: TXRechnungString; out _AttachmentName: TXRechnungString;
+  _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+var
+  Stream: TFileStream;
+begin
+  Result := False;
+  _Error := '';
+  _AttachmentName := '';
+  if _Invoice = nil then
+    Exit;
+  if not FileExists(NativeFileName(_Filename)) then
+  begin
+    _Error := 'File not found: ' + _Filename;
+    Exit;
+  end;
+  try
+    Stream := TFileStream.Create(NativeFileName(_Filename), fmOpenRead or fmShareDenyWrite);
+  except
+    on E: Exception do
+    begin
+      _Error := CompatText('File not readable: ' + E.Message);
+      Exit;
+    end;
+  end;
+  try
+    Result := LoadFromPdfStream(_Invoice, Stream, _Error, _AttachmentName, _Diagnostics);
+  finally
+    Stream.Free;
   end;
 end;
 
