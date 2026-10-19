@@ -694,7 +694,7 @@ end;
 procedure TUBLWriteMapper.MapDocument;
 var
   I: TLandrixEInvoiceListIndex;
-  Text, Subject: TLandrixEInvoiceString;
+  Text, Subject, PointCode: TLandrixEInvoiceString;
   Period: TLandrixUBLPeriod;
   HasPeriod: Boolean;
 begin
@@ -734,19 +734,30 @@ begin
   if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
     FDoc.TaxCurrencyCode^.Value := FInvoice.TaxCurrencyCode;
   FDoc.AccountingCost^ := FInvoice.BuyerAccountingReference;
+  PointCode := FInvoice.TaxPointDateCode;
   if FInvoice.TaxPointDate.HasValue then
+  begin
     FDoc.TaxPointDate^ := LandrixEInvoiceDateToUBL(FInvoice.TaxPointDate.Value);
+    { BR-CO-3: BT-7 and BT-8 are mutually exclusive; the date wins.
+      DE: BR-CO-3: BT-7 und BT-8 schliessen sich aus; das Datum gewinnt. }
+    if PointCode <> '' then
+    begin
+      Report(edk_NotAllowed, FDoc.Path + '/cac:InvoicePeriod/cbc:DescriptionCode', 'VAT point date code ' +
+        PointCode + ' (BT-8) left out: the VAT point date (BT-7) is set (BR-CO-3)', eds_Warning);
+      PointCode := '';
+    end;
+  end;
   { BT-8 lives in the invoice period (BG-14) }
   HasPeriod := PeriodSet(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate);
-  if HasPeriod or (FInvoice.TaxPointDateCode <> '') then
+  if HasPeriod or (PointCode <> '') then
   begin
     Period := FDoc.InvoicePeriod.Add;
     if HasPeriod and PeriodDateSet(FInvoice.InvoicePeriodStartDate) then
       Period.StartDate := LandrixEInvoiceDateToUBL(FInvoice.InvoicePeriodStartDate);
     if HasPeriod and PeriodDateSet(FInvoice.InvoicePeriodEndDate) then
       Period.EndDate := LandrixEInvoiceDateToUBL(FInvoice.InvoicePeriodEndDate);
-    if FInvoice.TaxPointDateCode <> '' then
-      Period.DescriptionCode.Add(UBLCode(FInvoice.TaxPointDateCode));
+    if PointCode <> '' then
+      Period.DescriptionCode.Add(UBLCode(PointCode));
   end;
   if FInvoice.TestIndicator.HasValue then
     Permit(LandrixEInvoiceRuleTestIndicator, FDoc.Path, 'test indicator');

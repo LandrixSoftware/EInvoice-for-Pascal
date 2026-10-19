@@ -500,7 +500,6 @@ begin
   AInvoice.TestIndicator.SetValue(True);
   AInvoice.DocumentName := 'RECHNUNG';
   AInvoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
-  AInvoice.TaxPointDateCode := '3';
   AInvoice.SellerOrderReference := 'SO-1';
   AInvoice.SellerOrderReferenceDate.SetValue(EncodeDate(2026, 9, 1));
   AInvoice.PurchaseOrderReference := 'PO-1';
@@ -623,15 +622,12 @@ begin
     CheckEquals(0, D.CountOf(edk_NotAllowed), 'nothing left out: ' + string(D.ToText));
     CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
     Check(not D.HasErrors, 'no errors: ' + string(D.ToText));
-    Check(Pos('<ram:DueDateTypeCode>5</ram:DueDateTypeCode>', Xml) > 0, 'BT-8 3 written as 5');
     CheckEquals(1, Occurrences('<ram:TaxPointDate>', Xml), 'BT-7 once (CII-SR-461)');
-    CheckEquals(1, Occurrences('<ram:DueDateTypeCode>', Xml), 'BT-8 once (CII-SR-462)');
     Check(Pos('<ram:ID>LOC-7</ram:ID>', Xml) > 0, 'BT-71 without scheme as ram:ID');
     Check(Pos('currencyID="SEK">215.50<', Xml) > 0, 'BT-111 in SEK');
     Check(Back.TestIndicator.HasValue and Back.TestIndicator.Value, 'BT-X-1');
     CheckEqualsInvoiceStr('RECHNUNG', Back.DocumentName, 'BT-X-2');
     Check(Back.TaxPointDate.HasValue and (Back.TaxPointDate.Value = EncodeDate(2026, 10, 1)), 'BT-7');
-    CheckEqualsInvoiceStr('3', Back.TaxPointDateCode, 'BT-8 read back as 3');
     Check(Back.TaxAmountTotalInTaxCurrency.HasValue and (Back.TaxAmountTotalInTaxCurrency.Value = 215.5), 'BT-111');
     Check(Back.SellerOrderReferenceDate.Value = EncodeDate(2026, 9, 1), 'BT-X-146');
     Check(Back.PurchaseOrderReferenceDate.Value = EncodeDate(2026, 9, 2), 'BT-X-147');
@@ -767,6 +763,128 @@ begin
   end;
 end;
 
+{ BT-7 and BT-8 when writing: BT-8 once in UNTDID 2475, an unknown code
+  unchanged, BT-8 left out next to BT-7 (BR-CO-3), both left out without a
+  VAT breakdown. }
+procedure TestTaxPointDateWrite;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Subtotal: TLandrixInvoiceTaxAmount;
+  Target: TLandrixEInvoiceTarget;
+  Xml: string;
+begin
+  Target := TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931);
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.TaxPointDateCode := '432';
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ApplicableTradeTax'), 'BT-8 without breakdown left out');
+    CheckEquals(0, Occurrences('<ram:DueDateTypeCode>', Xml), 'no BT-8 without breakdown');
+    D.Clear;
+    Subtotal := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Subtotal.TaxCategory := idtfcc_S_StandardRate;
+    Subtotal.TaxPercent := 19;
+    Subtotal := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Subtotal.TaxCategory := idtfcc_S_StandardRate;
+    Subtotal.TaxPercent := 7;
+    Xml := MapToCIIXml(Invoice, Target, D, Back);
+    CheckEquals(1, Occurrences('<ram:DueDateTypeCode>72</ram:DueDateTypeCode>', Xml), 'BT-8 432 once as 72');
+    CheckEqualsInvoiceStr('432', Back.TaxPointDateCode, 'BT-8 read back as 432');
+    CheckEquals(0, CountKind(D, edk_UnknownCode, '/ram:ApplicableTradeTax/ram:DueDateTypeCode'), 'known code');
+    D.Clear;
+    Back.Clear;
+    Invoice.TaxPointDateCode := 'X9';
+    Xml := MapToCIIXml(Invoice, Target, D, Back);
+    CheckEquals(2, CountKind(D, edk_UnknownCode, '/ram:ApplicableTradeTax/ram:DueDateTypeCode'),
+      'unknown code reported when writing and reading');
+    Check(Pos('<ram:DueDateTypeCode>X9</ram:DueDateTypeCode>', Xml) > 0, 'unknown code written unchanged');
+    CheckEqualsInvoiceStr('X9', Back.TaxPointDateCode, 'unknown code read back unchanged');
+    D.Clear;
+    Invoice.TaxPointDateCode := '3';
+    Invoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ApplicableTradeTax/ram:DueDateTypeCode'),
+      'BT-8 next to BT-7 left out (BR-CO-3)');
+    CheckEquals(0, Occurrences('<ram:DueDateTypeCode>', Xml), 'no BT-8 next to BT-7');
+    CheckEquals(1, Occurrences('<ram:TaxPointDate>', Xml), 'BT-7 written once');
+    D.Clear;
+    Invoice.TaxAmountSubtotals.Clear;
+    Invoice.TaxPointDateCode := '';
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ApplicableTradeTax'), 'BT-7 without breakdown left out');
+    CheckEquals(0, Occurrences('<ram:TaxPointDate>', Xml), 'no BT-7 without breakdown');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ Reading: the first VAT point date and code count, differing ones are
+  reported; a contact with person name and department keeps both. }
+procedure TestTaxPointDateRead;
+const
+  Tax1 =
+    '<ram:ApplicableTradeTax><ram:CalculatedAmount>19.00</ram:CalculatedAmount><ram:TypeCode>VAT</ram:TypeCode>' +
+    '<ram:BasisAmount>100.00</ram:BasisAmount><ram:CategoryCode>S</ram:CategoryCode>' +
+    '<ram:TaxPointDate><udt:DateString format="102">20261001</udt:DateString></ram:TaxPointDate>' +
+    '<ram:DueDateTypeCode>5</ram:DueDateTypeCode>' +
+    '<ram:RateApplicablePercent>19</ram:RateApplicablePercent></ram:ApplicableTradeTax>';
+  Tax2 =
+    '<ram:ApplicableTradeTax><ram:CalculatedAmount>7.00</ram:CalculatedAmount><ram:TypeCode>VAT</ram:TypeCode>' +
+    '<ram:BasisAmount>100.00</ram:BasisAmount><ram:CategoryCode>S</ram:CategoryCode>' +
+    '<ram:TaxPointDate><udt:DateString format="102">20261002</udt:DateString></ram:TaxPointDate>' +
+    '<ram:DueDateTypeCode>29</ram:DueDateTypeCode>' +
+    '<ram:RateApplicablePercent>7</ram:RateApplicablePercent></ram:ApplicableTradeTax>';
+  Xml =
+    '<rsm:CrossIndustryInvoice ' + Ns + '>' +
+    '<rsm:ExchangedDocumentContext><ram:GuidelineSpecifiedDocumentContextParameter>' +
+    '<ram:ID>urn:cen.eu:en16931:2017</ram:ID>' +
+    '</ram:GuidelineSpecifiedDocumentContextParameter></rsm:ExchangedDocumentContext>' +
+    '<rsm:ExchangedDocument><ram:ID>R-1</ram:ID><ram:TypeCode>380</ram:TypeCode>' +
+    '<ram:IssueDateTime><udt:DateTimeString format="102">20261019</udt:DateTimeString></ram:IssueDateTime>' +
+    '</rsm:ExchangedDocument>' +
+    '<rsm:SupplyChainTradeTransaction>' +
+    '<ram:ApplicableHeaderTradeAgreement><ram:SellerTradeParty><ram:Name>Seller</ram:Name>' +
+    '<ram:DefinedTradeContact><ram:PersonName>Ms Seller</ram:PersonName>' +
+    '<ram:DepartmentName>Accounts</ram:DepartmentName></ram:DefinedTradeContact>' +
+    '</ram:SellerTradeParty></ram:ApplicableHeaderTradeAgreement><ram:ApplicableHeaderTradeDelivery/>' +
+    '<ram:ApplicableHeaderTradeSettlement><ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>' +
+    Tax1 + Tax2 +
+    '<ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:DuePayableAmount>0.00</ram:DuePayableAmount>' +
+    '</ram:SpecifiedTradeSettlementHeaderMonetarySummation></ram:ApplicableHeaderTradeSettlement>' +
+    '</rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>';
+var
+  CII: TLandrixCIIInvoice;
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    CII := ReadCII(Xml, D);
+    try
+      LandrixEInvoiceCIIToInvoice(CII, Invoice, D);
+    finally
+      CII.Free;
+    end;
+    Check(Invoice.TaxPointDate.HasValue and (Invoice.TaxPointDate.Value = EncodeDate(2026, 10, 1)), 'first BT-7');
+    CheckEqualsInvoiceStr('3', Invoice.TaxPointDateCode, 'first BT-8');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:ApplicableTradeTax/ram:TaxPointDate'), 'differing BT-7');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:ApplicableTradeTax/ram:DueDateTypeCode'), 'differing BT-8');
+    CheckEqualsInvoiceStr('Ms Seller', Invoice.AccountingSupplierParty.ContactName, 'person name');
+    CheckEqualsInvoiceStr('Accounts', Invoice.AccountingSupplierParty.ContactDepartment, 'department');
+    CheckEquals(0, CountKind(D, edk_NotMapped, '/ram:DefinedTradeContact'), 'contact complete');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure TestWrongSpec;
 var
   Invoice: TLandrixInvoice;
@@ -798,6 +916,8 @@ begin
   RegisterTest('MapCII.Phase2Extended', TestPhase2Extended);
   RegisterTest('MapCII.Phase2EN16931', TestPhase2EN16931);
   RegisterTest('MapCII.PaymentTermsOrder', TestPaymentTermsOrder);
+  RegisterTest('MapCII.TaxPointDateWrite', TestTaxPointDateWrite);
+  RegisterTest('MapCII.TaxPointDateRead', TestTaxPointDateRead);
 end;
 
 end.

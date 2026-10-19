@@ -1,0 +1,16 @@
+{
+  "comment": "Input of fieldmap.py. The Factur-X field table is not part of the repository; it ships in the documentation folder of the ZUGFeRD 2.5.2 / Factur-X 1.09.2 package (FeRD, FNFE-MPE). fieldmap.py verifies the checksum so that measurements stay comparable.",
+  "table": {
+    "title": "Factur-X 1.09.2 field table (EN/FR), ZUGFeRD 2.5.2 package",
+    "file": "Dokumentation/1_FACTUR-X 1.09.2 - EN FR.xlsx",
+    "sha256": "b27a3c18c7e4f3c3646aabcbbc46bb491e84b0193acf49ee8dc908c3a3455979",
+    "header_row": 3,
+    "sheets": {
+      "MINIMUM": "Factur-X CII D22B MINIMUM",
+      "BASIC WL": "Factur-X CII D22B BASIC WL",
+      "BASIC": "Factur-X CII D22B BASIC",
+      "EN16931": "Factur-X CII D22B EN16931",
+      "EXTENDED": "Factur-X CII D22B EXTENDED"
+    }
+  }
+}

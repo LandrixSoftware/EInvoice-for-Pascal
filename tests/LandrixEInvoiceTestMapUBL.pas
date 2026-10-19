@@ -817,7 +817,6 @@ begin
       'contact department left out');
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:PaymentTerms/cbc:Note'), 'text of the discount level left out');
     Check(Pos('<cbc:TaxPointDate>2026-10-01</cbc:TaxPointDate>', Text) > 0, 'BT-7 written');
-    Check(Pos('<cbc:DescriptionCode>3</cbc:DescriptionCode>', Text) > 0, 'BT-8 written');
     Check(Pos('<cbc:ID>LOC-7</cbc:ID>', Text) > 0, 'BT-71 without scheme');
     Check(Pos('<cbc:TaxAmount currencyID="SEK">215.50</cbc:TaxAmount>', Text) > 0, 'BT-111 written');
     Check(Pos('Payee City', Text) = 0, 'no payee address');
@@ -828,7 +827,6 @@ begin
     ReadAndMap(Xml, Back, D, Root);
     CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
     Check(Back.TaxPointDate.HasValue and (Back.TaxPointDate.Value = EncodeDate(2026, 10, 1)), 'BT-7');
-    CheckEqualsInvoiceStr('3', Back.TaxPointDateCode, 'BT-8');
     Check(Back.TaxAmountTotalInTaxCurrency.HasValue and (Back.TaxAmountTotalInTaxCurrency.Value = 215.5), 'BT-111');
     CheckEqualsInvoiceStr('0002', Back.AccountingSupplierParty.CompanyIDSchemeID, 'BT-30-1');
     CheckEqualsInvoiceStr('LOC-7', Back.DeliveryInformation.LocationIdentifier, 'BT-71');
@@ -844,6 +842,61 @@ begin
     CheckEqualsInvoiceStr('AAG', Back.Attachments[0].IDSchemeID, 'BT-18-1');
     CheckEqualsInvoiceStr('123456789', Back.InvoiceLines[0].StandardItemIdentifier, 'BT-157');
     CheckEqualsInvoiceStr('0088', Back.InvoiceLines[0].StandardItemIdentifierSchemeID, 'BT-157-1');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ BT-8 alone goes into the invoice period; next to BT-7 it is left out
+  (BR-CO-3). A credit note carries BT-7 and BT-111 like an invoice. }
+procedure TestTaxPointDate;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Xml: TLandrixXmlUtf8;
+  Text, Root: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    FillPhase2(Invoice);
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec), 'spec');
+    Invoice.TaxPointDate.Clear;
+    Invoice.TaxPointDateCode := '35';
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := LandrixXmlUtf8ToString(Xml);
+    Check(Pos('<cbc:DescriptionCode>35</cbc:DescriptionCode>', Text) > 0, 'BT-8 written');
+    Check(Pos('<cbc:TaxPointDate>', Text) = 0, 'no BT-7');
+    ReadAndMap(Xml, Back, D, Root);
+    CheckEqualsInvoiceStr('35', Back.TaxPointDateCode, 'BT-8 read back');
+    D.Clear;
+    Invoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
+    Text := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:InvoicePeriod/cbc:DescriptionCode'),
+      'BT-8 next to BT-7 left out (BR-CO-3)');
+    Check(Pos('<cbc:DescriptionCode>', Text) = 0, 'no BT-8 next to BT-7');
+    Check(Pos('<cbc:TaxPointDate>2026-10-01</cbc:TaxPointDate>', Text) > 0, 'BT-7 written');
+    D.Clear;
+    Invoice.TaxPointDateCode := '';
+    Invoice.InvoiceTypeCode := itc_CreditNote;
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := LandrixXmlUtf8ToString(Xml);
+    Check(Pos('<CreditNote', Text) > 0, 'credit note root');
+    Check(Pos('<cbc:TaxPointDate>2026-10-01</cbc:TaxPointDate>', Text) > 0, 'BT-7 in the credit note');
+    Check(Pos('<cbc:TaxAmount currencyID="SEK">215.50</cbc:TaxAmount>', Text) > 0, 'BT-111 in the credit note');
+    Check(not D.HasErrors, 'no errors: ' + string(D.ToText));
+    D.Clear;
+    Back.Clear;
+    ReadAndMap(Xml, Back, D, Root);
+    CheckEqualsStr('CreditNote', Root, 'read as credit note');
+    Check(Back.TaxPointDate.HasValue and (Back.TaxPointDate.Value = EncodeDate(2026, 10, 1)), 'BT-7 read back');
+    Check(Back.TaxAmountTotalInTaxCurrency.HasValue and (Back.TaxAmountTotalInTaxCurrency.Value = 215.5),
+      'BT-111 read back');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
   finally
     Back.Free;
     Invoice.Free;
@@ -972,6 +1025,7 @@ begin
   RegisterTest('MapUBL.TaxTotalOrder', TestTaxTotalOrder);
   RegisterTest('MapUBL.Phase2Fields', TestPhase2Fields);
   RegisterTest('MapUBL.StandardItemIdentifier', TestStandardItemIdentifier);
+  RegisterTest('MapUBL.TaxPointDate', TestTaxPointDate);
   RegisterTest('MapUBL.PayeeCreditorIdentifier', TestPayeeCreditorIdentifier);
   RegisterTest('MapUBL.WrongSpec', TestWrongSpec);
 end;

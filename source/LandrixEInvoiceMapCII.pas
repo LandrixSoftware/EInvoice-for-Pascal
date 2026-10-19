@@ -1103,7 +1103,12 @@ var
   PointCode: TLandrixEInvoiceString;
 begin
   PointCode := '';
-  if (FInvoice.TaxPointDateCode <> '') and
+  { BR-CO-3: BT-7 and BT-8 are mutually exclusive; the date wins.
+    DE: BR-CO-3: BT-7 und BT-8 schliessen sich aus; das Datum gewinnt. }
+  if FInvoice.TaxPointDate.HasValue and (FInvoice.TaxPointDateCode <> '') then
+    Report(edk_NotAllowed, Settlement + '/ram:ApplicableTradeTax/ram:DueDateTypeCode', 'VAT point date code ' +
+      FInvoice.TaxPointDateCode + ' (BT-8) left out: the VAT point date (BT-7) is set (BR-CO-3)', eds_Warning)
+  else if (FInvoice.TaxPointDateCode <> '') and
      not LandrixEInvoiceTaxPointDateCodeToCII(FInvoice.TaxPointDateCode, PointCode) then
     Report(edk_UnknownCode, Settlement + '/ram:ApplicableTradeTax/ram:DueDateTypeCode', 'VAT point date code ' +
       FInvoice.TaxPointDateCode + ' (BT-8) is none of 3, 35, 432; written unchanged', eds_Warning);

@@ -165,6 +165,10 @@ Supported invoice standards are documented per release.
   SHA-256 in `tools.json`.
 - `tools/validate.ps1`: validates invoice files with these tools, the configuration chosen by file
   name; all 111 scenario outputs are accepted.
+- `tools/fieldmap/fieldmap.py` with the probe `FieldMapProbe.dpr`: measures which paths of the
+  Factur-X field table (per profile, checksum in `manifest.json`; the table is not part of the
+  repository) reach `TLandrixInvoice`, using a synthetic EXTENDED document with every path and
+  the local CII corpus for frequencies.
 - Invoice model, from a field comparison against the Factur-X 1.09.2 table: payee (BG-10),
   seller tax representative (BG-11) and invoicee (BG-X-36, EXTENDED) as the new class
   `TLandrixInvoiceParty` (`PayeeParty`, `TaxRepresentativeParty`, `InvoiceeParty`); VAT point
@@ -181,3 +185,5 @@ Supported invoice standards are documented per release.
   `schemeID`) and read from `ram:ID`; with a scheme it stays a global identifier.
 - Factur-X payment terms are read in any order (a net term after the discount terms no longer
   drops them), each discount term with its text.
+- The VAT point date code (BT-8) is left out with a warning when the VAT point date (BT-7) is
+  set, since both are mutually exclusive (BR-CO-3).
