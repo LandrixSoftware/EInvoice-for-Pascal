@@ -233,8 +233,24 @@ Supported invoice standards are documented per release.
 - The base amount of a line allowance or charge (BT-137/BT-142) is written also without a
   percentage.
 - MINIMUM: totals the profile does not contain are not written when they are 0.
+- CII: XRechnung declares the extension (BT-24) when the invoice has content the extension allows
+  in CII (embedded XML attachment, schemes XR01 to XR03), as UBL does; a credit note may use it.
+- Factur-X EXTENDED: third-party payments (BG-DEX-09) are written and read as financial
+  adjustments (`ram:SpecifiedFinancialAdjustment`, BR-FXEXT-CO-16).
+- `tools/build.ps1 -Validate` lets the KoSIT validator check the sweep outputs as well.
 
 ### Changed
+- Factur-X EXTENDED logistics service charges (BT-X-271 to BT-X-274) are read as document level
+  charges (BG-21) and reported as information; the totals and the VAT breakdown include them, so
+  leaving them out made every written invoice inconsistent.
+- Third-party payments (BG-DEX-09) left out by a target are an error, no longer a warning: the
+  amount due still includes them, so the output violates BR-CO-16.
+- Cash discount outside Factur-X EXTENDED: the net note follows the `#SKONTO#` lines (BR-DE-18
+  allows free text after them) instead of being dropped; reading puts only the other lines into
+  the net note (XRechnung-for-Delphi kept the whole text there, so `PaymentTermNetNote` of the
+  compatibility layer no longer contains the `#SKONTO#` lines).
+- XRechnung UBL: a third-party payment without type (BT-DEX-001) or description (BT-DEX-003)
+  takes the other one, with a warning; without both it is an error (BR-DEX-10, BR-DEX-12).
 - Prices (`GrossPriceAmount`, `DiscountOnTheGrossPrice`, `NetPriceAmount`; BT-146 to BT-148) are
   `Double` instead of `Currency`: EN 16931 does not limit their decimals and the KoSIT testsuite
   has prices with 5 and 9 decimals. `LandrixEInvoicePriceToLexical` takes a `Double` and writes

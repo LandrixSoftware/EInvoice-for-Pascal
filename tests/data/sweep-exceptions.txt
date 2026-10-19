@@ -40,3 +40,6 @@ zugferd252/XRECHNUNG_Elektron.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm
 zugferd252/XRECHNUNG_Elektron.xml	compare AccountingSupplierParty.ContactDepartment
 zugferd252/XRECHNUNG_Reisekostenabrechnung.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName
 zugferd252/XRECHNUNG_Reisekostenabrechnung.xml	compare AccountingSupplierParty.ContactDepartment
+# Third-party payments (BG-DEX-09) exist only in the XRechnung extension of UBL; written as
+# XRechnung CII they are left out while the amount due still includes them (BR-CO-16): an error.
+kosit-xr302/extension_05.01a-INVOICE_ubl.xml	cross NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:DuePayableAmount

@@ -190,7 +190,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..33] of TLandrixEInvoiceRule = (
+  Rules: array[0..34] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules }
     (Key: LandrixEInvoiceRuleLineSubLines; Standards: [est_FacturX]; Syntaxes: [esy_CII];
@@ -266,13 +266,17 @@ const
     (Key: LandrixEInvoiceRuleElectronicAddressDefaultEM; Standards: [est_PeppolBIS]; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-34, BT-49';
      Source: 'Peppol: scheme from the EAS code list, no default'),
-    { XRechnung extension: third-party payments only in UBL }
+    { third-party payments: XRechnung extension of UBL; Factur-X EXTENDED as
+      financial adjustment }
     (Key: LandrixEInvoiceRuleThirdPartyPayments; Standards: [est_XRechnung]; Syntaxes: [esy_UBL];
      Profiles: AnyProfile; Level: erl_Allowed; Terms: 'BG-DEX-09';
      Source: 'XRechnung extension (UBL cac:PrepaidPayment)'),
+    (Key: LandrixEInvoiceRuleThirdPartyPayments; Standards: [est_FacturX]; Syntaxes: [esy_CII];
+     Profiles: [epr_Extended]; Level: erl_Allowed; Terms: 'BG-DEX-09';
+     Source: 'Factur-X EXTENDED ram:SpecifiedFinancialAdjustment (BR-FXEXT-CO-16)'),
     (Key: LandrixEInvoiceRuleThirdPartyPayments; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BG-DEX-09';
-     Source: 'only in the XRechnung extension of UBL'),
+     Source: 'only in the XRechnung extension of UBL and in Factur-X EXTENDED'),
     { further EXTENDED-only content (Factur-X 1.09.2 field table) }
     (Key: LandrixEInvoiceRuleTestIndicator; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-1';

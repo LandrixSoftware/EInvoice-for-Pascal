@@ -46,23 +46,31 @@ uses
 function LandrixEInvoiceLineStatusOf(ALine: TLandrixInvoiceLine;
   AIsSubLine: Boolean): TLandrixInvoiceLineStatusReasonCode;
 
-{ Payment terms as one text (BT-20) in the form XRechnung uses: the net
-  note with '#' replaced by blanks, or one line per cash discount
-  '#SKONTO#TAGE=n#PROZENT=p#[BASISBETRAG=b#]', each ended by LF. '' if the
-  invoice has no payment terms text.
+{ Payment terms as one text (BT-20) in the form XRechnung uses: one line
+  per cash discount '#SKONTO#TAGE=n#PROZENT=p#[BASISBETRAG=b#]', each ended
+  by LF, followed by the net note with '#' replaced by blanks (BR-DE-18
+  allows free text after the discount lines). '' if the invoice has no
+  payment terms text.
   DE: Zahlungsbedingungen als ein Text (BT-20) in der Form, die XRechnung
-  verwendet: der Nettohinweis mit Leerzeichen statt '#' oder eine Zeile je
-  Skonto '#SKONTO#TAGE=n#PROZENT=p#[BASISBETRAG=b#]', jeweils mit LF
-  abgeschlossen. '' ohne Text fuer Zahlungsbedingungen. }
+  verwendet: eine Zeile je Skonto '#SKONTO#TAGE=n#PROZENT=p#[BASISBETRAG=b#]',
+  jeweils mit LF abgeschlossen, danach der Nettohinweis mit Leerzeichen
+  statt '#' (BR-DE-18 erlaubt freien Text nach den Skontozeilen). '' ohne
+  Text fuer Zahlungsbedingungen. }
 function LandrixEInvoicePaymentTermsText(AInvoice: TLandrixInvoice): TLandrixEInvoiceString;
 
-{ Reads a payment terms text (BT-20): any text makes the terms net with the
-  text as note; lines starting with '#SKONTO#' become cash discounts 1 to 3
-  (days, percent, base amount). Unreadable numbers stay 0.
+{ Reads a payment terms text (BT-20): any text makes the terms net; lines
+  starting with '#SKONTO#' become cash discounts 1 to 3 (days, percent,
+  base amount), the other lines (and further discount lines, which become
+  plain text when written, '#' replaced) are the net note, without white
+  space at the edges (a text without discount line stays unchanged).
+  Unreadable numbers stay 0.
   DE: Liest einen Text fuer Zahlungsbedingungen (BT-20): jeder Text macht
-  die Bedingungen netto mit dem Text als Hinweis; Zeilen, die mit
-  '#SKONTO#' beginnen, werden zu Skonto 1 bis 3 (Tage, Prozent,
-  Basisbetrag). Unlesbare Zahlen bleiben 0. }
+  die Bedingungen netto; Zeilen, die mit '#SKONTO#' beginnen, werden zu
+  Skonto 1 bis 3 (Tage, Prozent, Basisbetrag), die uebrigen Zeilen (und
+  weitere Skontozeilen, die beim Schreiben zu Text werden, '#' ersetzt)
+  sind der Nettohinweis, ohne Leerraum am Rand (ein Text ohne Skontozeile
+  bleibt unveraendert).
+  Unlesbare Zahlen bleiben 0. }
 procedure LandrixEInvoiceReadPaymentTermsText(AInvoice: TLandrixInvoice;
   const AText: TLandrixEInvoiceString);
 
@@ -175,7 +183,7 @@ function LandrixEInvoicePaymentTermsText(AInvoice: TLandrixInvoice): TLandrixEIn
 begin
   case AInvoice.PaymentTermsType of
     iptt_Net:
-      Result := ReplaceChar(AInvoice.PaymentTermNetNote, '#', ' ');
+      Result := '';
     iptt_CashDiscount1:
       Result := DiscountText(AInvoice.PaymentTermCashDiscount1Days, AInvoice.PaymentTermCashDiscount1Percent,
         AInvoice.PaymentTermCashDiscount1Base);
@@ -192,8 +200,12 @@ begin
         DiscountText(AInvoice.PaymentTermCashDiscount3Days, AInvoice.PaymentTermCashDiscount3Percent,
         AInvoice.PaymentTermCashDiscount3Base);
   else
-    Result := '';
+    begin
+      Result := '';
+      Exit;
+    end;
   end;
+  Result := Result + ReplaceChar(AInvoice.PaymentTermNetNote, '#', ' ');
 end;
 
 function IsSpace(C: WideChar): Boolean;
@@ -262,7 +274,7 @@ procedure LandrixEInvoiceReadPaymentTermsText(AInvoice: TLandrixInvoice;
   const AText: TLandrixEInvoiceString);
 var
   Start, I, Count: Integer;
-  Line: TLandrixEInvoiceString;
+  Line, Note: TLandrixEInvoiceString;
   Days: Integer;
   Percent: Double;
   Base: Currency;
@@ -275,14 +287,24 @@ begin
     Exit;
   Count := 0;
   Start := 1;
+  Note := '';
   for I := 1 to Length(AText) + 1 do
   begin
     if (I <= Length(AText)) and (AText[I] <> #10) and (AText[I] <> #13) then
       Continue;
-    Line := TrimText(Copy(AText, Start, I - Start));
+    Line := Copy(AText, Start, I - Start);
     Start := I + 1;
-    if (Count = 3) or (Pos('#SKONTO#', Line) <> 1) then
+    if (Count = 3) or (Pos('#SKONTO#', TrimText(Line)) <> 1) then
+    begin
+      { CR LF counts as one line break }
+      if (I > 1) and (I <= Length(AText)) and (AText[I] = #10) and (AText[I - 1] = #13) then
+        Continue;
+      if Note <> '' then
+        Note := Note + #10;
+      Note := Note + Line;
       Continue;
+    end;
+    Line := TrimText(Line);
     Inc(Count);
     Days := TextToInt(FieldValue(Line, 'TAGE'));
     Percent := TextToDouble(FieldValue(Line, 'PROZENT'));
@@ -311,6 +333,7 @@ begin
       end;
     end;
   end;
+  AInvoice.PaymentTermNetNote := TrimText(Note);
 end;
 
 { XPath normalize-space(): white space at the edges removed, inner runs

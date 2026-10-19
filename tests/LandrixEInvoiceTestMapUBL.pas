@@ -700,7 +700,8 @@ end;
 
 { Third-party payments (BG-DEX-09) keep their currency, a base quantity
   without unit survives, a VAT accounting currency without BT-111 is an
-  error. }
+  error; a third-party payment without type takes its description, one
+  without both is an error. }
 procedure TestRoundTripDetails;
 var
   Invoice, Back: TLandrixInvoice;
@@ -740,6 +741,26 @@ begin
     Check(Pos('<cbc:TaxCurrencyCode>SEK', LandrixXmlUtf8ToString(Xml)) > 0, 'BT-6 written');
     Check(Pos('currencyID="SEK"', LandrixXmlUtf8ToString(Xml)) = 0, 'BT-110 in the invoice currency');
     CheckEquals(1, CountKind(D, edk_MissingElement, '/Invoice/cac:TaxTotal'), 'BT-111 missing');
+    D.Clear;
+    Invoice.TaxCurrencyCode := '';
+    Invoice.PrepaidPayments[0].ID := '';
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Check(Pos('<cbc:ID>I-1</cbc:ID>', LandrixXmlUtf8ToString(Xml)) > 0, 'description as type (BR-DEX-10)');
+    CheckEquals(1, CountKind(D, edk_MissingElement, '/cac:PrepaidPayment/cbc:ID'), 'missing type reported');
+    Check(not D.HasErrors, 'only a warning: ' + string(D.ToText));
+    D.Clear;
+    Invoice.PrepaidPayments[0].ID := 'PP-1';
+    Invoice.PrepaidPayments[0].InstructionID := '';
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Check(Pos('<cbc:InstructionID>PP-1</cbc:InstructionID>', LandrixXmlUtf8ToString(Xml)) > 0,
+      'type as description (BR-DEX-12)');
+    CheckEquals(1, CountKind(D, edk_MissingElement, '/cac:PrepaidPayment/cbc:InstructionID'),
+      'missing description reported');
+    D.Clear;
+    Invoice.PrepaidPayments[0].ID := '';
+    MapAndWrite(Invoice, Spec, D);
+    CheckEquals(1, CountKind(D, edk_MissingElement, '/cac:PrepaidPayment'), 'neither type nor description');
+    Check(D.HasErrors, 'an error');
   finally
     Back.Free;
     Invoice.Free;

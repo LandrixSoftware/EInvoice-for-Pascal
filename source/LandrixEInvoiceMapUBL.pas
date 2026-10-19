@@ -1194,9 +1194,18 @@ begin
 end;
 
 { BG-DEX-09 third-party payments (XRechnung extension, cac:PrepaidPayment;
-  not in ubl:CreditNote).
+  not in ubl:CreditNote). Left out, they break BR-CO-16, since the amount
+  due (BT-115) still includes them: an error. Type (BT-DEX-001, BR-DEX-10)
+  and description (BT-DEX-003, BR-DEX-12) are both required; a missing one
+  takes the other (e.g. read from a Factur-X financial adjustment, which
+  has one reason), reported as a warning; without both it is an error.
   DE: BG-DEX-09 Zahlungen Dritter (XRechnung-Extension,
-  cac:PrepaidPayment; nicht in ubl:CreditNote). }
+  cac:PrepaidPayment; nicht in ubl:CreditNote). Weggelassen verletzen sie
+  BR-CO-16, weil der Zahlbetrag (BT-115) sie weiterhin enthaelt: ein
+  Fehler. Art (BT-DEX-001, BR-DEX-10) und Beschreibung (BT-DEX-003,
+  BR-DEX-12) sind beide Pflicht; fehlt eines, wird das andere verwendet
+  (z. B. gelesen aus einer Factur-X-Finanzkorrektur, die einen Grund hat)
+  und als Warnung gemeldet; fehlen beide, ist es ein Fehler. }
 procedure TUBLWriteMapper.MapThirdPartyPayments;
 var
   I: TLandrixEInvoiceListIndex;
@@ -1206,14 +1215,16 @@ begin
   if FInvoice.PrepaidPayments.Count = 0 then
     Exit;
   if FDoc.PrepaidPayment = nil then
-  begin
     Report(edk_NotAllowed, FDoc.Path, 'third-party payments (BG-DEX-09) left out: ubl:CreditNote has no ' +
       'cac:PrepaidPayment', eds_Warning);
+  if (FDoc.PrepaidPayment = nil) or not Permit(LandrixEInvoiceRuleThirdPartyPayments,
+    FDoc.Path + '/cac:PrepaidPayment', 'third-party payments (BG-DEX-09)') then
+  begin
+    Report(edk_NotAllowed, FDoc.Path + '/cac:LegalMonetaryTotal/cbc:PayableAmount',
+      'amount due (BT-115) includes the third-party payments (BG-DEX-09) left out; BR-CO-16 is violated',
+      eds_Error);
     Exit;
   end;
-  if not Permit(LandrixEInvoiceRuleThirdPartyPayments, FDoc.Path + '/cac:PrepaidPayment',
-    'third-party payments (BG-DEX-09)') then
-    Exit;
   for I := 0 to FInvoice.PrepaidPayments.Count - 1 do
   begin
     Payment := FInvoice.PrepaidPayments[I];
@@ -1223,6 +1234,21 @@ begin
     if Payment.PaidAmountCurrencyID <> '' then
       Target.PaidAmount.CurrencyID := Payment.PaidAmountCurrencyID;
     Target.InstructionID.Value := Payment.InstructionID;
+    if (Payment.ID = '') and (Payment.InstructionID = '') then
+      Report(edk_MissingElement, FDoc.Path + '/cac:PrepaidPayment', 'third-party payment without type ' +
+        '(BT-DEX-001, BR-DEX-10) and description (BT-DEX-003, BR-DEX-12)', eds_Error)
+    else if Payment.ID = '' then
+    begin
+      Target.ID.Value := Payment.InstructionID;
+      Report(edk_MissingElement, FDoc.Path + '/cac:PrepaidPayment/cbc:ID', 'type of a third-party payment ' +
+        '(BT-DEX-001, BR-DEX-10) missing; its description is written instead', eds_Warning);
+    end
+    else if Payment.InstructionID = '' then
+    begin
+      Target.InstructionID.Value := Payment.ID;
+      Report(edk_MissingElement, FDoc.Path + '/cac:PrepaidPayment/cbc:InstructionID', 'description of a ' +
+        'third-party payment (BT-DEX-003, BR-DEX-12) missing; its type is written instead', eds_Warning);
+    end;
   end;
 end;
 

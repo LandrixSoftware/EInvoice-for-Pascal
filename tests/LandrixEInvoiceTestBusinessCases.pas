@@ -816,11 +816,9 @@ begin
   end;
 end;
 
-{ BT-20 cash discount of 2 % within 10 days: XRechnung as '#SKONTO#' text
-  (BR-DE-18), Factur-X EXTENDED as structured discount terms. Outside
-  EXTENDED the terms are the '#SKONTO#' text only (as XRechnung-for-Delphi
-  wrote them); reading keeps that text as the net note, so the net note
-  differs there. }
+{ BT-20 cash discount of 2 % within 10 days next to the net note:
+  XRechnung as '#SKONTO#' line followed by the net note (BR-DE-18),
+  Factur-X EXTENDED as structured discount terms besides the net term. }
 procedure TestCashDiscount;
 var
   Inv: TLandrixInvoice;
@@ -831,10 +829,8 @@ begin
     Inv.PaymentTermsType := iptt_CashDiscount1;
     Inv.PaymentTermCashDiscount1Days := 10;
     Inv.PaymentTermCashDiscount1Percent := 2;
-    RunCase('cash-discount', Inv, ['xr:#SKONTO#TAGE=10#PROZENT=2.00#',
-      'ext:<ram:BasisPeriodMeasure unitCode="DAY">10</ram:BasisPeriodMeasure>'],
-      ['-ubl-30x.xml compare PaymentTermNetNote', '-cii-30x.xml compare PaymentTermNetNote',
-       '-ubl-peppol.xml compare PaymentTermNetNote', '-ciiEN16931-25.xml compare PaymentTermNetNote']);
+    RunCase('cash-discount', Inv, ['xr:#SKONTO#TAGE=10#PROZENT=2.00#' + #10 + 'Zahlbar bis 18.11.2026 ohne Abzug.',
+      'ext:<ram:BasisPeriodMeasure unitCode="DAY">10</ram:BasisPeriodMeasure>'], []);
   finally
     Inv.Free;
   end;

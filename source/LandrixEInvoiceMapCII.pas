@@ -113,6 +113,7 @@ type
       ASeverity: TLandrixEInvoiceDiagnosticSeverity);
     function Permit(const AKey: string; const APath, AWhat: TLandrixEInvoiceString): Boolean;
     function Code(const AEnumText, AOther, APath: TLandrixEInvoiceString): TLandrixEInvoiceString;
+    function UsesExtension: Boolean;
     procedure MapContext;
     procedure MapDocument;
     procedure MapLine(ALine: TLandrixInvoiceLine; const AParentLineID: TLandrixEInvoiceString;
@@ -391,9 +392,9 @@ begin
 end;
 
 { BT-X-1 test indicator (EXTENDED), BT-23 business process, BT-24
-  specification identifier.
+  specification identifier (with the extension when used).
   DE: BT-X-1 Testkennzeichen (EXTENDED), BT-23 Geschaeftsprozess, BT-24
-  Spezifikationskennung. }
+  Spezifikationskennung (mit Extension, wenn verwendet). }
 procedure TCIIWriteMapper.MapContext;
 var
   Context: TLandrixCIIExchangedDocumentContext;
@@ -407,7 +408,57 @@ begin
     Context.BusinessProcessSpecifiedDocumentContextParameter.ID.Value := FInvoice.ProfileID
   else
     Context.BusinessProcessSpecifiedDocumentContextParameter.ID.Value := FSpec.ProfileID;
-  Context.GuidelineSpecifiedDocumentContextParameter.ID.Value := FSpec.CustomizationID;
+  if UsesExtension then
+    Context.GuidelineSpecifiedDocumentContextParameter.ID.Value := FSpec.ExtensionCustomizationID
+  else
+    Context.GuidelineSpecifiedDocumentContextParameter.ID.Value := FSpec.CustomizationID;
+end;
+
+{ XRechnung extension codes XR01 to XR03 as identifier schemes.
+  DE: Extension-Codes XR01 bis XR03 als Kennungsschema. }
+function IsExtensionScheme(const AValue, AScheme: TLandrixEInvoiceString): Boolean;
+begin
+  Result := (AValue <> '') and (SameAscii(AScheme, 'XR01') or SameAscii(AScheme, 'XR02') or
+    SameAscii(AScheme, 'XR03'));
+end;
+
+{ The XRechnung extension is declared only when the invoice has content the
+  extension allows in CII: embedded XML attachments (BR-DEX-01) or the
+  extension codes XR01 to XR03 as scheme of BT-34, BT-49, BT-29, BT-46 or
+  BT-71 (BR-DEX-04 to 08). Sub lines (BR-DEX-15) and third-party payments
+  exist in the extension of UBL only. Unlike UBL a credit note may use it:
+  KoSIT selects the CII extension scenario by the identifier alone.
+  DE: Die XRechnung-Extension wird nur deklariert, wenn die Rechnung Inhalt
+  hat, den die Extension in CII erlaubt: eingebettete XML-Anhaenge
+  (BR-DEX-01) oder die Extension-Codes XR01 bis XR03 als Schema von BT-34,
+  BT-49, BT-29, BT-46 oder BT-71 (BR-DEX-04 bis 08). Unterpositionen
+  (BR-DEX-15) und Zahlungen Dritter gibt es nur in der Extension von UBL.
+  Anders als in UBL darf auch eine Gutschrift sie verwenden: KoSIT waehlt
+  das CII-Extension-Szenario allein nach der Kennung. }
+function TCIIWriteMapper.UsesExtension: Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := False;
+  if FSpec.ExtensionCustomizationID = '' then
+    Exit;
+  Result := True;
+  for I := 0 to FInvoice.Attachments.Count - 1 do
+    if FInvoice.Attachments[I].ContainsBinaryObject and
+       (FInvoice.Attachments[I].AttachmentType = iat_application_xml) then
+      Exit;
+  if IsExtensionScheme(FInvoice.AccountingSupplierParty.ElectronicAddressSellerBuyer,
+       FInvoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID) or
+     IsExtensionScheme(FInvoice.AccountingCustomerParty.ElectronicAddressSellerBuyer,
+       FInvoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID) or
+     IsExtensionScheme(FInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer,
+       FInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID) or
+     IsExtensionScheme(FInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyer,
+       FInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyerSchemeID) or
+     IsExtensionScheme(FInvoice.DeliveryInformation.LocationIdentifier,
+       FInvoice.DeliveryInformation.LocationIdentifierSchemeID) then
+    Exit;
+  Result := False;
 end;
 
 { BT-1 number, BT-X-2 document name (EXTENDED), BT-3 type, BT-2 issue date,
@@ -1439,13 +1490,47 @@ begin
     Settlement2.ReceivableSpecifiedTradeAccountingAccount.Add.ID.Value := FInvoice.BuyerAccountingReference;
 end;
 
-{ BG-DEX-09 third-party payments exist only in the XRechnung extension of
-  UBL. DE: BG-DEX-09 Zahlungen Dritter gibt es nur in der
-  XRechnung-Extension von UBL. }
+{ BG-DEX-09 third-party payments: Factur-X EXTENDED writes them as
+  financial adjustments (BT-DEX-003 description, or BT-DEX-001 without one,
+  as reason; BT-DEX-002 as amount; BR-FXEXT-CO-16 adds them to the amount
+  due like BR-DEX-09). Elsewhere CII has no element; the amount due
+  (BT-115) still includes them, so leaving them out breaks BR-CO-16: an
+  error.
+  DE: BG-DEX-09 Zahlungen Dritter: Factur-X EXTENDED schreibt sie als
+  Finanzkorrekturen (BT-DEX-003 Beschreibung, ohne sie BT-DEX-001, als
+  Grund; BT-DEX-002 als Betrag; BR-FXEXT-CO-16 rechnet sie wie BR-DEX-09
+  zum Zahlbetrag). Sonst hat CII kein Element; der Zahlbetrag (BT-115)
+  enthaelt sie weiterhin, Weglassen verletzt also BR-CO-16: ein Fehler. }
 procedure TCIIWriteMapper.MapThirdPartyPayments;
+var
+  I: TLandrixEInvoiceListIndex;
+  Payment: TLandrixInvoicePrepaidPayment;
+  Target: TLandrixCIIFinancialAdjustment;
 begin
-  if FInvoice.PrepaidPayments.Count > 0 then
-    Permit(LandrixEInvoiceRuleThirdPartyPayments, Settlement, 'third-party payments (BG-DEX-09)');
+  if FInvoice.PrepaidPayments.Count = 0 then
+    Exit;
+  if not Permit(LandrixEInvoiceRuleThirdPartyPayments, Settlement, 'third-party payments (BG-DEX-09)') then
+  begin
+    Report(edk_NotAllowed, Settlement + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:DuePayableAmount',
+      'amount due (BT-115) includes the third-party payments (BG-DEX-09) left out; BR-CO-16 is violated',
+      eds_Error);
+    Exit;
+  end;
+  for I := 0 to FInvoice.PrepaidPayments.Count - 1 do
+  begin
+    Payment := FInvoice.PrepaidPayments[I];
+    Target := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedFinancialAdjustment.Add;
+    if Payment.InstructionID <> '' then
+    begin
+      Target.Reason := Payment.InstructionID;
+      if Payment.ID <> '' then
+        Report(edk_NotAllowed, Settlement + '/ram:SpecifiedFinancialAdjustment', 'type ' + Payment.ID +
+          ' of a third-party payment (BT-DEX-001) left out: a financial adjustment has one reason', eds_Warning);
+    end
+    else
+      Target.Reason := Payment.ID;
+    Target.ActualAmount := CIIAmount(Payment.PaidAmount);
+  end;
 end;
 
 { --- reading ---------------------------------------------------------------- }
@@ -1497,6 +1582,7 @@ type
       const APath: TLandrixEInvoiceString; out ANoAmount: Boolean);
     procedure ReadAllowanceCharge(AItem: TLandrixInvoiceAllowanceCharge; ACharge: TLandrixCIITradeAllowanceCharge;
       const APath: TLandrixEInvoiceString; AWithTax: Boolean);
+    procedure ReadLogisticsCharge(ACharge: TLandrixCIILogisticsServiceCharge; const APath: TLandrixEInvoiceString);
     procedure ReadAddress(AAddress: TLandrixInvoiceAddress; ASource: TLandrixCIITradeAddress;
       const APath: TLandrixEInvoiceString);
     procedure ReadParty(AParty: TLandrixInvoiceAccountingParty; ASource: TLandrixCIITradeParty;
@@ -2029,6 +2115,49 @@ begin
     Rest(APath, ['ram:ChargeIndicator', 'ram:CalculationPercent', 'ram:BasisAmount', 'ram:ActualAmount',
       'ram:ReasonCode', 'ram:Reason']);
   end;
+end;
+
+{ Factur-X EXTENDED logistics service charge (BT-X-271 to BT-X-274): the
+  invoice model has no field for it (plan, Phase 2 step 1), but the totals
+  (BT-108, BT-109) and the VAT breakdown include it. It becomes a document
+  level charge (BG-21) with the description as reason (BT-104), the amount
+  and the VAT category and rate of the first tax, so every target stays
+  consistent; EXTENDED writes it back as such a charge (its Schematron sums
+  both alike). Reported as information.
+  DE: Logistikkosten aus Factur-X EXTENDED (BT-X-271 bis BT-X-274): das
+  Rechnungsmodell hat kein Feld dafuer (Fahrplan, Phase 2 Schritt 1), die
+  Summen (BT-108, BT-109) und die Steueraufschluesselung enthalten sie aber.
+  Sie werden zu einem Zuschlag auf Dokumentebene (BG-21) mit der
+  Beschreibung als Grund (BT-104), dem Betrag sowie Steuerkategorie und
+  -satz der ersten Steuer, damit jedes Ziel stimmig bleibt; EXTENDED
+  schreibt sie als solchen Zuschlag zurueck (sein Schematron summiert
+  beides gleich). Als Information gemeldet. }
+procedure TCIIReadMapper.ReadLogisticsCharge(ACharge: TLandrixCIILogisticsServiceCharge;
+  const APath: TLandrixEInvoiceString);
+var
+  Item: TLandrixInvoiceAllowanceCharge;
+  Tax: TLandrixCIITradeTax;
+begin
+  Item := FInvoice.AllowanceCharges.AddAllowanceCharge;
+  Item.ChargeIndicator := True;
+  Item.Reason := ACharge.Description;
+  Item.Amount := Amount(ACharge.AppliedAmount, APath + '/ram:AppliedAmount');
+  if ACharge.AppliedTradeTax.Count > 0 then
+  begin
+    Tax := ACharge.AppliedTradeTax[0];
+    ReadTaxCategory(Tax.CategoryCode, APath + '/ram:AppliedTradeTax/ram:CategoryCode', Item.TaxCategory,
+      Item.TaxCategoryOther);
+    Item.TaxPercent := Decimal(Tax.RateApplicablePercent, APath + '/ram:AppliedTradeTax/ram:RateApplicablePercent');
+    if (Tax.TypeCode <> '') and (Tax.TypeCode <> 'VAT') then
+      NotMapped(APath + '/ram:AppliedTradeTax/ram:TypeCode', 'tax type ' + Tax.TypeCode);
+    Tax.ListFilledChildren(FFilled);
+    Rest(APath + '/ram:AppliedTradeTax', ['ram:TypeCode', 'ram:CategoryCode', 'ram:RateApplicablePercent']);
+    Excess(ACharge.AppliedTradeTax.Count, APath + '/ram:AppliedTradeTax');
+  end;
+  ACharge.ListFilledChildren(FFilled);
+  Rest(APath, ['ram:Description', 'ram:AppliedAmount', 'ram:AppliedTradeTax']);
+  Report(edk_NotMapped, APath, 'logistics service charge (BT-X-271 to BT-X-274) ' + ACharge.Description +
+    ' taken over as document level charge (BG-21)', eds_Info);
 end;
 
 { BG-30 line VAT (the first tax), BG-26 period, BG-27/BG-28, BT-131, BT-128
@@ -2711,6 +2840,7 @@ var
   Tax: TLandrixCIITradeTax;
   Subtotal: TLandrixInvoiceTaxAmount;
   Reference: TLandrixInvoicePrecedingInvoiceReference;
+  Payment: TLandrixInvoicePrepaidPayment;
   PointDate: TDateTime;
   PointCode, FirstPointDate, FirstPointCode: TLandrixEInvoiceString;
 begin
@@ -2784,6 +2914,21 @@ begin
   for I := 0 to Source.SpecifiedTradeAllowanceCharge.Count - 1 do
     ReadAllowanceCharge(FInvoice.AllowanceCharges.AddAllowanceCharge, Source.SpecifiedTradeAllowanceCharge[I],
       Settlement + '/ram:SpecifiedTradeAllowanceCharge', True);
+  for I := 0 to Source.SpecifiedLogisticsServiceCharge.Count - 1 do
+    ReadLogisticsCharge(Source.SpecifiedLogisticsServiceCharge[I], Settlement + '/ram:SpecifiedLogisticsServiceCharge');
+  { Factur-X EXTENDED financial adjustments are the third-party payments
+    of the model (BG-DEX-09; reason as BT-DEX-003, amount as BT-DEX-002).
+    DE: Finanzkorrekturen aus Factur-X EXTENDED sind die Zahlungen Dritter
+    des Modells (BG-DEX-09; Grund als BT-DEX-003, Betrag als BT-DEX-002). }
+  for I := 0 to Source.SpecifiedFinancialAdjustment.Count - 1 do
+  begin
+    Payment := FInvoice.PrepaidPayments.AddPrepaidPayment;
+    Payment.InstructionID := Source.SpecifiedFinancialAdjustment[I].Reason;
+    Payment.PaidAmount := Amount(Source.SpecifiedFinancialAdjustment[I].ActualAmount,
+      Settlement + '/ram:SpecifiedFinancialAdjustment/ram:ActualAmount');
+    Source.SpecifiedFinancialAdjustment[I].ListFilledChildren(FFilled);
+    Rest(Settlement + '/ram:SpecifiedFinancialAdjustment', ['ram:Reason', 'ram:ActualAmount']);
+  end;
   ReadPaymentTerms(Source);
   ReadTotals(Source);
   for I := 0 to Source.InvoiceReferencedDocument.Count - 1 do
@@ -2807,8 +2952,9 @@ begin
   Source.ListFilledChildren(FFilled);
   Rest(Settlement, ['ram:CreditorReferenceID', 'ram:PaymentReference', 'ram:TaxCurrencyCode', 'ram:InvoiceCurrencyCode',
     'ram:InvoiceeTradeParty', 'ram:PayeeTradeParty', 'ram:SpecifiedTradeSettlementPaymentMeans', 'ram:ApplicableTradeTax', 'ram:BillingSpecifiedPeriod',
-    'ram:SpecifiedTradeAllowanceCharge', 'ram:SpecifiedTradePaymentTerms',
-    'ram:SpecifiedTradeSettlementHeaderMonetarySummation', 'ram:InvoiceReferencedDocument',
+    'ram:SpecifiedTradeAllowanceCharge', 'ram:SpecifiedLogisticsServiceCharge', 'ram:SpecifiedTradePaymentTerms',
+    'ram:SpecifiedTradeSettlementHeaderMonetarySummation', 'ram:SpecifiedFinancialAdjustment',
+    'ram:InvoiceReferencedDocument',
     'ram:ReceivableSpecifiedTradeAccountingAccount']);
 end;
 

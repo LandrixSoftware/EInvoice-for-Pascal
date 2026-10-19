@@ -885,6 +885,188 @@ begin
   end;
 end;
 
+{ XRechnung CII declares the extension (BT-24) only with extension content:
+  an XR01 to XR03 scheme or an embedded XML attachment; Factur-X never. }
+procedure TestExtensionIdentifier;
+const
+  Extension = '#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0';
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Target: TLandrixEInvoiceTarget;
+  Attachment: TLandrixInvoiceAttachment;
+  Xml: string;
+begin
+  Target := TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII);
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyer := 'seller@example.com';
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'EM';
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(0, Occurrences(Extension, Xml), 'no extension without extension content');
+    Invoice.DeliveryInformation.LocationIdentifier := 'L-1';
+    Invoice.DeliveryInformation.LocationIdentifierSchemeID := 'XR02';
+    Xml := MapToCIIXml(Invoice, Target, D, Back);
+    CheckEquals(1, Occurrences(Extension, Xml), 'XR02 scheme declares the extension');
+    CheckEqualsInvoiceStr('XR02', Back.DeliveryInformation.LocationIdentifierSchemeID, 'scheme read back');
+    Invoice.DeliveryInformation.LocationIdentifierSchemeID := '0088';
+    Attachment := Invoice.Attachments.AddAttachment(iat_application_xml);
+    Attachment.ID := 'A-1';
+    Attachment.Filename := 'a.xml';
+    Attachment.EmbedDataFromText(TLandrixEInvoiceString('<a/>'));
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(1, Occurrences(Extension, Xml), 'XML attachment declares the extension');
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, nil);
+    CheckEquals(0, Occurrences('extension', Xml), 'Factur-X has no XRechnung extension');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ ACents / 100 as Currency without a float division. }
+function Cents(ACents: Int64): Currency;
+begin
+  PInt64(@Result)^ := ACents * 100;
+end;
+
+{ The XML without the white space between tags (the writer indents). }
+function StripIndent(const AText: string): string;
+var
+  I, J: Integer;
+begin
+  Result := '';
+  I := 1;
+  while I <= Length(AText) do
+  begin
+    if AText[I] = '>' then
+    begin
+      J := I + 1;
+      while (J <= Length(AText)) and ((AText[J] = ' ') or (AText[J] = #9) or (AText[J] = #10) or
+        (AText[J] = #13)) do
+        Inc(J);
+      if (J <= Length(AText)) and (AText[J] = '<') then
+      begin
+        Result := Result + '>';
+        I := J;
+        Continue;
+      end;
+    end;
+    Result := Result + AText[I];
+    Inc(I);
+  end;
+end;
+
+{ Factur-X EXTENDED logistics service charge: read as document level charge
+  (BG-21) with an information, written back as such a charge. }
+procedure TestLogisticsCharge;
+const
+  Xml =
+    '<rsm:CrossIndustryInvoice ' + Ns + '>' +
+    '<rsm:ExchangedDocumentContext><ram:GuidelineSpecifiedDocumentContextParameter>' +
+    '<ram:ID>urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended</ram:ID>' +
+    '</ram:GuidelineSpecifiedDocumentContextParameter></rsm:ExchangedDocumentContext>' +
+    '<rsm:ExchangedDocument><ram:ID>R-1</ram:ID><ram:TypeCode>380</ram:TypeCode>' +
+    '<ram:IssueDateTime><udt:DateTimeString format="102">20261019</udt:DateTimeString></ram:IssueDateTime>' +
+    '</rsm:ExchangedDocument>' +
+    '<rsm:SupplyChainTradeTransaction>' +
+    '<ram:ApplicableHeaderTradeAgreement/><ram:ApplicableHeaderTradeDelivery/>' +
+    '<ram:ApplicableHeaderTradeSettlement><ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>' +
+    '<ram:SpecifiedLogisticsServiceCharge><ram:Description>Freight</ram:Description>' +
+    '<ram:AppliedAmount>15.00</ram:AppliedAmount><ram:AppliedTradeTax><ram:TypeCode>VAT</ram:TypeCode>' +
+    '<ram:CategoryCode>S</ram:CategoryCode><ram:RateApplicablePercent>19.00</ram:RateApplicablePercent>' +
+    '</ram:AppliedTradeTax></ram:SpecifiedLogisticsServiceCharge>' +
+    '<ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:ChargeTotalAmount>15.00</ram:ChargeTotalAmount>' +
+    '<ram:DuePayableAmount>17.85</ram:DuePayableAmount>' +
+    '</ram:SpecifiedTradeSettlementHeaderMonetarySummation></ram:ApplicableHeaderTradeSettlement>' +
+    '</rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>';
+var
+  CII: TLandrixCIIInvoice;
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Charge: TLandrixInvoiceAllowanceCharge;
+  Back: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    CII := ReadCII(Xml, D);
+    try
+      LandrixEInvoiceCIIToInvoice(CII, Invoice, D);
+    finally
+      CII.Free;
+    end;
+    CheckEquals(1, Integer(Invoice.AllowanceCharges.Count), 'one document level charge');
+    Charge := Invoice.AllowanceCharges[0];
+    Check(Charge.ChargeIndicator, 'charge');
+    CheckEqualsInvoiceStr('Freight', Charge.Reason, 'description as reason');
+    Check(Charge.Amount = 15, 'amount');
+    Check(Charge.TaxCategory = idtfcc_S_StandardRate, 'category');
+    Check(Charge.TaxPercent = 19, 'rate');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:SpecifiedLogisticsServiceCharge'), 'conversion reported');
+    CheckEquals(1, Integer(D.Count), 'nothing else reported: ' + string(D.ToText));
+    Check(D[0].Severity = eds_Info, 'as information');
+    D.Clear;
+    Back := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, nil));
+    Check(Pos('<ram:SpecifiedTradeAllowanceCharge><ram:ChargeIndicator><udt:Indicator>true</udt:Indicator>' +
+      '</ram:ChargeIndicator><ram:ActualAmount>15.00</ram:ActualAmount><ram:Reason>Freight</ram:Reason>', Back) > 0,
+      'written back as document level charge');
+    CheckEquals(0, Occurrences('LogisticsServiceCharge', Back), 'no logistics charge written');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ BG-DEX-09 third-party payments: Factur-X EXTENDED writes and reads them as
+  financial adjustments; XRechnung CII leaves them out with an error, since
+  the amount due includes them (BR-CO-16). }
+procedure TestThirdPartyPayments;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Payment: TLandrixInvoicePrepaidPayment;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Payment := Invoice.PrepaidPayments.AddPrepaidPayment;
+    Payment.ID := 'Deposit';
+    Payment.PaidAmount := Cents(1996);
+    Payment.InstructionID := 'Claim of provider A';
+    Payment := Invoice.PrepaidPayments.AddPrepaidPayment;
+    Payment.ID := 'Fee';
+    Payment.PaidAmount := 10;
+    Xml := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, Back));
+    Check(Pos('<ram:SpecifiedFinancialAdjustment><ram:Reason>Claim of provider A</ram:Reason>' +
+      '<ram:ActualAmount>19.96</ram:ActualAmount></ram:SpecifiedFinancialAdjustment>', Xml) > 0,
+      'description as reason');
+    Check(Pos('<ram:SpecifiedFinancialAdjustment><ram:Reason>Fee</ram:Reason>' +
+      '<ram:ActualAmount>10.00</ram:ActualAmount></ram:SpecifiedFinancialAdjustment>', Xml) > 0,
+      'type as reason without description');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SpecifiedFinancialAdjustment'), 'type next to description lost');
+    CheckEquals(2, Integer(Back.PrepaidPayments.Count), 'read back');
+    CheckEqualsInvoiceStr('Claim of provider A', Back.PrepaidPayments[0].InstructionID, 'reason read back');
+    Check(Back.PrepaidPayments[1].PaidAmount = 10, 'amount read back');
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil);
+    CheckEquals(0, Occurrences('FinancialAdjustment', Xml), 'XRechnung CII has no financial adjustment');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:DuePayableAmount'), 'amount due reported');
+    Check(D.HasErrors, 'as error');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure TestWrongSpec;
 var
   Invoice: TLandrixInvoice;
@@ -911,6 +1093,9 @@ begin
   RegisterTest('MapCII.ReadReports', TestReadReports);
   RegisterTest('MapCII.WriteRules', TestWriteRules);
   RegisterTest('MapCII.WrongSpec', TestWrongSpec);
+  RegisterTest('MapCII.ExtensionIdentifier', TestExtensionIdentifier);
+  RegisterTest('MapCII.LogisticsCharge', TestLogisticsCharge);
+  RegisterTest('MapCII.ThirdPartyPayments', TestThirdPartyPayments);
   RegisterTest('MapCII.TaxCurrency', TestTaxCurrency);
   RegisterTest('MapCII.DiscountOnlyRoundTrip', TestDiscountOnlyRoundTrip);
   RegisterTest('MapCII.Phase2Extended', TestPhase2Extended);
