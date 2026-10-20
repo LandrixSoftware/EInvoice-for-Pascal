@@ -1067,6 +1067,41 @@ begin
   end;
 end;
 
+{ Code 49 is a direct debit like 59: the account is the debited account
+  (BT-91), the BIC is written without a payee account. }
+procedure TestDirectDebit49;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Payment: TLandrixInvoicePaymentType;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.PaymentMandateID := 'M-49';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_DirectDebit;
+    Payment.FinancialAccount := 'DE21860000000086001055';
+    Payment.FinancialInstitutionBranch := 'MARKDEF1860';
+    Xml := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, Back));
+    Check(Pos('<ram:PayerPartyDebtorFinancialAccount><ram:IBANID>DE21860000000086001055</ram:IBANID>', Xml) > 0,
+      'debited account');
+    CheckEquals(0, Occurrences('PayeePartyCreditorFinancialAccount', Xml), 'no payee account');
+    Check(Pos('<ram:BICID>MARKDEF1860</ram:BICID>', Xml) > 0, 'BIC');
+    Check(Pos('<ram:DirectDebitMandateID>M-49</ram:DirectDebitMandateID>', Xml) > 0, 'mandate');
+    Check(Back.PaymentTypes[0].PaymentMeansCode = ipmc_DirectDebit, 'code read back');
+    CheckEqualsInvoiceStr('DE21860000000086001055', Back.PaymentTypes[0].FinancialAccount, 'account read back');
+    CheckEqualsInvoiceStr('M-49', Back.PaymentMandateID, 'mandate read back');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure TestWrongSpec;
 var
   Invoice: TLandrixInvoice;
@@ -1096,6 +1131,7 @@ begin
   RegisterTest('MapCII.ExtensionIdentifier', TestExtensionIdentifier);
   RegisterTest('MapCII.LogisticsCharge', TestLogisticsCharge);
   RegisterTest('MapCII.ThirdPartyPayments', TestThirdPartyPayments);
+  RegisterTest('MapCII.DirectDebit49', TestDirectDebit49);
   RegisterTest('MapCII.TaxCurrency', TestTaxCurrency);
   RegisterTest('MapCII.DiscountOnlyRoundTrip', TestDiscountOnlyRoundTrip);
   RegisterTest('MapCII.Phase2Extended', TestPhase2Extended);

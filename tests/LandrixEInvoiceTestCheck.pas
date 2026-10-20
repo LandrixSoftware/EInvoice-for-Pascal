@@ -804,6 +804,14 @@ begin
     D.Clear;
     CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRCII), D), 'CII direct debit: ' + string(D.ToText));
     CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D), 'UBL direct debit: ' + string(D.ToText));
+    { code 49 is a direct debit like 59 }
+    Invoice.PaymentTypes[0].PaymentMeansCode := ipmc_DirectDebit;
+    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRCII), D), 'CII 49: ' + string(D.ToText));
+    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D), 'UBL 49: ' + string(D.ToText));
+    Invoice.PaymentTypes[0].FinancialAccount := '';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-31', nil), 'UBL 49 without debited account');
+    Invoice.PaymentTypes[0].FinancialAccount := 'DE02120300000000202051';
+    Invoice.PaymentTypes[0].PaymentMeansCode := ipmc_SEPADirectDebit;
     Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := '';
     Invoice.PayeeParty.Name := 'Factor';
     Invoice.PayeeParty.Identifier := 'DE98ZZZ09999999999';

@@ -833,12 +833,12 @@ begin
 end;
 
 { Payment kinds of the payment-group rules (BR-61, BR-DE-23 to BR-DE-25,
-  PEPPOL-EN16931-R061).
+  BR-DE-30, BR-DE-31, PEPPOL-EN16931-R061).
   DE: Zahlungsarten der Regeln zu den Zahlungsgruppen. }
 type
   TPaymentKind = (pk_Written, pk_CreditTransfer, pk_CreditTransferWithoutAccount, pk_Card,
-    pk_CardWithoutAccount, pk_SEPADirectDebit, pk_DirectDebit, pk_SEPADirectDebitWithAccount,
-    pk_SEPADirectDebitWithBIC, pk_SEPADirectDebitWithoutAccount);
+    pk_CardWithoutAccount, pk_DirectDebit, pk_DirectDebitWithAccount, pk_SEPADirectDebitWithBIC,
+    pk_SEPADirectDebitWithoutAccount);
 
 function HasPayment(AInvoice: TLandrixInvoice; AKind: TPaymentKind): Boolean;
 var
@@ -862,12 +862,10 @@ begin
         Hit := IsCard(P);
       pk_CardWithoutAccount:
         Hit := IsCard(P) and not Present(P.FinancialAccount);
-      pk_SEPADirectDebit:
-        Hit := P.PaymentMeansCode = ipmc_SEPADirectDebit;
       pk_DirectDebit:
         Hit := P.PaymentMeansCode in [ipmc_DirectDebit, ipmc_SEPADirectDebit];
-      pk_SEPADirectDebitWithAccount:
-        Hit := (P.PaymentMeansCode = ipmc_SEPADirectDebit) and Present(P.FinancialAccount);
+      pk_DirectDebitWithAccount:
+        Hit := (P.PaymentMeansCode in [ipmc_DirectDebit, ipmc_SEPADirectDebit]) and Present(P.FinancialAccount);
       pk_SEPADirectDebitWithoutAccount:
         Hit := (P.PaymentMeansCode = ipmc_SEPADirectDebit) and not Present(P.FinancialAccount);
       pk_SEPADirectDebitWithBIC:
@@ -892,15 +890,15 @@ begin
 end;
 
 { BR-DE-30 and BR-DE-31 test the direct debit group (BG-19) differently per
-  syntax. UBL: a cac:PaymentMandate exists (a payment means 59 with
-  mandate or debited account); it needs BT-90 (30) and the debited account
-  (31). CII: BG-19 exists when the mandate (BT-89), BT-90 or a debited
+  syntax. UBL: a cac:PaymentMandate exists (a payment means 49 or 59
+  with mandate or debited account); it needs BT-90 (30) and the debited
+  account (31). CII: BG-19 exists when the mandate (BT-89), BT-90 or a debited
   account (BT-91) is written, all on header level; then BT-90 with BT-89
   or BT-91 (30) and BT-91 with BT-89 or BT-90 (31) are required.
   DE: BR-DE-30 und BR-DE-31 pruefen die Lastschriftgruppe (BG-19) je
   Syntax verschieden. UBL: ein cac:PaymentMandate existiert (Zahlungsart
-  59 mit Mandat oder belastetem Konto); es braucht BT-90 (30) und das
-  belastete Konto (31). CII: BG-19 existiert, wenn das Mandat (BT-89),
+  49 oder 59 mit Mandat oder belastetem Konto); es braucht BT-90 (30) und
+  das belastete Konto (31). CII: BG-19 existiert, wenn das Mandat (BT-89),
   BT-90 oder ein belastetes Konto (BT-91) geschrieben wird, alle auf
   Kopfebene; dann sind BT-90 mit BT-89 oder BT-91 (30) und BT-91 mit BT-89
   oder BT-90 (31) Pflicht. }
@@ -911,10 +909,10 @@ var
 begin
   Mandate := Present(AInvoice.PaymentMandateID);
   Creditor := HasCreditorID(AInvoice, ASpec);
-  Debited := HasPayment(AInvoice, pk_SEPADirectDebitWithAccount);
+  Debited := HasPayment(AInvoice, pk_DirectDebitWithAccount);
   if ASpec.Target.Syntax = esy_UBL then
   begin
-    if not HasPayment(AInvoice, pk_SEPADirectDebit) or not (Mandate or Debited) then
+    if not HasPayment(AInvoice, pk_DirectDebit) or not (Mandate or Debited) then
       Result := False
     else if AIndex = cr_BRDE30 then
       Result := not Creditor

@@ -1039,6 +1039,51 @@ begin
   end;
 end;
 
+{ Code 49 is a direct debit like 59 (PEPPOL-EN16931-R061): the mandate and
+  the debited account go into cac:PaymentMandate. }
+procedure TestDirectDebit49;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Payment: TLandrixInvoicePaymentType;
+  UBL: TLandrixUBLInvoice;
+  Xml: TLandrixXmlUtf8;
+  Text: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    FillInvoice(Invoice);
+    Invoice.PaymentMandateID := 'M-49';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_DirectDebit;
+    Payment.FinancialAccount := 'NO9876543210987';
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.PeppolBIS('3.0'), Spec), 'spec');
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := StringReplace(StringReplace(StringReplace(LandrixXmlUtf8ToString(Xml), #13, '', [rfReplaceAll]),
+      #10, '', [rfReplaceAll]), ' ', '', [rfReplaceAll]);
+    Check(Pos('<cac:PaymentMandate><cbc:ID>M-49</cbc:ID><cac:PayerFinancialAccount><cbc:ID>NO9876543210987' +
+      '</cbc:ID></cac:PayerFinancialAccount></cac:PaymentMandate>', Text) > 0, 'mandate and debited account');
+    Check(Pos('PayeeFinancialAccount', Text) = 0, 'no payee account');
+    CheckEquals(0, CountKind(D, edk_NotAllowed, '/cac:PaymentMandate'), 'mandate not left out');
+    UBL := ReadUBLInvoice(Xml, D);
+    try
+      LandrixEInvoiceUBLInvoiceToInvoice(UBL, Back, D);
+    finally
+      UBL.Free;
+    end;
+    Check(Back.PaymentTypes[0].PaymentMeansCode = ipmc_DirectDebit, 'code read back');
+    CheckEqualsInvoiceStr('NO9876543210987', Back.PaymentTypes[0].FinancialAccount, 'account read back');
+    CheckEqualsInvoiceStr('M-49', Back.PaymentMandateID, 'mandate read back');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure TestWrongSpec;
 var
   Invoice: TLandrixInvoice;
@@ -1086,6 +1131,7 @@ begin
   RegisterTest('MapUBL.TaxPointDate', TestTaxPointDate);
   RegisterTest('MapUBL.PayeeCreditorIdentifier', TestPayeeCreditorIdentifier);
   RegisterTest('MapUBL.WrongSpec', TestWrongSpec);
+  RegisterTest('MapUBL.DirectDebit49', TestDirectDebit49);
   RegisterTest('MapUBL.BlankValues', TestBlankValues);
 end;
 

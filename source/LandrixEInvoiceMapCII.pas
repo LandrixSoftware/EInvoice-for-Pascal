@@ -1159,6 +1159,17 @@ begin
   Result := ACode in [ipmc_BankCard, ipmc_CreditCard, ipmc_DebitCard];
 end;
 
+{ BG-19 belongs to the direct debit codes 49 and 59: both carry the
+  mandate (BT-89) and the debited account (BT-91); 49 is the general direct
+  debit (Peppol and ZUGFeRD examples), 59 the SEPA direct debit.
+  DE: BG-19 gehoert zu den Lastschriftcodes 49 und 59: beide tragen das
+  Mandat (BT-89) und das belastete Konto (BT-91); 49 ist die allgemeine
+  Lastschrift (Peppol- und ZUGFeRD-Beispiele), 59 die SEPA-Lastschrift. }
+function IsDirectDebit(ACode: TLandrixInvoicePaymentMeansCode): Boolean;
+begin
+  Result := ACode in [ipmc_DirectDebit, ipmc_SEPADirectDebit];
+end;
+
 { BT-90 creditor identifier, BT-83 remittance information, BT-5 currency,
   BG-16 payment instructions: BT-81 means, BT-82 text, BG-19 direct debit
   (BT-91 debited account), BG-18 card (BT-87, BT-88), BG-17 credit transfer
@@ -1195,11 +1206,11 @@ begin
       DE: BT-86 gehoert zum Konto des Zahlungsempfaengers; neben einer
       Lastschrift wird es auch ohne Konto geschrieben (ZUGFeRD-Beispiel X01) }
     if not IsCardPayment(Payment.PaymentMeansCode) and
-       (Present(Payment.FinancialAccount) or (Payment.PaymentMeansCode = ipmc_SEPADirectDebit)) then
+       (Present(Payment.FinancialAccount) or IsDirectDebit(Payment.PaymentMeansCode)) then
       Target.PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := Payment.FinancialInstitutionBranch;
     if Blank(Payment.FinancialAccount) then
       Continue;
-    if Payment.PaymentMeansCode = ipmc_SEPADirectDebit then
+    if IsDirectDebit(Payment.PaymentMeansCode) then
       Target.PayerPartyDebtorFinancialAccount.IBANID.Value := Payment.FinancialAccount
     else if IsCardPayment(Payment.PaymentMeansCode) then
     begin

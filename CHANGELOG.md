@@ -278,6 +278,10 @@ Supported invoice standards are documented per release.
   the model cannot hold) are listed with reasons in `tools/rulecheck/oracle-exceptions.txt`.
 
 ### Changed
+- Payment means code 49 (direct debit) is written like 59: the account is the debited account
+  (BT-91, UBL `cac:PaymentMandate/cac:PayerFinancialAccount`, CII `ram:PayerPartyDebtorFinancialAccount`)
+  and UBL writes the mandate reference (BT-89), which Peppol requires (PEPPOL-EN16931-R061); the UBL
+  writer dropped it before. BR-DE-30/31 treat 49 as a direct debit group.
 - The CII writer also reports content that the schema leaves optional but the Factur-X profile
   requires below an existing parent, e.g. the invoiced quantity, its unit code, the net price and
   the line total of a line in BASIC (BR-22, BR-23, BR-26, BR-24). The profile pruning treats blank

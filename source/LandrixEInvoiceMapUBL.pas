@@ -1130,6 +1130,17 @@ begin
   Result := ACode in [ipmc_BankCard, ipmc_CreditCard, ipmc_DebitCard];
 end;
 
+{ BG-19 belongs to the direct debit codes 49 and 59: both carry the
+  mandate (BT-89) and the debited account (BT-91); 49 is the general direct
+  debit (Peppol and ZUGFeRD examples), 59 the SEPA direct debit.
+  DE: BG-19 gehoert zu den Lastschriftcodes 49 und 59: beide tragen das
+  Mandat (BT-89) und das belastete Konto (BT-91); 49 ist die allgemeine
+  Lastschrift (Peppol- und ZUGFeRD-Beispiele), 59 die SEPA-Lastschrift. }
+function IsDirectDebit(ACode: TLandrixInvoicePaymentMeansCode): Boolean;
+begin
+  Result := ACode in [ipmc_DirectDebit, ipmc_SEPADirectDebit];
+end;
+
 { BG-16 payment instructions, one per payment type with a code: BT-81
   means, BT-82 text, BT-83 remittance information, BG-19 direct debit
   (BT-89 mandate, BT-91 debited account), BG-18 card (BT-87, BT-88; the
@@ -1165,7 +1176,7 @@ begin
     Target.PaymentMeansCode.Name := Txt(Payment.PaymentMeansInformation);
     if Present(FInvoice.PaymentID) then
       Target.PaymentID.Add(UBLID(FInvoice.PaymentID, ''));
-    if Payment.PaymentMeansCode = ipmc_SEPADirectDebit then
+    if IsDirectDebit(Payment.PaymentMeansCode) then
     begin
       Target.PaymentMandate.ID.Value := FInvoice.PaymentMandateID;
       Target.PaymentMandate.PayerFinancialAccount.ID.Value := Payment.FinancialAccount;
