@@ -47,4 +47,15 @@ cii-peppol-en16931-r005-1021-code-EUR.xml	missed BR-53
 # BT-110, and a VAT total in another currency than BT-5 is read as BT-6; the output would lack
 # BT-111.
 cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-53
+cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-CO-14
+ubl-inv-br-dex-14-test-30[67]-code-*.xml	missed BR-CO-15
+
+# Two VAT totals with breakdown in the invoice currency (PEPPOL-EN16931-R053 tests): the model
+# holds one VAT total and the writers write one, so BR-CO-15 holds in the output.
+*-peppol-en16931-r053-2-*.xml	missed BR-CO-15
+
+# XRechnung CII with sub lines (extension): the rule table leaves sub lines out of XRechnung
+# CII, so the written sum of line net amounts (BT-106, including the sub lines) no longer
+# matches the lines; the output would fail BR-CO-10.
+cii-br-dex-15-test-on-sub-invoice-lines-1014-identity.xml	extra BR-CO-10
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra BR-53

@@ -29,8 +29,11 @@
   The Factur-X profiles get the rules their schematron contains. BR-29,
   BR-30 and BR-65 are checked on the model: the mappers leave a reversed
   period or a classification without scheme out instead of writing it
-  invalid, so the rule reports content that would be lost. Code
-  list, format, VAT category and calculation rules (BR-CO, BR-S ...,
+  invalid, so the rule reports content that would be lost. The
+  calculation rules BR-CO-10 to BR-CO-17 (Factur-X EXTENDED: BR-FXEXT-CO-10
+  to 13, 15 and 16 with their tolerance, XRechnung UBL with third-party payments:
+  BR-DEX-09) compare the amounts as they are written (two decimals). Code
+  list, format and VAT category rules (BR-S ..., BR-CO-3 to BR-CO-9,
   BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28, BR-51) are not part of
   this set yet.
 
@@ -60,9 +63,12 @@
   BR-29, BR-30 und BR-65 werden am Modell geprueft: die Mapper lassen einen
   umgekehrten Zeitraum oder eine Klassifizierung ohne Schema weg, statt sie
   ungueltig zu schreiben; die Regel meldet also Inhalt, der verloren ginge.
-  Codelisten-, Format-, Steuerkategorie- und Rechenregeln (BR-CO, BR-S ...,
-  BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28, BR-51) gehoeren noch
-  nicht dazu.
+  Die Rechenregeln BR-CO-10 bis BR-CO-17 (Factur-X EXTENDED: BR-FXEXT-CO-10
+  bis 13, 15 und 16 mit ihrer Toleranz, XRechnung UBL mit Zahlungen Dritter:
+  BR-DEX-09) vergleichen die Betraege so, wie sie geschrieben werden (zwei
+  Nachkommastellen). Codelisten-, Format- und Steuerkategorieregeln (BR-S
+  ..., BR-CO-3 bis BR-CO-9, BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27,
+  BR-DE-28, BR-51) gehoeren noch nicht dazu.
 
   Die Regeln LX-CC-01 bis LX-CC-12 sind die Pruefungen von
   TXRechnungInvoiceAdapter.ConsistencyCheck aus XRechnung-for-Delphi. Es
@@ -179,7 +185,10 @@ type
     cr_BRDE07, cr_BRDE08, cr_BRDE09, cr_BRDE10, cr_BRDE11, cr_BRDE15,
     cr_BRDE16, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
     cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE30, cr_BRDE31,
-    cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061);
+    cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061,
+    cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17,
+    cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
+    cr_BRDEX09);
 
   { One check row: identifier, the specifications it applies to, severity,
     business terms (used as diagnostic path), message and origin. Legacy
@@ -216,6 +225,7 @@ const
     as well. DE: PEPPOL-EN16931-R010, R020 und R061 gehoeren auch zum
     XRechnung-Schematron. }
   PeppolXRechnungSource = 'Peppol BIS Billing 3.0, XRechnung 3.0';
+  FacturXExtendedSource = 'Factur-X 1.09 EXTENDED schematron';
 
   { Factur-X 1.09 profiles by the EN 16931 rules their schematron contains
     (XRechnung and Peppol have epr_None and get every rule): MINIMUM has
@@ -577,7 +587,75 @@ const
     (ID: 'PEPPOL-EN16931-R061'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-89';
      Message: 'a direct debit (payment means 49 or 59) shall have a mandate reference (BT-89)';
-     Source: PeppolXRechnungSource));
+     Source: PeppolXRechnungSource),
+    (ID: 'BR-CO-10'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-106, BT-131';
+     Message: 'sum of invoice line net amount (BT-106) = sum of invoice line net amounts (BT-131)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-11'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-107, BT-92';
+     Message: 'sum of allowances on document level (BT-107) = sum of document level allowance amounts (BT-92)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-12'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-108, BT-99';
+     Message: 'sum of charges on document level (BT-108) = sum of document level charge amounts (BT-99)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-13'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-109';
+     Message: 'invoice total amount without VAT (BT-109) = BT-106 - BT-107 + BT-108';
+     Source: EN16931Source),
+    (ID: 'BR-CO-14'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BT-110, BT-117';
+     Message: 'invoice total VAT amount (BT-110) = sum of VAT category tax amounts (BT-117)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-15'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-112';
+     Message: 'invoice total amount with VAT (BT-112) = BT-109 + BT-110';
+     Source: EN16931Source),
+    (ID: 'BR-CO-16'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-115';
+     Message: 'amount due for payment (BT-115) = BT-112 - BT-113 + BT-114';
+     Source: EN16931Source),
+    (ID: 'BR-CO-17'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-117';
+     Message: 'VAT category tax amount (BT-117) = VAT category taxable amount (BT-116) x rate (BT-119) / 100, ' +
+       'rounded to two decimals (tolerance 1)';
+     Source: EN16931Source),
+    (ID: 'BR-FXEXT-CO-10'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-106, BT-131';
+     Message: 'sum of invoice line net amount (BT-106) differs from the sum of the DETAIL line net amounts ' +
+       '(BT-131) by more than 0.01 per line';
+     Source: FacturXExtendedSource),
+    (ID: 'BR-FXEXT-CO-11'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-107, BT-92';
+     Message: 'sum of allowances on document level (BT-107) differs from the sum of the allowances (BT-92) by ' +
+       'more than 0.01 per allowance';
+     Source: FacturXExtendedSource),
+    (ID: 'BR-FXEXT-CO-12'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-108, BT-99';
+     Message: 'sum of charges on document level (BT-108) differs from the sum of the charges (BT-99) by more ' +
+       'than 0.01 per charge';
+     Source: FacturXExtendedSource),
+    (ID: 'BR-FXEXT-CO-13'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-109';
+     Message: 'invoice total amount without VAT (BT-109) differs from the DETAIL line net amounts - allowances ' +
+       '+ charges by more than 0.01 per amount';
+     Source: FacturXExtendedSource),
+    (ID: 'BR-FXEXT-CO-15'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-112';
+     Message: 'invoice total amount with VAT (BT-112) differs from BT-109 + BT-110 by more than 0.01 per ' +
+       'amount';
+     Source: FacturXExtendedSource),
+    (ID: 'BR-FXEXT-CO-16'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-115';
+     Message: 'amount due for payment (BT-115) = BT-112 - BT-113 + BT-114 + third-party ' +
+       'charges (ram:SpecifiedFinancialAdjustment)';
+     Source: FacturXExtendedSource),
+    (ID: 'BR-DEX-09'; Standards: [est_XRechnung]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-115, BT-DEX-002';
+     Message: 'amount due for payment (BT-115) = BT-112 - BT-113 + BT-114 + sum of third-party payment ' +
+       'amounts (BT-DEX-002)';
+     Source: XRechnungSource));
 
 function Applies(const ARow: TCheckRow; const ASpec: TLandrixEInvoiceSpec): Boolean;
 begin
@@ -1105,6 +1183,189 @@ begin
   Result := False;
 end;
 
+{ --- calculation rules ---------------------------------------------------------- }
+
+{ An amount as written, in cents (LandrixEInvoiceAmountToLexical).
+  DE: Ein Betrag, wie er geschrieben wird, in Cent. }
+function Cents(AValue: Currency): Int64;
+begin
+  Result := Trunc(CentAmount(AValue) * 100);
+end;
+
+{ Third-party payments that the target writes: XRechnung UBL invoices
+  (BG-DEX-09) and Factur-X EXTENDED (financial adjustments); the amount due
+  includes them there (BR-DEX-09, BR-FXEXT-CO-16).
+  DE: Zahlungen Dritter, die das Ziel schreibt: XRechnung-UBL-Rechnungen
+  (BG-DEX-09) und Factur-X EXTENDED (Finanzkorrekturen); der Zahlbetrag
+  enthaelt sie dort (BR-DEX-09, BR-FXEXT-CO-16). }
+function ThirdPartyWritten(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  Result := (AInvoice.PrepaidPayments.Count > 0) and ASpec.CanWrite and
+    not Forbidden(ASpec, LandrixEInvoiceRuleThirdPartyPayments) and
+    not ((ASpec.Target.Syntax = esy_UBL) and (AInvoice.InvoiceTypeCode = itc_CreditNote));
+end;
+
+function ThirdPartyCents(AInvoice: TLandrixInvoice): Int64;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := 0;
+  for I := 0 to AInvoice.PrepaidPayments.Count - 1 do
+    Inc(Result, Cents(AInvoice.PrepaidPayments[I].PaidAmount));
+end;
+
+{ Sum and number of the document level allowances (ACharge False) or
+  charges. DE: Summe und Anzahl der Nachlaesse (ACharge False) oder
+  Zuschlaege der Dokumentebene. }
+function AllowanceChargeCents(AInvoice: TLandrixInvoice; ACharge: Boolean; out ACount: Integer): Int64;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := 0;
+  ACount := 0;
+  for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
+    if AInvoice.AllowanceCharges[I].ChargeIndicator = ACharge then
+    begin
+      Inc(Result, Cents(AInvoice.AllowanceCharges[I].Amount));
+      Inc(ACount);
+    end;
+end;
+
+{ Sum of the line net amounts and number of lines. EN 16931: the top
+  level (CII writes sub lines in EXTENDED only, a UBL cac:SubInvoiceLine is
+  no invoice line). EXTENDED (ADetailOnly): every level, the sum over
+  lines without status or with status DETAIL (as written), the count of
+  those lines (AAllCount: of all lines).
+  DE: Summe der Positionsnettobetraege und Anzahl der Positionen. EN 16931:
+  die oberste Ebene (CII schreibt Unterpositionen nur in EXTENDED, eine
+  UBL-cac:SubInvoiceLine ist keine Rechnungsposition). EXTENDED
+  (ADetailOnly): alle Ebenen, die Summe ueber Positionen ohne Status oder
+  mit Status DETAIL (wie geschrieben), deren Anzahl (AAllCount: aller
+  Positionen). }
+procedure LineCents(ALines: TLandrixInvoiceLines; AIsSubLine, ADetailOnly: Boolean; var ASum: Int64;
+  var ACount, AAllCount: Integer);
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  for I := 0 to ALines.Count - 1 do
+  begin
+    Inc(AAllCount);
+    if not ADetailOnly or
+       (LandrixEInvoiceLineStatusOf(ALines[I], AIsSubLine) in [ilsrc_None, ilsrc_Detail]) then
+    begin
+      Inc(ASum, Cents(ALines[I].LineAmount));
+      Inc(ACount);
+    end;
+    if ADetailOnly then
+      LineCents(ALines[I].SubInvoiceLines, True, True, ASum, ACount, AAllCount);
+  end;
+end;
+
+{ BR-CO-17 for one VAT breakdown: with a rate that rounds to 0 the tax
+  amount rounds to 0; otherwise it lies within 1 of the taxable amount x
+  rate / 100 rounded to cents (XPath round: half up), strictly in UBL,
+  inclusively in CII.
+  DE: BR-CO-17 fuer eine Steueraufschluesselung: bei einem Satz, der auf 0
+  rundet, rundet der Steuerbetrag auf 0; sonst liegt er innerhalb von 1
+  um Bemessungsgrundlage x Satz / 100, auf Cent gerundet (XPath round:
+  halb aufwaerts), in UBL echt, in CII einschliesslich. }
+function TaxAmountWrong(ATax: TLandrixInvoiceTaxAmount; AStrict: Boolean): Boolean;
+var
+  Tax, Expected: Int64;
+begin
+  Tax := Cents(ATax.TaxAmount);
+  if Trunc(Abs(ATax.TaxPercent) + 0.5) = 0 then
+  begin
+    Result := (Tax < -50) or (Tax >= 50);
+    Exit;
+  end;
+  Expected := Trunc(Abs(Cents(ATax.TaxableAmount)) * ATax.TaxPercent / 100 + 0.5);
+  if AStrict then
+    Result := not ((Abs(Tax) - 100 < Expected) and (Abs(Tax) + 100 > Expected))
+  else
+    Result := not ((Abs(Tax) - 100 <= Expected) and (Abs(Tax) + 100 >= Expected));
+end;
+
+{ The calculation rules on the totals as written.
+  DE: Die Rechenregeln auf den geschriebenen Summen. }
+function CalculationViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  Lines, Allowances, Charges, Expected: Int64;
+  LineCount, AllLines, AllowanceCount, ChargeCount, I: Integer;
+  Tolerance: Int64;
+begin
+  Lines := 0;
+  LineCount := 0;
+  AllLines := 0;
+  LineCents(AInvoice.InvoiceLines, False, AIndex in [cr_BRFXEXTCO10, cr_BRFXEXTCO13, cr_BRFXEXTCO15], Lines,
+    LineCount, AllLines);
+  Allowances := AllowanceChargeCents(AInvoice, False, AllowanceCount);
+  Charges := AllowanceChargeCents(AInvoice, True, ChargeCount);
+  Tolerance := LineCount + AllowanceCount + ChargeCount;
+  Result := False;
+  case AIndex of
+    cr_BRCO10:
+      Result := Cents(AInvoice.LineAmount) <> Lines;
+    cr_BRCO11:
+      Result := Cents(AInvoice.AllowanceTotalAmount) <> Allowances;
+    cr_BRCO12:
+      Result := Cents(AInvoice.ChargeTotalAmount) <> Charges;
+    cr_BRCO13:
+      Result := Cents(AInvoice.TaxExclusiveAmount) <>
+        Cents(AInvoice.LineAmount) - Cents(AInvoice.AllowanceTotalAmount) + Cents(AInvoice.ChargeTotalAmount);
+    cr_BRCO14:
+      { UBL: no breakdown, no rule; CII: the empty sum is 0 }
+      if (ASpec.Target.Syntax = esy_CII) or (AInvoice.TaxAmountSubtotals.Count > 0) then
+      begin
+        Expected := 0;
+        for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
+          Inc(Expected, Cents(AInvoice.TaxAmountSubtotals[I].TaxAmount));
+        Result := Cents(AInvoice.TaxAmountTotal) <> Expected;
+      end;
+    cr_BRCO15:
+      { CII also accepts BT-112 = BT-109 }
+      Result := (Cents(AInvoice.TaxInclusiveAmount) <>
+        Cents(AInvoice.TaxExclusiveAmount) + Cents(AInvoice.TaxAmountTotal)) and
+        ((ASpec.Target.Syntax <> esy_CII) or
+         (Cents(AInvoice.TaxInclusiveAmount) <> Cents(AInvoice.TaxExclusiveAmount)));
+    cr_BRCO16, cr_BRFXEXTCO16, cr_BRDEX09:
+      begin
+        Expected := Cents(AInvoice.TaxInclusiveAmount) - Cents(AInvoice.PrepaidAmount) +
+          Cents(AInvoice.PayableRoundingAmount);
+        if ThirdPartyWritten(AInvoice, ASpec) then
+        begin
+          { BR-CO-16 gives way to BR-DEX-09 (KoSIT: information in the
+            extension) and BR-FXEXT-CO-16 }
+          if AIndex = cr_BRCO16 then
+            Exit;
+          Inc(Expected, ThirdPartyCents(AInvoice));
+        end
+        else if AIndex = cr_BRDEX09 then
+          Exit;
+        Result := Cents(AInvoice.PayableAmount) <> Expected;
+      end;
+    cr_BRCO17:
+      for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
+        if TaxAmountWrong(AInvoice.TaxAmountSubtotals[I], ASpec.Target.Syntax = esy_UBL) then
+          Result := True;
+    cr_BRFXEXTCO10:
+      Result := Abs(Cents(AInvoice.LineAmount) - Lines) > AllLines;
+    cr_BRFXEXTCO11:
+      Result := Abs(Cents(AInvoice.AllowanceTotalAmount) - Allowances) > AllowanceCount;
+    cr_BRFXEXTCO12:
+      Result := Abs(Cents(AInvoice.ChargeTotalAmount) - Charges) > ChargeCount;
+    cr_BRFXEXTCO13:
+      Result := Abs(Cents(AInvoice.TaxExclusiveAmount) - Lines + Allowances - Charges) > Tolerance;
+    cr_BRFXEXTCO15:
+      Result := Abs(Cents(AInvoice.TaxInclusiveAmount) - Cents(AInvoice.TaxAmountTotal) -
+        Cents(AInvoice.TaxExclusiveAmount)) > Tolerance;
+  else
+    { the other rules are no calculation rules }
+    ;
+  end;
+end;
+
 { --- rules --------------------------------------------------------------------- }
 
 { True if rule AIndex is violated by AInvoice for ASpec. The LX-CC rules keep
@@ -1282,6 +1543,10 @@ begin
       Result := not Present(Seller.ElectronicAddressSellerBuyer);
     cr_PeppolR061:
       Result := HasPayment(AInvoice, pk_DirectDebit) and not Present(AInvoice.PaymentMandateID);
+    cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17,
+    cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
+    cr_BRDEX09:
+      Result := CalculationViolated(AIndex, AInvoice, ASpec);
   end;
 end;
 

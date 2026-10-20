@@ -86,11 +86,26 @@ def validate(java, docs, out):
                            + files[i:i + 200], stdin=stdin, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def custom_levels():
+    """{scenario name: {rule code: level}} of the XRechnung configuration:
+    the report keeps the level of the schematron, the configuration's
+    customLevel changes it for the assessment."""
+    path = os.path.join(TOOLS, "validator-configuration-xrechnung", "scenarios.xml")
+    text = open(path, encoding="utf-8").read()
+    levels = {}
+    for scenario in re.findall(r"<scenario>([\s\S]*?)</scenario>", text):
+        name = re.search(r"<name>([^<]*)</name>", scenario).group(1).strip()
+        levels[name] = dict((c.strip(), l) for l, c in
+                            re.findall(r'<customLevel level="(\w+)">([^<]*)</customLevel>', scenario))
+    return levels
+
+
 def kosit_verdicts(docs, out):
-    """{file: set of rule codes} for documents with a schematron result,
-    and the list of documents without one."""
+    """{file: set of rule codes at level error or warning} for documents with
+    a schematron result, and the list of documents without one."""
     result = {}
     skipped = []
+    levels = custom_levels()
     for f in sorted(glob.glob(os.path.join(docs, "*.xml"))):
         name = os.path.basename(f)
         report = os.path.join(out, name[:-4] + "-report.xml")
@@ -98,7 +113,12 @@ def kosit_verdicts(docs, out):
             skipped.append(name + " (no report)")
             continue
         text = open(report, encoding="utf-8").read()
-        codes = set(re.findall(r'<rep:message [^>]*code="([^"]+)"', text))
+        scenario = re.search(r"<rep:scenarioMatched>[\s\S]*?<s:name>([^<]*)</s:name>", text)
+        custom = levels.get(scenario.group(1).strip(), {}) if scenario else {}
+        # level "information" (also by customLevel, e.g. BR-CO-16 in the
+        # extension scenario) does not reject a document
+        codes = set(code for level, code in re.findall(r'<rep:message [^>]*level="(\w+)"[^>]*code="([^"]+)"', text)
+                    if custom.get(code, level) in ("error", "warning"))
         if 'id="val-sch.' not in text:
             skipped.append(name + " (no schematron result)")
             continue

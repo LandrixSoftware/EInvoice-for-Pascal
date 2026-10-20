@@ -51,6 +51,12 @@ begin
   Check(LandrixEInvoiceFindSpec(ATarget, Result), 'spec ' + string(LandrixEInvoiceTargetToStr(ATarget)));
 end;
 
+{ A currency value from cents, without a float literal. }
+function CentsValue(ACents: Int64): Currency;
+begin
+  PInt64(@Result)^ := ACents * 100;
+end;
+
 type
   TTargetKind = (tk_None, tk_XRUBL, tk_XRCII, tk_Peppol, tk_FXMinimum, tk_FXBasicWL, tk_FXBasic,
     tk_FXEN16931, tk_FXExtended);
@@ -127,6 +133,11 @@ begin
   Tax.TaxAmount := 19;
   Tax.TaxCategory := idtfcc_S_StandardRate;
   Tax.TaxPercent := 19;
+  Invoice.LineAmount := 100;
+  Invoice.TaxExclusiveAmount := 100;
+  Invoice.TaxAmountTotal := 19;
+  Invoice.TaxInclusiveAmount := 119;
+  Invoice.PayableAmount := 119;
 end;
 
 procedure AddAllowanceCharge(Invoice: TLandrixInvoice; ACharge, AWithCategory, AWithReason: Boolean);
@@ -345,6 +356,29 @@ begin
     Seller.ElectronicAddressSellerBuyer := ' '
   else if AID = 'PEPPOL-EN16931-R061' then
     Payment.PaymentMeansCode := ipmc_DirectDebit
+  else if (AID = 'BR-CO-10') or (AID = 'BR-FXEXT-CO-10') then
+    Invoice.LineAmount := 99
+  else if (AID = 'BR-CO-11') or (AID = 'BR-FXEXT-CO-11') then
+    Invoice.AllowanceTotalAmount := 5
+  else if (AID = 'BR-CO-12') or (AID = 'BR-FXEXT-CO-12') then
+    Invoice.ChargeTotalAmount := 5
+  else if (AID = 'BR-CO-13') or (AID = 'BR-FXEXT-CO-13') then
+    Invoice.TaxExclusiveAmount := 101
+  else if AID = 'BR-CO-14' then
+    Invoice.TaxAmountTotal := 20
+  else if (AID = 'BR-CO-15') or (AID = 'BR-FXEXT-CO-15') then
+    Invoice.TaxInclusiveAmount := 120
+  else if (AID = 'BR-CO-16') or (AID = 'BR-FXEXT-CO-16') then
+    Invoice.PayableAmount := 100
+  else if AID = 'BR-CO-17' then
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 21
+  else if AID = 'BR-DEX-09' then
+    with Invoice.PrepaidPayments.AddPrepaidPayment do
+    begin
+      ID := 'Fee';
+      InstructionID := 'Fee paid by a third party';
+      PaidAmount := 10;
+    end
   else
     Fail('no mutation for ' + AID);
 end;
@@ -359,7 +393,7 @@ type
   end;
 
 const
-  RuleCases: array[0..73] of TRuleCase = (
+  RuleCases: array[0..88] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -434,7 +468,22 @@ const
     (ID: 'BR-DE-31'; Target: tk_XRUBL; NotApplicable: tk_FXExtended),
     (ID: 'BR-DE-25-a'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
     (ID: 'BR-62'; Target: tk_Peppol; NotApplicable: tk_XRCII),
-    (ID: 'BR-29'; Target: tk_Peppol; NotApplicable: tk_None));
+    (ID: 'BR-29'; Target: tk_Peppol; NotApplicable: tk_None),
+    (ID: 'BR-CO-10'; Target: tk_XRUBL; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-CO-11'; Target: tk_FXBasicWL; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CO-12'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CO-13'; Target: tk_Peppol; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CO-14'; Target: tk_FXExtended; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CO-15'; Target: tk_FXBasic; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CO-16'; Target: tk_FXEN16931; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CO-17'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'BR-FXEXT-CO-10'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-FXEXT-CO-11'; Target: tk_FXExtended; NotApplicable: tk_XRUBL),
+    (ID: 'BR-FXEXT-CO-12'; Target: tk_FXExtended; NotApplicable: tk_XRCII),
+    (ID: 'BR-FXEXT-CO-13'; Target: tk_FXExtended; NotApplicable: tk_Peppol),
+    (ID: 'BR-FXEXT-CO-15'; Target: tk_FXExtended; NotApplicable: tk_FXBasic),
+    (ID: 'BR-FXEXT-CO-16'; Target: tk_FXExtended; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-DEX-09'; Target: tk_XRUBL; NotApplicable: tk_XRCII));
 
 function HasRule(D: TLandrixEInvoiceDiagnostics; const AID: string): Boolean;
 var
@@ -878,6 +927,74 @@ begin
   end;
 end;
 
+{ BR-CO-17 allows a difference below 1 (UBL) or up to 1 (CII) from the
+  taxable amount x rate rounded to cents; with a rate of 0 the tax amount
+  must round to 0. }
+procedure TestTaxTolerance;
+var
+  Invoice: TLandrixInvoice;
+  Tax: TLandrixInvoiceTaxAmount;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Tax := Invoice.TaxAmountSubtotals[0];
+    Tax.TaxAmount := CentsValue(1999);
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'UBL 19.99 for 19.00');
+    Tax.TaxAmount := 20;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'UBL 20.00 for 19.00');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-17', nil), 'CII 20.00 for 19.00');
+    Tax.TaxAmount := CentsValue(2001);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-17', nil), 'CII 20.01 for 19.00');
+    Tax.TaxPercent := 0;
+    Tax.TaxAmount := CentsValue(49);
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'rate 0, 0.49 rounds to 0');
+    Tax.TaxAmount := CentsValue(50);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'rate 0, 0.50 rounds to 1');
+  finally
+    Invoice.Free;
+  end;
+end;
+
+{ Third-party payments: where the target writes them the amount due
+  includes them (BR-DEX-09, BR-FXEXT-CO-16) and BR-CO-16 gives way; where
+  they are left out BR-CO-16 fails. EXTENDED allows 0.01 per amount
+  (BR-FXEXT-CO-13); CII accepts BT-112 = BT-109 for BR-CO-15. }
+procedure TestTotals;
+var
+  Invoice: TLandrixInvoice;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    with Invoice.PrepaidPayments.AddPrepaidPayment do
+    begin
+      ID := 'Fee';
+      InstructionID := 'Fee paid by a third party';
+      PaidAmount := 10;
+    end;
+    Invoice.PayableAmount := 129;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DEX-09', nil), 'BR-DEX-09 with third party');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-16', nil), 'BR-CO-16 gives way');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-FXEXT-CO-16', nil), 'EXTENDED');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CO-16', nil), 'Peppol leaves them out');
+    Invoice.InvoiceTypeCode := itc_CreditNote;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-16', nil), 'UBL credit note');
+    Invoice.InvoiceTypeCode := itc_CommercialInvoice;
+    Invoice.PrepaidPayments.Clear;
+    Invoice.PayableAmount := 119;
+    Invoice.TaxExclusiveAmount := CentsValue(10001);
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-FXEXT-CO-13', nil), 'EXTENDED 0.01');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXEN16931), 'BR-CO-13', nil), 'EN 16931 exact');
+    Invoice.TaxExclusiveAmount := 100;
+    Invoice.TaxInclusiveAmount := 100;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-15', nil), 'CII: BT-112 = BT-109');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-15', nil), 'UBL: BT-112 = BT-109');
+  finally
+    Invoice.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -894,6 +1011,8 @@ begin
   RegisterTest('Check.SubLines', TestSubLines);
   RegisterTest('Check.CheckCII', TestCheckCII);
   RegisterTest('Check.CheckUBL', TestCheckUBL);
+  RegisterTest('Check.TaxTolerance', TestTaxTolerance);
+  RegisterTest('Check.Totals', TestTotals);
 end;
 
 end.

@@ -262,6 +262,11 @@ Supported invoice standards are documented per release.
   it; where UBL and CII differ, each follows the validator of its syntax (e.g. BR-61 in UBL only,
   BR-DE-23-b, BR-DE-24-b, BR-DE-25-b in CII only, BR-DE-30/31 by syntax). Code list, format, VAT
   category and calculation rules follow.
+- Calculation rules in `LandrixEInvoiceCheck`: BR-CO-10 to BR-CO-17 on the amounts as written (two
+  decimals; BR-CO-17 with the tolerance of its Schematron, strict in UBL, inclusive in CII),
+  Factur-X EXTENDED BR-CO-14 and BR-FXEXT-CO-10 to 13, 15 and 16 (0.01 per amount, DETAIL lines only), and
+  BR-DEX-09 for XRechnung UBL invoices with third-party payments (BR-CO-16 gives way there, as
+  in the KoSIT extension scenario).
 - `LandrixEInvoiceCheckCII`, `LandrixEInvoiceCheckUBLInvoice` and `LandrixEInvoiceCheckUBLCreditNote`:
   check the required content of a syntax model for a target as the writer reports it, returning
   the number of errors.
