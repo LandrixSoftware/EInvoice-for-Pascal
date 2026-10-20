@@ -278,6 +278,9 @@ Supported invoice standards are documented per release.
   the model cannot hold) are listed with reasons in `tools/rulecheck/oracle-exceptions.txt`.
 
 ### Changed
+- `tools/validate.ps1` shows the effective level of each message: the configuration's `customLevel`
+  for the matched scenario applies (e.g. CII-SR-465 is an error in XRechnung), information is not
+  listed.
 - Payment means code 49 (direct debit) is written like 59: the account is the debited account
   (BT-91, UBL `cac:PaymentMandate/cac:PayerFinancialAccount`, CII `ram:PayerPartyDebtorFinancialAccount`)
   and UBL writes the mandate reference (BT-89), which Peppol requires (PEPPOL-EN16931-R061); the UBL

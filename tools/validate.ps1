@@ -16,6 +16,10 @@
   accepts it (rep:assessment/rep:accept: the acceptMatch of the XRechnung
   and ZUGFeRD scenarios; the BIS configuration has no acceptMatch, there its
   report stylesheet rejects only error-level messages); warnings are listed.
+  The level shown is the effective one: the report keeps the level of the
+  Schematron, the configuration's customLevel for the matched scenario
+  changes it (e.g. CII-SR-465 becomes an error in XRechnung, BR-CL-21 is
+  only information in the extension scenario); information is not listed.
   The validator's own summary may still call a file REJECT (without
   acceptMatch a Schematron step with only warnings counts as invalid), so
   its exit code is shown, not used.
@@ -50,6 +54,22 @@ $Configurations = @(
   @{ Name = 'ZUGFeRD 2.5.2'; Dir = 'validator-configuration-zugferd'; Patterns = @('*-ciiEN16931-25.xml', '*-ciiextended-25.xml',
     '*-ciiminimum-25.xml', '*-ciibasicwl-25.xml', '*-ciibasic-25.xml') }
 )
+
+# {scenario name: {rule code: level}} of a configuration's customLevel entries
+function Get-CustomLevels([string]$ScenariosFile) {
+  $levels = @{}
+  $text = Get-Content -Raw $ScenariosFile
+  foreach ($scenario in [regex]::Matches($text, '<scenario>([\s\S]*?)</scenario>')) {
+    $body = $scenario.Groups[1].Value
+    if ($body -notmatch '<name>([^<]*)</name>') { continue }
+    $custom = @{}
+    foreach ($m in [regex]::Matches($body, '<customLevel level="(\w+)">([^<]*)</customLevel>')) {
+      $custom[$m.Groups[2].Value.Trim()] = $m.Groups[1].Value
+    }
+    $levels[$Matches[1].Trim()] = $custom
+  }
+  return $levels
+}
 
 function Find-Java {
   if ($Java) { return $Java }
@@ -99,6 +119,7 @@ foreach ($cfg in $Configurations) {
   if ($files.Count -eq 0) { continue }
   if (-not (Test-Path (Join-Path $cfgDir 'scenarios.xml'))) { throw "$($cfg.Dir) missing: run addons/java-tools/install-tools.ps1" }
   foreach ($f in $files) { $assigned[$f.Name] = $true }
+  $customLevels = Get-CustomLevels (Join-Path $cfgDir 'scenarios.xml')
 
   $log = Join-Path $Out ($cfg.Dir + '.log')
   $arguments = @('-jar', $Validator.FullName, '-r', $cfgDir, '-s', (Join-Path $cfgDir 'scenarios.xml'), '-o', $Out, '-h') +
@@ -125,8 +146,16 @@ foreach ($cfg in $Configurations) {
       continue
     }
     $text = Get-Content -Raw $report
-    $codes = @([regex]::Matches($text, '<rep:message [^>]*level="(warning|error)"[^>]*code="([^"]+)"') |
-      ForEach-Object { "$($_.Groups[2].Value) ($($_.Groups[1].Value))" } | Sort-Object -Unique)
+    $custom = @{}
+    if ($text -match '<rep:scenarioMatched>[\s\S]*?<s:name>([^<]*)</s:name>' -and $customLevels.ContainsKey($Matches[1].Trim())) {
+      $custom = $customLevels[$Matches[1].Trim()]
+    }
+    $codes = @([regex]::Matches($text, '<rep:message [^>]*level="(\w+)"[^>]*code="([^"]+)"') |
+      ForEach-Object {
+        $code = $_.Groups[2].Value
+        $level = if ($custom.ContainsKey($code)) { $custom[$code] } else { $_.Groups[1].Value }
+        if ($level -eq 'warning' -or $level -eq 'error') { "$code ($level)" }
+      } | Sort-Object -Unique)
     if ($text -match '<rep:assessment>\s*<rep:accept') {
       $accepted++
       if ($codes.Count -gt 0) { Write-Host "  accepted with messages: $($f.Name): $($codes -join ', ')" -ForegroundColor Yellow }
