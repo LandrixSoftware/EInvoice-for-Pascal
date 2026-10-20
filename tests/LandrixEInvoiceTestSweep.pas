@@ -59,6 +59,7 @@ uses
   LandrixEInvoiceUBLWriter,
   LandrixEInvoiceMapUBL,
   LandrixEInvoiceCheck,
+  LandrixEInvoiceCompatXRechnungAdapter,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestInvoiceCompare;
 
@@ -475,9 +476,239 @@ begin
   end;
 end;
 
+{ --- namespace prefixes --------------------------------------------------- }
+
+const
+  XmlNamespace = 'http://www.w3.org/XML/1998/namespace';
+
+type
+  { Writes a document again with other prefixes: 'n0', 'n1' ... per
+    namespace in the order of appearance, or (ADefault) the namespace of
+    the root element as default namespace. Comments and processing
+    instructions are left out. }
+  TReprefixer = class(TObject)
+  private
+    FUris: array of TLandrixXmlUtf8;
+    FRootUri: TLandrixXmlUtf8;
+    FDefault: Boolean;
+    function PrefixOf(const AUri: TLandrixXmlUtf8; AForAttribute: Boolean): TLandrixXmlUtf8;
+  public
+    function Run(const AXml: TLandrixXmlUtf8; ADefault: Boolean): TLandrixXmlUtf8;
+  end;
+
+function TReprefixer.PrefixOf(const AUri: TLandrixXmlUtf8; AForAttribute: Boolean): TLandrixXmlUtf8;
+var
+  I: Integer;
+begin
+  Result := '';
+  if AUri = '' then
+    Exit;
+  if AUri = XmlNamespace then
+  begin
+    Result := 'xml';
+    Exit;
+  end;
+  if FDefault and not AForAttribute and (AUri = FRootUri) then
+    Exit;
+  for I := 0 to Integer(Length(FUris)) - 1 do
+    if FUris[I] = AUri then
+    begin
+      Result := LandrixEInvoiceStringToUtf8(TLandrixEInvoiceString('n' + IntToStr(I)));
+      Exit;
+    end;
+  I := Integer(Length(FUris));
+  SetLength(FUris, I + 1);
+  FUris[I] := AUri;
+  Result := LandrixEInvoiceStringToUtf8(TLandrixEInvoiceString('n' + IntToStr(I)));
+end;
+
+function TReprefixer.Run(const AXml: TLandrixXmlUtf8; ADefault: Boolean): TLandrixXmlUtf8;
+var
+  R: TLandrixXmlReader;
+  W: TLandrixXmlWriter;
+  I: Integer;
+  Uri: TLandrixXmlUtf8;
+begin
+  SetLength(FUris, 0);
+  FDefault := ADefault;
+  FRootUri := '';
+  R := TLandrixXmlReader.Create;
+  W := TLandrixXmlWriter.Create;
+  try
+    R.LoadFromUtf8(AXml);
+    while R.Read do
+      case R.TokenType of
+        xttStartElement:
+          begin
+            Uri := R.NamespaceUriUtf8;
+            if R.Depth = 0 then
+              FRootUri := Uri;
+            W.StartElementNs(Uri, PrefixOf(Uri, False), R.LocalNameUtf8);
+            for I := 0 to R.AttributeCount - 1 do
+              if not R.IsNamespaceDeclaration(I) then
+              begin
+                Uri := R.AttributeNamespaceUriUtf8(I);
+                if Uri = '' then
+                  W.AttributeUtf8(R.AttributeLocalNameUtf8(I), R.AttributeValueUtf8(I))
+                else
+                  W.AttributeNsUtf8(Uri, PrefixOf(Uri, True), R.AttributeLocalNameUtf8(I), R.AttributeValueUtf8(I));
+              end;
+          end;
+        xttEndElement:
+          W.EndElement;
+        xttText:
+          W.TextUtf8(R.ValueUtf8);
+        xttCData:
+          W.CDataUtf8(R.ValueUtf8);
+      else
+        ;
+      end;
+    W.EndDocument;
+    Result := W.AsUtf8;
+  finally
+    W.Free;
+    R.Free;
+  end;
+end;
+
+function VersionOfXml(const AXml: TLandrixXmlUtf8): TXRechnungVersion;
+var
+  S: TMemoryStream;
+begin
+  S := TMemoryStream.Create;
+  try
+    if AXml <> '' then
+      S.WriteBuffer(PAnsiChar(AXml)^, Length(AXml));
+    S.Position := 0;
+    Result := TXRechnungValidationHelper.GetXRechnungVersion(S);
+  finally
+    S.Free;
+  end;
+end;
+
+{ One file with other prefixes: the same specification and version are
+  detected and the same invoice is read. }
+procedure PrefixFile(const AKey: string; const AXml: TLandrixXmlUtf8; AFindings: TStrings);
+var
+  Rewriter: TReprefixer;
+  Xml: TLandrixXmlUtf8;
+  A, B: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec, Again: TLandrixEInvoiceSpec;
+  Ext, Ext2: Boolean;
+  Diffs: TStringList;
+  Mode, I: Integer;
+  ID, ID2: TLandrixEInvoiceString;
+  Detected: Boolean;
+  Kinds: array[TLandrixEInvoiceDiagnosticKind] of Integer;
+  K: TLandrixEInvoiceDiagnosticKind;
+begin
+  Rewriter := TReprefixer.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  A := TLandrixInvoice.Create;
+  B := TLandrixInvoice.Create;
+  Diffs := TStringList.Create;
+  try
+    ID := ReadModel(AXml, RootLocalName(AXml), A, D);
+    Detected := LandrixEInvoiceDetectSpec(TLandrixEInvoiceString(RootLocalName(AXml)), ID, Spec, Ext);
+    for K := Low(TLandrixEInvoiceDiagnosticKind) to High(TLandrixEInvoiceDiagnosticKind) do
+      Kinds[K] := D.CountOf(K);
+    for Mode := 0 to 1 do
+    begin
+      Xml := Rewriter.Run(AXml, Mode = 1);
+      if Pos('<n0:', LandrixXmlUtf8ToString(Xml)) + Pos(' xmlns=', LandrixXmlUtf8ToString(Xml)) = 0 then
+        AFindings.Add(AKey + ' mode ' + IntToStr(Mode) + ': prefixes not changed');
+      B.Clear;
+      D.Clear;
+      ID2 := ReadModel(Xml, RootLocalName(Xml), B, D);
+      if ID2 <> ID then
+        AFindings.Add(AKey + ' mode ' + IntToStr(Mode) + ': specification identifier ' + string(ID2));
+      for K := Low(TLandrixEInvoiceDiagnosticKind) to High(TLandrixEInvoiceDiagnosticKind) do
+        if D.CountOf(K) <> Kinds[K] then
+          AFindings.Add(AKey + ' mode ' + IntToStr(Mode) + ': diagnostics ' +
+            string(LandrixEInvoiceDiagnosticKindToStr(K)) + ' ' + IntToStr(D.CountOf(K)) + ' instead of ' +
+            IntToStr(Kinds[K]));
+      if Detected <> LandrixEInvoiceDetectSpec(TLandrixEInvoiceString(RootLocalName(Xml)), ID2, Again, Ext2) then
+        AFindings.Add(AKey + ' mode ' + IntToStr(Mode) + ': detection differs')
+      else if Detected and (not LandrixEInvoiceSameTarget(Again.Target, Spec.Target) or (Ext2 <> Ext)) then
+        AFindings.Add(AKey + ' mode ' + IntToStr(Mode) + ': other target or extension');
+      if VersionOfXml(Xml) <> VersionOfXml(AXml) then
+        AFindings.Add(AKey + ' mode ' + IntToStr(Mode) + ': compatibility version differs');
+      Diffs.Clear;
+      CompareInvoices(A, B, Diffs);
+      for I := 0 to Diffs.Count - 1 do
+        AFindings.Add(AKey + ' mode ' + IntToStr(Mode) + ': compare ' + Diffs[I]);
+    end;
+  finally
+    Diffs.Free;
+    B.Free;
+    A.Free;
+    D.Free;
+    Rewriter.Free;
+  end;
+end;
+
+{ Namespace prefixes are free (XRechnung-for-Delphi #92): every official
+  example and golden file is read again with prefixes n0, n1 ... and with
+  the root namespace as default namespace. Other root elements of the UBL
+  family are no invoice. }
+procedure TestPrefixes;
+var
+  Dirs: array[0..3] of string;
+  Findings: TStringList;
+  SR: TSearchRec;
+  K, Files: Integer;
+  Spec: TLandrixEInvoiceSpec;
+  Ext: Boolean;
+begin
+  Dirs[0] := LocalSweepDir + Corpora[0] + PathDelim;
+  Dirs[1] := LocalSweepDir + Corpora[1] + PathDelim;
+  Dirs[2] := LocalSweepDir + Corpora[2] + PathDelim;
+  Dirs[3] := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim + 'golden' + PathDelim;
+  Findings := TStringList.Create;
+  try
+    Files := 0;
+    for K := Low(Dirs) to High(Dirs) do
+      if FindFirst(Dirs[K] + '*.xml', faAnyFile, SR) = 0 then
+      begin
+        repeat
+          Inc(Files);
+          try
+            PrefixFile(ExtractFileName(ExcludeTrailingPathDelimiter(Dirs[K])) + '/' + SR.Name,
+              LoadFile(Dirs[K] + SR.Name), Findings);
+          except
+            on E: Exception do
+              Findings.Add(ExtractFileName(ExcludeTrailingPathDelimiter(Dirs[K])) + '/' + SR.Name + ': ' +
+                E.ClassName + ': ' + E.Message);
+          end;
+        until FindNext(SR) <> 0;
+        FindClose(SR);
+      end;
+    for K := 0 to Findings.Count - 1 do
+      WriteLn('  ', Findings[K]);
+    if Files = 0 then
+      Skip('no local sweep corpora or golden files')
+    else
+      CheckEquals(0, Findings.Count, IntToStr(Files) + ' files with other prefixes');
+    Check(not LandrixEInvoiceDetectSpec('SelfBilledInvoice',
+      'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0', Spec, Ext),
+      'SelfBilledInvoice is no invoice');
+    Check(VersionOfXml('<n0:SelfBilledInvoice xmlns:n0="urn:oasis:names:specification:ubl:schema:xsd:' +
+      'SelfBilledInvoice-2"><n1:CustomizationID xmlns:n1="urn:oasis:names:specification:ubl:schema:xsd:' +
+      'CommonBasicComponents-2">urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0' +
+      '</n1:CustomizationID></n0:SelfBilledInvoice>') = XRechnungVersion_Unknown,
+      'SelfBilledInvoice: no version');
+    Check(VersionOfXml('<InvoiceResponse xmlns="urn:oasis:names:specification:ubl:schema:xsd:' +
+      'ApplicationResponse-2"/>') = XRechnungVersion_Unknown, 'InvoiceResponse: no version');
+  finally
+    Findings.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Sweep.Official', TestSweep);
+  RegisterTest('Sweep.Prefixes', TestPrefixes);
 end;
 
 end.
