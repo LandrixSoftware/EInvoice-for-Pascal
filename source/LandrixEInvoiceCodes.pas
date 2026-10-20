@@ -2335,7 +2335,8 @@ type
     iuc_roll, // XRO Roll
     iuc_XRT, // XRT Rednet
     iuc_XRZ, // XRZ Rods, in bundle/bunch/truss
-    iuc_XSA, // XSA Sack
+    { XSA sack (a bag is iuc_bag, XBG) }
+    iuc_sack, // XSA Sack
     iuc_XSB, // XSB Slab
     iuc_XSC, // XSC Crate, shallow
     iuc_XSD, // XSD Spindle

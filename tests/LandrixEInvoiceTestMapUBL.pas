@@ -860,7 +860,7 @@ begin
     CheckEqualsInvoiceStr('Representative', Back.TaxRepresentativeParty.Name, 'BT-62');
     CheckEqualsInvoiceStr('DE123456789', Back.TaxRepresentativeParty.VATCompanyID, 'BT-63');
     CheckEqualsInvoiceStr('Rep City', Back.TaxRepresentativeParty.Address.City, 'BG-12');
-    CheckEqualsInvoiceStr('AAG', Back.Attachments[0].IDSchemeID, 'BT-18-1');
+    CheckEqualsInvoiceStr('AAG', Back.Attachments[0].SchemeID, 'BT-18-1');
     CheckEqualsInvoiceStr('123456789', Back.InvoiceLines[0].StandardItemIdentifier, 'BT-157');
     CheckEqualsInvoiceStr('0088', Back.InvoiceLines[0].StandardItemIdentifierSchemeID, 'BT-157-1');
   finally

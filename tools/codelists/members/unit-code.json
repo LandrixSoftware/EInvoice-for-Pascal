@@ -176,6 +176,13 @@
       "doc": [
         "H18 (Factur-X rejects HAR; FromStr also reads HAR)"
       ]
+    },
+    {
+      "code": "XSA",
+      "id": "iuc_sack",
+      "doc": [
+        "XSA sack (a bag is iuc_bag, XBG)"
+      ]
     }
   ]
 }

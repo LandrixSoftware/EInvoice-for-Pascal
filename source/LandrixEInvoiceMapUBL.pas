@@ -885,9 +885,9 @@ begin
     Target := FDoc.AdditionalDocumentReference.Add;
     Target.ID.Value := Attachment.ID;
     if Attachment.TypeCode = iatc_130 then
-      Target.ID.SchemeID := Attachment.IDSchemeID
-    else if Attachment.IDSchemeID <> '' then
-      Report(edk_NotAllowed, Path + '/cbc:ID/@schemeID', 'scheme ' + Attachment.IDSchemeID + ' of attachment ' +
+      Target.ID.SchemeID := Attachment.SchemeID
+    else if Attachment.SchemeID <> '' then
+      Report(edk_NotAllowed, Path + '/cbc:ID/@schemeID', 'scheme ' + Attachment.SchemeID + ' of attachment ' +
         Attachment.ID + ' left out: only the invoiced object identifier (BT-18) has one', eds_Warning);
     if Attachment.TypeCode = iatc_130 then
       Target.DocumentTypeCode.Value := '130'
@@ -2027,7 +2027,7 @@ begin
     if Attachment.TypeCode = iatc_130 then
     begin
       Attachment.ID := Source.ID.Value;
-      Attachment.IDSchemeID := Source.ID.SchemeID;
+      Attachment.SchemeID := Source.ID.SchemeID;
     end
     else
       Attachment.ID := IDValue(Source.ID, Path + '/cbc:ID');

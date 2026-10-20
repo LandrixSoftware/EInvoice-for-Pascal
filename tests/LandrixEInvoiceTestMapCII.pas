@@ -537,7 +537,7 @@ begin
   Attachment := AInvoice.Attachments.AddAttachment(iat_application_None);
   Attachment.TypeCode := iatc_130;
   Attachment.ID := 'OBJ-1';
-  Attachment.IDSchemeID := 'AAG';
+  Attachment.SchemeID := 'AAG';
   Subtotal := AInvoice.TaxAmountSubtotals.AddTaxAmount;
   Subtotal.TaxableAmount := 100;
   Subtotal.TaxAmount := 19;
@@ -649,7 +649,7 @@ begin
     Check(Back.PaymentTermsType = iptt_CashDiscount1, 'cash discount');
     CheckEqualsInvoiceStr('2 % within 10 days', Back.PaymentTermCashDiscount1Note, 'text of the discount level');
     CheckEqualsInvoiceStr('Net 30 days', Back.PaymentTermNetNote, 'net note');
-    CheckEqualsInvoiceStr('AAG', Back.Attachments[0].IDSchemeID, 'BT-18-1');
+    CheckEqualsInvoiceStr('AAG', Back.Attachments[0].SchemeID, 'BT-18-1');
     CheckEqualsInvoiceStr('123456789', Back.InvoiceLines[0].StandardItemIdentifier, 'BT-157');
     CheckEqualsInvoiceStr('0088', Back.InvoiceLines[0].StandardItemIdentifierSchemeID, 'BT-157-1');
     CheckEqualsInvoiceStr('', Back.InvoiceLines[0].GlobalID_EAN_GTIN, 'no GTIN for scheme 0088');

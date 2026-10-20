@@ -137,7 +137,7 @@ type
       e.g. 'AAG'); other attachments carry no scheme.
       DE: BT-18-1 Schema der Objektkennung (nur TypeCode 130, z. B. 'AAG');
       andere Anhaenge tragen kein Schema. }
-    IDSchemeID: TLandrixEInvoiceString;
+    SchemeID: TLandrixEInvoiceString;
   public
     constructor Create(AAttachmentType: TLandrixInvoiceAttachmentType);
     destructor Destroy; override;
@@ -1308,7 +1308,7 @@ type
 const
   { Normalized aliases (lower case ASCII, umlauts as ae/oe/ue/ss, 2/3 for
     superscript two/three). The first match wins. }
-  UnitAliases: array[0..231] of TUnitAlias = (
+  UnitAliases: array[0..232] of TUnitAlias = (
     (Alias: 'st'; UnitCode: iuc_piece),
     (Alias: 'st.'; UnitCode: iuc_piece),
     (Alias: 'stk.'; UnitCode: iuc_piece),
@@ -1522,9 +1522,10 @@ const
     (Alias: 'kopf'; UnitCode: iuc_person),
     (Alias: 'kpf'; UnitCode: iuc_person),
     (Alias: 'koepfe'; UnitCode: iuc_person),
-    (Alias: 'sack'; UnitCode: iuc_bag),
-    (Alias: 'saecke'; UnitCode: iuc_bag),
-    (Alias: 'sck'; UnitCode: iuc_bag),
+    (Alias: 'sack'; UnitCode: iuc_sack),
+    (Alias: 'saecke'; UnitCode: iuc_sack),
+    (Alias: 'sck'; UnitCode: iuc_sack),
+    (Alias: 'beutel'; UnitCode: iuc_bag),
     (Alias: 'bag'; UnitCode: iuc_bag),
     (Alias: 'bags'; UnitCode: iuc_bag),
     (Alias: 'rolle'; UnitCode: iuc_roll),
@@ -1642,7 +1643,7 @@ begin
   AttachmentType := AAttachmentType;
   Data := TMemoryStream.Create;
   ExternalReference := '';
-  IDSchemeID := '';
+  SchemeID := '';
 end;
 
 destructor TLandrixInvoiceAttachment.Destroy;

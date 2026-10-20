@@ -360,6 +360,11 @@ begin
   CheckUnit('', iuc_one, 'empty text');
   CheckUnit('Kart.', iuc_packaging, 'Kart.');
   CheckUnit('qm', iuc_square_metre, 'qm');
+  CheckUnit('Sack', iuc_sack, 'Sack is XSA');
+  CheckUnit(Wide([$73, $E4, $63, $6B, $65]), iuc_sack, 'saecke with umlaut');
+  CheckUnit('Beutel', iuc_bag, 'Beutel is XBG');
+  CheckUnit('bags', iuc_bag, 'bags');
+  CheckEqualsStr('XSA', string(LandrixEInvoiceUnitCodeToStr(iuc_sack)), 'iuc_sack is XSA');
   { STUECK with U+00DC, built from code units }
   CheckUnit(Wide([$53, $54, $DC, $43, $4B]), iuc_piece, 'STUECK with umlaut');
   CheckUnit(Wide([$6B, $F6, $70, $66, $65]), iuc_person, 'koepfe with umlaut');

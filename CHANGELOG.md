@@ -179,7 +179,8 @@ Supported invoice standards are documented per release.
   legal registration (`CompanyIDSchemeID`, BT-30-1/BT-47-1), contact department
   (`ContactDepartment`, BT-41-0/BT-56-0, CII only and only without a person name), item standard
   identifier with any scheme (`StandardItemIdentifier`/`...SchemeID`, BT-157; takes precedence
-  over `GlobalID_EAN_GTIN`), scheme of the invoiced object identifier (`IDSchemeID`, BT-18-1);
+  over `GlobalID_EAN_GTIN`), scheme of the invoiced object identifier (`SchemeID`, BT-18-1, named as in
+  XRechnung-for-Delphi);
   EXTENDED only: test indicator, document name, order dates of the document and the line,
   deliver to contact, a text per cash discount level. New date, amount and boolean fields use
   the optional value types. Targets that do not know a field leave it out and report it.
@@ -238,8 +239,16 @@ Supported invoice standards are documented per release.
 - Factur-X EXTENDED: third-party payments (BG-DEX-09) are written and read as financial
   adjustments (`ram:SpecifiedFinancialAdjustment`, BR-FXEXT-CO-16).
 - `tools/build.ps1 -Validate` lets the KoSIT validator check the sweep outputs as well.
+- `LandrixEInvoicePdfXmpDescription` (XMP `rdf:Description` for a Factur-X / ZUGFeRD PDF/A-3 per
+  target, all Factur-X profiles and XRechnung CII) and `LandrixEInvoicePdfXmpSchema` (XMP extension
+  schema); the compatibility adapter has `ZUGFERD_INVOICE_PDF_FILENAME_FACTURX`,
+  `ZUGFERD_INVOICE_PDF_FILENAME_XRECHNUNG`, `ZUGFERD_INVOICE_PDF_XMP_INFO`,
+  `ZUGFERD_INVOICE_PDF_SCHEMA`, `TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo` and `ZUGFeRDPdfFilename`
+  as in XRechnung-for-Delphi.
 
 ### Changed
+- Unit code XSA is `iuc_sack` (as in XRechnung-for-Delphi); the free texts sack, saecke and sck
+  mean XSA (sack) instead of XBG, beutel is XBG (bag).
 - Factur-X EXTENDED logistics service charges (BT-X-271 to BT-X-274) are read as document level
   charges (BG-21) and reported as information; the totals and the VAT breakdown include them, so
   leaving them out made every written invoice inconsistent.

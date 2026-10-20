@@ -280,6 +280,7 @@ const
   iuc_foot = LandrixEInvoiceCodes.iuc_foot;
   iuc_inch = LandrixEInvoiceCodes.iuc_inch;
   iuc_hectare = LandrixEInvoiceCodes.iuc_hectare;
+  iuc_sack = LandrixEInvoiceCodes.iuc_sack;
   { Members of TInvoiceAttachmentType. DE: Werte von TInvoiceAttachmentType. }
   iat_application_None = LandrixEInvoiceCodes.iat_application_None;
   iat_application_pdf = LandrixEInvoiceCodes.iat_application_pdf;

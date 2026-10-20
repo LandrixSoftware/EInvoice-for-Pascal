@@ -1025,9 +1025,9 @@ begin
     Target.TypeCode := Code(LandrixEInvoiceAttachmentTypeCodeToStr(Attachment.TypeCode), Attachment.TypeCodeOther,
       Path + '/ram:TypeCode');
     if Attachment.TypeCode = iatc_130 then
-      Target.ReferenceTypeCode := Attachment.IDSchemeID
-    else if Attachment.IDSchemeID <> '' then
-      Report(edk_NotAllowed, Path + '/ram:ReferenceTypeCode', 'scheme ' + Attachment.IDSchemeID + ' of attachment ' +
+      Target.ReferenceTypeCode := Attachment.SchemeID
+    else if Attachment.SchemeID <> '' then
+      Report(edk_NotAllowed, Path + '/ram:ReferenceTypeCode', 'scheme ' + Attachment.SchemeID + ' of attachment ' +
         Attachment.ID + ' left out: only the invoiced object identifier (BT-18) has one', eds_Warning);
     Target.Name := Txt(Attachment.DocumentDescription);
     if Attachment.ContainsBinaryObject then
@@ -2436,7 +2436,7 @@ begin
     Source.ListFilledChildren(FFilled);
     if Attachment.TypeCode = iatc_130 then
     begin
-      Attachment.IDSchemeID := Source.ReferenceTypeCode;
+      Attachment.SchemeID := Source.ReferenceTypeCode;
       Rest(Path, ['ram:IssuerAssignedID', 'ram:URIID', 'ram:TypeCode', 'ram:Name', 'ram:AttachmentBinaryObject',
         'ram:ReferenceTypeCode']);
     end

@@ -693,8 +693,8 @@ begin
     Diff(ADiffs, APath + 'Data (BT-125)', 'data ' + IntToStr(DataSize(A.Data)), 'data ' + IntToStr(DataSize(B.Data)));
   if A.ExternalReference <> B.ExternalReference then
     Diff(ADiffs, APath + 'ExternalReference (BT-124)', '"' + string(A.ExternalReference) + '"', '"' + string(B.ExternalReference) + '"');
-  if A.IDSchemeID <> B.IDSchemeID then
-    Diff(ADiffs, APath + 'IDSchemeID (BT-18-1)', '"' + string(A.IDSchemeID) + '"', '"' + string(B.IDSchemeID) + '"');
+  if A.SchemeID <> B.SchemeID then
+    Diff(ADiffs, APath + 'SchemeID (BT-18-1)', '"' + string(A.SchemeID) + '"', '"' + string(B.SchemeID) + '"');
 end;
 
 procedure DumpAttachmentFields(A: TLandrixInvoiceAttachment; const APath: string; ALines: TStrings);
@@ -717,8 +717,8 @@ begin
     ALines.Add(APath + 'Data (BT-125) = ' + 'data ' + IntToStr(DataSize(A.Data)));
   if A.ExternalReference <> '' then
     ALines.Add(APath + 'ExternalReference (BT-124) = ' + '"' + string(A.ExternalReference) + '"');
-  if A.IDSchemeID <> '' then
-    ALines.Add(APath + 'IDSchemeID (BT-18-1) = ' + '"' + string(A.IDSchemeID) + '"');
+  if A.SchemeID <> '' then
+    ALines.Add(APath + 'SchemeID (BT-18-1) = ' + '"' + string(A.SchemeID) + '"');
 end;
 
 procedure CompareDeliveryInformationFields(A, B: TLandrixInvoiceDeliveryInformation; const APath: string; ADiffs: TStrings);
@@ -1489,7 +1489,7 @@ begin
   AInvoice.Attachments[0].AttachmentTypeOther := 'f311';
   AppendData(AInvoice.Attachments[0].Data, 3);
   AInvoice.Attachments[0].ExternalReference := 'f313';
-  AInvoice.Attachments[0].IDSchemeID := 'f314';
+  AInvoice.Attachments[0].SchemeID := 'f314';
   AInvoice.PrepaidPayments.AddPrepaidPayment;
   AInvoice.PrepaidPayments[0].ID := 'f316';
   AInvoice.PrepaidPayments[0].PaidAmount := 317;
@@ -3046,8 +3046,8 @@ begin
       end;
     301:
       begin
-        APath := 'Attachments[0].IDSchemeID (BT-18-1)';
-        AInvoice.Attachments[0].IDSchemeID := AInvoice.Attachments[0].IDSchemeID + 'x';
+        APath := 'Attachments[0].SchemeID (BT-18-1)';
+        AInvoice.Attachments[0].SchemeID := AInvoice.Attachments[0].SchemeID + 'x';
       end;
     302:
       begin

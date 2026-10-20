@@ -76,6 +76,7 @@ interface
 uses
   Classes,
   LandrixEInvoiceDiagnostics,
+  LandrixEInvoiceSpecs,
   LandrixEInvoiceInvoice;
 
 type
@@ -162,6 +163,31 @@ const
     Summe ihrer Unterpositionen (BR-FXEXT-08). }
   ccSubInvoiceLineAmountMismatch = 12;
 
+  { Name of the invoice in a Factur-X / ZUGFeRD PDF (also XRechnung CII
+    outside the profile XRECHNUNG). DE: Name der Rechnung in einem
+    Factur-X-/ZUGFeRD-PDF (auch XRechnung CII ausserhalb des Profils
+    XRECHNUNG). }
+  ZUGFERD_INVOICE_PDF_FILENAME_FACTURX = 'factur-x.xml';
+  { Name of the invoice in a PDF with the profile XRECHNUNG (CII).
+    DE: Name der Rechnung in einem PDF mit dem Profil XRECHNUNG (CII). }
+  ZUGFERD_INVOICE_PDF_FILENAME_XRECHNUNG = 'xrechnung.xml';
+  { XMP description for the profile EXTENDED only; other profiles:
+    TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo (core:
+    LandrixEInvoicePdfXmpDescription).
+    DE: XMP-Beschreibung nur fuer das Profil EXTENDED; andere Profile:
+    TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo (Kern:
+    LandrixEInvoicePdfXmpDescription). }
+  ZUGFERD_INVOICE_PDF_XMP_INFO =
+    '<rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about="">' + #10 +
+    '<fx:DocumentType>INVOICE</fx:DocumentType>' + #10 +
+    '<fx:DocumentFileName>factur-x.xml</fx:DocumentFileName>' + #10 +
+    '<fx:Version>1.0</fx:Version>' + #10 +
+    '<fx:ConformanceLevel>EXTENDED</fx:ConformanceLevel></rdf:Description>';
+  { XMP extension schema (prefix fx); same as LandrixEInvoicePdfXmpSchema.
+    DE: XMP-Erweiterungsschema (Praefix fx); gleich
+    LandrixEInvoicePdfXmpSchema. }
+  ZUGFERD_INVOICE_PDF_SCHEMA = LandrixEInvoicePdfXmpSchema;
+
 type
   { Version detection. DE: Versionserkennung. }
   TXRechnungValidationHelper = class(TObject)
@@ -195,6 +221,19 @@ type
     class function ConsistencyCheck(_Invoice: TLandrixInvoice; _Version: TXRechnungVersion): Boolean; overload;
     class function ConsistencyCheck(_Invoice: TLandrixInvoice; _Version: TXRechnungVersion;
       out _ErrorCode: Integer): Boolean; overload;
+    { XMP description (rdf:Description) for a ZUGFeRD / Factur-X PDF/A-3 per
+      version: EN 16931 and EXTENDED (factur-x.xml), XRECHNUNG for
+      XRechnungVersion_30x_UNCEFACT (xrechnung.xml); '' for UBL and other
+      versions. Delegates to LandrixEInvoicePdfXmpDescription.
+      DE: XMP-Beschreibung (rdf:Description) fuer ein ZUGFeRD-/Factur-X-
+      PDF/A-3 je Version: EN 16931 und EXTENDED (factur-x.xml), XRECHNUNG
+      fuer XRechnungVersion_30x_UNCEFACT (xrechnung.xml); '' fuer UBL und
+      andere Versionen. Gibt an LandrixEInvoicePdfXmpDescription weiter. }
+    class function ZUGFeRDPdfXmpInfo(_Version: TXRechnungVersion): TXRechnungString;
+    { Name of the invoice in the PDF for _Version ('' for UBL and other
+      versions). DE: Name der Rechnung im PDF fuer _Version ('' fuer UBL und
+      andere Versionen). }
+    class function ZUGFeRDPdfFilename(_Version: TXRechnungVersion): TXRechnungString;
     { Without due date: issue date + 30 days, or one day after the longest
       cash discount period if that is later.
       DE: Ohne Faelligkeitsdatum: Rechnungsdatum + 30 Tage, oder einen Tag
@@ -257,7 +296,6 @@ uses
   LandrixEInvoiceTypes,
   LandrixEInvoiceCodes,
   LandrixEInvoiceLexical,
-  LandrixEInvoiceSpecs,
   LandrixEInvoiceRules,
   LandrixEInvoiceCalc,
   LandrixEInvoiceCII,
@@ -758,6 +796,26 @@ begin
   Result := (AParty.ElectronicAddressSellerBuyer <> '') and
     (((AVersion = PeppolBillingVersion_30) and (AParty.ElectronicAddressSellerBuyerSchemeID = 'EM')) or
      (ANoDefaultEM and (AParty.ElectronicAddressSellerBuyerSchemeID = '')));
+end;
+
+class function TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo(_Version: TXRechnungVersion): TXRechnungString;
+var
+  Spec: TLandrixEInvoiceSpec;
+begin
+  if SpecOf(_Version, Spec) then
+    Result := LandrixEInvoicePdfXmpDescription(Spec.Target)
+  else
+    Result := '';
+end;
+
+class function TXRechnungInvoiceAdapter.ZUGFeRDPdfFilename(_Version: TXRechnungVersion): TXRechnungString;
+var
+  Spec: TLandrixEInvoiceSpec;
+begin
+  if SpecOf(_Version, Spec) then
+    Result := Spec.AttachmentFileName
+  else
+    Result := '';
 end;
 
 class function TXRechnungInvoiceAdapter.ConsistencyCheck(_Invoice: TLandrixInvoice;

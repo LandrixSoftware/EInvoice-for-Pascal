@@ -412,6 +412,26 @@ begin
   end;
 end;
 
+{ ZUGFeRD PDF metadata as in XRechnung-for-Delphi: XMP and file name per
+  version, the fixed EXTENDED constant equals the EXTENDED description. }
+procedure TestPdfMetadata;
+begin
+  CheckEqualsStr(string(ZUGFERD_INVOICE_PDF_XMP_INFO),
+    string(TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo(ZUGFeRDExtendedVersion_250)), 'EXTENDED');
+  Check(Pos('<fx:ConformanceLevel>EN 16931</fx:ConformanceLevel>',
+    string(TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo(ZUGFeRDEN16931Version_250))) > 0, 'EN 16931');
+  Check(Pos('<fx:DocumentFileName>xrechnung.xml</fx:DocumentFileName>',
+    string(TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo(XRechnungVersion_30x_UNCEFACT))) > 0, 'XRECHNUNG');
+  CheckEqualsStr('', string(TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo(XRechnungVersion_30x_UBL)), 'UBL');
+  CheckEqualsStr('', string(TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo(PeppolBillingVersion_30)), 'Peppol');
+  CheckEqualsStr(ZUGFERD_INVOICE_PDF_FILENAME_FACTURX,
+    string(TXRechnungInvoiceAdapter.ZUGFeRDPdfFilename(ZUGFeRDEN16931Version_250)), 'file name EN 16931');
+  CheckEqualsStr(ZUGFERD_INVOICE_PDF_FILENAME_XRECHNUNG,
+    string(TXRechnungInvoiceAdapter.ZUGFeRDPdfFilename(XRechnungVersion_30x_UNCEFACT)), 'file name XRECHNUNG');
+  CheckEqualsStr('', string(TXRechnungInvoiceAdapter.ZUGFeRDPdfFilename(XRechnungVersion_Unknown)), 'unknown');
+  Check(Pos('<pdfaSchema:prefix>fx</pdfaSchema:prefix>', ZUGFERD_INVOICE_PDF_SCHEMA) > 0, 'schema prefix fx');
+end;
+
 { Non-ASCII text survives SaveToXMLStr and LoadFromXMLStr on every compiler;
   the stream keeps its position during detection; an unwritable version
   raises; a missing folder writes nothing. }
@@ -685,6 +705,7 @@ begin
   RegisterTest('CompatAdapter.CorrectDueDate', TestCorrectDueDate);
   RegisterTest('CompatAdapter.LoadErrors', TestLoadErrors);
   RegisterTest('CompatAdapter.TextAndStream', TestTextAndStream);
+  RegisterTest('CompatAdapter.PdfMetadata', TestPdfMetadata);
   RegisterTest('CompatAdapter.Pdf', TestPdf);
   RegisterTest('Cross.Write', TestCrossWrite);
   if CrossInDir <> '' then

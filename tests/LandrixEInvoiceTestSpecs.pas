@@ -187,6 +187,29 @@ begin
   Check(LandrixEInvoiceFindSpec(ATarget, Result), 'spec ' + string(LandrixEInvoiceTargetToStr(ATarget)));
 end;
 
+{ XMP description per target: conformance level with blanks, attachment
+  name of the entry, nothing for UBL. }
+procedure TestPdfXmp;
+const
+  Head = '<rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about="">' + #10 +
+    '<fx:DocumentType>INVOICE</fx:DocumentType>' + #10;
+begin
+  CheckEqualsStr(Head + '<fx:DocumentFileName>factur-x.xml</fx:DocumentFileName>' + #10 +
+    '<fx:Version>1.0</fx:Version>' + #10 +
+    '<fx:ConformanceLevel>EN 16931</fx:ConformanceLevel></rdf:Description>',
+    string(LandrixEInvoicePdfXmpDescription(TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931))), 'EN 16931');
+  Check(Pos('<fx:ConformanceLevel>BASIC WL</fx:ConformanceLevel>',
+    string(LandrixEInvoicePdfXmpDescription(TLandrixEInvoiceTargets.FacturX('1.09', epr_BasicWL)))) > 0, 'BASIC WL');
+  Check(Pos('<fx:DocumentFileName>xrechnung.xml</fx:DocumentFileName>' + #10 + '<fx:Version>1.0</fx:Version>' + #10 +
+    '<fx:ConformanceLevel>XRECHNUNG</fx:ConformanceLevel>',
+    string(LandrixEInvoicePdfXmpDescription(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII)))) > 0, 'XRechnung CII');
+  CheckEqualsStr('', string(LandrixEInvoicePdfXmpDescription(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL))),
+    'UBL is not embedded');
+  CheckEqualsStr('', string(LandrixEInvoicePdfXmpDescription(TLandrixEInvoiceTargets.FacturX('9.9', epr_Extended))),
+    'unknown target');
+  Check(Pos('<pdfaSchema:prefix>fx</pdfaSchema:prefix>', LandrixEInvoicePdfXmpSchema) > 0, 'schema prefix fx');
+end;
+
 procedure TestRules;
 var
   XrUbl, XrCii, FxEn, FxExt, Peppol: TLandrixEInvoiceSpec;
@@ -240,6 +263,7 @@ begin
   RegisterTest('Specs.Detect', TestDetect);
   RegisterTest('Specs.CodeListsOfXRechnung', TestCodeListsOfXRechnung);
   RegisterTest('Specs.Rules', TestRules);
+  RegisterTest('Specs.PdfXmp', TestPdfXmp);
 end;
 
 end.

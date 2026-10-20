@@ -161,6 +161,63 @@ function LandrixEInvoiceFindSpec(const ATarget: TLandrixEInvoiceTarget;
 function LandrixEInvoiceDetectSpec(const ARootLocalName, ACustomizationID: TLandrixEInvoiceString;
   out ASpec: TLandrixEInvoiceSpec; out AUsesExtension: Boolean): Boolean;
 
+const
+  { XMP extension schema of Factur-X / ZUGFeRD (prefix fx) for the
+    pdfaExtension:schemas list of a PDF/A-3, one rdf:li element; it declares
+    the properties that LandrixEInvoicePdfXmpDescription fills.
+    DE: XMP-Erweiterungsschema von Factur-X / ZUGFeRD (Praefix fx) fuer die
+    Liste pdfaExtension:schemas eines PDF/A-3, ein rdf:li-Element; es
+    deklariert die Eigenschaften, die LandrixEInvoicePdfXmpDescription
+    fuellt. }
+  LandrixEInvoicePdfXmpSchema =
+    '<rdf:li rdf:parseType="Resource">' + #10 +
+    '<pdfaSchema:schema>Factur-X PDFA Extension Schema</pdfaSchema:schema>' + #10 +
+    '<pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#</pdfaSchema:namespaceURI>' + #10 +
+    '<pdfaSchema:prefix>fx</pdfaSchema:prefix>' + #10 +
+    '<pdfaSchema:property>' + #10 +
+    '<rdf:Seq>' + #10 +
+    '<rdf:li rdf:parseType="Resource">' + #10 +
+    '<pdfaProperty:name>DocumentFileName</pdfaProperty:name>' + #10 +
+    '<pdfaProperty:valueType>Text</pdfaProperty:valueType>' + #10 +
+    '<pdfaProperty:category>external</pdfaProperty:category>' + #10 +
+    '<pdfaProperty:description>name of the embedded XML invoice file</pdfaProperty:description>' + #10 +
+    '</rdf:li>' + #10 +
+    '<rdf:li rdf:parseType="Resource">' + #10 +
+    '<pdfaProperty:name>DocumentType</pdfaProperty:name>' + #10 +
+    '<pdfaProperty:valueType>Text</pdfaProperty:valueType>' + #10 +
+    '<pdfaProperty:category>external</pdfaProperty:category>' + #10 +
+    '<pdfaProperty:description>INVOICE</pdfaProperty:description>' + #10 +
+    '</rdf:li>' + #10 +
+    '<rdf:li rdf:parseType="Resource">' + #10 +
+    '<pdfaProperty:name>Version</pdfaProperty:name>' + #10 +
+    '<pdfaProperty:valueType>Text</pdfaProperty:valueType>' + #10 +
+    '<pdfaProperty:category>external</pdfaProperty:category>' + #10 +
+    '<pdfaProperty:description>The actual version of the ZUGFeRD data</pdfaProperty:description>' + #10 +
+    '</rdf:li>' + #10 +
+    '<rdf:li rdf:parseType="Resource">' + #10 +
+    '<pdfaProperty:name>ConformanceLevel</pdfaProperty:name>' + #10 +
+    '<pdfaProperty:valueType>Text</pdfaProperty:valueType>' + #10 +
+    '<pdfaProperty:category>external</pdfaProperty:category>' + #10 +
+    '<pdfaProperty:description>The conformance level of the ZUGFeRD data</pdfaProperty:description>' + #10 +
+    '</rdf:li>' + #10 +
+    '</rdf:Seq>' + #10 +
+    '</pdfaSchema:property>' + #10 +
+    '</rdf:li>';
+
+{ XMP description (rdf:Description, prefix fx) for a PDF/A-3 with the
+  embedded invoice of ATarget: document type INVOICE, the attachment file
+  name of the entry (factur-x.xml, for XRechnung CII xrechnung.xml),
+  version 1.0 and the conformance level (MINIMUM, BASIC WL, BASIC,
+  EN 16931, EXTENDED or XRECHNUNG). '' if the target has no entry or is not
+  embedded in a PDF (UBL). Lines end with LF.
+  DE: XMP-Beschreibung (rdf:Description, Praefix fx) fuer ein PDF/A-3 mit
+  der eingebetteten Rechnung von ATarget: Dokumentart INVOICE, der
+  Anhangsname des Eintrags (factur-x.xml, bei XRechnung CII xrechnung.xml),
+  Version 1.0 und die Konformitaetsstufe (MINIMUM, BASIC WL, BASIC,
+  EN 16931, EXTENDED oder XRECHNUNG). '' wenn es keinen Eintrag gibt oder
+  das Ziel nicht in ein PDF eingebettet wird (UBL). Zeilen enden mit LF. }
+function LandrixEInvoicePdfXmpDescription(const ATarget: TLandrixEInvoiceTarget): TLandrixEInvoiceString;
+
 { Number of entries and entry by index (0 .. Count - 1).
   DE: Anzahl der Eintraege und Eintrag nach Index (0 .. Count - 1). }
 function LandrixEInvoiceSpecCount: Integer;
@@ -562,6 +619,35 @@ begin
         Exit;
       end;
     end;
+end;
+
+function LandrixEInvoicePdfXmpDescription(const ATarget: TLandrixEInvoiceTarget): TLandrixEInvoiceString;
+const
+  { Conformance levels as the Factur-X specification spells them in the
+    PDF/A-3 metadata: 'EN 16931' with a blank, unlike ProfileNames.
+    DE: Konformitaetsstufen, wie die Factur-X-Spezifikation sie in den
+    PDF/A-3-Metadaten schreibt: 'EN 16931' mit Leerzeichen, anders als
+    ProfileNames. }
+  Levels: array[TLandrixEInvoiceProfile] of string = (
+    '', 'MINIMUM', 'BASIC WL', 'BASIC', 'EN 16931', 'EXTENDED', 'XRECHNUNG');
+var
+  Spec: TLandrixEInvoiceSpec;
+  Level: TLandrixEInvoiceString;
+begin
+  Result := '';
+  if not LandrixEInvoiceFindSpec(ATarget, Spec) or (Spec.AttachmentFileName = '') then
+    Exit;
+  if Spec.Target.Standard = est_XRechnung then
+    Level := 'XRECHNUNG'
+  else
+    Level := TLandrixEInvoiceString(Levels[Spec.Target.Profile]);
+  if Level = '' then
+    Exit;
+  Result := '<rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about="">' +
+    #10 + '<fx:DocumentType>INVOICE</fx:DocumentType>' +
+    #10 + '<fx:DocumentFileName>' + Spec.AttachmentFileName + '</fx:DocumentFileName>' +
+    #10 + '<fx:Version>1.0</fx:Version>' +
+    #10 + '<fx:ConformanceLevel>' + Level + '</fx:ConformanceLevel></rdf:Description>';
 end;
 
 function LandrixEInvoiceSpecCount: Integer;
