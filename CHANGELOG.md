@@ -254,6 +254,17 @@ Supported invoice standards are documented per release.
   `LX-...` for rules of this library; identifiers are stable). The checks of
   `TXRechnungInvoiceAdapter.ConsistencyCheck` are the rules `LX-CC-01` to `LX-CC-12` (number = old
   code); they serve the compatibility layer only. Further rules follow during phase 2.
+- Official rules in `LandrixEInvoiceCheck` (required business terms per target): EN 16931 BR-02 to
+  BR-65 where the invoice model can violate them (the mappers always meet BR-01, the totals and the
+  other amounts), per Factur-X profile as its Schematron has them; XRechnung BR-DE-1 to BR-DE-31
+  (the required terms and payment groups; BR-DE-26 as a warning); PEPPOL-EN16931-R003 (Peppol),
+  R010, R020 and R061 (Peppol and XRechnung). The rules judge the invoice as the mappers would write
+  it; where UBL and CII differ, each follows the validator of its syntax (e.g. BR-61 in UBL only,
+  BR-DE-23-b, BR-DE-24-b, BR-DE-25-b in CII only, BR-DE-30/31 by syntax). Code list, format, VAT
+  category and calculation rules follow.
+- `tools/rulecheck/rule-oracle.py` with `RuleCheckProbe`: compares the rule checks with the KoSIT
+  validator on the 1,219 Schematron test documents of XRechnung 3.0.0; known differences (content
+  the model cannot hold) are listed with reasons in `tools/rulecheck/oracle-exceptions.txt`.
 
 ### Changed
 - Text that consists of XML white space only counts as absent, as `normalize-space()` in the

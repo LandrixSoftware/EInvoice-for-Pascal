@@ -58,6 +58,7 @@ uses
   LandrixEInvoiceUBLReader,
   LandrixEInvoiceUBLWriter,
   LandrixEInvoiceMapUBL,
+  LandrixEInvoiceCheck,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestInvoiceCompare;
 
@@ -360,6 +361,12 @@ begin
         AddFindings(D, 'read', Findings, not Complete);
         if not Complete then
           Inc(ALost, D.CountOf(edk_NotMapped));
+        { the official examples are valid: no rule may report an error }
+        D.Clear;
+        LandrixEInvoiceCheckInvoice(A, Spec, D);
+        for K := 0 to D.Count - 1 do
+          if D[K].Severity = eds_Error then
+            Findings.Add('check ' + string(D[K].RuleID));
         D.Clear;
         Written := WriteModel(A, Spec, D);
         AddFindings(D, 'write', Findings, False);

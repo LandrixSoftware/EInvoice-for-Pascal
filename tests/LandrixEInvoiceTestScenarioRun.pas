@@ -30,7 +30,9 @@ implementation
 uses
   SysUtils,
   LandrixEInvoiceTypes,
+  LandrixEInvoiceDiagnostics,
   LandrixEInvoiceInvoice,
+  LandrixEInvoiceCheck,
   LandrixEInvoiceSpecs,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestScenarios;
@@ -41,6 +43,7 @@ type
     Count: Integer;
     WithoutInvoice: Integer;
     UnknownTargets: string;
+    RuleErrors: string;
   end;
 
 procedure CountingSink(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
@@ -48,13 +51,28 @@ procedure CountingSink(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoic
 var
   State: PRunState;
   Spec: TLandrixEInvoiceSpec;
+  D: TLandrixEInvoiceDiagnostics;
+  I: TLandrixEInvoiceListIndex;
 begin
   State := PRunState(AData);
   Inc(State^.Count);
   if AInvoice = nil then
     Inc(State^.WithoutInvoice);
   if not LandrixEInvoiceFindSpec(ATarget, Spec) then
-    State^.UnknownTargets := State^.UnknownTargets + ' ' + AFileName;
+    State^.UnknownTargets := State^.UnknownTargets + ' ' + AFileName
+  else if AInvoice <> nil then
+  begin
+    { the scenario outputs are valid (KoSIT): no rule may report an error }
+    D := TLandrixEInvoiceDiagnostics.Create;
+    try
+      LandrixEInvoiceCheckInvoice(AInvoice, Spec, D);
+      for I := 0 to D.Count - 1 do
+        if D[I].Severity = eds_Error then
+          State^.RuleErrors := State^.RuleErrors + ' ' + AFileName + ':' + string(D[I].RuleID);
+    finally
+      D.Free;
+    end;
+  end;
 end;
 
 procedure TestRun;
@@ -72,10 +90,12 @@ begin
   State.Count := 0;
   State.WithoutInvoice := 0;
   State.UnknownTargets := '';
+  State.RuleErrors := '';
   RunAllScenarios(CountingSink, @State, Dir);
   CheckEquals(111, State.Count, 'number of outputs');
   CheckEquals(0, State.WithoutInvoice, 'outputs without invoice');
   CheckEqualsStr('', State.UnknownTargets, 'outputs with unknown target');
+  CheckEqualsStr('', State.RuleErrors, 'outputs with rule errors');
 end;
 
 procedure Register;

@@ -1,0 +1,50 @@
+# Known differences of tools/rulecheck/rule-oracle.py: file<TAB>missed RULE or extra RULE.
+# Every line needs a reason in the comment above it; '*' in the file name stands for any text;
+# an unused line fails the run. The checks judge the invoice as the mappers would write it.
+
+# A payment means holds one account in the model, and the writers put card data (BG-18) and
+# direct debit data (BG-19) only into a payment means of their code. A credit transfer with
+# card account or mandate inside, a card payment with payee account or debited account, or a
+# direct debit with payee account or card cannot be held; the output has no mixed group.
+# The contact tests share a base document whose credit transfer carries a card account.
+cii-br-de-23-test-bg-17-with-bg-18-900-identity.xml	missed BR-DE-23-b
+cii-br-de-23-test-bg-17-with-bg-19-bt-91-903-identity.xml	missed BR-DE-23-b
+cii-br-de-23-test-bg-17-with-bg-19-bt-91-903-identity.xml	missed BR-DE-30
+cii-br-de-23-test-bg-17-with-bg-19-bt-91-903-identity.xml	missed BR-DE-31
+cii-br-de-24-test-bg-18-with-bg-17-908-identity.xml	missed BR-DE-24-b
+cii-br-de-24-test-bg-18-with-bg-19-bt-91-911-identity.xml	missed BR-DE-24-b
+cii-br-de-24-test-bg-18-with-bg-19-bt-91-911-identity.xml	missed BR-DE-30
+cii-br-de-24-test-bg-18-with-bg-19-bt-91-911-identity.xml	missed BR-DE-31
+cii-br-de-25-test-bg-19-with-bg-17-920-identity.xml	missed BR-DE-25-b
+cii-br-de-25-test-bg-19-with-bg-18-921-identity.xml	missed BR-DE-25-b
+ubl-*-br-de-23-test-bg-17-with-bg-18-*-identity.xml	missed BR-DE-23-b
+ubl-*-br-de-23-test-bg-17-with-bg-19-*-identity.xml	missed BR-DE-23-b
+ubl-*-br-de-23-test-bg-17-with-bg-19-*-identity.xml	missed BR-DE-30
+ubl-*-br-de-24-test-bg-18-with-bg-17-*-identity.xml	missed BR-DE-24-a
+ubl-*-br-de-24-test-bg-18-with-bg-17-*-identity.xml	missed BR-DE-24-b
+ubl-*-br-de-24-test-bg-18-with-bg-19-*-identity.xml	missed BR-DE-24-b
+ubl-*-br-de-24-test-bg-18-with-bg-19-*-identity.xml	missed BR-DE-30
+ubl-*-br-de-25-test-bg-19-with-bg-17-*-identity.xml	missed BR-DE-25-b
+ubl-*-br-de-25-test-bg-19-with-bg-18-*-identity.xml	missed BR-DE-25-b
+ubl-inv-br-de-20-paymentmeans-code59-test-10[57]-identity.xml	missed BR-DE-25-b
+ubl-inv-contact-tests-*.xml	missed BR-DE-23-b
+
+# Blank text counts as absent (normalize-space, plan Phase 2 step 4): an empty IBAN is no
+# account and is not written; KoSIT accepts the empty element for BR-DE-23-a.
+cii-br-de-19-iban-tests-895-empty.xml	extra BR-DE-23-a
+
+# An empty electronic address container (ram:URIUniversalCommunication without ram:URIID) is
+# no address and is not written; KoSIT reports BR-62/BR-63 for the empty container, both sides
+# report PEPPOL-EN16931-R010/R020.
+cii-peppol-en16931-r010-1035-remove.xml	missed BR-63
+cii-peppol-en16931-r020-1037-remove.xml	missed BR-62
+
+# BT-6 equal to BT-5 is not written (the mappers write BT-6 only when it differs), so BR-53
+# cannot fail in the output.
+cii-peppol-en16931-r005-1021-code-EUR.xml	missed BR-53
+
+# Contradicting currencies: without BT-110 the reader takes the only VAT total (in BT-6) as
+# BT-110, and a VAT total in another currency than BT-5 is read as BT-6; the output would lack
+# BT-111.
+cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-53
+ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra BR-53
