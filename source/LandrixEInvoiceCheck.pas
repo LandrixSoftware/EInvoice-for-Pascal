@@ -798,9 +798,11 @@ begin
     Present(AAddress.CountrySubentity) or Present(AAddress.CountryCode);
 end;
 
-{ A payee or tax representative exists when any of its fields is set.
-  DE: Ein Zahlungsempfaenger oder Steuervertreter existiert, wenn eines
-  seiner Felder gesetzt ist. }
+{ A payee or tax representative exists when a field other than a scheme
+  holds text; blank text counts as absent (as in the mappers).
+  DE: Ein Zahlungsempfaenger oder Steuervertreter existiert, wenn ein Feld
+  ausser einem Schema Text enthaelt; leerer Text gilt als nicht vorhanden
+  (wie in den Mappern). }
 function PartySet(AParty: TLandrixInvoiceParty): Boolean;
 begin
   Result := Present(AParty.Name) or Present(AParty.Identifier) or Present(AParty.CompanyID) or

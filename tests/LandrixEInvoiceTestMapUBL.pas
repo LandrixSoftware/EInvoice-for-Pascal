@@ -1020,6 +1020,8 @@ begin
     Invoice.BuyerReference := ' ';
     Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyer := '   ';
     Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := '';
+    Invoice.PayeeParty.Name := ' ';
+    Invoice.PayeeParty.IdentifierSchemeID := '0088';
     with Invoice.PrepaidPayments.AddPrepaidPayment do
     begin
       ID := ' ';
@@ -1033,6 +1035,7 @@ begin
     Check(Pos('<cac:AccountingCustomerParty><cac:Party><cbc:EndpointID', StringReplace(StringReplace(Xml,
       #13#10, '', [rfReplaceAll]), ' ', '', [rfReplaceAll])) = 0, 'no buyer EndpointID');
     Check(Pos('<cbc:ID>Voucher</cbc:ID>', Xml) > 0, 'description as type of a blank type');
+    Check(Pos('<cac:PayeeParty>', Xml) = 0, 'blank payee with a scheme only not written');
   finally
     Invoice.Free;
     D.Free;
@@ -1079,6 +1082,42 @@ begin
     CheckEqualsInvoiceStr('M-49', Back.PaymentMandateID, 'mandate read back');
   finally
     Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ Periods are compared as dates (BR-29, BR-30): a later start time on the
+  end day is written, an end date before the start date is left out and
+  reported. }
+procedure TestPeriods;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillInvoice(Invoice);
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec), 'spec');
+    Invoice.InvoicePeriodStartDate := EncodeDate(2026, 10, 1) + EncodeTime(18, 0, 0, 0);
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 10, 1) + EncodeTime(8, 0, 0, 0);
+    Invoice.InvoiceLines[0].InvoiceLinePeriodStartDate := EncodeDate(2026, 10, 2);
+    Invoice.InvoiceLines[0].InvoiceLinePeriodEndDate := EncodeDate(2026, 10, 1);
+    Xml := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
+    Check(Pos('<cbc:StartDate>2026-10-01</cbc:StartDate>', Xml) > 0, 'same day: start written');
+    Check(Pos('<cbc:EndDate>2026-10-01</cbc:EndDate>', Xml) > 0, 'same day: end written');
+    Check(Pos('2026-10-02', Xml) = 0, 'reversed line period left out');
+    CheckEquals(0, CountKind(D, edk_NotAllowed, '/Invoice/cac:InvoicePeriod'), 'invoice period kept');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:InvoicePeriod'), 'line period reported');
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 9, 30);
+    D.Clear;
+    Xml := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
+    Check(Pos('<cac:InvoicePeriod>', Xml) = 0, 'no period');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/Invoice/cac:InvoicePeriod'), 'invoice period reported');
+  finally
     Invoice.Free;
     D.Free;
   end;
@@ -1132,6 +1171,7 @@ begin
   RegisterTest('MapUBL.PayeeCreditorIdentifier', TestPayeeCreditorIdentifier);
   RegisterTest('MapUBL.WrongSpec', TestWrongSpec);
   RegisterTest('MapUBL.DirectDebit49', TestDirectDebit49);
+  RegisterTest('MapUBL.Periods', TestPeriods);
   RegisterTest('MapUBL.BlankValues', TestBlankValues);
 end;
 

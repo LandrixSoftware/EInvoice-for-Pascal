@@ -191,6 +191,21 @@ begin
   Result := AValue > 100;
 end;
 
+{ BG-14, BG-26: a period with an end before its start is not written
+  (BR-29, BR-30); compared as dates (xs:date), the time is ignored.
+  DE: BG-14, BG-26: ein Zeitraum mit Ende vor dem Beginn wird nicht
+  geschrieben (BR-29, BR-30); als Datum verglichen (xs:date), die Uhrzeit
+  zaehlt nicht. }
+function PeriodReversed(AStart, AEnd: TDateTime): Boolean;
+begin
+  Result := PeriodDateSet(AStart) and PeriodDateSet(AEnd) and (Trunc(AEnd) < Trunc(AStart));
+end;
+
+function PeriodSet(AStart, AEnd: TDateTime): Boolean;
+begin
+  Result := (PeriodDateSet(AStart) or PeriodDateSet(AEnd)) and not PeriodReversed(AStart, AEnd);
+end;
+
 function CIIDate(AValue: TDateTime): TLandrixCIIDateTime;
 begin
   Result.Value := LandrixEInvoiceDateToCII(AValue);
@@ -248,6 +263,20 @@ begin
   Result := Present(AAddress.StreetName) or Present(AAddress.AdditionalStreetName) or
     Present(AAddress.AddressLine) or Present(AAddress.City) or Present(AAddress.PostalZone) or
     Present(AAddress.CountrySubentity) or Present(AAddress.CountryCode);
+end;
+
+{ A payee, tax representative or invoicee is written when a field other
+  than a scheme holds text; blank text counts as absent (as in the rule
+  checks).
+  DE: Ein Zahlungsempfaenger, Steuervertreter oder Rechnungsempfaenger wird
+  geschrieben, wenn ein Feld ausser einem Schema Text enthaelt; leerer Text
+  gilt als nicht vorhanden (wie in den Regelpruefungen). }
+function PartySet(AParty: TLandrixInvoiceParty): Boolean;
+begin
+  Result := Present(AParty.Name) or Present(AParty.Identifier) or Present(AParty.CompanyID) or
+    Present(AParty.VATCompanyID) or AddressSet(AParty.Address) or Present(AParty.ContactName) or
+    Present(AParty.ContactDepartment) or Present(AParty.ContactTelephone) or
+    Present(AParty.ContactElectronicMail);
 end;
 
 { ASCII case-insensitive comparison without a detour through string.
@@ -713,9 +742,10 @@ begin
     if ALine.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax then
       Tax.RateApplicablePercent := LandrixEInvoicePercentToLexical(ALine.TaxPercent);
   end;
-  if (PeriodDateSet(ALine.InvoiceLinePeriodStartDate) or PeriodDateSet(ALine.InvoiceLinePeriodEndDate)) and
-     (not PeriodDateSet(ALine.InvoiceLinePeriodStartDate) or not PeriodDateSet(ALine.InvoiceLinePeriodEndDate) or
-      (ALine.InvoiceLinePeriodEndDate >= ALine.InvoiceLinePeriodStartDate)) then
+  if PeriodReversed(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate) then
+    Report(edk_NotAllowed, APath + '/ram:BillingSpecifiedPeriod', 'period (BG-26) of line ' + ALine.ID +
+      ' left out: the end date is before the start date (BR-30)', eds_Warning);
+  if PeriodSet(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate) then
   begin
     if PeriodDateSet(ALine.InvoiceLinePeriodStartDate) then
       ASettlement.BillingSpecifiedPeriod.StartDateTime := CIIDate(ALine.InvoiceLinePeriodStartDate);
@@ -909,7 +939,7 @@ var
   HasContact, HasExtra, Full: Boolean;
   Contact: TLandrixCIITradeContact;
 begin
-  if AParty.IsEmpty then
+  if not PartySet(AParty) then
     Exit;
   HasContact := Present(AParty.ContactName) or Present(AParty.ContactDepartment) or
     Present(AParty.ContactTelephone) or Present(AParty.ContactElectronicMail);
@@ -1211,7 +1241,14 @@ begin
     if Blank(Payment.FinancialAccount) then
       Continue;
     if IsDirectDebit(Payment.PaymentMeansCode) then
-      Target.PayerPartyDebtorFinancialAccount.IBANID.Value := Payment.FinancialAccount
+    begin
+      Target.PayerPartyDebtorFinancialAccount.IBANID.Value := Payment.FinancialAccount;
+      if Present(Payment.FinancialAccountName) then
+        Report(edk_NotAllowed,
+          Settlement + '/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayerPartyDebtorFinancialAccount' +
+          '/ram:AccountName',
+          'account name (BT-85) next to a direct debit left out: it belongs to the payee account', eds_Warning);
+    end
     else if IsCardPayment(Payment.PaymentMeansCode) then
     begin
       Target.ApplicableTradeSettlementFinancialCard.ID.Value := Payment.FinancialAccount;
@@ -1279,9 +1316,10 @@ begin
       Tax.DueDateTypeCode := PointCode;
     Tax.RateApplicablePercent := LandrixEInvoicePercentToLexical(Subtotal.TaxPercent);
   end;
-  if (PeriodDateSet(FInvoice.InvoicePeriodStartDate) or PeriodDateSet(FInvoice.InvoicePeriodEndDate)) and
-     (not PeriodDateSet(FInvoice.InvoicePeriodStartDate) or not PeriodDateSet(FInvoice.InvoicePeriodEndDate) or
-      (FInvoice.InvoicePeriodEndDate >= FInvoice.InvoicePeriodStartDate)) then
+  if PeriodReversed(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate) then
+    Report(edk_NotAllowed, Settlement + '/ram:BillingSpecifiedPeriod',
+      'invoice period (BG-14) left out: the end date is before the start date (BR-29)', eds_Warning);
+  if PeriodSet(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate) then
   begin
     if PeriodDateSet(FInvoice.InvoicePeriodStartDate) then
       FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.BillingSpecifiedPeriod.StartDateTime :=

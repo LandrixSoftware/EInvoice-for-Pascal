@@ -389,10 +389,19 @@ begin
   Result := AValue > 100;
 end;
 
+{ BG-14, BG-26: a period with an end before its start is not written
+  (BR-29, BR-30); compared as dates (xs:date), the time is ignored.
+  DE: BG-14, BG-26: ein Zeitraum mit Ende vor dem Beginn wird nicht
+  geschrieben (BR-29, BR-30); als Datum verglichen (xs:date), die Uhrzeit
+  zaehlt nicht. }
+function PeriodReversed(AStart, AEnd: TDateTime): Boolean;
+begin
+  Result := PeriodDateSet(AStart) and PeriodDateSet(AEnd) and (Trunc(AEnd) < Trunc(AStart));
+end;
+
 function PeriodSet(AStart, AEnd: TDateTime): Boolean;
 begin
-  Result := (PeriodDateSet(AStart) or PeriodDateSet(AEnd)) and
-    (not PeriodDateSet(AStart) or not PeriodDateSet(AEnd) or (AEnd >= AStart));
+  Result := (PeriodDateSet(AStart) or PeriodDateSet(AEnd)) and not PeriodReversed(AStart, AEnd);
 end;
 
 function UBLID(const AValue, AScheme: TLandrixEInvoiceString): TLandrixUBLID;
@@ -441,6 +450,20 @@ begin
   Result := Present(AAddress.StreetName) or Present(AAddress.AdditionalStreetName) or
     Present(AAddress.AddressLine) or Present(AAddress.City) or Present(AAddress.PostalZone) or
     Present(AAddress.CountrySubentity) or Present(AAddress.CountryCode);
+end;
+
+{ A payee, tax representative or invoicee is written when a field other
+  than a scheme holds text; blank text counts as absent (as in the rule
+  checks).
+  DE: Ein Zahlungsempfaenger, Steuervertreter oder Rechnungsempfaenger wird
+  geschrieben, wenn ein Feld ausser einem Schema Text enthaelt; leerer Text
+  gilt als nicht vorhanden (wie in den Regelpruefungen). }
+function PartySet(AParty: TLandrixInvoiceParty): Boolean;
+begin
+  Result := Present(AParty.Name) or Present(AParty.Identifier) or Present(AParty.CompanyID) or
+    Present(AParty.VATCompanyID) or AddressSet(AParty.Address) or Present(AParty.ContactName) or
+    Present(AParty.ContactDepartment) or Present(AParty.ContactTelephone) or
+    Present(AParty.ContactElectronicMail);
 end;
 
 { ASCII case-insensitive comparison without a detour through string.
@@ -767,6 +790,9 @@ begin
   end;
   { BT-8 lives in the invoice period (BG-14) }
   HasPeriod := PeriodSet(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate);
+  if PeriodReversed(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate) then
+    Report(edk_NotAllowed, FDoc.Path + '/cac:InvoicePeriod',
+      'invoice period (BG-14) left out: the end date is before the start date (BR-29)', eds_Warning);
   if HasPeriod or Present(PointCode) then
   begin
     Period := FDoc.InvoicePeriod.Add;
@@ -1058,7 +1084,7 @@ var
   HasContact: Boolean;
   TaxScheme: TLandrixUBLPartyTaxScheme;
 begin
-  if AParty.IsEmpty then
+  if not PartySet(AParty) then
     Exit;
   if ARole = fpr_Invoicee then
   begin
@@ -1181,6 +1207,9 @@ begin
       Target.PaymentMandate.ID.Value := FInvoice.PaymentMandateID;
       Target.PaymentMandate.PayerFinancialAccount.ID.Value := Payment.FinancialAccount;
       MandateWritten := True;
+      if Present(Payment.FinancialAccountName) then
+        Report(edk_NotAllowed, Path + '/cac:PaymentMandate/cac:PayerFinancialAccount/cbc:Name',
+          'account name (BT-85) next to a direct debit left out: it belongs to the payee account', eds_Warning);
       if Present(Payment.FinancialInstitutionBranch) then
         Report(edk_NotAllowed, Path + '/cac:PayeeFinancialAccount/cac:FinancialInstitutionBranch',
           'BIC (BT-86) next to a direct debit left out: UBL carries it in the payee account', eds_Warning);
@@ -1422,6 +1451,9 @@ begin
     APath + '/' + ATarget.QuantityName + '/@unitCode');
   ATarget.LineExtensionAmount^ := Money(ALine.LineAmount);
   ATarget.AccountingCost^ := ALine.BuyerAccountingReference;
+  if PeriodReversed(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate) then
+    Report(edk_NotAllowed, APath + '/cac:InvoicePeriod', 'period (BG-26) of line ' + ALine.ID +
+      ' left out: the end date is before the start date (BR-30)', eds_Warning);
   if PeriodSet(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate) then
   begin
     Period := ATarget.InvoicePeriod.Add;

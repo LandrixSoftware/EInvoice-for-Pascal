@@ -1092,11 +1092,78 @@ begin
     CheckEquals(0, Occurrences('PayeePartyCreditorFinancialAccount', Xml), 'no payee account');
     Check(Pos('<ram:BICID>MARKDEF1860</ram:BICID>', Xml) > 0, 'BIC');
     Check(Pos('<ram:DirectDebitMandateID>M-49</ram:DirectDebitMandateID>', Xml) > 0, 'mandate');
+    CheckEquals(0, CountKind(D, edk_NotAllowed, '/ram:PayerPartyDebtorFinancialAccount'), 'no name, no report');
     Check(Back.PaymentTypes[0].PaymentMeansCode = ipmc_DirectDebit, 'code read back');
     CheckEqualsInvoiceStr('DE21860000000086001055', Back.PaymentTypes[0].FinancialAccount, 'account read back');
     CheckEqualsInvoiceStr('M-49', Back.PaymentMandateID, 'mandate read back');
+    Payment.FinancialAccountName := 'Buyer';
+    D.Clear;
+    MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil);
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:PayerPartyDebtorFinancialAccount/ram:AccountName'),
+      'account name reported');
   finally
     Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ Periods are compared as dates (BR-29, BR-30): a later start time on the
+  end day is written, an end date before the start date is left out and
+  reported. }
+procedure TestPeriods;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Line: TLandrixInvoiceLine;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Line := Invoice.InvoiceLines.AddInvoiceLine;
+    Line.ID := '1';
+    Invoice.InvoicePeriodStartDate := EncodeDate(2026, 10, 1) + EncodeTime(18, 0, 0, 0);
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 10, 1) + EncodeTime(8, 0, 0, 0);
+    Line.InvoiceLinePeriodStartDate := EncodeDate(2026, 10, 2);
+    Line.InvoiceLinePeriodEndDate := EncodeDate(2026, 10, 1);
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil);
+    CheckEquals(2, Occurrences('>20261001</udt:DateTimeString>', Xml), 'same day written');
+    CheckEquals(0, Occurrences('20261002', Xml), 'reversed line period left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod'),
+      'line period reported');
+    CheckEquals(0, CountKind(D, edk_NotAllowed, '/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod'),
+      'invoice period kept');
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 9, 30);
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil);
+    CheckEquals(0, Occurrences('BillingSpecifiedPeriod', Xml), 'no period');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod'),
+      'invoice period reported');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ A payee of blank text and a scheme only is no payee. }
+procedure TestBlankPayee;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.PayeeParty.Name := ' ';
+    Invoice.PayeeParty.IdentifierSchemeID := '0088';
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil);
+    CheckEquals(0, Occurrences('PayeeTradeParty', Xml), 'no payee');
+    CheckEquals(0, CountKind(D, edk_MissingElement, '/ram:PayeeTradeParty/ram:Name'), 'no missing name reported');
+  finally
     Invoice.Free;
     D.Free;
   end;
@@ -1132,6 +1199,8 @@ begin
   RegisterTest('MapCII.LogisticsCharge', TestLogisticsCharge);
   RegisterTest('MapCII.ThirdPartyPayments', TestThirdPartyPayments);
   RegisterTest('MapCII.DirectDebit49', TestDirectDebit49);
+  RegisterTest('MapCII.Periods', TestPeriods);
+  RegisterTest('MapCII.BlankPayee', TestBlankPayee);
   RegisterTest('MapCII.TaxCurrency', TestTaxCurrency);
   RegisterTest('MapCII.DiscountOnlyRoundTrip', TestDiscountOnlyRoundTrip);
   RegisterTest('MapCII.Phase2Extended', TestPhase2Extended);

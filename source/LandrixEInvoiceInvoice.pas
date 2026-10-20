@@ -752,14 +752,14 @@ type
   { A further party of the invoice: payee (BG-10), seller tax
     representative (BG-11) or invoicee (BG-X-36, Factur-X EXTENDED). Which
     fields a target can write depends on the role and the profile; the
-    mapping reports content it leaves out. A party counts as present when
-    any field is set (see IsEmpty).
+    mapping reports content it leaves out. The mapping writes a party when
+    a field other than a scheme holds text other than white space.
     DE: Eine weitere Partei der Rechnung: Zahlungsempfaenger (BG-10),
     Steuervertreter des Verkaeufers (BG-11) oder Rechnungsempfaenger
     (BG-X-36, Factur-X EXTENDED). Welche Felder ein Ziel schreiben kann,
     haengt von Rolle und Profil ab; die Abbildung meldet, was sie weglaesst.
-    Eine Partei gilt als vorhanden, sobald ein Feld gesetzt ist (siehe
-    IsEmpty). }
+    Die Abbildung schreibt eine Partei, sobald ein Feld ausser einem Schema
+    anderen Text als Leerraum enthaelt. }
   TLandrixInvoiceParty = class(TObject)
   public
     { BT-59 payee name, BT-62 tax representative name. DE: BT-59 Name des

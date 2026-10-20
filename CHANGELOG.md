@@ -278,6 +278,12 @@ Supported invoice standards are documented per release.
   the model cannot hold) are listed with reasons in `tools/rulecheck/oracle-exceptions.txt`.
 
 ### Changed
+- Invoice and line periods (BG-14, BG-26) are compared as dates, as BR-29/BR-30 do: a period that
+  starts later on the day it ends is written; a period that ends on an earlier date is still left
+  out, now with a warning.
+- The writers write a payee, tax representative or invoicee only when a field other than a scheme
+  holds text other than white space, as the rule checks assume.
+- An account name (BT-85) next to a direct debit is reported when the writers leave it out.
 - `tools/validate.ps1` shows the effective level of each message: the configuration's `customLevel`
   for the matched scenario applies (e.g. CII-SR-465 is an error in XRechnung), information is not
   listed.
