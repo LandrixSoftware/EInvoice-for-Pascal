@@ -262,11 +262,21 @@ Supported invoice standards are documented per release.
   it; where UBL and CII differ, each follows the validator of its syntax (e.g. BR-61 in UBL only,
   BR-DE-23-b, BR-DE-24-b, BR-DE-25-b in CII only, BR-DE-30/31 by syntax). Code list, format, VAT
   category and calculation rules follow.
+- `LandrixEInvoiceCheckCII`, `LandrixEInvoiceCheckUBLInvoice` and `LandrixEInvoiceCheckUBLCreditNote`:
+  check the required content of a syntax model for a target as the writer reports it, returning
+  the number of errors.
+- `LandrixEInvoiceCIIRequiredBelowParent`: whether a CII path is required in a Factur-X profile
+  wherever its parent exists. `tools/syntaxmodel/cii-profiles.json` has this as a fourth column
+  (`tools/fieldmap/fieldmap.py --export`).
 - `tools/rulecheck/rule-oracle.py` with `RuleCheckProbe`: compares the rule checks with the KoSIT
   validator on the 1,219 Schematron test documents of XRechnung 3.0.0; known differences (content
   the model cannot hold) are listed with reasons in `tools/rulecheck/oracle-exceptions.txt`.
 
 ### Changed
+- The CII writer also reports content that the schema leaves optional but the Factur-X profile
+  requires below an existing parent, e.g. the invoiced quantity, its unit code, the net price and
+  the line total of a line in BASIC (BR-22, BR-23, BR-26, BR-24). The profile pruning treats blank
+  text as absent, as the writers do.
 - Text that consists of XML white space only counts as absent, as `normalize-space()` in the
   Schematron rules (new `LandrixEInvoiceIsBlank`): the generated CII and UBL writers do not write
   such text (a required element is reported as missing), the mappers treat it like an empty field

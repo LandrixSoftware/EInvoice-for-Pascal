@@ -77,11 +77,12 @@ type
     FDiagnostics: TLandrixEInvoiceDiagnostics;
     FProfile: TLandrixEInvoiceProfile;
     procedure Missing(const APath: TLandrixEInvoiceString);
+    procedure MissingInProfile(const APath: TLandrixEInvoiceString);
     procedure WriteAdvancePayment(AObject: TLandrixCIIAdvancePayment; const APath: TLandrixEInvoiceString);
-    procedure WriteCreditorFinancialAccount(AObject: TLandrixCIICreditorFinancialAccount);
+    procedure WriteCreditorFinancialAccount(AObject: TLandrixCIICreditorFinancialAccount; const APath: TLandrixEInvoiceString);
     procedure WriteCreditorFinancialInstitution(AObject: TLandrixCIICreditorFinancialInstitution; const APath: TLandrixEInvoiceString);
     procedure WriteDebtorFinancialAccount(AObject: TLandrixCIIDebtorFinancialAccount; const APath: TLandrixEInvoiceString);
-    procedure WriteDebtorFinancialInstitution(AObject: TLandrixCIIDebtorFinancialInstitution);
+    procedure WriteDebtorFinancialInstitution(AObject: TLandrixCIIDebtorFinancialInstitution; const APath: TLandrixEInvoiceString);
     procedure WriteDocumentContextParameter(AObject: TLandrixCIIDocumentContextParameter; const APath: TLandrixEInvoiceString);
     procedure WriteDocumentLineDocument(AObject: TLandrixCIIDocumentLineDocument; const APath: TLandrixEInvoiceString);
     procedure WriteExchangedDocument(AObject: TLandrixCIIExchangedDocument; const APath: TLandrixEInvoiceString);
@@ -97,10 +98,10 @@ type
     procedure WriteLineTradeSettlement(AObject: TLandrixCIILineTradeSettlement; const APath: TLandrixEInvoiceString);
     procedure WriteLogisticsServiceCharge(AObject: TLandrixCIILogisticsServiceCharge; const APath: TLandrixEInvoiceString);
     procedure WriteLogisticsTransportMovement(AObject: TLandrixCIILogisticsTransportMovement; const APath: TLandrixEInvoiceString);
-    procedure WriteNote(AObject: TLandrixCIINote);
+    procedure WriteNote(AObject: TLandrixCIINote; const APath: TLandrixEInvoiceString);
     procedure WriteProcuringProject(AObject: TLandrixCIIProcuringProject; const APath: TLandrixEInvoiceString);
-    procedure WriteProductCharacteristic(AObject: TLandrixCIIProductCharacteristic);
-    procedure WriteProductClassification(AObject: TLandrixCIIProductClassification);
+    procedure WriteProductCharacteristic(AObject: TLandrixCIIProductCharacteristic; const APath: TLandrixEInvoiceString);
+    procedure WriteProductClassification(AObject: TLandrixCIIProductClassification; const APath: TLandrixEInvoiceString);
     procedure WriteReferencedDocument(AObject: TLandrixCIIReferencedDocument; const APath: TLandrixEInvoiceString);
     procedure WriteReferencedProduct(AObject: TLandrixCIIReferencedProduct; const APath: TLandrixEInvoiceString);
     procedure WriteSpecifiedPeriod(AObject: TLandrixCIISpecifiedPeriod; const APath: TLandrixEInvoiceString);
@@ -112,7 +113,7 @@ type
     procedure WriteTradeAccountingAccount(AObject: TLandrixCIITradeAccountingAccount; const APath: TLandrixEInvoiceString);
     procedure WriteTradeAddress(AObject: TLandrixCIITradeAddress; const APath: TLandrixEInvoiceString);
     procedure WriteTradeAllowanceCharge(AObject: TLandrixCIITradeAllowanceCharge; const APath: TLandrixEInvoiceString);
-    procedure WriteTradeContact(AObject: TLandrixCIITradeContact);
+    procedure WriteTradeContact(AObject: TLandrixCIITradeContact; const APath: TLandrixEInvoiceString);
     procedure WriteTradeCountry(AObject: TLandrixCIITradeCountry; const APath: TLandrixEInvoiceString);
     procedure WriteTradeCurrencyExchange(AObject: TLandrixCIITradeCurrencyExchange; const APath: TLandrixEInvoiceString);
     procedure WriteTradeDeliveryTerms(AObject: TLandrixCIITradeDeliveryTerms; const APath: TLandrixEInvoiceString);
@@ -123,23 +124,23 @@ type
     procedure WriteTradePaymentTerms(AObject: TLandrixCIITradePaymentTerms; const APath: TLandrixEInvoiceString);
     procedure WriteTradePrice(AObject: TLandrixCIITradePrice; const APath: TLandrixEInvoiceString);
     procedure WriteTradeProduct(AObject: TLandrixCIITradeProduct; const APath: TLandrixEInvoiceString);
-    procedure WriteTradeProductInstance(AObject: TLandrixCIITradeProductInstance);
+    procedure WriteTradeProductInstance(AObject: TLandrixCIITradeProductInstance; const APath: TLandrixEInvoiceString);
     procedure WriteTradeSettlementFinancialCard(AObject: TLandrixCIITradeSettlementFinancialCard; const APath: TLandrixEInvoiceString);
     procedure WriteTradeSettlementHeaderMonetarySummation(AObject: TLandrixCIITradeSettlementHeaderMonetarySummation; const APath: TLandrixEInvoiceString);
-    procedure WriteTradeSettlementLineMonetarySummation(AObject: TLandrixCIITradeSettlementLineMonetarySummation);
+    procedure WriteTradeSettlementLineMonetarySummation(AObject: TLandrixCIITradeSettlementLineMonetarySummation; const APath: TLandrixEInvoiceString);
     procedure WriteTradeSettlementPaymentMeans(AObject: TLandrixCIITradeSettlementPaymentMeans; const APath: TLandrixEInvoiceString);
     procedure WriteTradeTax(AObject: TLandrixCIITradeTax; const APath: TLandrixEInvoiceString);
-    procedure WriteUniversalCommunication(AObject: TLandrixCIIUniversalCommunication);
+    procedure WriteUniversalCommunication(AObject: TLandrixCIIUniversalCommunication; const APath: TLandrixEInvoiceString);
     procedure WriteAllowanceChargeReasonCode(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIAllowanceChargeReasonCode);
-    procedure WriteAmount(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIAmount);
+    procedure WriteAmount(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString);
     procedure WriteBinaryObject(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIBinaryObject; const APath: TLandrixEInvoiceString);
-    procedure WriteCode(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIICode);
+    procedure WriteCode(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIICode; const APath: TLandrixEInvoiceString);
     procedure WriteDate(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIDate; const APath: TLandrixEInvoiceString);
     procedure WriteDateTime(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIDateTime; const APath: TLandrixEInvoiceString);
     procedure WriteFormattedDateTime(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIFormattedDateTime; const APath: TLandrixEInvoiceString);
-    procedure WriteID(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIID);
+    procedure WriteID(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIID; const APath: TLandrixEInvoiceString);
     procedure WriteMeasure(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIMeasure);
-    procedure WriteQuantity(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIQuantity);
+    procedure WriteQuantity(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIQuantity; const APath: TLandrixEInvoiceString);
   public
     constructor Create(AWriter: TLandrixXmlWriter; ADiagnostics: TLandrixEInvoiceDiagnostics;
       AProfile: TLandrixEInvoiceProfile);
@@ -159,6 +160,16 @@ procedure TCIIWriter.Missing(const APath: TLandrixEInvoiceString);
 begin
   if LandrixEInvoiceCIIAllowed(APath, FProfile) then
     FDiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0, 'required element or attribute missing');
+end;
+
+{ optional in the schema, required by the Factur-X profile below its parent
+  DE: im Schema optional, im Factur-X-Profil unter seinem Elternelement
+  Pflicht }
+procedure TCIIWriter.MissingInProfile(const APath: TLandrixEInvoiceString);
+begin
+  if LandrixEInvoiceCIIRequiredBelowParent(APath, FProfile) then
+    FDiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0, 'element or attribute required by the ' +
+      'profile missing');
 end;
 
 function CIIAllowanceChargeReasonCodeIsEmpty(const R: TLandrixCIIAllowanceChargeReasonCode): Boolean;
@@ -221,11 +232,13 @@ begin
   FWriter.EndElement;
 end;
 
-procedure TCIIWriter.WriteAmount(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIAmount);
+procedure TCIIWriter.WriteAmount(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString);
 begin
   FWriter.StartElement(AQName);
   if AValue.CurrencyID <> '' then
-    FWriter.AttributeW('currencyID', AValue.CurrencyID);
+    FWriter.AttributeW('currencyID', AValue.CurrencyID)
+  else
+    MissingInProfile(APath + '/@currencyID');
   if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
@@ -247,11 +260,13 @@ begin
   FWriter.EndElement;
 end;
 
-procedure TCIIWriter.WriteCode(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIICode);
+procedure TCIIWriter.WriteCode(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIICode; const APath: TLandrixEInvoiceString);
 begin
   FWriter.StartElement(AQName);
   if AValue.ListID <> '' then
-    FWriter.AttributeW('listID', AValue.ListID);
+    FWriter.AttributeW('listID', AValue.ListID)
+  else
+    MissingInProfile(APath + '/@listID');
   if AValue.ListVersionID <> '' then
     FWriter.AttributeW('listVersionID', AValue.ListVersionID);
   if not LandrixEInvoiceIsBlank(AValue.Value) then
@@ -301,11 +316,13 @@ begin
   FWriter.EndElement;
 end;
 
-procedure TCIIWriter.WriteID(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIID);
+procedure TCIIWriter.WriteID(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIID; const APath: TLandrixEInvoiceString);
 begin
   FWriter.StartElement(AQName);
   if AValue.SchemeID <> '' then
-    FWriter.AttributeW('schemeID', AValue.SchemeID);
+    FWriter.AttributeW('schemeID', AValue.SchemeID)
+  else
+    MissingInProfile(APath + '/@schemeID');
   if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
@@ -321,11 +338,13 @@ begin
   FWriter.EndElement;
 end;
 
-procedure TCIIWriter.WriteQuantity(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIQuantity);
+procedure TCIIWriter.WriteQuantity(const AQName: TLandrixXmlUtf8; const AValue: TLandrixCIIQuantity; const APath: TLandrixEInvoiceString);
 begin
   FWriter.StartElement(AQName);
   if AValue.UnitCode <> '' then
-    FWriter.AttributeW('unitCode', AValue.UnitCode);
+    FWriter.AttributeW('unitCode', AValue.UnitCode)
+  else
+    MissingInProfile(APath + '/@unitCode');
   if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
@@ -336,7 +355,7 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIAmountIsEmpty(AObject.PaidAmount) then
-    WriteAmount('ram:PaidAmount', AObject.PaidAmount)
+    WriteAmount('ram:PaidAmount', AObject.PaidAmount, APath + '/ram:PaidAmount')
   else
     Missing(APath + '/ram:PaidAmount');
   if not CIIFormattedDateTimeIsEmpty(AObject.FormattedReceivedDateTime) then
@@ -357,20 +376,20 @@ begin
   end;
 end;
 
-procedure TCIIWriter.WriteCreditorFinancialAccount(AObject: TLandrixCIICreditorFinancialAccount);
+procedure TCIIWriter.WriteCreditorFinancialAccount(AObject: TLandrixCIICreditorFinancialAccount; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.IBANID) then
-    WriteID('ram:IBANID', AObject.IBANID);
+    WriteID('ram:IBANID', AObject.IBANID, APath + '/ram:IBANID');
   if not LandrixEInvoiceIsBlank(AObject.AccountName) then
     FWriter.ElementW('ram:AccountName', AObject.AccountName);
   if not CIIIDIsEmpty(AObject.ProprietaryID) then
-    WriteID('ram:ProprietaryID', AObject.ProprietaryID);
+    WriteID('ram:ProprietaryID', AObject.ProprietaryID, APath + '/ram:ProprietaryID');
 end;
 
 procedure TCIIWriter.WriteCreditorFinancialInstitution(AObject: TLandrixCIICreditorFinancialInstitution; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.BICID) then
-    WriteID('ram:BICID', AObject.BICID)
+    WriteID('ram:BICID', AObject.BICID, APath + '/ram:BICID')
   else
     Missing(APath + '/ram:BICID');
 end;
@@ -378,23 +397,23 @@ end;
 procedure TCIIWriter.WriteDebtorFinancialAccount(AObject: TLandrixCIIDebtorFinancialAccount; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.IBANID) then
-    WriteID('ram:IBANID', AObject.IBANID)
+    WriteID('ram:IBANID', AObject.IBANID, APath + '/ram:IBANID')
   else
     Missing(APath + '/ram:IBANID');
   if not LandrixEInvoiceIsBlank(AObject.AccountName) then
     FWriter.ElementW('ram:AccountName', AObject.AccountName);
 end;
 
-procedure TCIIWriter.WriteDebtorFinancialInstitution(AObject: TLandrixCIIDebtorFinancialInstitution);
+procedure TCIIWriter.WriteDebtorFinancialInstitution(AObject: TLandrixCIIDebtorFinancialInstitution; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.BICID) then
-    WriteID('ram:BICID', AObject.BICID);
+    WriteID('ram:BICID', AObject.BICID, APath + '/ram:BICID');
 end;
 
 procedure TCIIWriter.WriteDocumentContextParameter(AObject: TLandrixCIIDocumentContextParameter; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID)
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID')
   else
     Missing(APath + '/ram:ID');
 end;
@@ -404,19 +423,19 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIIDIsEmpty(AObject.LineID) then
-    WriteID('ram:LineID', AObject.LineID)
+    WriteID('ram:LineID', AObject.LineID, APath + '/ram:LineID')
   else
     Missing(APath + '/ram:LineID');
   if not CIIIDIsEmpty(AObject.ParentLineID) then
-    WriteID('ram:ParentLineID', AObject.ParentLineID);
+    WriteID('ram:ParentLineID', AObject.ParentLineID, APath + '/ram:ParentLineID');
   if not LandrixEInvoiceIsBlank(AObject.LineStatusCode) then
     FWriter.ElementW('ram:LineStatusCode', AObject.LineStatusCode);
   if not CIICodeIsEmpty(AObject.LineStatusReasonCode) then
-    WriteCode('ram:LineStatusReasonCode', AObject.LineStatusReasonCode);
+    WriteCode('ram:LineStatusReasonCode', AObject.LineStatusReasonCode, APath + '/ram:LineStatusReasonCode');
   for I := 0 to AObject.IncludedNote.Count - 1 do
   begin
     FWriter.StartElement('ram:IncludedNote');
-    WriteNote(AObject.IncludedNote[I]);
+    WriteNote(AObject.IncludedNote[I], APath + '/ram:IncludedNote');
     FWriter.EndElement;
   end;
 end;
@@ -426,7 +445,7 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID)
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID')
   else
     Missing(APath + '/ram:ID');
   if not LandrixEInvoiceIsBlank(AObject.Name) then
@@ -446,11 +465,11 @@ begin
     FWriter.EndElement;
   end;
   if not CIIIDIsEmpty(AObject.LanguageID) then
-    WriteID('ram:LanguageID', AObject.LanguageID);
+    WriteID('ram:LanguageID', AObject.LanguageID, APath + '/ram:LanguageID');
   for I := 0 to AObject.IncludedNote.Count - 1 do
   begin
     FWriter.StartElement('ram:IncludedNote');
-    WriteNote(AObject.IncludedNote[I]);
+    WriteNote(AObject.IncludedNote[I], APath + '/ram:IncludedNote');
     FWriter.EndElement;
   end;
   if not AObject.EffectiveSpecifiedPeriod.IsEmpty then
@@ -487,7 +506,7 @@ begin
   else
     Missing(APath + '/ram:Reason');
   if not CIIAmountIsEmpty(AObject.ActualAmount) then
-    WriteAmount('ram:ActualAmount', AObject.ActualAmount)
+    WriteAmount('ram:ActualAmount', AObject.ActualAmount, APath + '/ram:ActualAmount')
   else
     Missing(APath + '/ram:ActualAmount');
 end;
@@ -641,7 +660,7 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIIDIsEmpty(AObject.CreditorReferenceID) then
-    WriteID('ram:CreditorReferenceID', AObject.CreditorReferenceID);
+    WriteID('ram:CreditorReferenceID', AObject.CreditorReferenceID, APath + '/ram:CreditorReferenceID');
   if not LandrixEInvoiceIsBlank(AObject.PaymentReference) then
     FWriter.ElementW('ram:PaymentReference', AObject.PaymentReference);
   if not LandrixEInvoiceIsBlank(AObject.TaxCurrencyCode) then
@@ -765,7 +784,7 @@ end;
 procedure TCIIWriter.WriteLegalOrganization(AObject: TLandrixCIILegalOrganization; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID);
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID');
   if not LandrixEInvoiceIsBlank(AObject.TradingBusinessName) then
     FWriter.ElementW('ram:TradingBusinessName', AObject.TradingBusinessName);
   if not AObject.PostalTradeAddress.IsEmpty then
@@ -827,7 +846,9 @@ begin
     FWriter.StartElement('ram:NetPriceProductTradePrice');
     WriteTradePrice(AObject.NetPriceProductTradePrice, APath + '/ram:NetPriceProductTradePrice');
     FWriter.EndElement;
-  end;
+  end
+  else
+    MissingInProfile(APath + '/ram:NetPriceProductTradePrice');
   if not AObject.ItemSellerTradeParty.IsEmpty then
   begin
     FWriter.StartElement('ram:ItemSellerTradeParty');
@@ -845,13 +866,15 @@ end;
 procedure TCIIWriter.WriteLineTradeDelivery(AObject: TLandrixCIILineTradeDelivery; const APath: TLandrixEInvoiceString);
 begin
   if not CIIQuantityIsEmpty(AObject.BilledQuantity) then
-    WriteQuantity('ram:BilledQuantity', AObject.BilledQuantity);
+    WriteQuantity('ram:BilledQuantity', AObject.BilledQuantity, APath + '/ram:BilledQuantity')
+  else
+    MissingInProfile(APath + '/ram:BilledQuantity');
   if not CIIQuantityIsEmpty(AObject.ChargeFreeQuantity) then
-    WriteQuantity('ram:ChargeFreeQuantity', AObject.ChargeFreeQuantity);
+    WriteQuantity('ram:ChargeFreeQuantity', AObject.ChargeFreeQuantity, APath + '/ram:ChargeFreeQuantity');
   if not CIIQuantityIsEmpty(AObject.PackageQuantity) then
-    WriteQuantity('ram:PackageQuantity', AObject.PackageQuantity);
+    WriteQuantity('ram:PackageQuantity', AObject.PackageQuantity, APath + '/ram:PackageQuantity');
   if not CIIQuantityIsEmpty(AObject.PerPackageUnitQuantity) then
-    WriteQuantity('ram:PerPackageUnitQuantity', AObject.PerPackageUnitQuantity);
+    WriteQuantity('ram:PerPackageUnitQuantity', AObject.PerPackageUnitQuantity, APath + '/ram:PerPackageUnitQuantity');
   if not AObject.ShipToTradeParty.IsEmpty then
   begin
     FWriter.StartElement('ram:ShipToTradeParty');
@@ -900,6 +923,8 @@ begin
     WriteTradeTax(AObject.ApplicableTradeTax[I], APath + '/ram:ApplicableTradeTax');
     FWriter.EndElement;
   end;
+  if AObject.ApplicableTradeTax.Count = 0 then
+    MissingInProfile(APath + '/ram:ApplicableTradeTax');
   if not AObject.BillingSpecifiedPeriod.IsEmpty then
   begin
     FWriter.StartElement('ram:BillingSpecifiedPeriod');
@@ -915,9 +940,11 @@ begin
   if not AObject.SpecifiedTradeSettlementLineMonetarySummation.IsEmpty then
   begin
     FWriter.StartElement('ram:SpecifiedTradeSettlementLineMonetarySummation');
-    WriteTradeSettlementLineMonetarySummation(AObject.SpecifiedTradeSettlementLineMonetarySummation);
+    WriteTradeSettlementLineMonetarySummation(AObject.SpecifiedTradeSettlementLineMonetarySummation, APath + '/ram:SpecifiedTradeSettlementLineMonetarySummation');
     FWriter.EndElement;
-  end;
+  end
+  else
+    MissingInProfile(APath + '/ram:SpecifiedTradeSettlementLineMonetarySummation');
   if not AObject.InvoiceReferencedDocument.IsEmpty then
   begin
     FWriter.StartElement('ram:InvoiceReferencedDocument');
@@ -947,7 +974,7 @@ begin
   else
     Missing(APath + '/ram:Description');
   if not CIIAmountIsEmpty(AObject.AppliedAmount) then
-    WriteAmount('ram:AppliedAmount', AObject.AppliedAmount)
+    WriteAmount('ram:AppliedAmount', AObject.AppliedAmount, APath + '/ram:AppliedAmount')
   else
     Missing(APath + '/ram:AppliedAmount');
   for I := 0 to AObject.AppliedTradeTax.Count - 1 do
@@ -968,20 +995,22 @@ begin
     Missing(APath + '/ram:ModeCode');
 end;
 
-procedure TCIIWriter.WriteNote(AObject: TLandrixCIINote);
+procedure TCIIWriter.WriteNote(AObject: TLandrixCIINote; const APath: TLandrixEInvoiceString);
 begin
   if not CIICodeIsEmpty(AObject.ContentCode) then
-    WriteCode('ram:ContentCode', AObject.ContentCode);
+    WriteCode('ram:ContentCode', AObject.ContentCode, APath + '/ram:ContentCode');
   if not LandrixEInvoiceIsBlank(AObject.Content) then
-    FWriter.ElementW('ram:Content', AObject.Content);
+    FWriter.ElementW('ram:Content', AObject.Content)
+  else
+    MissingInProfile(APath + '/ram:Content');
   if not CIICodeIsEmpty(AObject.SubjectCode) then
-    WriteCode('ram:SubjectCode', AObject.SubjectCode);
+    WriteCode('ram:SubjectCode', AObject.SubjectCode, APath + '/ram:SubjectCode');
 end;
 
 procedure TCIIWriter.WriteProcuringProject(AObject: TLandrixCIIProcuringProject; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID)
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID')
   else
     Missing(APath + '/ram:ID');
   if not LandrixEInvoiceIsBlank(AObject.Name) then
@@ -990,22 +1019,26 @@ begin
     Missing(APath + '/ram:Name');
 end;
 
-procedure TCIIWriter.WriteProductCharacteristic(AObject: TLandrixCIIProductCharacteristic);
+procedure TCIIWriter.WriteProductCharacteristic(AObject: TLandrixCIIProductCharacteristic; const APath: TLandrixEInvoiceString);
 begin
   if not CIICodeIsEmpty(AObject.TypeCode) then
-    WriteCode('ram:TypeCode', AObject.TypeCode);
+    WriteCode('ram:TypeCode', AObject.TypeCode, APath + '/ram:TypeCode');
   if not LandrixEInvoiceIsBlank(AObject.Description) then
-    FWriter.ElementW('ram:Description', AObject.Description);
+    FWriter.ElementW('ram:Description', AObject.Description)
+  else
+    MissingInProfile(APath + '/ram:Description');
   if not CIIMeasureIsEmpty(AObject.ValueMeasure) then
     WriteMeasure('ram:ValueMeasure', AObject.ValueMeasure);
   if not LandrixEInvoiceIsBlank(AObject.Value) then
-    FWriter.ElementW('ram:Value', AObject.Value);
+    FWriter.ElementW('ram:Value', AObject.Value)
+  else
+    MissingInProfile(APath + '/ram:Value');
 end;
 
-procedure TCIIWriter.WriteProductClassification(AObject: TLandrixCIIProductClassification);
+procedure TCIIWriter.WriteProductClassification(AObject: TLandrixCIIProductClassification; const APath: TLandrixEInvoiceString);
 begin
   if not CIICodeIsEmpty(AObject.ClassCode) then
-    WriteCode('ram:ClassCode', AObject.ClassCode);
+    WriteCode('ram:ClassCode', AObject.ClassCode, APath + '/ram:ClassCode');
   if not LandrixEInvoiceIsBlank(AObject.ClassificationName) then
     FWriter.ElementW('ram:ClassName', AObject.ClassificationName);
 end;
@@ -1013,13 +1046,19 @@ end;
 procedure TCIIWriter.WriteReferencedDocument(AObject: TLandrixCIIReferencedDocument; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.IssuerAssignedID) then
-    WriteID('ram:IssuerAssignedID', AObject.IssuerAssignedID);
+    WriteID('ram:IssuerAssignedID', AObject.IssuerAssignedID, APath + '/ram:IssuerAssignedID')
+  else
+    MissingInProfile(APath + '/ram:IssuerAssignedID');
   if not CIIIDIsEmpty(AObject.URIID) then
-    WriteID('ram:URIID', AObject.URIID);
+    WriteID('ram:URIID', AObject.URIID, APath + '/ram:URIID');
   if not CIIIDIsEmpty(AObject.LineID) then
-    WriteID('ram:LineID', AObject.LineID);
+    WriteID('ram:LineID', AObject.LineID, APath + '/ram:LineID')
+  else
+    MissingInProfile(APath + '/ram:LineID');
   if not LandrixEInvoiceIsBlank(AObject.TypeCode) then
-    FWriter.ElementW('ram:TypeCode', AObject.TypeCode);
+    FWriter.ElementW('ram:TypeCode', AObject.TypeCode)
+  else
+    MissingInProfile(APath + '/ram:TypeCode');
   if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('ram:Name', AObject.Name);
   if not CIIBinaryObjectIsEmpty(AObject.AttachmentBinaryObject) then
@@ -1035,15 +1074,15 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID);
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID');
   for I := 0 to AObject.GlobalID.Count - 1 do
-    WriteID('ram:GlobalID', AObject.GlobalID[I]);
+    WriteID('ram:GlobalID', AObject.GlobalID[I], APath + '/ram:GlobalID');
   if not CIIIDIsEmpty(AObject.SellerAssignedID) then
-    WriteID('ram:SellerAssignedID', AObject.SellerAssignedID);
+    WriteID('ram:SellerAssignedID', AObject.SellerAssignedID, APath + '/ram:SellerAssignedID');
   if not CIIIDIsEmpty(AObject.BuyerAssignedID) then
-    WriteID('ram:BuyerAssignedID', AObject.BuyerAssignedID);
+    WriteID('ram:BuyerAssignedID', AObject.BuyerAssignedID, APath + '/ram:BuyerAssignedID');
   if not CIIIDIsEmpty(AObject.IndustryAssignedID) then
-    WriteID('ram:IndustryAssignedID', AObject.IndustryAssignedID);
+    WriteID('ram:IndustryAssignedID', AObject.IndustryAssignedID, APath + '/ram:IndustryAssignedID');
   if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('ram:Name', AObject.Name)
   else
@@ -1051,7 +1090,7 @@ begin
   if not LandrixEInvoiceIsBlank(AObject.Description) then
     FWriter.ElementW('ram:Description', AObject.Description);
   if not CIIQuantityIsEmpty(AObject.UnitQuantity) then
-    WriteQuantity('ram:UnitQuantity', AObject.UnitQuantity);
+    WriteQuantity('ram:UnitQuantity', AObject.UnitQuantity, APath + '/ram:UnitQuantity');
 end;
 
 procedure TCIIWriter.WriteSpecifiedPeriod(AObject: TLandrixCIISpecifiedPeriod; const APath: TLandrixEInvoiceString);
@@ -1063,7 +1102,9 @@ begin
   if not CIIDateTimeIsEmpty(AObject.EndDateTime) then
     WriteDateTime('ram:EndDateTime', AObject.EndDateTime, APath + '/ram:EndDateTime');
   if not CIIDateTimeIsEmpty(AObject.CompleteDateTime) then
-    WriteDateTime('ram:CompleteDateTime', AObject.CompleteDateTime, APath + '/ram:CompleteDateTime');
+    WriteDateTime('ram:CompleteDateTime', AObject.CompleteDateTime, APath + '/ram:CompleteDateTime')
+  else
+    MissingInProfile(APath + '/ram:CompleteDateTime');
 end;
 
 procedure TCIIWriter.WriteSupplyChainConsignment(AObject: TLandrixCIISupplyChainConsignment; const APath: TLandrixEInvoiceString);
@@ -1099,13 +1140,17 @@ begin
     FWriter.StartElement('ram:SpecifiedLineTradeAgreement');
     WriteLineTradeAgreement(AObject.SpecifiedLineTradeAgreement, APath + '/ram:SpecifiedLineTradeAgreement');
     FWriter.EndElement;
-  end;
+  end
+  else
+    MissingInProfile(APath + '/ram:SpecifiedLineTradeAgreement');
   if not AObject.SpecifiedLineTradeDelivery.IsEmpty then
   begin
     FWriter.StartElement('ram:SpecifiedLineTradeDelivery');
     WriteLineTradeDelivery(AObject.SpecifiedLineTradeDelivery, APath + '/ram:SpecifiedLineTradeDelivery');
     FWriter.EndElement;
-  end;
+  end
+  else
+    MissingInProfile(APath + '/ram:SpecifiedLineTradeDelivery');
   FWriter.StartElement('ram:SpecifiedLineTradeSettlement');
   WriteLineTradeSettlement(AObject.SpecifiedLineTradeSettlement, APath + '/ram:SpecifiedLineTradeSettlement');
   FWriter.EndElement;
@@ -1137,7 +1182,7 @@ end;
 procedure TCIIWriter.WriteTaxRegistration(AObject: TLandrixCIITaxRegistration; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID)
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID')
   else
     Missing(APath + '/ram:ID');
 end;
@@ -1145,7 +1190,7 @@ end;
 procedure TCIIWriter.WriteTradeAccountingAccount(AObject: TLandrixCIITradeAccountingAccount; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID)
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID')
   else
     Missing(APath + '/ram:ID');
   if not LandrixEInvoiceIsBlank(AObject.TypeCode) then
@@ -1155,7 +1200,7 @@ end;
 procedure TCIIWriter.WriteTradeAddress(AObject: TLandrixCIITradeAddress; const APath: TLandrixEInvoiceString);
 begin
   if not CIICodeIsEmpty(AObject.PostcodeCode) then
-    WriteCode('ram:PostcodeCode', AObject.PostcodeCode);
+    WriteCode('ram:PostcodeCode', AObject.PostcodeCode, APath + '/ram:PostcodeCode');
   if not LandrixEInvoiceIsBlank(AObject.LineOne) then
     FWriter.ElementW('ram:LineOne', AObject.LineOne);
   if not LandrixEInvoiceIsBlank(AObject.LineTwo) then
@@ -1187,11 +1232,11 @@ begin
   if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) then
     FWriter.ElementW('ram:CalculationPercent', AObject.CalculationPercent);
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
-    WriteAmount('ram:BasisAmount', AObject.BasisAmount);
+    WriteAmount('ram:BasisAmount', AObject.BasisAmount, APath + '/ram:BasisAmount');
   if not CIIQuantityIsEmpty(AObject.BasisQuantity) then
-    WriteQuantity('ram:BasisQuantity', AObject.BasisQuantity);
+    WriteQuantity('ram:BasisQuantity', AObject.BasisQuantity, APath + '/ram:BasisQuantity');
   if not CIIAmountIsEmpty(AObject.ActualAmount) then
-    WriteAmount('ram:ActualAmount', AObject.ActualAmount)
+    WriteAmount('ram:ActualAmount', AObject.ActualAmount, APath + '/ram:ActualAmount')
   else
     Missing(APath + '/ram:ActualAmount');
   if not CIIAllowanceChargeReasonCodeIsEmpty(AObject.ReasonCode) then
@@ -1203,10 +1248,12 @@ begin
     FWriter.StartElement('ram:CategoryTradeTax');
     WriteTradeTax(AObject.CategoryTradeTax, APath + '/ram:CategoryTradeTax');
     FWriter.EndElement;
-  end;
+  end
+  else
+    MissingInProfile(APath + '/ram:CategoryTradeTax');
 end;
 
-procedure TCIIWriter.WriteTradeContact(AObject: TLandrixCIITradeContact);
+procedure TCIIWriter.WriteTradeContact(AObject: TLandrixCIITradeContact; const APath: TLandrixEInvoiceString);
 begin
   if not LandrixEInvoiceIsBlank(AObject.PersonName) then
     FWriter.ElementW('ram:PersonName', AObject.PersonName);
@@ -1217,19 +1264,19 @@ begin
   if not AObject.TelephoneUniversalCommunication.IsEmpty then
   begin
     FWriter.StartElement('ram:TelephoneUniversalCommunication');
-    WriteUniversalCommunication(AObject.TelephoneUniversalCommunication);
+    WriteUniversalCommunication(AObject.TelephoneUniversalCommunication, APath + '/ram:TelephoneUniversalCommunication');
     FWriter.EndElement;
   end;
   if not AObject.FaxUniversalCommunication.IsEmpty then
   begin
     FWriter.StartElement('ram:FaxUniversalCommunication');
-    WriteUniversalCommunication(AObject.FaxUniversalCommunication);
+    WriteUniversalCommunication(AObject.FaxUniversalCommunication, APath + '/ram:FaxUniversalCommunication');
     FWriter.EndElement;
   end;
   if not AObject.EmailURIUniversalCommunication.IsEmpty then
   begin
     FWriter.StartElement('ram:EmailURIUniversalCommunication');
-    WriteUniversalCommunication(AObject.EmailURIUniversalCommunication);
+    WriteUniversalCommunication(AObject.EmailURIUniversalCommunication, APath + '/ram:EmailURIUniversalCommunication');
     FWriter.EndElement;
   end;
 end;
@@ -1287,11 +1334,13 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   for I := 0 to AObject.ID.Count - 1 do
-    WriteID('ram:ID', AObject.ID[I]);
+    WriteID('ram:ID', AObject.ID[I], APath + '/ram:ID');
   for I := 0 to AObject.GlobalID.Count - 1 do
-    WriteID('ram:GlobalID', AObject.GlobalID[I]);
+    WriteID('ram:GlobalID', AObject.GlobalID[I], APath + '/ram:GlobalID');
   if not LandrixEInvoiceIsBlank(AObject.Name) then
-    FWriter.ElementW('ram:Name', AObject.Name);
+    FWriter.ElementW('ram:Name', AObject.Name)
+  else
+    MissingInProfile(APath + '/ram:Name');
   if not LandrixEInvoiceIsBlank(AObject.RoleCode) then
     FWriter.ElementW('ram:RoleCode', AObject.RoleCode);
   if not LandrixEInvoiceIsBlank(AObject.Description) then
@@ -1305,7 +1354,7 @@ begin
   for I := 0 to AObject.DefinedTradeContact.Count - 1 do
   begin
     FWriter.StartElement('ram:DefinedTradeContact');
-    WriteTradeContact(AObject.DefinedTradeContact[I]);
+    WriteTradeContact(AObject.DefinedTradeContact[I], APath + '/ram:DefinedTradeContact');
     FWriter.EndElement;
   end;
   if not AObject.PostalTradeAddress.IsEmpty then
@@ -1313,11 +1362,13 @@ begin
     FWriter.StartElement('ram:PostalTradeAddress');
     WriteTradeAddress(AObject.PostalTradeAddress, APath + '/ram:PostalTradeAddress');
     FWriter.EndElement;
-  end;
+  end
+  else
+    MissingInProfile(APath + '/ram:PostalTradeAddress');
   if not AObject.URIUniversalCommunication.IsEmpty then
   begin
     FWriter.StartElement('ram:URIUniversalCommunication');
-    WriteUniversalCommunication(AObject.URIUniversalCommunication);
+    WriteUniversalCommunication(AObject.URIUniversalCommunication, APath + '/ram:URIUniversalCommunication');
     FWriter.EndElement;
   end;
   for I := 0 to AObject.SpecifiedTaxRegistration.Count - 1 do
@@ -1326,6 +1377,8 @@ begin
     WriteTaxRegistration(AObject.SpecifiedTaxRegistration[I], APath + '/ram:SpecifiedTaxRegistration');
     FWriter.EndElement;
   end;
+  if AObject.SpecifiedTaxRegistration.Count = 0 then
+    MissingInProfile(APath + '/ram:SpecifiedTaxRegistration');
 end;
 
 procedure TCIIWriter.WriteTradePaymentDiscountTerms(AObject: TLandrixCIITradePaymentDiscountTerms; const APath: TLandrixEInvoiceString);
@@ -1335,11 +1388,11 @@ begin
   if not CIIMeasureIsEmpty(AObject.BasisPeriodMeasure) then
     WriteMeasure('ram:BasisPeriodMeasure', AObject.BasisPeriodMeasure);
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
-    WriteAmount('ram:BasisAmount', AObject.BasisAmount);
+    WriteAmount('ram:BasisAmount', AObject.BasisAmount, APath + '/ram:BasisAmount');
   if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) then
     FWriter.ElementW('ram:CalculationPercent', AObject.CalculationPercent);
   if not CIIAmountIsEmpty(AObject.ActualDiscountAmount) then
-    WriteAmount('ram:ActualDiscountAmount', AObject.ActualDiscountAmount);
+    WriteAmount('ram:ActualDiscountAmount', AObject.ActualDiscountAmount, APath + '/ram:ActualDiscountAmount');
 end;
 
 procedure TCIIWriter.WriteTradePaymentPenaltyTerms(AObject: TLandrixCIITradePaymentPenaltyTerms; const APath: TLandrixEInvoiceString);
@@ -1349,11 +1402,11 @@ begin
   if not CIIMeasureIsEmpty(AObject.BasisPeriodMeasure) then
     WriteMeasure('ram:BasisPeriodMeasure', AObject.BasisPeriodMeasure);
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
-    WriteAmount('ram:BasisAmount', AObject.BasisAmount);
+    WriteAmount('ram:BasisAmount', AObject.BasisAmount, APath + '/ram:BasisAmount');
   if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) then
     FWriter.ElementW('ram:CalculationPercent', AObject.CalculationPercent);
   if not CIIAmountIsEmpty(AObject.ActualPenaltyAmount) then
-    WriteAmount('ram:ActualPenaltyAmount', AObject.ActualPenaltyAmount);
+    WriteAmount('ram:ActualPenaltyAmount', AObject.ActualPenaltyAmount, APath + '/ram:ActualPenaltyAmount');
 end;
 
 procedure TCIIWriter.WriteTradePaymentTerms(AObject: TLandrixCIITradePaymentTerms; const APath: TLandrixEInvoiceString);
@@ -1363,9 +1416,9 @@ begin
   if not CIIDateTimeIsEmpty(AObject.DueDateDateTime) then
     WriteDateTime('ram:DueDateDateTime', AObject.DueDateDateTime, APath + '/ram:DueDateDateTime');
   if not CIIIDIsEmpty(AObject.DirectDebitMandateID) then
-    WriteID('ram:DirectDebitMandateID', AObject.DirectDebitMandateID);
+    WriteID('ram:DirectDebitMandateID', AObject.DirectDebitMandateID, APath + '/ram:DirectDebitMandateID');
   if not CIIAmountIsEmpty(AObject.PartialPaymentAmount) then
-    WriteAmount('ram:PartialPaymentAmount', AObject.PartialPaymentAmount);
+    WriteAmount('ram:PartialPaymentAmount', AObject.PartialPaymentAmount, APath + '/ram:PartialPaymentAmount');
   if not AObject.ApplicableTradePaymentPenaltyTerms.IsEmpty then
   begin
     FWriter.StartElement('ram:ApplicableTradePaymentPenaltyTerms');
@@ -1391,11 +1444,11 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIAmountIsEmpty(AObject.ChargeAmount) then
-    WriteAmount('ram:ChargeAmount', AObject.ChargeAmount)
+    WriteAmount('ram:ChargeAmount', AObject.ChargeAmount, APath + '/ram:ChargeAmount')
   else
     Missing(APath + '/ram:ChargeAmount');
   if not CIIQuantityIsEmpty(AObject.BasisQuantity) then
-    WriteQuantity('ram:BasisQuantity', AObject.BasisQuantity);
+    WriteQuantity('ram:BasisQuantity', AObject.BasisQuantity, APath + '/ram:BasisQuantity');
   for I := 0 to AObject.AppliedTradeAllowanceCharge.Count - 1 do
   begin
     FWriter.StartElement('ram:AppliedTradeAllowanceCharge');
@@ -1415,17 +1468,17 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID);
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID');
   if not CIIIDIsEmpty(AObject.GlobalID) then
-    WriteID('ram:GlobalID', AObject.GlobalID);
+    WriteID('ram:GlobalID', AObject.GlobalID, APath + '/ram:GlobalID');
   if not CIIIDIsEmpty(AObject.SellerAssignedID) then
-    WriteID('ram:SellerAssignedID', AObject.SellerAssignedID);
+    WriteID('ram:SellerAssignedID', AObject.SellerAssignedID, APath + '/ram:SellerAssignedID');
   if not CIIIDIsEmpty(AObject.BuyerAssignedID) then
-    WriteID('ram:BuyerAssignedID', AObject.BuyerAssignedID);
+    WriteID('ram:BuyerAssignedID', AObject.BuyerAssignedID, APath + '/ram:BuyerAssignedID');
   if not CIIIDIsEmpty(AObject.IndustryAssignedID) then
-    WriteID('ram:IndustryAssignedID', AObject.IndustryAssignedID);
+    WriteID('ram:IndustryAssignedID', AObject.IndustryAssignedID, APath + '/ram:IndustryAssignedID');
   if not CIIIDIsEmpty(AObject.ModelID) then
-    WriteID('ram:ModelID', AObject.ModelID);
+    WriteID('ram:ModelID', AObject.ModelID, APath + '/ram:ModelID');
   if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('ram:Name', AObject.Name)
   else
@@ -1433,7 +1486,7 @@ begin
   if not LandrixEInvoiceIsBlank(AObject.Description) then
     FWriter.ElementW('ram:Description', AObject.Description);
   for I := 0 to AObject.BatchID.Count - 1 do
-    WriteID('ram:BatchID', AObject.BatchID[I]);
+    WriteID('ram:BatchID', AObject.BatchID[I], APath + '/ram:BatchID');
   if not LandrixEInvoiceIsBlank(AObject.BrandName) then
     FWriter.ElementW('ram:BrandName', AObject.BrandName);
   if not LandrixEInvoiceIsBlank(AObject.ModelName) then
@@ -1441,19 +1494,19 @@ begin
   for I := 0 to AObject.ApplicableProductCharacteristic.Count - 1 do
   begin
     FWriter.StartElement('ram:ApplicableProductCharacteristic');
-    WriteProductCharacteristic(AObject.ApplicableProductCharacteristic[I]);
+    WriteProductCharacteristic(AObject.ApplicableProductCharacteristic[I], APath + '/ram:ApplicableProductCharacteristic');
     FWriter.EndElement;
   end;
   for I := 0 to AObject.DesignatedProductClassification.Count - 1 do
   begin
     FWriter.StartElement('ram:DesignatedProductClassification');
-    WriteProductClassification(AObject.DesignatedProductClassification[I]);
+    WriteProductClassification(AObject.DesignatedProductClassification[I], APath + '/ram:DesignatedProductClassification');
     FWriter.EndElement;
   end;
   for I := 0 to AObject.IndividualTradeProductInstance.Count - 1 do
   begin
     FWriter.StartElement('ram:IndividualTradeProductInstance');
-    WriteTradeProductInstance(AObject.IndividualTradeProductInstance[I]);
+    WriteTradeProductInstance(AObject.IndividualTradeProductInstance[I], APath + '/ram:IndividualTradeProductInstance');
     FWriter.EndElement;
   end;
   if not AObject.OriginTradeCountry.IsEmpty then
@@ -1476,18 +1529,18 @@ begin
   end;
 end;
 
-procedure TCIIWriter.WriteTradeProductInstance(AObject: TLandrixCIITradeProductInstance);
+procedure TCIIWriter.WriteTradeProductInstance(AObject: TLandrixCIITradeProductInstance; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.BatchID) then
-    WriteID('ram:BatchID', AObject.BatchID);
+    WriteID('ram:BatchID', AObject.BatchID, APath + '/ram:BatchID');
   if not CIIIDIsEmpty(AObject.SupplierAssignedSerialID) then
-    WriteID('ram:SupplierAssignedSerialID', AObject.SupplierAssignedSerialID);
+    WriteID('ram:SupplierAssignedSerialID', AObject.SupplierAssignedSerialID, APath + '/ram:SupplierAssignedSerialID');
 end;
 
 procedure TCIIWriter.WriteTradeSettlementFinancialCard(AObject: TLandrixCIITradeSettlementFinancialCard; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.ID) then
-    WriteID('ram:ID', AObject.ID)
+    WriteID('ram:ID', AObject.ID, APath + '/ram:ID')
   else
     Missing(APath + '/ram:ID');
   if not LandrixEInvoiceIsBlank(AObject.CardholderName) then
@@ -1499,49 +1552,51 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIAmountIsEmpty(AObject.LineTotalAmount) then
-    WriteAmount('ram:LineTotalAmount', AObject.LineTotalAmount)
+    WriteAmount('ram:LineTotalAmount', AObject.LineTotalAmount, APath + '/ram:LineTotalAmount')
   else
     Missing(APath + '/ram:LineTotalAmount');
   if not CIIAmountIsEmpty(AObject.ChargeTotalAmount) then
-    WriteAmount('ram:ChargeTotalAmount', AObject.ChargeTotalAmount);
+    WriteAmount('ram:ChargeTotalAmount', AObject.ChargeTotalAmount, APath + '/ram:ChargeTotalAmount');
   if not CIIAmountIsEmpty(AObject.AllowanceTotalAmount) then
-    WriteAmount('ram:AllowanceTotalAmount', AObject.AllowanceTotalAmount);
+    WriteAmount('ram:AllowanceTotalAmount', AObject.AllowanceTotalAmount, APath + '/ram:AllowanceTotalAmount');
   if not CIIAmountIsEmpty(AObject.TaxBasisTotalAmount) then
-    WriteAmount('ram:TaxBasisTotalAmount', AObject.TaxBasisTotalAmount)
+    WriteAmount('ram:TaxBasisTotalAmount', AObject.TaxBasisTotalAmount, APath + '/ram:TaxBasisTotalAmount')
   else
     Missing(APath + '/ram:TaxBasisTotalAmount');
   for I := 0 to AObject.TaxTotalAmount.Count - 1 do
-    WriteAmount('ram:TaxTotalAmount', AObject.TaxTotalAmount[I]);
+    WriteAmount('ram:TaxTotalAmount', AObject.TaxTotalAmount[I], APath + '/ram:TaxTotalAmount');
   if not CIIAmountIsEmpty(AObject.RoundingAmount) then
-    WriteAmount('ram:RoundingAmount', AObject.RoundingAmount);
+    WriteAmount('ram:RoundingAmount', AObject.RoundingAmount, APath + '/ram:RoundingAmount');
   if not CIIAmountIsEmpty(AObject.GrandTotalAmount) then
-    WriteAmount('ram:GrandTotalAmount', AObject.GrandTotalAmount)
+    WriteAmount('ram:GrandTotalAmount', AObject.GrandTotalAmount, APath + '/ram:GrandTotalAmount')
   else
     Missing(APath + '/ram:GrandTotalAmount');
   if not CIIAmountIsEmpty(AObject.TotalPrepaidAmount) then
-    WriteAmount('ram:TotalPrepaidAmount', AObject.TotalPrepaidAmount);
+    WriteAmount('ram:TotalPrepaidAmount', AObject.TotalPrepaidAmount, APath + '/ram:TotalPrepaidAmount');
   if not CIIAmountIsEmpty(AObject.DuePayableAmount) then
-    WriteAmount('ram:DuePayableAmount', AObject.DuePayableAmount)
+    WriteAmount('ram:DuePayableAmount', AObject.DuePayableAmount, APath + '/ram:DuePayableAmount')
   else
     Missing(APath + '/ram:DuePayableAmount');
 end;
 
-procedure TCIIWriter.WriteTradeSettlementLineMonetarySummation(AObject: TLandrixCIITradeSettlementLineMonetarySummation);
+procedure TCIIWriter.WriteTradeSettlementLineMonetarySummation(AObject: TLandrixCIITradeSettlementLineMonetarySummation; const APath: TLandrixEInvoiceString);
 var
   I: TLandrixEInvoiceListIndex;
 begin
   if not CIIAmountIsEmpty(AObject.LineTotalAmount) then
-    WriteAmount('ram:LineTotalAmount', AObject.LineTotalAmount);
+    WriteAmount('ram:LineTotalAmount', AObject.LineTotalAmount, APath + '/ram:LineTotalAmount')
+  else
+    MissingInProfile(APath + '/ram:LineTotalAmount');
   if not CIIAmountIsEmpty(AObject.ChargeTotalAmount) then
-    WriteAmount('ram:ChargeTotalAmount', AObject.ChargeTotalAmount);
+    WriteAmount('ram:ChargeTotalAmount', AObject.ChargeTotalAmount, APath + '/ram:ChargeTotalAmount');
   if not CIIAmountIsEmpty(AObject.AllowanceTotalAmount) then
-    WriteAmount('ram:AllowanceTotalAmount', AObject.AllowanceTotalAmount);
+    WriteAmount('ram:AllowanceTotalAmount', AObject.AllowanceTotalAmount, APath + '/ram:AllowanceTotalAmount');
   for I := 0 to AObject.TaxTotalAmount.Count - 1 do
-    WriteAmount('ram:TaxTotalAmount', AObject.TaxTotalAmount[I]);
+    WriteAmount('ram:TaxTotalAmount', AObject.TaxTotalAmount[I], APath + '/ram:TaxTotalAmount');
   if not CIIAmountIsEmpty(AObject.GrandTotalAmount) then
-    WriteAmount('ram:GrandTotalAmount', AObject.GrandTotalAmount);
+    WriteAmount('ram:GrandTotalAmount', AObject.GrandTotalAmount, APath + '/ram:GrandTotalAmount');
   if not CIIAmountIsEmpty(AObject.TotalAllowanceChargeAmount) then
-    WriteAmount('ram:TotalAllowanceChargeAmount', AObject.TotalAllowanceChargeAmount);
+    WriteAmount('ram:TotalAllowanceChargeAmount', AObject.TotalAllowanceChargeAmount, APath + '/ram:TotalAllowanceChargeAmount');
 end;
 
 procedure TCIIWriter.WriteTradeSettlementPaymentMeans(AObject: TLandrixCIITradeSettlementPaymentMeans; const APath: TLandrixEInvoiceString);
@@ -1567,13 +1622,13 @@ begin
   if not AObject.PayeePartyCreditorFinancialAccount.IsEmpty then
   begin
     FWriter.StartElement('ram:PayeePartyCreditorFinancialAccount');
-    WriteCreditorFinancialAccount(AObject.PayeePartyCreditorFinancialAccount);
+    WriteCreditorFinancialAccount(AObject.PayeePartyCreditorFinancialAccount, APath + '/ram:PayeePartyCreditorFinancialAccount');
     FWriter.EndElement;
   end;
   if not AObject.PayerSpecifiedDebtorFinancialInstitution.IsEmpty then
   begin
     FWriter.StartElement('ram:PayerSpecifiedDebtorFinancialInstitution');
-    WriteDebtorFinancialInstitution(AObject.PayerSpecifiedDebtorFinancialInstitution);
+    WriteDebtorFinancialInstitution(AObject.PayerSpecifiedDebtorFinancialInstitution, APath + '/ram:PayerSpecifiedDebtorFinancialInstitution');
     FWriter.EndElement;
   end;
   if not AObject.PayeeSpecifiedCreditorFinancialInstitution.IsEmpty then
@@ -1587,35 +1642,49 @@ end;
 procedure TCIIWriter.WriteTradeTax(AObject: TLandrixCIITradeTax; const APath: TLandrixEInvoiceString);
 begin
   if not CIIAmountIsEmpty(AObject.CalculatedAmount) then
-    WriteAmount('ram:CalculatedAmount', AObject.CalculatedAmount);
+    WriteAmount('ram:CalculatedAmount', AObject.CalculatedAmount, APath + '/ram:CalculatedAmount')
+  else
+    MissingInProfile(APath + '/ram:CalculatedAmount');
   if not LandrixEInvoiceIsBlank(AObject.TypeCode) then
-    FWriter.ElementW('ram:TypeCode', AObject.TypeCode);
+    FWriter.ElementW('ram:TypeCode', AObject.TypeCode)
+  else
+    MissingInProfile(APath + '/ram:TypeCode');
   if not LandrixEInvoiceIsBlank(AObject.ExemptionReason) then
     FWriter.ElementW('ram:ExemptionReason', AObject.ExemptionReason);
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
-    WriteAmount('ram:BasisAmount', AObject.BasisAmount);
+    WriteAmount('ram:BasisAmount', AObject.BasisAmount, APath + '/ram:BasisAmount')
+  else
+    MissingInProfile(APath + '/ram:BasisAmount');
   if not CIIAmountIsEmpty(AObject.LineTotalBasisAmount) then
-    WriteAmount('ram:LineTotalBasisAmount', AObject.LineTotalBasisAmount);
+    WriteAmount('ram:LineTotalBasisAmount', AObject.LineTotalBasisAmount, APath + '/ram:LineTotalBasisAmount');
   if not CIIAmountIsEmpty(AObject.AllowanceChargeBasisAmount) then
-    WriteAmount('ram:AllowanceChargeBasisAmount', AObject.AllowanceChargeBasisAmount);
+    WriteAmount('ram:AllowanceChargeBasisAmount', AObject.AllowanceChargeBasisAmount, APath + '/ram:AllowanceChargeBasisAmount');
   if not LandrixEInvoiceIsBlank(AObject.CategoryCode) then
-    FWriter.ElementW('ram:CategoryCode', AObject.CategoryCode);
+    FWriter.ElementW('ram:CategoryCode', AObject.CategoryCode)
+  else
+    MissingInProfile(APath + '/ram:CategoryCode');
   if not CIICodeIsEmpty(AObject.ExemptionReasonCode) then
-    WriteCode('ram:ExemptionReasonCode', AObject.ExemptionReasonCode);
+    WriteCode('ram:ExemptionReasonCode', AObject.ExemptionReasonCode, APath + '/ram:ExemptionReasonCode');
   if not CIIDateIsEmpty(AObject.TaxPointDate) then
     WriteDate('ram:TaxPointDate', AObject.TaxPointDate, APath + '/ram:TaxPointDate');
   if not LandrixEInvoiceIsBlank(AObject.DueDateTypeCode) then
     FWriter.ElementW('ram:DueDateTypeCode', AObject.DueDateTypeCode);
   if not LandrixEInvoiceIsBlank(AObject.RateApplicablePercent) then
-    FWriter.ElementW('ram:RateApplicablePercent', AObject.RateApplicablePercent);
+    FWriter.ElementW('ram:RateApplicablePercent', AObject.RateApplicablePercent)
+  else
+    MissingInProfile(APath + '/ram:RateApplicablePercent');
 end;
 
-procedure TCIIWriter.WriteUniversalCommunication(AObject: TLandrixCIIUniversalCommunication);
+procedure TCIIWriter.WriteUniversalCommunication(AObject: TLandrixCIIUniversalCommunication; const APath: TLandrixEInvoiceString);
 begin
   if not CIIIDIsEmpty(AObject.URIID) then
-    WriteID('ram:URIID', AObject.URIID);
+    WriteID('ram:URIID', AObject.URIID, APath + '/ram:URIID')
+  else
+    MissingInProfile(APath + '/ram:URIID');
   if not LandrixEInvoiceIsBlank(AObject.CompleteNumber) then
-    FWriter.ElementW('ram:CompleteNumber', AObject.CompleteNumber);
+    FWriter.ElementW('ram:CompleteNumber', AObject.CompleteNumber)
+  else
+    MissingInProfile(APath + '/ram:CompleteNumber');
 end;
 
 procedure LandrixEInvoiceWriteCII(AInvoice: TLandrixCIIInvoice; AWriter: TLandrixXmlWriter;

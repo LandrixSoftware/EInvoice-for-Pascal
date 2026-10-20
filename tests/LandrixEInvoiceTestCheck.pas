@@ -39,6 +39,10 @@ uses
   LandrixEInvoiceSpecs,
   LandrixEInvoiceInvoice,
   LandrixEInvoiceCalc,
+  LandrixEInvoiceCII,
+  LandrixEInvoiceMapCII,
+  LandrixEInvoiceUBL,
+  LandrixEInvoiceMapUBL,
   LandrixEInvoiceCheck,
   LandrixEInvoiceTestFramework;
 
@@ -787,6 +791,93 @@ begin
   end;
 end;
 
+{ LandrixEInvoiceCheckCII reports what the profile requires below an
+  existing parent although the schema leaves it optional: a line without
+  invoiced quantity (BT-129) fails Factur-X BASIC, not XRechnung CII (no
+  profile; the business rules cover XRechnung). A model for the other
+  syntax raises. }
+procedure TestCheckCII;
+var
+  Invoice: TLandrixInvoice;
+  CII: TLandrixCIIInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Quantity: TLandrixEInvoiceString;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, SpecOf(tk_FXBasic), nil);
+    try
+      CheckEquals(0, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXBasic), D), 'complete: ' + string(D.ToText));
+      { without quantity the line delivery is empty and not written; BASIC
+        requires it below the line }
+      Quantity := '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/' +
+        'ram:SpecifiedLineTradeDelivery';
+      CII.SupplyChainTradeTransaction.IncludedSupplyChainTradeLineItem[0].SpecifiedLineTradeDelivery.
+        BilledQuantity.Value := '';
+      CII.SupplyChainTradeTransaction.IncludedSupplyChainTradeLineItem[0].SpecifiedLineTradeDelivery.
+        BilledQuantity.UnitCode := '';
+      D.Clear;
+      CheckEquals(1, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXBasic), D), 'BASIC: ' + string(D.ToText));
+      if D.Count = 1 then
+        CheckEqualsInvoiceStr(Quantity, D[0].Path, 'line delivery reported');
+      CheckEquals(0, LandrixEInvoiceCheckCII(CII, SpecOf(tk_XRCII), nil), 'XRechnung CII');
+      { a quantity without unit (BT-130): the attribute is optional in the
+        schema, required in BASIC }
+      CII.SupplyChainTradeTransaction.IncludedSupplyChainTradeLineItem[0].SpecifiedLineTradeDelivery.
+        BilledQuantity.Value := '1';
+      D.Clear;
+      CheckEquals(1, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXBasic), D), 'BASIC unit: ' + string(D.ToText));
+      if D.Count = 1 then
+        CheckEqualsInvoiceStr(Quantity + '/ram:BilledQuantity/@unitCode', D[0].Path, 'unit reported');
+      try
+        LandrixEInvoiceCheckCII(CII, SpecOf(tk_XRUBL), nil);
+        FailNotRaised('ELandrixEInvoiceError');
+      except
+        on ELandrixEInvoiceError do ;
+      end;
+    finally
+      CII.Free;
+    end;
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
+{ LandrixEInvoiceCheckUBLInvoice reports what the UBL schema requires. }
+procedure TestCheckUBL;
+var
+  Invoice: TLandrixInvoice;
+  UBL: TLandrixUBLInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    UBL := LandrixEInvoiceInvoiceToUBLInvoice(Invoice, SpecOf(tk_Peppol), nil);
+    try
+      CheckEquals(0, LandrixEInvoiceCheckUBLInvoice(UBL, SpecOf(tk_Peppol), D), 'complete: ' + string(D.ToText));
+      UBL.ID.Value := ' ';
+      CheckEquals(1, LandrixEInvoiceCheckUBLInvoice(UBL, SpecOf(tk_Peppol), D), 'without number');
+      CheckEqualsInvoiceStr('/Invoice/cbc:ID', D[0].Path, 'number reported');
+      try
+        LandrixEInvoiceCheckUBLInvoice(UBL, SpecOf(tk_FXEN16931), nil);
+        FailNotRaised('ELandrixEInvoiceError');
+      except
+        on ELandrixEInvoiceError do ;
+      end;
+    finally
+      UBL.Free;
+    end;
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -801,6 +892,8 @@ begin
   RegisterTest('Check.PayeeLikeSeller', TestPayeeLikeSeller);
   RegisterTest('Check.DirectDebitGroups', TestDirectDebitGroups);
   RegisterTest('Check.SubLines', TestSubLines);
+  RegisterTest('Check.CheckCII', TestCheckCII);
+  RegisterTest('Check.CheckUBL', TestCheckUBL);
 end;
 
 end.

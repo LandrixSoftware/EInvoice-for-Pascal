@@ -1272,10 +1272,55 @@ end.""" % {"name": root["name"], "ns": root["ns"].upper(), "ns_lower": root["ns"
 # writer unit
 # --------------------------------------------------------------------------
 
+def profile_required(m):
+    """Children and attributes the schema leaves optional but a Factur-X
+    profile requires below their parent (cii-profiles.json, fourth column):
+    ({(parent type, qname)}, {(record type, attribute)}). Empty for UBL."""
+    elems, attrs = set(), set()
+    if not CFG.get("profiles"):
+        return elems, attrs
+    data = json.load(io.open(os.path.join(HERE, CFG["profiles"]), encoding="utf-8"))
+    root = m.roots[0]
+    top = "/%s:%s" % (root["ns"], root["name"])
+    for row in data["paths"]:
+        path, here = row[0], row[3]
+        if not here or not path.startswith(top + "/"):
+            continue
+        t = root["type"]
+        segs = path[len(top) + 1:].split("/")
+        for i, seg in enumerate(segs):
+            last = i == len(segs) - 1
+            if seg.startswith("@"):
+                if last and t in m.pascal and m.kind.get(t) != "class":
+                    for _, a, req in m.record_fields(t):
+                        if a == seg[1:] and not req:
+                            attrs.add((t, a))
+                t = None
+                break
+            if m.kind.get(t) == "wrapper" and m.qname(m.wrapped[t][0]) == seg:
+                continue
+            if m.kind.get(t) != "class":
+                t = None
+                break
+            child = None
+            for c in m.types[t]["children"]:
+                if m.qname(c) == seg:
+                    child = c
+            if child is None:
+                t = None
+                break
+            if last and child["min"] == 0:
+                elems.add((t, seg))
+            t = child["type"]
+    return elems, attrs
+
+
 def writer_needs_path(m):
     """Schema types whose Write method uses APath: required children or
-    attributes, or children whose methods need it."""
+    attributes (by the schema or a Factur-X profile), or children whose
+    methods need it."""
     memo = {}
+    elems, attrs = profile_required(m)
 
     def needs(t):
         if t in memo:
@@ -1286,12 +1331,12 @@ def writer_needs_path(m):
             for c in m.types[t]["children"]:
                 k = m.child_kind(c)
                 # a required single object is always written, it reports nothing itself
-                if c["min"] >= 1 and not (k == "class" and c["max"] == 1):
+                if (c["min"] >= 1 and not (k == "class" and c["max"] == 1)) or (t, m.qname(c)) in elems:
                     r = True
                 elif k in ("class", "record") and needs(c["type"]):
                     r = True
         elif t in m.pascal:
-            r = any(req for _, _, req in m.record_fields(t))
+            r = any(req or (t, a) in attrs for _, a, req in m.record_fields(t))
         else:
             r = False
         memo[t] = r
@@ -1417,6 +1462,7 @@ def gen_writer(m):
     L = []
     w = L.append
     np = writer_needs_path(m)
+    elems, attrs = profile_required(m)
     cii = CFG["syn"] == "CII"
     w(HEADER + (CII_WRITER_HEAD if cii else UBL_WRITER_HEAD) + """unit LandrixEInvoice%(syn)sWriter;
 
@@ -1445,7 +1491,8 @@ type
     FWriter: TLandrixXmlWriter;
     FDiagnostics: TLandrixEInvoiceDiagnostics;
     FProfile: TLandrixEInvoiceProfile;
-    procedure Missing(const APath: TLandrixEInvoiceString);""")
+    procedure Missing(const APath: TLandrixEInvoiceString);
+    procedure MissingInProfile(const APath: TLandrixEInvoiceString);""")
     else:
         w("""implementation
 
@@ -1486,6 +1533,16 @@ procedure TCIIWriter.Missing(const APath: TLandrixEInvoiceString);
 begin
   if LandrixEInvoiceCIIAllowed(APath, FProfile) then
     FDiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0, 'required element or attribute missing');
+end;
+
+{ optional in the schema, required by the Factur-X profile below its parent
+  DE: im Schema optional, im Factur-X-Profil unter seinem Elternelement
+  Pflicht }
+procedure TCIIWriter.MissingInProfile(const APath: TLandrixEInvoiceString);
+begin
+  if LandrixEInvoiceCIIRequiredBelowParent(APath, FProfile) then
+    FDiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0, 'element or attribute required by the ' +
+      'profile missing');
 end;
 """)
     else:
@@ -1535,6 +1592,9 @@ end;
             if req:
                 w("  else")
                 w("    Missing(%s + '/@%s')" % (path_inner, a))
+            elif (n, a) in attrs:
+                w("  else")
+                w("    MissingInProfile(%s + '/@%s')" % (path_inner, a))
             w("  ;")
         w("  if not LandrixEInvoiceIsBlank(AValue.Value) then")
         w("    FWriter.TextW(AValue.Value);")
@@ -1576,6 +1636,9 @@ end;
                     if c["min"] >= 1:
                         w("  else")
                         w("    Missing(%s)" % cpath)
+                    elif (n, q) in elems:
+                        w("  else")
+                        w("    MissingInProfile(%s)" % cpath)
                     w("  ;")
                 else:
                     w("  for I := 0 to AObject.%s.Count - 1 do" % c["pname"])
@@ -1587,6 +1650,9 @@ end;
                     if c["min"] >= 1:
                         w("  if AObject.%s.Count = 0 then" % c["pname"])
                         w("    Missing(%s);" % cpath)
+                    elif (n, q) in elems:
+                        w("  if AObject.%s.Count = 0 then" % c["pname"])
+                        w("    MissingInProfile(%s);" % cpath)
             elif k == "record":
                 rshort = m.pascal[ct][len("TLandrix"):]
                 if c["max"] == 1:
@@ -1595,6 +1661,9 @@ end;
                     if c["min"] >= 1:
                         w("  else")
                         w("    Missing(%s)" % cpath)
+                    elif (n, q) in elems:
+                        w("  else")
+                        w("    MissingInProfile(%s)" % cpath)
                     w("  ;")
                 else:
                     w("  for I := 0 to AObject.%s.Count - 1 do" % c["pname"])
@@ -1602,12 +1671,18 @@ end;
                     if c["min"] >= 1:
                         w("  if AObject.%s.Count = 0 then" % c["pname"])
                         w("    Missing(%s);" % cpath)
+                    elif (n, q) in elems:
+                        w("  if AObject.%s.Count = 0 then" % c["pname"])
+                        w("    MissingInProfile(%s);" % cpath)
             elif c["max"] != 1:
                 w("  for I := 0 to AObject.%s.Count - 1 do" % c["pname"])
                 w("    FWriter.ElementW('%s', AObject.%s[I]);" % (q, c["pname"]))
                 if c["min"] >= 1:
                     w("  if AObject.%s.Count = 0 then" % c["pname"])
                     w("    Missing(%s);" % cpath)
+                elif (n, q) in elems:
+                    w("  if AObject.%s.Count = 0 then" % c["pname"])
+                    w("    MissingInProfile(%s);" % cpath)
             else:
                 w("  if not LandrixEInvoiceIsBlank(AObject.%s) then" % c["pname"])
                 if not ct.startswith("xs:") and m.kind[ct] == "wrapper":
@@ -1622,6 +1697,9 @@ end;
                 if c["min"] >= 1:
                     w("  else")
                     w("    Missing(%s)" % cpath)
+                elif (n, q) in elems:
+                    w("  else")
+                    w("    MissingInProfile(%s)" % cpath)
                 w("  ;")
         w("end;")
         w("")
@@ -1719,6 +1797,18 @@ function LandrixEInvoiceCIIAllowed(const APath: TLandrixEInvoiceString;
 function LandrixEInvoiceCIIRequired(const APath: TLandrixEInvoiceString;
   AProfile: TLandrixEInvoiceProfile): Boolean;
 
+{ True if APath is required in the Factur-X profile AProfile wherever its
+  parent element exists (cardinality 1.. below the parent in the field
+  table); False for unknown paths and for profiles outside MINIMUM ..
+  EXTENDED. The CII writer reports such a path when it is missing.
+  DE: True, wenn APath im Factur-X-Profil AProfile ueberall Pflicht ist, wo
+  sein Elternelement existiert (Kardinalitaet 1.. unter dem Elternelement
+  in der Feldtabelle); False fuer unbekannte Pfade und fuer Profile
+  ausserhalb von MINIMUM .. EXTENDED. Der CII-Writer meldet einen solchen
+  Pfad, wenn er fehlt. }
+function LandrixEInvoiceCIIRequiredBelowParent(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+
 { Removes from AInvoice (not nil) everything the Factur-X profile AProfile
   does not contain, at the highest element that is not allowed, and reports
   each removed path once with the number of removed occurrences
@@ -1737,7 +1827,8 @@ function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandri
 implementation
 
 uses
-  SysUtils;
+  SysUtils,
+  LandrixEInvoiceLexical;
 
 type
   TProfileSet = set of TLandrixEInvoiceProfile;
@@ -1746,6 +1837,7 @@ type
     Path: string;
     MinProfile: TLandrixEInvoiceProfile;
     Required: TProfileSet;
+    RequiredBelowParent: TProfileSet;
   end;
 
 """
@@ -1840,6 +1932,15 @@ begin
   Result := (I >= 0) and (AProfile in Paths[I].Required);
 end;
 
+function LandrixEInvoiceCIIRequiredBelowParent(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+var
+  I: Integer;
+begin
+  I := FindPath(APath);
+  Result := (I >= 0) and (AProfile in Paths[I].RequiredBelowParent);
+end;
+
 { --- pruning ------------------------------------------------------------- }
 
 type
@@ -1865,12 +1966,13 @@ def gen_profiles(m, data):
     w(PROFILES_HEAD.rstrip("\n"))
     w("const")
     w("  Paths: array[0..%d] of TPathEntry = (" % (len(rows) - 1))
-    for i, (path, low, req) in enumerate(rows):
+    for i, (path, low, req, here) in enumerate(rows):
         if len(path) > 250 or "'" in path:
             fail("path not usable as literal: %s" % path)
         w("    (Path: '%s';" % path)
-        w("     MinProfile: %s; Required: [%s])%s" % (
-            PROFILE_ENUM[low], ", ".join(PROFILE_ENUM[p] for p in req), "," if i < len(rows) - 1 else ""))
+        w("     MinProfile: %s; Required: [%s];" % (PROFILE_ENUM[low], ", ".join(PROFILE_ENUM[p] for p in req)))
+        w("     RequiredBelowParent: [%s])%s" % (
+            ", ".join(PROFILE_ENUM[p] for p in here), "," if i < len(rows) - 1 else ""))
     w("  );")
     w(PROFILES_BODY.rstrip("\n"))
     for n in m.classes():
@@ -1915,7 +2017,8 @@ end;
         short = p[len("TLandrix"):]
         w("function %sIsEmpty(const R: %s): Boolean;" % (short, p))
         w("begin")
-        cond = ["(R.Value = '')"] + ["(R.%s = '')" % f for f, _, _ in m.record_fields(n)]
+        # as in the model: blank text is absent, attributes keep the value
+        cond = ["LandrixEInvoiceIsBlank(R.Value)"] + ["(R.%s = '')" % f for f, _, _ in m.record_fields(n)]
         w("  Result := " + " and ".join(cond) + ";")
         w("end;")
         w("")
@@ -1968,7 +2071,7 @@ end;
                 w("  if (AObject.%s.Count > 0) and not Keep(%s, Integer(AObject.%s.Count)) then" % (pn, cpath, pn))
                 w("    AObject.%s.Clear;" % pn)
             elif k == "string":
-                w("  if (AObject.%s <> '') and not Keep(%s, 1) then" % (pn, cpath))
+                w("  if not LandrixEInvoiceIsBlank(AObject.%s) and not Keep(%s, 1) then" % (pn, cpath))
                 w("    AObject.%s := '';" % pn)
             elif k == "record" and c["max"] == 1:
                 short = m.pascal[c["type"]][len(PREFIX):]

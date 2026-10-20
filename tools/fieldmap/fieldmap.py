@@ -324,8 +324,9 @@ def report(rows, corpus_files, corpus_count):
 
 def export_profiles(fields, digest, path):
     """Derived data for gen-syntaxmodel.py: per CII path the lowest profile that
-    contains it (a group: the lowest of itself and everything below) and the
-    profiles in which it is required over the whole ancestor chain."""
+    contains it (a group: the lowest of itself and everything below), the
+    profiles in which it is required over the whole ancestor chain and the
+    profiles in which it is required below its parent (cardinality 1..)."""
     rows = {}
     for f in fields:
         for xp in f["xpath"].split("\n"):
@@ -356,17 +357,25 @@ def export_profiles(fields, digest, path):
                 return False
         return True
 
+    def required_here(xp, prof):
+        f = rows.get(xp)
+        if f is None or prof not in f["profiles"]:
+            return False
+        card = f["card"].get(prof, "")
+        return bool(card) and not card.startswith("0")
+
     out = []
     for xp in sorted(lowest):
         req = [p for p in PROFILES if xp in rows and required_in(xp, p)]
-        out.append([xp, PROFILES[lowest[xp]], req])
+        here = [p for p in PROFILES if required_here(xp, p)]
+        out.append([xp, PROFILES[lowest[xp]], req, here])
     if missing:
         print("warning: %d ancestor paths without a table row, treated as optional, e.g. %s" % (
             len(missing), sorted(missing)[0]))
     head = {"comment": "Derived from the Factur-X 1.09.2 field table by tools/fieldmap/fieldmap.py "
                        "--export; input of gen-syntaxmodel.py (LandrixEInvoiceCIIProfiles.pas). Per path: "
                        "lowest profile that contains it, profiles in which it is required over the whole "
-                       "ancestor chain.",
+                       "ancestor chain, profiles in which it is required below its parent.",
             "table_sha256": digest,
             "profiles": PROFILES}
     lines = ["{"]

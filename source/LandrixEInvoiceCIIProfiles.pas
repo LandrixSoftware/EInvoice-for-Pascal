@@ -79,6 +79,18 @@ function LandrixEInvoiceCIIAllowed(const APath: TLandrixEInvoiceString;
 function LandrixEInvoiceCIIRequired(const APath: TLandrixEInvoiceString;
   AProfile: TLandrixEInvoiceProfile): Boolean;
 
+{ True if APath is required in the Factur-X profile AProfile wherever its
+  parent element exists (cardinality 1.. below the parent in the field
+  table); False for unknown paths and for profiles outside MINIMUM ..
+  EXTENDED. The CII writer reports such a path when it is missing.
+  DE: True, wenn APath im Factur-X-Profil AProfile ueberall Pflicht ist, wo
+  sein Elternelement existiert (Kardinalitaet 1.. unter dem Elternelement
+  in der Feldtabelle); False fuer unbekannte Pfade und fuer Profile
+  ausserhalb von MINIMUM .. EXTENDED. Der CII-Writer meldet einen solchen
+  Pfad, wenn er fehlt. }
+function LandrixEInvoiceCIIRequiredBelowParent(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+
 { Removes from AInvoice (not nil) everything the Factur-X profile AProfile
   does not contain, at the highest element that is not allowed, and reports
   each removed path once with the number of removed occurrences
@@ -97,7 +109,8 @@ function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandri
 implementation
 
 uses
-  SysUtils;
+  SysUtils,
+  LandrixEInvoiceLexical;
 
 type
   TProfileSet = set of TLandrixEInvoiceProfile;
@@ -106,2437 +119,3652 @@ type
     Path: string;
     MinProfile: TLandrixEInvoiceProfile;
     Required: TProfileSet;
+    RequiredBelowParent: TProfileSet;
   end;
 const
   Paths: array[0..1213] of TPathEntry = (
     (Path: '/rsm:CrossIndustryInvoice';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:CopyIndicator';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:CopyIndicator/udt:Indicator';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:EffectiveSpecifiedPeriod';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:EffectiveSpecifiedPeriod/ram:CompleteDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:EffectiveSpecifiedPeriod/ram:CompleteDateTime/udt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:EffectiveSpecifiedPeriod/ram:CompleteDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IncludedNote';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IncludedNote/ram:Content';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IncludedNote/ram:ContentCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IncludedNote/ram:SubjectCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IssueDateTime';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:LanguageID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:TypeCode';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:BusinessProcessSpecifiedDocumentContextParameter';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:TestIndicator';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:TestIndicator/udt:Indicator';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:AttachmentBinaryObject';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:AttachmentBinaryObject/@filename';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:AttachmentBinaryObject/@mimeCode';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:Name';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:ReferenceTypeCode';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:TypeCode';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument/ram:URIID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ApplicableTradeDeliveryTerms';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:DeliveryTypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:RelevantTradeLocation';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:RelevantTradeLocation/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:RelevantTradeLocation/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerAgentTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerOrderReferencedDocument';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerReference';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTaxRepresentativeTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Description';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:GlobalID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:Name';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ContractReferencedDocument';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ContractReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ContractReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ContractReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ContractReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ContractReferencedDocument/ram:ReferenceTypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:ProductEndUserTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:QuotationReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:QuotationReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:QuotationReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:QuotationReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:QuotationReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SalesAgentTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerOrderReferencedDocument';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerOrderReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerOrderReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:Name';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTaxRepresentativeTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Description';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:GlobalID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SpecifiedProcuringProject';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SpecifiedProcuringProject/ram:ID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SpecifiedProcuringProject/ram:Name';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:UltimateCustomerOrderReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ActualDeliverySupplyChainEvent';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DeliveryNoteReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DespatchAdviceReferencedDocument';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ReceivingAdviceReferencedDocument';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:RelatedSupplyChainConsignment';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:RelatedSupplyChainConsignment/ram:SpecifiedLogisticsTransportMovement';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:RelatedSupplyChainConsignment/ram:SpecifiedLogisticsTransportMovement/ram:ModeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipFromTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:GlobalID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:Name';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:ShipToTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeDelivery/ram:UltimateShipToTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:AllowanceChargeBasisAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:BasisAmount';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CalculatedAmount';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:DueDateTypeCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:ExemptionReason';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:ExemptionReasonCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:LineTotalBasisAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:RateApplicablePercent';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:TaxPointDate';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:TaxPointDate/udt:DateString';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:TaxPointDate/udt:DateString/@format';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:TypeCode';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:Description';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:CreditorReferenceID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceCurrencyCode';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceIssuerReference';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceReferencedDocument';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceReferencedDocument/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceeTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoicerTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:GlobalID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:Name';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayeeTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PayerTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:PaymentReference';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ReceivableSpecifiedTradeAccountingAccount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ReceivableSpecifiedTradeAccountingAccount/ram:ID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ReceivableSpecifiedTradeAccountingAccount/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:FormattedReceivedDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:FormattedReceivedDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:FormattedReceivedDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:IncludedTradeTax';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:IncludedTradeTax/ram:CalculatedAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:IncludedTradeTax/ram:CategoryCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:IncludedTradeTax/ram:ExemptionReason';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:IncludedTradeTax/ram:ExemptionReasonCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:IncludedTradeTax/ram:RateApplicablePercent';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:IncludedTradeTax/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:InvoiceSpecifiedReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:InvoiceSpecifiedReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:InvoiceSpecifiedReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:InvoiceSpecifiedReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:InvoiceSpecifiedReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:InvoiceSpecifiedReferencedDocument/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedAdvancePayment/ram:PaidAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedFinancialAdjustment';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedFinancialAdjustment/ram:ActualAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedFinancialAdjustment/ram:Reason';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:AppliedAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:AppliedTradeTax';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:AppliedTradeTax/ram:CategoryCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:AppliedTradeTax/ram:ExemptionReason';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:AppliedTradeTax/ram:ExemptionReasonCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:AppliedTradeTax/ram:RateApplicablePercent';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:AppliedTradeTax/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedLogisticsServiceCharge/ram:Description';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ActualAmount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:BasisAmount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:BasisQuantity';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:BasisQuantity/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CalculationPercent';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax/ram:CategoryCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax/ram:ExemptionReason';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax/ram:ExemptionReasonCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax/ram:RateApplicablePercent';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax/ram:TypeCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ChargeIndicator';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ChargeIndicator/udt:Indicator';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:Reason';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ReasonCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ReasonCode/@listID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:SequenceNumeric';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:ActualDiscountAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:BasisAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime/udt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentDiscountTerms/ram:CalculationPercent';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:ActualPenaltyAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:BasisAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:BasisDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:BasisDateTime/udt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:BasisDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:BasisPeriodMeasure';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:BasisPeriodMeasure/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:ApplicableTradePaymentPenaltyTerms/ram:CalculationPercent';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:Description';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:DirectDebitMandateID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:DueDateDateTime';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:DueDateDateTime/udt:DateTimeString';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:DueDateDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PartialPaymentAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:PayeeTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:AllowanceTotalAmount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:ChargeTotalAmount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:DuePayableAmount';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:GrandTotalAmount';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:LineTotalAmount';
-     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_BasicWL; Required: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:RoundingAmount';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxBasisTotalAmount';
-     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Minimum; Required: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount/@currencyID';
-     MinProfile: epr_Minimum; Required: []),
+     MinProfile: epr_Minimum; Required: [];
+     RequiredBelowParent: [epr_Minimum, epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TotalPrepaidAmount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:ApplicableTradeSettlementFinancialCard';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:ApplicableTradeSettlementFinancialCard/ram:CardholderName';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:ApplicableTradeSettlementFinancialCard/ram:ID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:Information';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayeePartyCreditorFinancialAccount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayeePartyCreditorFinancialAccount/ram:AccountName';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayeePartyCreditorFinancialAccount/ram:IBANID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayeePartyCreditorFinancialAccount/ram:ProprietaryID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayeeSpecifiedCreditorFinancialInstitution';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayerPartyDebtorFinancialAccount';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayerPartyDebtorFinancialAccount/ram:AccountName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayerPartyDebtorFinancialAccount/ram:IBANID';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayerSpecifiedDebtorFinancialInstitution';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayerSpecifiedDebtorFinancialInstitution/ram:BICID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementPaymentMeans/ram:TypeCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: [epr_BasicWL, epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxApplicableTradeCurrencyExchange';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxApplicableTradeCurrencyExchange/ram:ConversionRate';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxApplicableTradeCurrencyExchange/ram:ConversionRateDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxApplicableTradeCurrencyExchange/ram:ConversionRateDateTime/udt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxApplicableTradeCurrencyExchange/ram:ConversionRateDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxApplicableTradeCurrencyExchange/ram:SourceCurrencyCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxApplicableTradeCurrencyExchange/ram:TargetCurrencyCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:TaxCurrencyCode';
-     MinProfile: epr_BasicWL; Required: []),
+     MinProfile: epr_BasicWL; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:IncludedNote';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:Content';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:ContentCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:SubjectCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:LineID';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:LineStatusCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:LineStatusReasonCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:AssociatedDocumentLineDocument/ram:ParentLineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:AttachmentBinaryObject';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:AttachmentBinaryObject/@filename';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:AttachmentBinaryObject/@mimeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:ReferenceTypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:AdditionalReferencedDocument/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ApplicableTradeDeliveryTerms';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:DeliveryTypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:RelevantTradeLocation';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:RelevantTradeLocation/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ApplicableTradeDeliveryTerms/ram:RelevantTradeLocation/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:LineID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ContractReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ContractReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ContractReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ContractReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ContractReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ContractReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:ActualAmount';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:BasisAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:CalculationPercent';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:ChargeIndicator';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:ChargeIndicator/udt:Indicator';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:Reason';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:ReasonCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:ReasonCode/@listID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:BasisQuantity';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:BasisQuantity/@unitCode';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:ChargeAmount';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:Description';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:ItemSellerTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:BasisQuantity';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:BasisQuantity/@unitCode';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:ChargeAmount';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:IncludedTradeTax';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:IncludedTradeTax/ram:CalculatedAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:IncludedTradeTax/ram:CategoryCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:IncludedTradeTax/ram:ExemptionReason';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:IncludedTradeTax/ram:ExemptionReasonCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:IncludedTradeTax/ram:RateApplicablePercent';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:IncludedTradeTax/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:QuotationReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:QuotationReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:QuotationReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:QuotationReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:QuotationReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:QuotationReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:SellerOrderReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:SellerOrderReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:SellerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:SellerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:SellerOrderReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:SellerOrderReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:UltimateCustomerOrderReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeAgreement/ram:UltimateCustomerOrderReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ActualDeliverySupplyChainEvent';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:BilledQuantity';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ChargeFreeQuantity';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ChargeFreeQuantity/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DeliveryNoteReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DeliveryNoteReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DespatchAdviceReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:DespatchAdviceReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:PackageQuantity';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:PackageQuantity/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:PerPackageUnitQuantity';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:PerPackageUnitQuantity/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ReceivingAdviceReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ReceivingAdviceReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:ShipToTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeDelivery/ram:UltimateShipToTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:AdditionalReferencedDocument';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:AdditionalReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:AdditionalReferencedDocument/ram:ReferenceTypeCode';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:AdditionalReferencedDocument/ram:TypeCode';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:CalculatedAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:DueDateTypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:ExemptionReason';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:ExemptionReasonCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:RateApplicablePercent';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:TypeCode';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString/@format';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:InvoiceReferencedDocument';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:InvoiceReferencedDocument/ram:FormattedIssueDateTime';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:InvoiceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:InvoiceReferencedDocument/ram:FormattedIssueDateTime/qdt:DateTimeString/@format';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:InvoiceReferencedDocument/ram:IssuerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:InvoiceReferencedDocument/ram:LineID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:InvoiceReferencedDocument/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ReceivableSpecifiedTradeAccountingAccount';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ReceivableSpecifiedTradeAccountingAccount/ram:ID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ReceivableSpecifiedTradeAccountingAccount/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ActualAmount';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:BasisAmount';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:CalculationPercent';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ChargeIndicator';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ChargeIndicator/udt:Indicator';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:Reason';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ReasonCode';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeAllowanceCharge/ram:ReasonCode/@listID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:AllowanceTotalAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:ChargeTotalAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:GrandTotalAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931];
+     RequiredBelowParent: [epr_Basic, epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:TaxTotalAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:TaxTotalAmount/@currencyID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:TotalAllowanceChargeAmount';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ApplicableProductCharacteristic';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ApplicableProductCharacteristic/ram:Description';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ApplicableProductCharacteristic/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ApplicableProductCharacteristic/ram:Value';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ApplicableProductCharacteristic/ram:ValueMeasure';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ApplicableProductCharacteristic/ram:ValueMeasure/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:BatchID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:BrandName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:BuyerAssignedID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:Description';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:DesignatedProductClassification';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:DesignatedProductClassification/ram:ClassCode';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:DesignatedProductClassification/ram:ClassCode/@listID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:DesignatedProductClassification/ram:ClassCode/@listVersionID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:DesignatedProductClassification/ram:ClassName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:GlobalID';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:GlobalID/@schemeID';
-     MinProfile: epr_Basic; Required: []),
+     MinProfile: epr_Basic; Required: [];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:BuyerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:Description';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:IndustryAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:SellerAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:UnitQuantity';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IncludedReferencedProduct/ram:UnitQuantity/@unitCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IndividualTradeProductInstance';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IndividualTradeProductInstance/ram:BatchID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IndividualTradeProductInstance/ram:SupplierAssignedSerialID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:IndustryAssignedID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:DepartmentName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:EmailURIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:FaxUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:PersonName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:DefinedTradeContact/ram:TypeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:Description';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:GlobalID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:GlobalID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:Name';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress/ram:CityName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress/ram:CountryID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress/ram:CountrySubDivisionName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress/ram:LineOne';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress/ram:LineThree';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress/ram:LineTwo';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:PostalTradeAddress/ram:PostcodeCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:RoleCode';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:SpecifiedLegalOrganization';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:SpecifiedLegalOrganization/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:SpecifiedLegalOrganization/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:SpecifiedLegalOrganization/ram:TradingBusinessName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:SpecifiedTaxRegistration';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:SpecifiedTaxRegistration/ram:ID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:URIUniversalCommunication';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:URIUniversalCommunication/ram:URIID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ManufacturerTradeParty/ram:URIUniversalCommunication/ram:URIID/@schemeID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: [epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ModelID';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:ModelName';
-     MinProfile: epr_Extended; Required: []),
+     MinProfile: epr_Extended; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:Name';
-     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended]),
+     MinProfile: epr_Basic; Required: [epr_Basic, epr_EN16931, epr_Extended];
+     RequiredBelowParent: [epr_Basic, epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:OriginTradeCountry';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: []),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:OriginTradeCountry/ram:ID';
-     MinProfile: epr_EN16931; Required: []),
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [epr_EN16931, epr_Extended]),
     (Path: '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedTradeProduct/ram:SellerAssignedID';
-     MinProfile: epr_EN16931; Required: [])
+     MinProfile: epr_EN16931; Required: [];
+     RequiredBelowParent: [])
   );
 
 const
@@ -2628,6 +3856,15 @@ begin
   Result := (I >= 0) and (AProfile in Paths[I].Required);
 end;
 
+function LandrixEInvoiceCIIRequiredBelowParent(const APath: TLandrixEInvoiceString;
+  AProfile: TLandrixEInvoiceProfile): Boolean;
+var
+  I: Integer;
+begin
+  I := FindPath(APath);
+  Result := (I >= 0) and (AProfile in Paths[I].RequiredBelowParent);
+end;
+
 { --- pruning ------------------------------------------------------------- }
 
 type
@@ -2716,7 +3953,7 @@ end;
 
 function CIIAllowanceChargeReasonCodeIsEmpty(const R: TLandrixCIIAllowanceChargeReasonCode): Boolean;
 begin
-  Result := (R.Value = '') and (R.ListID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.ListID = '');
 end;
 
 procedure CIIAllowanceChargeReasonCodeClear(var R: TLandrixCIIAllowanceChargeReasonCode);
@@ -2727,7 +3964,7 @@ end;
 
 function CIIAmountIsEmpty(const R: TLandrixCIIAmount): Boolean;
 begin
-  Result := (R.Value = '') and (R.CurrencyID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.CurrencyID = '');
 end;
 
 procedure CIIAmountClear(var R: TLandrixCIIAmount);
@@ -2738,7 +3975,7 @@ end;
 
 function CIIBinaryObjectIsEmpty(const R: TLandrixCIIBinaryObject): Boolean;
 begin
-  Result := (R.Value = '') and (R.MimeCode = '') and (R.Filename = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.MimeCode = '') and (R.Filename = '');
 end;
 
 procedure CIIBinaryObjectClear(var R: TLandrixCIIBinaryObject);
@@ -2750,7 +3987,7 @@ end;
 
 function CIICodeIsEmpty(const R: TLandrixCIICode): Boolean;
 begin
-  Result := (R.Value = '') and (R.ListID = '') and (R.ListVersionID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.ListID = '') and (R.ListVersionID = '');
 end;
 
 procedure CIICodeClear(var R: TLandrixCIICode);
@@ -2762,7 +3999,7 @@ end;
 
 function CIIDateIsEmpty(const R: TLandrixCIIDate): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '');
 end;
 
 procedure CIIDateClear(var R: TLandrixCIIDate);
@@ -2773,7 +4010,7 @@ end;
 
 function CIIDateTimeIsEmpty(const R: TLandrixCIIDateTime): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '');
 end;
 
 procedure CIIDateTimeClear(var R: TLandrixCIIDateTime);
@@ -2784,7 +4021,7 @@ end;
 
 function CIIFormattedDateTimeIsEmpty(const R: TLandrixCIIFormattedDateTime): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '');
 end;
 
 procedure CIIFormattedDateTimeClear(var R: TLandrixCIIFormattedDateTime);
@@ -2795,7 +4032,7 @@ end;
 
 function CIIIDIsEmpty(const R: TLandrixCIIID): Boolean;
 begin
-  Result := (R.Value = '') and (R.SchemeID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.SchemeID = '');
 end;
 
 procedure CIIIDClear(var R: TLandrixCIIID);
@@ -2806,7 +4043,7 @@ end;
 
 function CIIMeasureIsEmpty(const R: TLandrixCIIMeasure): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '');
 end;
 
 procedure CIIMeasureClear(var R: TLandrixCIIMeasure);
@@ -2817,7 +4054,7 @@ end;
 
 function CIIQuantityIsEmpty(const R: TLandrixCIIQuantity): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '');
 end;
 
 procedure CIIQuantityClear(var R: TLandrixCIIQuantity);
@@ -2990,7 +4227,7 @@ begin
       PruneIDFields(Self, AObject.IBANID, APath + '/ram:IBANID')
     else
       CIIIDClear(AObject.IBANID);
-  if (AObject.AccountName <> '') and not Keep(APath + '/ram:AccountName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.AccountName) and not Keep(APath + '/ram:AccountName', 1) then
     AObject.AccountName := '';
   if not CIIIDIsEmpty(AObject.ProprietaryID) then
     if Keep(APath + '/ram:ProprietaryID', 1) then
@@ -3015,7 +4252,7 @@ begin
       PruneIDFields(Self, AObject.IBANID, APath + '/ram:IBANID')
     else
       CIIIDClear(AObject.IBANID);
-  if (AObject.AccountName <> '') and not Keep(APath + '/ram:AccountName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.AccountName) and not Keep(APath + '/ram:AccountName', 1) then
     AObject.AccountName := '';
 end;
 
@@ -3051,7 +4288,7 @@ begin
       PruneIDFields(Self, AObject.ParentLineID, APath + '/ram:ParentLineID')
     else
       CIIIDClear(AObject.ParentLineID);
-  if (AObject.LineStatusCode <> '') and not Keep(APath + '/ram:LineStatusCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineStatusCode) and not Keep(APath + '/ram:LineStatusCode', 1) then
     AObject.LineStatusCode := '';
   if not CIICodeIsEmpty(AObject.LineStatusReasonCode) then
     if Keep(APath + '/ram:LineStatusReasonCode', 1) then
@@ -3075,16 +4312,16 @@ begin
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
     else
       CIIIDClear(AObject.ID);
-  if (AObject.Name <> '') and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
     AObject.Name := '';
-  if (AObject.TypeCode <> '') and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
     AObject.TypeCode := '';
   if not CIIDateTimeIsEmpty(AObject.IssueDateTime) then
     if Keep(APath + '/ram:IssueDateTime', 1) then
       PruneDateTimeFields(Self, AObject.IssueDateTime, APath + '/ram:IssueDateTime')
     else
       CIIDateTimeClear(AObject.IssueDateTime);
-  if (AObject.CopyIndicator <> '') and not Keep(APath + '/ram:CopyIndicator', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CopyIndicator) and not Keep(APath + '/ram:CopyIndicator', 1) then
     AObject.CopyIndicator := '';
   if not CIIIDIsEmpty(AObject.LanguageID) then
     if Keep(APath + '/ram:LanguageID', 1) then
@@ -3106,7 +4343,7 @@ end;
 
 procedure TCIIPruner.PruneExchangedDocumentContext(AObject: TLandrixCIIExchangedDocumentContext; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.TestIndicator <> '') and not Keep(APath + '/ram:TestIndicator', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TestIndicator) and not Keep(APath + '/ram:TestIndicator', 1) then
     AObject.TestIndicator := '';
   if not AObject.BusinessProcessSpecifiedDocumentContextParameter.IsEmpty then
     if Keep(APath + '/ram:BusinessProcessSpecifiedDocumentContextParameter', 1) then
@@ -3122,7 +4359,7 @@ end;
 
 procedure TCIIPruner.PruneFinancialAdjustment(AObject: TLandrixCIIFinancialAdjustment; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.Reason <> '') and not Keep(APath + '/ram:Reason', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Reason) and not Keep(APath + '/ram:Reason', 1) then
     AObject.Reason := '';
   if not CIIAmountIsEmpty(AObject.ActualAmount) then
     if Keep(APath + '/ram:ActualAmount', 1) then
@@ -3135,7 +4372,7 @@ procedure TCIIPruner.PruneHeaderTradeAgreement(AObject: TLandrixCIIHeaderTradeAg
 var
   I: TLandrixEInvoiceListIndex;
 begin
-  if (AObject.BuyerReference <> '') and not Keep(APath + '/ram:BuyerReference', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.BuyerReference) and not Keep(APath + '/ram:BuyerReference', 1) then
     AObject.BuyerReference := '';
   if not AObject.SellerTradeParty.IsEmpty then
     if Keep(APath + '/ram:SellerTradeParty', 1) then
@@ -3269,13 +4506,13 @@ begin
       PruneIDFields(Self, AObject.CreditorReferenceID, APath + '/ram:CreditorReferenceID')
     else
       CIIIDClear(AObject.CreditorReferenceID);
-  if (AObject.PaymentReference <> '') and not Keep(APath + '/ram:PaymentReference', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.PaymentReference) and not Keep(APath + '/ram:PaymentReference', 1) then
     AObject.PaymentReference := '';
-  if (AObject.TaxCurrencyCode <> '') and not Keep(APath + '/ram:TaxCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TaxCurrencyCode) and not Keep(APath + '/ram:TaxCurrencyCode', 1) then
     AObject.TaxCurrencyCode := '';
-  if (AObject.InvoiceCurrencyCode <> '') and not Keep(APath + '/ram:InvoiceCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.InvoiceCurrencyCode) and not Keep(APath + '/ram:InvoiceCurrencyCode', 1) then
     AObject.InvoiceCurrencyCode := '';
-  if (AObject.InvoiceIssuerReference <> '') and not Keep(APath + '/ram:InvoiceIssuerReference', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.InvoiceIssuerReference) and not Keep(APath + '/ram:InvoiceIssuerReference', 1) then
     AObject.InvoiceIssuerReference := '';
   if not AObject.InvoicerTradeParty.IsEmpty then
     if Keep(APath + '/ram:InvoicerTradeParty', 1) then
@@ -3394,7 +4631,7 @@ begin
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
     else
       CIIIDClear(AObject.ID);
-  if (AObject.TradingBusinessName <> '') and not Keep(APath + '/ram:TradingBusinessName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TradingBusinessName) and not Keep(APath + '/ram:TradingBusinessName', 1) then
     AObject.TradingBusinessName := '';
   if not AObject.PostalTradeAddress.IsEmpty then
     if Keep(APath + '/ram:PostalTradeAddress', 1) then
@@ -3564,7 +4801,7 @@ procedure TCIIPruner.PruneLogisticsServiceCharge(AObject: TLandrixCIILogisticsSe
 var
   I: TLandrixEInvoiceListIndex;
 begin
-  if (AObject.Description <> '') and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
     AObject.Description := '';
   if not CIIAmountIsEmpty(AObject.AppliedAmount) then
     if Keep(APath + '/ram:AppliedAmount', 1) then
@@ -3581,7 +4818,7 @@ end;
 
 procedure TCIIPruner.PruneLogisticsTransportMovement(AObject: TLandrixCIILogisticsTransportMovement; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.ModeCode <> '') and not Keep(APath + '/ram:ModeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ModeCode) and not Keep(APath + '/ram:ModeCode', 1) then
     AObject.ModeCode := '';
 end;
 
@@ -3592,7 +4829,7 @@ begin
       PruneCodeFields(Self, AObject.ContentCode, APath + '/ram:ContentCode')
     else
       CIICodeClear(AObject.ContentCode);
-  if (AObject.Content <> '') and not Keep(APath + '/ram:Content', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Content) and not Keep(APath + '/ram:Content', 1) then
     AObject.Content := '';
   if not CIICodeIsEmpty(AObject.SubjectCode) then
     if Keep(APath + '/ram:SubjectCode', 1) then
@@ -3608,7 +4845,7 @@ begin
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
     else
       CIIIDClear(AObject.ID);
-  if (AObject.Name <> '') and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
     AObject.Name := '';
 end;
 
@@ -3619,14 +4856,14 @@ begin
       PruneCodeFields(Self, AObject.TypeCode, APath + '/ram:TypeCode')
     else
       CIICodeClear(AObject.TypeCode);
-  if (AObject.Description <> '') and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
     AObject.Description := '';
   if not CIIMeasureIsEmpty(AObject.ValueMeasure) then
     if Keep(APath + '/ram:ValueMeasure', 1) then
       PruneMeasureFields(Self, AObject.ValueMeasure, APath + '/ram:ValueMeasure')
     else
       CIIMeasureClear(AObject.ValueMeasure);
-  if (AObject.Value <> '') and not Keep(APath + '/ram:Value', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Value) and not Keep(APath + '/ram:Value', 1) then
     AObject.Value := '';
 end;
 
@@ -3637,7 +4874,7 @@ begin
       PruneCodeFields(Self, AObject.ClassCode, APath + '/ram:ClassCode')
     else
       CIICodeClear(AObject.ClassCode);
-  if (AObject.ClassificationName <> '') and not Keep(APath + '/ram:ClassName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ClassificationName) and not Keep(APath + '/ram:ClassName', 1) then
     AObject.ClassificationName := '';
 end;
 
@@ -3658,16 +4895,16 @@ begin
       PruneIDFields(Self, AObject.LineID, APath + '/ram:LineID')
     else
       CIIIDClear(AObject.LineID);
-  if (AObject.TypeCode <> '') and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
     AObject.TypeCode := '';
-  if (AObject.Name <> '') and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
     AObject.Name := '';
   if not CIIBinaryObjectIsEmpty(AObject.AttachmentBinaryObject) then
     if Keep(APath + '/ram:AttachmentBinaryObject', 1) then
       PruneBinaryObjectFields(Self, AObject.AttachmentBinaryObject, APath + '/ram:AttachmentBinaryObject')
     else
       CIIBinaryObjectClear(AObject.AttachmentBinaryObject);
-  if (AObject.ReferenceTypeCode <> '') and not Keep(APath + '/ram:ReferenceTypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ReferenceTypeCode) and not Keep(APath + '/ram:ReferenceTypeCode', 1) then
     AObject.ReferenceTypeCode := '';
   if not CIIFormattedDateTimeIsEmpty(AObject.FormattedIssueDateTime) then
     if Keep(APath + '/ram:FormattedIssueDateTime', 1) then
@@ -3711,9 +4948,9 @@ begin
       PruneIDFields(Self, AObject.IndustryAssignedID, APath + '/ram:IndustryAssignedID')
     else
       CIIIDClear(AObject.IndustryAssignedID);
-  if (AObject.Name <> '') and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
     AObject.Name := '';
-  if (AObject.Description <> '') and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
     AObject.Description := '';
   if not CIIQuantityIsEmpty(AObject.UnitQuantity) then
     if Keep(APath + '/ram:UnitQuantity', 1) then
@@ -3724,7 +4961,7 @@ end;
 
 procedure TCIIPruner.PruneSpecifiedPeriod(AObject: TLandrixCIISpecifiedPeriod; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.Description <> '') and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
     AObject.Description := '';
   if not CIIDateTimeIsEmpty(AObject.StartDateTime) then
     if Keep(APath + '/ram:StartDateTime', 1) then
@@ -3836,7 +5073,7 @@ begin
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
     else
       CIIIDClear(AObject.ID);
-  if (AObject.TypeCode <> '') and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
     AObject.TypeCode := '';
 end;
 
@@ -3847,27 +5084,27 @@ begin
       PruneCodeFields(Self, AObject.PostcodeCode, APath + '/ram:PostcodeCode')
     else
       CIICodeClear(AObject.PostcodeCode);
-  if (AObject.LineOne <> '') and not Keep(APath + '/ram:LineOne', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineOne) and not Keep(APath + '/ram:LineOne', 1) then
     AObject.LineOne := '';
-  if (AObject.LineTwo <> '') and not Keep(APath + '/ram:LineTwo', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineTwo) and not Keep(APath + '/ram:LineTwo', 1) then
     AObject.LineTwo := '';
-  if (AObject.LineThree <> '') and not Keep(APath + '/ram:LineThree', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineThree) and not Keep(APath + '/ram:LineThree', 1) then
     AObject.LineThree := '';
-  if (AObject.CityName <> '') and not Keep(APath + '/ram:CityName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CityName) and not Keep(APath + '/ram:CityName', 1) then
     AObject.CityName := '';
-  if (AObject.CountryID <> '') and not Keep(APath + '/ram:CountryID', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CountryID) and not Keep(APath + '/ram:CountryID', 1) then
     AObject.CountryID := '';
-  if (AObject.CountrySubDivisionName <> '') and not Keep(APath + '/ram:CountrySubDivisionName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CountrySubDivisionName) and not Keep(APath + '/ram:CountrySubDivisionName', 1) then
     AObject.CountrySubDivisionName := '';
 end;
 
 procedure TCIIPruner.PruneTradeAllowanceCharge(AObject: TLandrixCIITradeAllowanceCharge; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.ChargeIndicator <> '') and not Keep(APath + '/ram:ChargeIndicator', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ChargeIndicator) and not Keep(APath + '/ram:ChargeIndicator', 1) then
     AObject.ChargeIndicator := '';
-  if (AObject.SequenceNumeric <> '') and not Keep(APath + '/ram:SequenceNumeric', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.SequenceNumeric) and not Keep(APath + '/ram:SequenceNumeric', 1) then
     AObject.SequenceNumeric := '';
-  if (AObject.CalculationPercent <> '') and not Keep(APath + '/ram:CalculationPercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) then
     AObject.CalculationPercent := '';
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
     if Keep(APath + '/ram:BasisAmount', 1) then
@@ -3889,7 +5126,7 @@ begin
       PruneAllowanceChargeReasonCodeFields(Self, AObject.ReasonCode, APath + '/ram:ReasonCode')
     else
       CIIAllowanceChargeReasonCodeClear(AObject.ReasonCode);
-  if (AObject.Reason <> '') and not Keep(APath + '/ram:Reason', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Reason) and not Keep(APath + '/ram:Reason', 1) then
     AObject.Reason := '';
   if not AObject.CategoryTradeTax.IsEmpty then
     if Keep(APath + '/ram:CategoryTradeTax', 1) then
@@ -3900,11 +5137,11 @@ end;
 
 procedure TCIIPruner.PruneTradeContact(AObject: TLandrixCIITradeContact; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.PersonName <> '') and not Keep(APath + '/ram:PersonName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.PersonName) and not Keep(APath + '/ram:PersonName', 1) then
     AObject.PersonName := '';
-  if (AObject.DepartmentName <> '') and not Keep(APath + '/ram:DepartmentName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.DepartmentName) and not Keep(APath + '/ram:DepartmentName', 1) then
     AObject.DepartmentName := '';
-  if (AObject.TypeCode <> '') and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
     AObject.TypeCode := '';
   if not AObject.TelephoneUniversalCommunication.IsEmpty then
     if Keep(APath + '/ram:TelephoneUniversalCommunication', 1) then
@@ -3925,17 +5162,17 @@ end;
 
 procedure TCIIPruner.PruneTradeCountry(AObject: TLandrixCIITradeCountry; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.ID <> '') and not Keep(APath + '/ram:ID', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ID) and not Keep(APath + '/ram:ID', 1) then
     AObject.ID := '';
 end;
 
 procedure TCIIPruner.PruneTradeCurrencyExchange(AObject: TLandrixCIITradeCurrencyExchange; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.SourceCurrencyCode <> '') and not Keep(APath + '/ram:SourceCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.SourceCurrencyCode) and not Keep(APath + '/ram:SourceCurrencyCode', 1) then
     AObject.SourceCurrencyCode := '';
-  if (AObject.TargetCurrencyCode <> '') and not Keep(APath + '/ram:TargetCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TargetCurrencyCode) and not Keep(APath + '/ram:TargetCurrencyCode', 1) then
     AObject.TargetCurrencyCode := '';
-  if (AObject.ConversionRate <> '') and not Keep(APath + '/ram:ConversionRate', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ConversionRate) and not Keep(APath + '/ram:ConversionRate', 1) then
     AObject.ConversionRate := '';
   if not CIIDateTimeIsEmpty(AObject.ConversionRateDateTime) then
     if Keep(APath + '/ram:ConversionRateDateTime', 1) then
@@ -3946,7 +5183,7 @@ end;
 
 procedure TCIIPruner.PruneTradeDeliveryTerms(AObject: TLandrixCIITradeDeliveryTerms; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.DeliveryTypeCode <> '') and not Keep(APath + '/ram:DeliveryTypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.DeliveryTypeCode) and not Keep(APath + '/ram:DeliveryTypeCode', 1) then
     AObject.DeliveryTypeCode := '';
   if not AObject.RelevantTradeLocation.IsEmpty then
     if Keep(APath + '/ram:RelevantTradeLocation', 1) then
@@ -3957,9 +5194,9 @@ end;
 
 procedure TCIIPruner.PruneTradeLocation(AObject: TLandrixCIITradeLocation; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.CountryID <> '') and not Keep(APath + '/ram:CountryID', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CountryID) and not Keep(APath + '/ram:CountryID', 1) then
     AObject.CountryID := '';
-  if (AObject.Name <> '') and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
     AObject.Name := '';
 end;
 
@@ -3989,11 +5226,11 @@ begin
       end
     else
       AObject.GlobalID.Clear;
-  if (AObject.Name <> '') and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
     AObject.Name := '';
-  if (AObject.RoleCode <> '') and not Keep(APath + '/ram:RoleCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.RoleCode) and not Keep(APath + '/ram:RoleCode', 1) then
     AObject.RoleCode := '';
-  if (AObject.Description <> '') and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
     AObject.Description := '';
   if not AObject.SpecifiedLegalOrganization.IsEmpty then
     if Keep(APath + '/ram:SpecifiedLegalOrganization', 1) then
@@ -4041,7 +5278,7 @@ begin
       PruneAmountFields(Self, AObject.BasisAmount, APath + '/ram:BasisAmount')
     else
       CIIAmountClear(AObject.BasisAmount);
-  if (AObject.CalculationPercent <> '') and not Keep(APath + '/ram:CalculationPercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) then
     AObject.CalculationPercent := '';
   if not CIIAmountIsEmpty(AObject.ActualDiscountAmount) then
     if Keep(APath + '/ram:ActualDiscountAmount', 1) then
@@ -4067,7 +5304,7 @@ begin
       PruneAmountFields(Self, AObject.BasisAmount, APath + '/ram:BasisAmount')
     else
       CIIAmountClear(AObject.BasisAmount);
-  if (AObject.CalculationPercent <> '') and not Keep(APath + '/ram:CalculationPercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) then
     AObject.CalculationPercent := '';
   if not CIIAmountIsEmpty(AObject.ActualPenaltyAmount) then
     if Keep(APath + '/ram:ActualPenaltyAmount', 1) then
@@ -4078,7 +5315,7 @@ end;
 
 procedure TCIIPruner.PruneTradePaymentTerms(AObject: TLandrixCIITradePaymentTerms; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.Description <> '') and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
     AObject.Description := '';
   if not CIIDateTimeIsEmpty(AObject.DueDateDateTime) then
     if Keep(APath + '/ram:DueDateDateTime', 1) then
@@ -4174,9 +5411,9 @@ begin
       PruneIDFields(Self, AObject.ModelID, APath + '/ram:ModelID')
     else
       CIIIDClear(AObject.ModelID);
-  if (AObject.Name <> '') and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
     AObject.Name := '';
-  if (AObject.Description <> '') and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
     AObject.Description := '';
   if AObject.BatchID.Count > 0 then
     if Keep(APath + '/ram:BatchID', Integer(AObject.BatchID.Count)) then
@@ -4188,9 +5425,9 @@ begin
       end
     else
       AObject.BatchID.Clear;
-  if (AObject.BrandName <> '') and not Keep(APath + '/ram:BrandName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.BrandName) and not Keep(APath + '/ram:BrandName', 1) then
     AObject.BrandName := '';
-  if (AObject.ModelName <> '') and not Keep(APath + '/ram:ModelName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ModelName) and not Keep(APath + '/ram:ModelName', 1) then
     AObject.ModelName := '';
   if AObject.ApplicableProductCharacteristic.Count > 0 then
     if Keep(APath + '/ram:ApplicableProductCharacteristic', Integer(AObject.ApplicableProductCharacteristic.Count)) then
@@ -4249,7 +5486,7 @@ begin
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
     else
       CIIIDClear(AObject.ID);
-  if (AObject.CardholderName <> '') and not Keep(APath + '/ram:CardholderName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CardholderName) and not Keep(APath + '/ram:CardholderName', 1) then
     AObject.CardholderName := '';
 end;
 
@@ -4354,9 +5591,9 @@ end;
 
 procedure TCIIPruner.PruneTradeSettlementPaymentMeans(AObject: TLandrixCIITradeSettlementPaymentMeans; const APath: TLandrixEInvoiceString);
 begin
-  if (AObject.TypeCode <> '') and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
     AObject.TypeCode := '';
-  if (AObject.Information <> '') and not Keep(APath + '/ram:Information', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Information) and not Keep(APath + '/ram:Information', 1) then
     AObject.Information := '';
   if not AObject.ApplicableTradeSettlementFinancialCard.IsEmpty then
     if Keep(APath + '/ram:ApplicableTradeSettlementFinancialCard', 1) then
@@ -4392,9 +5629,9 @@ begin
       PruneAmountFields(Self, AObject.CalculatedAmount, APath + '/ram:CalculatedAmount')
     else
       CIIAmountClear(AObject.CalculatedAmount);
-  if (AObject.TypeCode <> '') and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
     AObject.TypeCode := '';
-  if (AObject.ExemptionReason <> '') and not Keep(APath + '/ram:ExemptionReason', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ExemptionReason) and not Keep(APath + '/ram:ExemptionReason', 1) then
     AObject.ExemptionReason := '';
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
     if Keep(APath + '/ram:BasisAmount', 1) then
@@ -4411,7 +5648,7 @@ begin
       PruneAmountFields(Self, AObject.AllowanceChargeBasisAmount, APath + '/ram:AllowanceChargeBasisAmount')
     else
       CIIAmountClear(AObject.AllowanceChargeBasisAmount);
-  if (AObject.CategoryCode <> '') and not Keep(APath + '/ram:CategoryCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CategoryCode) and not Keep(APath + '/ram:CategoryCode', 1) then
     AObject.CategoryCode := '';
   if not CIICodeIsEmpty(AObject.ExemptionReasonCode) then
     if Keep(APath + '/ram:ExemptionReasonCode', 1) then
@@ -4423,9 +5660,9 @@ begin
       PruneDateFields(Self, AObject.TaxPointDate, APath + '/ram:TaxPointDate')
     else
       CIIDateClear(AObject.TaxPointDate);
-  if (AObject.DueDateTypeCode <> '') and not Keep(APath + '/ram:DueDateTypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.DueDateTypeCode) and not Keep(APath + '/ram:DueDateTypeCode', 1) then
     AObject.DueDateTypeCode := '';
-  if (AObject.RateApplicablePercent <> '') and not Keep(APath + '/ram:RateApplicablePercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.RateApplicablePercent) and not Keep(APath + '/ram:RateApplicablePercent', 1) then
     AObject.RateApplicablePercent := '';
 end;
 
@@ -4436,7 +5673,7 @@ begin
       PruneIDFields(Self, AObject.URIID, APath + '/ram:URIID')
     else
       CIIIDClear(AObject.URIID);
-  if (AObject.CompleteNumber <> '') and not Keep(APath + '/ram:CompleteNumber', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CompleteNumber) and not Keep(APath + '/ram:CompleteNumber', 1) then
     AObject.CompleteNumber := '';
 end;
 

@@ -177,9 +177,10 @@ begin
       Inv.Free;
     end;
     CheckEquals(0, Integer(DR.Count), 'no read diagnostics: ' + string(DR.ToText));
-    { the sample has no line item and no tax breakdown, both required }
-    CheckEquals(2, DW.CountOf(edk_MissingElement), 'missing required elements: ' + string(DW.ToText));
-    Check(Pos('IncludedSupplyChainTradeLineItem', DW[0].Path + DW[1].Path) > 0, 'missing line item reported');
+    { the sample has no line item and no tax breakdown, both required by the
+      schema, and no seller and buyer address, required by EXTENDED }
+    CheckEquals(4, DW.CountOf(edk_MissingElement), 'missing required elements: ' + string(DW.ToText));
+    Check(Pos('IncludedSupplyChainTradeLineItem', DW.ToText) > 0, 'missing line item reported');
     Check(XmlEquivalent(Sample, Written, Diff), 'round trip: ' + Diff);
   finally
     DW.Free;

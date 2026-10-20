@@ -219,9 +219,15 @@ begin
   Back := TLandrixInvoice.Create;
   try
     FillPhase2(Invoice);
+    { the postal addresses every profile requires }
+    Invoice.AccountingSupplierParty.Address.CountryCode := 'DE';
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'DE';
     Line := Invoice.InvoiceLines.AddInvoiceLine;
     Line.ID := '2';
     Line.Name := 'Item 2';
+    Line.UnitCode := Invoice.InvoiceLines[0].UnitCode;
+    Line.TaxCategory := Invoice.InvoiceLines[0].TaxCategory;
+    Line.TaxPercent := Invoice.InvoiceLines[0].TaxPercent;
     for P := epr_Minimum to epr_EN16931 do
     begin
       D.Clear;

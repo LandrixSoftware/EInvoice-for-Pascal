@@ -80,7 +80,9 @@ uses
   LandrixEInvoiceTypes,
   LandrixEInvoiceDiagnostics,
   LandrixEInvoiceSpecs,
-  LandrixEInvoiceInvoice;
+  LandrixEInvoiceInvoice,
+  LandrixEInvoiceCII,
+  LandrixEInvoiceUBL;
 
 { Runs every rule that applies to ASpec (except the LX-CC compatibility
   rules) and adds one edk_RuleViolation per violation to ADiagnostics (nil:
@@ -110,13 +112,54 @@ function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLa
 function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 
+{ Checks the required content of a CII syntax model as the CII writer does
+  when it writes ACII for ASpec: what the schema requires (if the Factur-X
+  profile of ASpec contains it) and what the profile requires below an
+  existing parent (LandrixEInvoiceCIIRequiredBelowParent). Adds the
+  writer's diagnostics (edk_MissingElement and others) to ADiagnostics (nil:
+  discarded) and returns the number with severity eds_Error. Content the
+  profile does not allow is not reported (see LandrixEInvoicePruneCII);
+  a parent that exists only through such content can report its required
+  children. ASpec must not be a UBL specification (ELandrixEInvoiceError).
+  DE: Prueft den Pflichtinhalt eines CII-Syntaxmodells so, wie der
+  CII-Writer es beim Schreiben von ACII fuer ASpec tut: was das Schema
+  verlangt (wenn das Factur-X-Profil von ASpec es enthaelt) und was das
+  Profil unter einem vorhandenen Elternelement verlangt
+  (LandrixEInvoiceCIIRequiredBelowParent). Fuegt die Meldungen des Writers
+  (edk_MissingElement und andere) an ADiagnostics an (nil: verworfen) und
+  liefert die Anzahl mit Schwere eds_Error. Inhalt, den das Profil nicht
+  erlaubt, wird nicht gemeldet (siehe LandrixEInvoicePruneCII); ein
+  Elternelement, das nur durch solchen Inhalt existiert, kann seine
+  Pflichtkinder melden. ASpec darf keine UBL-Spezifikation sein
+  (ELandrixEInvoiceError). }
+function LandrixEInvoiceCheckCII(ACII: TLandrixCIIInvoice; const ASpec: TLandrixEInvoiceSpec;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+
+{ Checks the required content of a UBL invoice or credit note as the UBL
+  writer does when it writes it (what the UBL schema requires). Adds the
+  writer's diagnostics to ADiagnostics (nil: discarded) and returns the
+  number with severity eds_Error. ASpec must not be a CII specification
+  (ELandrixEInvoiceError).
+  DE: Prueft den Pflichtinhalt einer UBL-Rechnung oder -Gutschrift so, wie
+  der UBL-Writer es beim Schreiben tut (was das UBL-Schema verlangt). Fuegt
+  die Meldungen des Writers an ADiagnostics an (nil: verworfen) und liefert
+  die Anzahl mit Schwere eds_Error. ASpec darf keine CII-Spezifikation sein
+  (ELandrixEInvoiceError). }
+function LandrixEInvoiceCheckUBLInvoice(AUBL: TLandrixUBLInvoice; const ASpec: TLandrixEInvoiceSpec;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+function LandrixEInvoiceCheckUBLCreditNote(AUBL: TLandrixUBLCreditNote; const ASpec: TLandrixEInvoiceSpec;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+
 implementation
 
 uses
+  LandrixXmlWriter,
   LandrixEInvoiceCodes,
   LandrixEInvoiceLexical,
   LandrixEInvoiceRules,
-  LandrixEInvoiceCalc;
+  LandrixEInvoiceCalc,
+  LandrixEInvoiceCIIWriter,
+  LandrixEInvoiceUBLWriter;
 
 type
   TStandards = set of TLandrixEInvoiceStandard;
@@ -1286,6 +1329,69 @@ begin
       Exit;
     end;
   raise ELandrixEInvoiceError.Create('LandrixEInvoiceCheckRule: unknown rule ' + string(ARuleID));
+end;
+
+type
+  TSyntaxModelKind = (smk_CII, smk_UBLInvoice, smk_UBLCreditNote);
+
+{ Writes the model into a discarded buffer; the writer reports what is
+  missing. DE: Schreibt das Modell in einen verworfenen Puffer; der Writer
+  meldet, was fehlt. }
+function CheckSyntaxModel(AKind: TSyntaxModelKind; AModel: TObject; const ASpec: TLandrixEInvoiceSpec;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+var
+  W: TLandrixXmlWriter;
+  D, Own: TLandrixEInvoiceDiagnostics;
+  I, Start: TLandrixEInvoiceListIndex;
+begin
+  if ((AKind = smk_CII) and (ASpec.Target.Syntax = esy_UBL)) or
+     ((AKind <> smk_CII) and (ASpec.Target.Syntax = esy_CII)) then
+    raise ELandrixEInvoiceError.Create('LandrixEInvoiceCheck: the syntax model does not match the ' +
+      'specification ' + string(LandrixEInvoiceTargetToStr(ASpec.Target)));
+  Own := nil;
+  D := ADiagnostics;
+  W := TLandrixXmlWriter.Create;
+  try
+    if D = nil then
+    begin
+      Own := TLandrixEInvoiceDiagnostics.Create;
+      D := Own;
+    end;
+    Start := D.Count;
+    case AKind of
+      smk_CII:
+        LandrixEInvoiceWriteCII(TLandrixCIIInvoice(AModel), W, D, ASpec.Target.Profile);
+      smk_UBLInvoice:
+        LandrixEInvoiceWriteUBLInvoice(TLandrixUBLInvoice(AModel), W, D);
+      smk_UBLCreditNote:
+        LandrixEInvoiceWriteUBLCreditNote(TLandrixUBLCreditNote(AModel), W, D);
+    end;
+    Result := 0;
+    for I := Start to D.Count - 1 do
+      if D[I].Severity = eds_Error then
+        Inc(Result);
+  finally
+    W.Free;
+    Own.Free;
+  end;
+end;
+
+function LandrixEInvoiceCheckCII(ACII: TLandrixCIIInvoice; const ASpec: TLandrixEInvoiceSpec;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := CheckSyntaxModel(smk_CII, ACII, ASpec, ADiagnostics);
+end;
+
+function LandrixEInvoiceCheckUBLInvoice(AUBL: TLandrixUBLInvoice; const ASpec: TLandrixEInvoiceSpec;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := CheckSyntaxModel(smk_UBLInvoice, AUBL, ASpec, ADiagnostics);
+end;
+
+function LandrixEInvoiceCheckUBLCreditNote(AUBL: TLandrixUBLCreditNote; const ASpec: TLandrixEInvoiceSpec;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := CheckSyntaxModel(smk_UBLCreditNote, AUBL, ASpec, ADiagnostics);
 end;
 
 end.
