@@ -130,6 +130,17 @@ begin
   Check(not LandrixEInvoiceTryCIIToDate('20261318', '102', D), 'CII calendar check');
 end;
 
+{ Blank: empty or XML white space only (normalize-space); a no-break space
+  is no XML white space. }
+procedure TestIsBlank;
+begin
+  Check(LandrixEInvoiceIsBlank(''), 'empty');
+  Check(LandrixEInvoiceIsBlank(' '), 'blank');
+  Check(LandrixEInvoiceIsBlank(TLandrixEInvoiceString(' ' + #9 + #10 + #13)), 'XML white space');
+  Check(not LandrixEInvoiceIsBlank(' a '), 'text with blanks');
+  Check(not LandrixEInvoiceIsBlank(TLandrixEInvoiceString(WideChar($A0))), 'no-break space is text');
+end;
+
 procedure Register;
 begin
   RegisterTest('Lexical.Amount', TestAmount);
@@ -138,6 +149,7 @@ begin
   RegisterTest('Lexical.Percent', TestPercent);
   RegisterTest('Lexical.Dates', TestDates);
   RegisterTest('Lexical.Parse', TestParse);
+  RegisterTest('Lexical.IsBlank', TestIsBlank);
 end;
 
 end.

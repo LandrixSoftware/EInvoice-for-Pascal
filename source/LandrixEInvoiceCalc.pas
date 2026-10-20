@@ -456,15 +456,16 @@ function LandrixEInvoiceStandardItemIdentifierOf(ALine: TLandrixInvoiceLine;
   out AValue, AScheme, AConflict: TLandrixEInvoiceString): Boolean;
 begin
   AConflict := '';
-  if ALine.StandardItemIdentifier <> '' then
+  if not LandrixEInvoiceIsBlank(ALine.StandardItemIdentifier) then
   begin
     AValue := ALine.StandardItemIdentifier;
     AScheme := ALine.StandardItemIdentifierSchemeID;
-    if (ALine.GlobalID_EAN_GTIN <> '') and ((ALine.GlobalID_EAN_GTIN <> AValue) or (AScheme <> '0160')) then
+    if not LandrixEInvoiceIsBlank(ALine.GlobalID_EAN_GTIN) and
+       ((ALine.GlobalID_EAN_GTIN <> AValue) or (AScheme <> '0160')) then
       AConflict := 'GTIN ' + ALine.GlobalID_EAN_GTIN + ' of line ' + ALine.ID +
         ' ignored: the item standard identifier ' + AValue + ' (scheme ' + AScheme + ') is written';
   end
-  else if ALine.GlobalID_EAN_GTIN <> '' then
+  else if not LandrixEInvoiceIsBlank(ALine.GlobalID_EAN_GTIN) then
   begin
     AValue := ALine.GlobalID_EAN_GTIN;
     AScheme := '0160';

@@ -2427,9 +2427,12 @@ type
 
 implementation
 
+uses
+  LandrixEInvoiceLexical;
+
 function UBLAmountIsEmpty(const R: TLandrixUBLAmount): Boolean;
 begin
-  Result := (R.Value = '') and (R.CurrencyID = '') and (R.CurrencyCodeListVersionID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.CurrencyID = '') and (R.CurrencyCodeListVersionID = '');
 end;
 
 procedure UBLAmountClear(var R: TLandrixUBLAmount);
@@ -2441,7 +2444,7 @@ end;
 
 function UBLBinaryObjectIsEmpty(const R: TLandrixUBLBinaryObject): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '') and (R.MimeCode = '') and (R.EncodingCode = '') and (R.CharacterSetCode = '') and (R.Uri = '') and (R.Filename = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '') and (R.MimeCode = '') and (R.EncodingCode = '') and (R.CharacterSetCode = '') and (R.Uri = '') and (R.Filename = '');
 end;
 
 procedure UBLBinaryObjectClear(var R: TLandrixUBLBinaryObject);
@@ -2457,7 +2460,7 @@ end;
 
 function UBLCodeIsEmpty(const R: TLandrixUBLCode): Boolean;
 begin
-  Result := (R.Value = '') and (R.ListID = '') and (R.ListAgencyID = '') and (R.ListAgencyName = '') and (R.ListName = '') and (R.ListVersionID = '') and (R.Name = '') and (R.LanguageID = '') and (R.ListURI = '') and (R.ListSchemeURI = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.ListID = '') and (R.ListAgencyID = '') and (R.ListAgencyName = '') and (R.ListName = '') and (R.ListVersionID = '') and (R.Name = '') and (R.LanguageID = '') and (R.ListURI = '') and (R.ListSchemeURI = '');
 end;
 
 procedure UBLCodeClear(var R: TLandrixUBLCode);
@@ -2476,7 +2479,7 @@ end;
 
 function UBLIDIsEmpty(const R: TLandrixUBLID): Boolean;
 begin
-  Result := (R.Value = '') and (R.SchemeID = '') and (R.SchemeName = '') and (R.SchemeAgencyID = '') and (R.SchemeAgencyName = '') and (R.SchemeVersionID = '') and (R.SchemeDataURI = '') and (R.SchemeURI = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.SchemeID = '') and (R.SchemeName = '') and (R.SchemeAgencyID = '') and (R.SchemeAgencyName = '') and (R.SchemeVersionID = '') and (R.SchemeDataURI = '') and (R.SchemeURI = '');
 end;
 
 procedure UBLIDClear(var R: TLandrixUBLID);
@@ -2493,7 +2496,7 @@ end;
 
 function UBLMeasureIsEmpty(const R: TLandrixUBLMeasure): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '') and (R.UnitCodeListVersionID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '') and (R.UnitCodeListVersionID = '');
 end;
 
 procedure UBLMeasureClear(var R: TLandrixUBLMeasure);
@@ -2505,7 +2508,7 @@ end;
 
 function UBLQuantityIsEmpty(const R: TLandrixUBLQuantity): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '') and (R.UnitCodeListID = '') and (R.UnitCodeListAgencyID = '') and (R.UnitCodeListAgencyName = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '') and (R.UnitCodeListID = '') and (R.UnitCodeListAgencyID = '') and (R.UnitCodeListAgencyName = '');
 end;
 
 procedure UBLQuantityClear(var R: TLandrixUBLQuantity);
@@ -2910,26 +2913,26 @@ end;
 
 function TLandrixUBLAddress.IsEmpty: Boolean;
 begin
-  Result := (StreetName = '') and
-    (AdditionalStreetName = '') and
-    (CityName = '') and
-    (PostalZone = '') and
-    (CountrySubentity = '') and
+  Result := LandrixEInvoiceIsBlank(StreetName) and
+    LandrixEInvoiceIsBlank(AdditionalStreetName) and
+    LandrixEInvoiceIsBlank(CityName) and
+    LandrixEInvoiceIsBlank(PostalZone) and
+    LandrixEInvoiceIsBlank(CountrySubentity) and
     ((FAddressLine = nil) or (FAddressLine.Count = 0)) and
     ((FCountry = nil) or FCountry.IsEmpty);
 end;
 
 procedure TLandrixUBLAddress.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if StreetName <> '' then
+  if not LandrixEInvoiceIsBlank(StreetName) then
     AList.Add('cbc:StreetName');
-  if AdditionalStreetName <> '' then
+  if not LandrixEInvoiceIsBlank(AdditionalStreetName) then
     AList.Add('cbc:AdditionalStreetName');
-  if CityName <> '' then
+  if not LandrixEInvoiceIsBlank(CityName) then
     AList.Add('cbc:CityName');
-  if PostalZone <> '' then
+  if not LandrixEInvoiceIsBlank(PostalZone) then
     AList.Add('cbc:PostalZone');
-  if CountrySubentity <> '' then
+  if not LandrixEInvoiceIsBlank(CountrySubentity) then
     AList.Add('cbc:CountrySubentity');
   if (FAddressLine <> nil) and (FAddressLine.Count > 0) then
     AList.Add('cac:AddressLine');
@@ -2951,12 +2954,12 @@ end;
 
 function TLandrixUBLAddressLine.IsEmpty: Boolean;
 begin
-  Result := (Line = '');
+  Result := LandrixEInvoiceIsBlank(Line);
 end;
 
 procedure TLandrixUBLAddressLine.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Line <> '' then
+  if not LandrixEInvoiceIsBlank(Line) then
     AList.Add('cbc:Line');
 end;
 
@@ -2998,10 +3001,10 @@ end;
 
 function TLandrixUBLAllowanceCharge.IsEmpty: Boolean;
 begin
-  Result := (ChargeIndicator = '') and
+  Result := LandrixEInvoiceIsBlank(ChargeIndicator) and
     UBLCodeIsEmpty(AllowanceChargeReasonCode) and
     ((FAllowanceChargeReason = nil) or (FAllowanceChargeReason.Count = 0)) and
-    (MultiplierFactorNumeric = '') and
+    LandrixEInvoiceIsBlank(MultiplierFactorNumeric) and
     UBLAmountIsEmpty(Amount) and
     UBLAmountIsEmpty(BaseAmount) and
     ((FTaxCategory = nil) or (FTaxCategory.Count = 0));
@@ -3009,13 +3012,13 @@ end;
 
 procedure TLandrixUBLAllowanceCharge.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if ChargeIndicator <> '' then
+  if not LandrixEInvoiceIsBlank(ChargeIndicator) then
     AList.Add('cbc:ChargeIndicator');
   if not UBLCodeIsEmpty(AllowanceChargeReasonCode) then
     AList.Add('cbc:AllowanceChargeReasonCode');
   if (FAllowanceChargeReason <> nil) and (FAllowanceChargeReason.Count > 0) then
     AList.Add('cbc:AllowanceChargeReason');
-  if MultiplierFactorNumeric <> '' then
+  if not LandrixEInvoiceIsBlank(MultiplierFactorNumeric) then
     AList.Add('cbc:MultiplierFactorNumeric');
   if not UBLAmountIsEmpty(Amount) then
     AList.Add('cbc:Amount');
@@ -3134,7 +3137,7 @@ function TLandrixUBLCardAccount.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(PrimaryAccountNumberID) and
     UBLIDIsEmpty(NetworkID) and
-    (HolderName = '');
+    LandrixEInvoiceIsBlank(HolderName);
 end;
 
 procedure TLandrixUBLCardAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
@@ -3143,7 +3146,7 @@ begin
     AList.Add('cbc:PrimaryAccountNumberID');
   if not UBLIDIsEmpty(NetworkID) then
     AList.Add('cbc:NetworkID');
-  if HolderName <> '' then
+  if not LandrixEInvoiceIsBlank(HolderName) then
     AList.Add('cbc:HolderName');
 end;
 
@@ -3234,18 +3237,18 @@ end;
 
 function TLandrixUBLContact.IsEmpty: Boolean;
 begin
-  Result := (Name = '') and
-    (Telephone = '') and
-    (ElectronicMail = '');
+  Result := LandrixEInvoiceIsBlank(Name) and
+    LandrixEInvoiceIsBlank(Telephone) and
+    LandrixEInvoiceIsBlank(ElectronicMail);
 end;
 
 procedure TLandrixUBLContact.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('cbc:Name');
-  if Telephone <> '' then
+  if not LandrixEInvoiceIsBlank(Telephone) then
     AList.Add('cbc:Telephone');
-  if ElectronicMail <> '' then
+  if not LandrixEInvoiceIsBlank(ElectronicMail) then
     AList.Add('cbc:ElectronicMail');
 end;
 
@@ -3510,14 +3513,14 @@ begin
     UBLIDIsEmpty(CustomizationID) and
     UBLIDIsEmpty(ProfileID) and
     UBLIDIsEmpty(ID) and
-    (IssueDate = '') and
-    (TaxPointDate = '') and
+    LandrixEInvoiceIsBlank(IssueDate) and
+    LandrixEInvoiceIsBlank(TaxPointDate) and
     UBLCodeIsEmpty(CreditNoteTypeCode) and
     ((FNote = nil) or (FNote.Count = 0)) and
     UBLCodeIsEmpty(DocumentCurrencyCode) and
     UBLCodeIsEmpty(TaxCurrencyCode) and
-    (AccountingCost = '') and
-    (BuyerReference = '') and
+    LandrixEInvoiceIsBlank(AccountingCost) and
+    LandrixEInvoiceIsBlank(BuyerReference) and
     ((FInvoicePeriod = nil) or (FInvoicePeriod.Count = 0)) and
     ((FDiscrepancyResponse = nil) or (FDiscrepancyResponse.Count = 0)) and
     ((FOrderReference = nil) or FOrderReference.IsEmpty) and
@@ -3550,9 +3553,9 @@ begin
     AList.Add('cbc:ProfileID');
   if not UBLIDIsEmpty(ID) then
     AList.Add('cbc:ID');
-  if IssueDate <> '' then
+  if not LandrixEInvoiceIsBlank(IssueDate) then
     AList.Add('cbc:IssueDate');
-  if TaxPointDate <> '' then
+  if not LandrixEInvoiceIsBlank(TaxPointDate) then
     AList.Add('cbc:TaxPointDate');
   if not UBLCodeIsEmpty(CreditNoteTypeCode) then
     AList.Add('cbc:CreditNoteTypeCode');
@@ -3562,9 +3565,9 @@ begin
     AList.Add('cbc:DocumentCurrencyCode');
   if not UBLCodeIsEmpty(TaxCurrencyCode) then
     AList.Add('cbc:TaxCurrencyCode');
-  if AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AccountingCost) then
     AList.Add('cbc:AccountingCost');
-  if BuyerReference <> '' then
+  if not LandrixEInvoiceIsBlank(BuyerReference) then
     AList.Add('cbc:BuyerReference');
   if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
     AList.Add('cac:InvoicePeriod');
@@ -3719,7 +3722,7 @@ begin
     ((FNote = nil) or (FNote.Count = 0)) and
     UBLQuantityIsEmpty(CreditedQuantity) and
     UBLAmountIsEmpty(LineExtensionAmount) and
-    (AccountingCost = '') and
+    LandrixEInvoiceIsBlank(AccountingCost) and
     ((FInvoicePeriod = nil) or (FInvoicePeriod.Count = 0)) and
     ((FOrderLineReference = nil) or (FOrderLineReference.Count = 0)) and
     ((FDiscrepancyResponse = nil) or (FDiscrepancyResponse.Count = 0)) and
@@ -3740,7 +3743,7 @@ begin
     AList.Add('cbc:CreditedQuantity');
   if not UBLAmountIsEmpty(LineExtensionAmount) then
     AList.Add('cbc:LineExtensionAmount');
-  if AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AccountingCost) then
     AList.Add('cbc:AccountingCost');
   if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
     AList.Add('cac:InvoicePeriod');
@@ -3836,7 +3839,7 @@ end;
 
 function TLandrixUBLDelivery.IsEmpty: Boolean;
 begin
-  Result := (ActualDeliveryDate = '') and
+  Result := LandrixEInvoiceIsBlank(ActualDeliveryDate) and
     ((FDeliveryLocation = nil) or FDeliveryLocation.IsEmpty) and
     ((FPromisedDeliveryPeriod = nil) or FPromisedDeliveryPeriod.IsEmpty) and
     ((FDeliveryParty = nil) or FDeliveryParty.IsEmpty);
@@ -3844,7 +3847,7 @@ end;
 
 procedure TLandrixUBLDelivery.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if ActualDeliveryDate <> '' then
+  if not LandrixEInvoiceIsBlank(ActualDeliveryDate) then
     AList.Add('cbc:ActualDeliveryDate');
   if (FDeliveryLocation <> nil) and not FDeliveryLocation.IsEmpty then
     AList.Add('cac:DeliveryLocation');
@@ -3892,9 +3895,9 @@ end;
 function TLandrixUBLDocumentReference.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID) and
-    (IssueDate = '') and
+    LandrixEInvoiceIsBlank(IssueDate) and
     UBLCodeIsEmpty(DocumentTypeCode) and
-    (DocumentType = '') and
+    LandrixEInvoiceIsBlank(DocumentType) and
     ((FDocumentDescription = nil) or (FDocumentDescription.Count = 0)) and
     ((FAttachment = nil) or FAttachment.IsEmpty);
 end;
@@ -3903,11 +3906,11 @@ procedure TLandrixUBLDocumentReference.ListFilledChildren(AList: TLandrixEInvoic
 begin
   if not UBLIDIsEmpty(ID) then
     AList.Add('cbc:ID');
-  if IssueDate <> '' then
+  if not LandrixEInvoiceIsBlank(IssueDate) then
     AList.Add('cbc:IssueDate');
   if not UBLCodeIsEmpty(DocumentTypeCode) then
     AList.Add('cbc:DocumentTypeCode');
-  if DocumentType <> '' then
+  if not LandrixEInvoiceIsBlank(DocumentType) then
     AList.Add('cbc:DocumentType');
   if (FDocumentDescription <> nil) and (FDocumentDescription.Count > 0) then
     AList.Add('cbc:DocumentDescription');
@@ -3964,7 +3967,7 @@ end;
 function TLandrixUBLFinancialAccount.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID) and
-    (Name = '') and
+    LandrixEInvoiceIsBlank(Name) and
     ((FFinancialInstitutionBranch = nil) or FFinancialInstitutionBranch.IsEmpty);
 end;
 
@@ -3972,7 +3975,7 @@ procedure TLandrixUBLFinancialAccount.ListFilledChildren(AList: TLandrixEInvoice
 begin
   if not UBLIDIsEmpty(ID) then
     AList.Add('cbc:ID');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('cbc:Name');
   if (FFinancialInstitutionBranch <> nil) and not FFinancialInstitutionBranch.IsEmpty then
     AList.Add('cac:FinancialInstitutionBranch');
@@ -4227,15 +4230,15 @@ begin
     UBLIDIsEmpty(CustomizationID) and
     UBLIDIsEmpty(ProfileID) and
     UBLIDIsEmpty(ID) and
-    (IssueDate = '') and
-    (DueDate = '') and
+    LandrixEInvoiceIsBlank(IssueDate) and
+    LandrixEInvoiceIsBlank(DueDate) and
     UBLCodeIsEmpty(InvoiceTypeCode) and
     ((FNote = nil) or (FNote.Count = 0)) and
-    (TaxPointDate = '') and
+    LandrixEInvoiceIsBlank(TaxPointDate) and
     UBLCodeIsEmpty(DocumentCurrencyCode) and
     UBLCodeIsEmpty(TaxCurrencyCode) and
-    (AccountingCost = '') and
-    (BuyerReference = '') and
+    LandrixEInvoiceIsBlank(AccountingCost) and
+    LandrixEInvoiceIsBlank(BuyerReference) and
     ((FInvoicePeriod = nil) or (FInvoicePeriod.Count = 0)) and
     ((FOrderReference = nil) or FOrderReference.IsEmpty) and
     ((FBillingReference = nil) or (FBillingReference.Count = 0)) and
@@ -4269,23 +4272,23 @@ begin
     AList.Add('cbc:ProfileID');
   if not UBLIDIsEmpty(ID) then
     AList.Add('cbc:ID');
-  if IssueDate <> '' then
+  if not LandrixEInvoiceIsBlank(IssueDate) then
     AList.Add('cbc:IssueDate');
-  if DueDate <> '' then
+  if not LandrixEInvoiceIsBlank(DueDate) then
     AList.Add('cbc:DueDate');
   if not UBLCodeIsEmpty(InvoiceTypeCode) then
     AList.Add('cbc:InvoiceTypeCode');
   if (FNote <> nil) and (FNote.Count > 0) then
     AList.Add('cbc:Note');
-  if TaxPointDate <> '' then
+  if not LandrixEInvoiceIsBlank(TaxPointDate) then
     AList.Add('cbc:TaxPointDate');
   if not UBLCodeIsEmpty(DocumentCurrencyCode) then
     AList.Add('cbc:DocumentCurrencyCode');
   if not UBLCodeIsEmpty(TaxCurrencyCode) then
     AList.Add('cbc:TaxCurrencyCode');
-  if AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AccountingCost) then
     AList.Add('cbc:AccountingCost');
-  if BuyerReference <> '' then
+  if not LandrixEInvoiceIsBlank(BuyerReference) then
     AList.Add('cbc:BuyerReference');
   if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
     AList.Add('cac:InvoicePeriod');
@@ -4432,7 +4435,7 @@ begin
     ((FNote = nil) or (FNote.Count = 0)) and
     UBLQuantityIsEmpty(InvoicedQuantity) and
     UBLAmountIsEmpty(LineExtensionAmount) and
-    (AccountingCost = '') and
+    LandrixEInvoiceIsBlank(AccountingCost) and
     ((FInvoicePeriod = nil) or (FInvoicePeriod.Count = 0)) and
     ((FOrderLineReference = nil) or (FOrderLineReference.Count = 0)) and
     ((FDocumentReference = nil) or (FDocumentReference.Count = 0)) and
@@ -4452,7 +4455,7 @@ begin
     AList.Add('cbc:InvoicedQuantity');
   if not UBLAmountIsEmpty(LineExtensionAmount) then
     AList.Add('cbc:LineExtensionAmount');
-  if AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AccountingCost) then
     AList.Add('cbc:AccountingCost');
   if (FInvoicePeriod <> nil) and (FInvoicePeriod.Count > 0) then
     AList.Add('cac:InvoicePeriod');
@@ -4565,7 +4568,7 @@ end;
 function TLandrixUBLItem.IsEmpty: Boolean;
 begin
   Result := ((FDescription = nil) or (FDescription.Count = 0)) and
-    (Name = '') and
+    LandrixEInvoiceIsBlank(Name) and
     ((FBuyersItemIdentification = nil) or FBuyersItemIdentification.IsEmpty) and
     ((FSellersItemIdentification = nil) or FSellersItemIdentification.IsEmpty) and
     ((FStandardItemIdentification = nil) or FStandardItemIdentification.IsEmpty) and
@@ -4579,7 +4582,7 @@ procedure TLandrixUBLItem.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if (FDescription <> nil) and (FDescription.Count > 0) then
     AList.Add('cbc:Description');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('cbc:Name');
   if (FBuyersItemIdentification <> nil) and not FBuyersItemIdentification.IsEmpty then
     AList.Add('cac:BuyersItemIdentification');
@@ -4635,15 +4638,15 @@ end;
 
 function TLandrixUBLItemProperty.IsEmpty: Boolean;
 begin
-  Result := (Name = '') and
-    (Value = '');
+  Result := LandrixEInvoiceIsBlank(Name) and
+    LandrixEInvoiceIsBlank(Value);
 end;
 
 procedure TLandrixUBLItemProperty.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('cbc:Name');
-  if Value <> '' then
+  if not LandrixEInvoiceIsBlank(Value) then
     AList.Add('cbc:Value');
 end;
 
@@ -4937,18 +4940,18 @@ end;
 
 function TLandrixUBLPartyLegalEntity.IsEmpty: Boolean;
 begin
-  Result := (RegistrationName = '') and
+  Result := LandrixEInvoiceIsBlank(RegistrationName) and
     UBLIDIsEmpty(CompanyID) and
-    (CompanyLegalForm = '');
+    LandrixEInvoiceIsBlank(CompanyLegalForm);
 end;
 
 procedure TLandrixUBLPartyLegalEntity.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if RegistrationName <> '' then
+  if not LandrixEInvoiceIsBlank(RegistrationName) then
     AList.Add('cbc:RegistrationName');
   if not UBLIDIsEmpty(CompanyID) then
     AList.Add('cbc:CompanyID');
-  if CompanyLegalForm <> '' then
+  if not LandrixEInvoiceIsBlank(CompanyLegalForm) then
     AList.Add('cbc:CompanyLegalForm');
 end;
 
@@ -4966,12 +4969,12 @@ end;
 
 function TLandrixUBLPartyName.IsEmpty: Boolean;
 begin
-  Result := (Name = '');
+  Result := LandrixEInvoiceIsBlank(Name);
 end;
 
 procedure TLandrixUBLPartyName.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('cbc:Name');
 end;
 
@@ -5134,7 +5137,7 @@ end;
 function TLandrixUBLPaymentMeans.IsEmpty: Boolean;
 begin
   Result := UBLCodeIsEmpty(PaymentMeansCode) and
-    (PaymentDueDate = '') and
+    LandrixEInvoiceIsBlank(PaymentDueDate) and
     ((FPaymentID = nil) or (FPaymentID.Count = 0)) and
     ((FCardAccount = nil) or FCardAccount.IsEmpty) and
     ((FPayeeFinancialAccount = nil) or FPayeeFinancialAccount.IsEmpty) and
@@ -5145,7 +5148,7 @@ procedure TLandrixUBLPaymentMeans.ListFilledChildren(AList: TLandrixEInvoiceStri
 begin
   if not UBLCodeIsEmpty(PaymentMeansCode) then
     AList.Add('cbc:PaymentMeansCode');
-  if PaymentDueDate <> '' then
+  if not LandrixEInvoiceIsBlank(PaymentDueDate) then
     AList.Add('cbc:PaymentDueDate');
   if (FPaymentID <> nil) and (FPaymentID.Count > 0) then
     AList.Add('cbc:PaymentID');
@@ -5227,10 +5230,10 @@ end;
 
 function TLandrixUBLPeriod.IsEmpty: Boolean;
 begin
-  Result := (StartDate = '') and
-    (StartTime = '') and
-    (EndDate = '') and
-    (EndTime = '') and
+  Result := LandrixEInvoiceIsBlank(StartDate) and
+    LandrixEInvoiceIsBlank(StartTime) and
+    LandrixEInvoiceIsBlank(EndDate) and
+    LandrixEInvoiceIsBlank(EndTime) and
     UBLMeasureIsEmpty(DurationMeasure) and
     ((FDescriptionCode = nil) or (FDescriptionCode.Count = 0)) and
     ((FDescription = nil) or (FDescription.Count = 0));
@@ -5238,13 +5241,13 @@ end;
 
 procedure TLandrixUBLPeriod.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if StartDate <> '' then
+  if not LandrixEInvoiceIsBlank(StartDate) then
     AList.Add('cbc:StartDate');
-  if StartTime <> '' then
+  if not LandrixEInvoiceIsBlank(StartTime) then
     AList.Add('cbc:StartTime');
-  if EndDate <> '' then
+  if not LandrixEInvoiceIsBlank(EndDate) then
     AList.Add('cbc:EndDate');
-  if EndTime <> '' then
+  if not LandrixEInvoiceIsBlank(EndTime) then
     AList.Add('cbc:EndTime');
   if not UBLMeasureIsEmpty(DurationMeasure) then
     AList.Add('cbc:DurationMeasure');
@@ -5436,8 +5439,8 @@ begin
   Result := UBLIDIsEmpty(ReferenceID) and
     UBLCodeIsEmpty(ResponseCode) and
     ((FDescription = nil) or (FDescription.Count = 0)) and
-    (EffectiveDate = '') and
-    (EffectiveTime = '') and
+    LandrixEInvoiceIsBlank(EffectiveDate) and
+    LandrixEInvoiceIsBlank(EffectiveTime) and
     ((FStatus = nil) or (FStatus.Count = 0));
 end;
 
@@ -5449,9 +5452,9 @@ begin
     AList.Add('cbc:ResponseCode');
   if (FDescription <> nil) and (FDescription.Count > 0) then
     AList.Add('cbc:Description');
-  if EffectiveDate <> '' then
+  if not LandrixEInvoiceIsBlank(EffectiveDate) then
     AList.Add('cbc:EffectiveDate');
-  if EffectiveTime <> '' then
+  if not LandrixEInvoiceIsBlank(EffectiveTime) then
     AList.Add('cbc:EffectiveTime');
   if (FStatus <> nil) and (FStatus.Count > 0) then
     AList.Add('cac:Status');
@@ -5519,16 +5522,16 @@ end;
 function TLandrixUBLStatus.IsEmpty: Boolean;
 begin
   Result := UBLCodeIsEmpty(ConditionCode) and
-    (ReferenceDate = '') and
-    (ReferenceTime = '') and
+    LandrixEInvoiceIsBlank(ReferenceDate) and
+    LandrixEInvoiceIsBlank(ReferenceTime) and
     ((FDescription = nil) or (FDescription.Count = 0)) and
     UBLCodeIsEmpty(StatusReasonCode) and
     ((FStatusReason = nil) or (FStatusReason.Count = 0)) and
     UBLIDIsEmpty(SequenceID) and
     ((FText = nil) or (FText.Count = 0)) and
-    (IndicationIndicator = '') and
-    (Percent = '') and
-    (ReliabilityPercent = '') and
+    LandrixEInvoiceIsBlank(IndicationIndicator) and
+    LandrixEInvoiceIsBlank(Percent) and
+    LandrixEInvoiceIsBlank(ReliabilityPercent) and
     ((FCondition = nil) or (FCondition.Count = 0));
 end;
 
@@ -5536,9 +5539,9 @@ procedure TLandrixUBLStatus.ListFilledChildren(AList: TLandrixEInvoiceStringList
 begin
   if not UBLCodeIsEmpty(ConditionCode) then
     AList.Add('cbc:ConditionCode');
-  if ReferenceDate <> '' then
+  if not LandrixEInvoiceIsBlank(ReferenceDate) then
     AList.Add('cbc:ReferenceDate');
-  if ReferenceTime <> '' then
+  if not LandrixEInvoiceIsBlank(ReferenceTime) then
     AList.Add('cbc:ReferenceTime');
   if (FDescription <> nil) and (FDescription.Count > 0) then
     AList.Add('cbc:Description');
@@ -5550,11 +5553,11 @@ begin
     AList.Add('cbc:SequenceID');
   if (FText <> nil) and (FText.Count > 0) then
     AList.Add('cbc:Text');
-  if IndicationIndicator <> '' then
+  if not LandrixEInvoiceIsBlank(IndicationIndicator) then
     AList.Add('cbc:IndicationIndicator');
-  if Percent <> '' then
+  if not LandrixEInvoiceIsBlank(Percent) then
     AList.Add('cbc:Percent');
-  if ReliabilityPercent <> '' then
+  if not LandrixEInvoiceIsBlank(ReliabilityPercent) then
     AList.Add('cbc:ReliabilityPercent');
   if (FCondition <> nil) and (FCondition.Count > 0) then
     AList.Add('cac:Condition');
@@ -5629,7 +5632,7 @@ end;
 function TLandrixUBLTaxCategory.IsEmpty: Boolean;
 begin
   Result := UBLIDIsEmpty(ID) and
-    (Percent = '') and
+    LandrixEInvoiceIsBlank(Percent) and
     UBLCodeIsEmpty(TaxExemptionReasonCode) and
     ((FTaxExemptionReason = nil) or (FTaxExemptionReason.Count = 0)) and
     ((FTaxScheme = nil) or FTaxScheme.IsEmpty);
@@ -5639,7 +5642,7 @@ procedure TLandrixUBLTaxCategory.ListFilledChildren(AList: TLandrixEInvoiceStrin
 begin
   if not UBLIDIsEmpty(ID) then
     AList.Add('cbc:ID');
-  if Percent <> '' then
+  if not LandrixEInvoiceIsBlank(Percent) then
     AList.Add('cbc:Percent');
   if not UBLCodeIsEmpty(TaxExemptionReasonCode) then
     AList.Add('cbc:TaxExemptionReasonCode');

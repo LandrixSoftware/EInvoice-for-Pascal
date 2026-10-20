@@ -137,6 +137,15 @@ function LandrixEInvoiceTryUBLToDate(const AText: TLandrixEInvoiceString;
 function LandrixEInvoiceTryCIIToDate(const AText, AFormat: TLandrixEInvoiceString;
   out AValue: TDateTime): Boolean;
 
+{ True if AText is empty or consists of XML white space only (blank, tab,
+  CR, LF), i.e. normalize-space(AText) = '' as in the Schematron rules. Such
+  a value counts as absent: it is not written and fails a required check.
+  DE: True, wenn AText leer ist oder nur aus XML-Leerraum besteht
+  (Leerzeichen, Tab, CR, LF), also normalize-space(AText) = '' wie in den
+  Schematron-Regeln. Ein solcher Wert gilt als nicht vorhanden: er wird nicht
+  geschrieben und scheitert an einer Pflichtpruefung. }
+function LandrixEInvoiceIsBlank(const AText: TLandrixEInvoiceString): Boolean;
+
 implementation
 
 uses
@@ -239,6 +248,17 @@ begin
     LandrixXmlTryParseCiiDate(Utf8(AText), AValue);
   if not Result then
     AValue := 0;
+end;
+
+function LandrixEInvoiceIsBlank(const AText: TLandrixEInvoiceString): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to Length(AText) do
+    if (AText[I] <> ' ') and (AText[I] <> #9) and (AText[I] <> #10) and (AText[I] <> #13) then
+      Exit;
+  Result := True;
 end;
 
 end.

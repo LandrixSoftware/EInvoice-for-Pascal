@@ -2593,9 +2593,12 @@ type
 
 implementation
 
+uses
+  LandrixEInvoiceLexical;
+
 function CIIAllowanceChargeReasonCodeIsEmpty(const R: TLandrixCIIAllowanceChargeReasonCode): Boolean;
 begin
-  Result := (R.Value = '') and (R.ListID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.ListID = '');
 end;
 
 procedure CIIAllowanceChargeReasonCodeClear(var R: TLandrixCIIAllowanceChargeReasonCode);
@@ -2606,7 +2609,7 @@ end;
 
 function CIIAmountIsEmpty(const R: TLandrixCIIAmount): Boolean;
 begin
-  Result := (R.Value = '') and (R.CurrencyID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.CurrencyID = '');
 end;
 
 procedure CIIAmountClear(var R: TLandrixCIIAmount);
@@ -2617,7 +2620,7 @@ end;
 
 function CIIBinaryObjectIsEmpty(const R: TLandrixCIIBinaryObject): Boolean;
 begin
-  Result := (R.Value = '') and (R.MimeCode = '') and (R.Filename = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.MimeCode = '') and (R.Filename = '');
 end;
 
 procedure CIIBinaryObjectClear(var R: TLandrixCIIBinaryObject);
@@ -2629,7 +2632,7 @@ end;
 
 function CIICodeIsEmpty(const R: TLandrixCIICode): Boolean;
 begin
-  Result := (R.Value = '') and (R.ListID = '') and (R.ListVersionID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.ListID = '') and (R.ListVersionID = '');
 end;
 
 procedure CIICodeClear(var R: TLandrixCIICode);
@@ -2641,7 +2644,7 @@ end;
 
 function CIIDateIsEmpty(const R: TLandrixCIIDate): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '');
 end;
 
 procedure CIIDateClear(var R: TLandrixCIIDate);
@@ -2652,7 +2655,7 @@ end;
 
 function CIIDateTimeIsEmpty(const R: TLandrixCIIDateTime): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '');
 end;
 
 procedure CIIDateTimeClear(var R: TLandrixCIIDateTime);
@@ -2663,7 +2666,7 @@ end;
 
 function CIIFormattedDateTimeIsEmpty(const R: TLandrixCIIFormattedDateTime): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '');
 end;
 
 procedure CIIFormattedDateTimeClear(var R: TLandrixCIIFormattedDateTime);
@@ -2674,7 +2677,7 @@ end;
 
 function CIIIDIsEmpty(const R: TLandrixCIIID): Boolean;
 begin
-  Result := (R.Value = '') and (R.SchemeID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.SchemeID = '');
 end;
 
 procedure CIIIDClear(var R: TLandrixCIIID);
@@ -2685,7 +2688,7 @@ end;
 
 function CIIMeasureIsEmpty(const R: TLandrixCIIMeasure): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '');
 end;
 
 procedure CIIMeasureClear(var R: TLandrixCIIMeasure);
@@ -2696,7 +2699,7 @@ end;
 
 function CIIQuantityIsEmpty(const R: TLandrixCIIQuantity): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '');
 end;
 
 procedure CIIQuantityClear(var R: TLandrixCIIQuantity);
@@ -3053,7 +3056,7 @@ end;
 function TLandrixCIICreditorFinancialAccount.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(IBANID) and
-    (AccountName = '') and
+    LandrixEInvoiceIsBlank(AccountName) and
     CIIIDIsEmpty(ProprietaryID);
 end;
 
@@ -3061,7 +3064,7 @@ procedure TLandrixCIICreditorFinancialAccount.ListFilledChildren(AList: TLandrix
 begin
   if not CIIIDIsEmpty(IBANID) then
     AList.Add('ram:IBANID');
-  if AccountName <> '' then
+  if not LandrixEInvoiceIsBlank(AccountName) then
     AList.Add('ram:AccountName');
   if not CIIIDIsEmpty(ProprietaryID) then
     AList.Add('ram:ProprietaryID');
@@ -3106,14 +3109,14 @@ end;
 function TLandrixCIIDebtorFinancialAccount.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(IBANID) and
-    (AccountName = '');
+    LandrixEInvoiceIsBlank(AccountName);
 end;
 
 procedure TLandrixCIIDebtorFinancialAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIIIDIsEmpty(IBANID) then
     AList.Add('ram:IBANID');
-  if AccountName <> '' then
+  if not LandrixEInvoiceIsBlank(AccountName) then
     AList.Add('ram:AccountName');
 end;
 
@@ -3192,7 +3195,7 @@ function TLandrixCIIDocumentLineDocument.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(LineID) and
     CIIIDIsEmpty(ParentLineID) and
-    (LineStatusCode = '') and
+    LandrixEInvoiceIsBlank(LineStatusCode) and
     CIICodeIsEmpty(LineStatusReasonCode) and
     ((FIncludedNote = nil) or (FIncludedNote.Count = 0));
 end;
@@ -3203,7 +3206,7 @@ begin
     AList.Add('ram:LineID');
   if not CIIIDIsEmpty(ParentLineID) then
     AList.Add('ram:ParentLineID');
-  if LineStatusCode <> '' then
+  if not LandrixEInvoiceIsBlank(LineStatusCode) then
     AList.Add('ram:LineStatusCode');
   if not CIICodeIsEmpty(LineStatusReasonCode) then
     AList.Add('ram:LineStatusReasonCode');
@@ -3251,10 +3254,10 @@ end;
 function TLandrixCIIExchangedDocument.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
-    (Name = '') and
-    (TypeCode = '') and
+    LandrixEInvoiceIsBlank(Name) and
+    LandrixEInvoiceIsBlank(TypeCode) and
     CIIDateTimeIsEmpty(IssueDateTime) and
-    (CopyIndicator = '') and
+    LandrixEInvoiceIsBlank(CopyIndicator) and
     CIIIDIsEmpty(LanguageID) and
     ((FIncludedNote = nil) or (FIncludedNote.Count = 0)) and
     ((FEffectiveSpecifiedPeriod = nil) or FEffectiveSpecifiedPeriod.IsEmpty);
@@ -3264,13 +3267,13 @@ procedure TLandrixCIIExchangedDocument.ListFilledChildren(AList: TLandrixEInvoic
 begin
   if not CIIIDIsEmpty(ID) then
     AList.Add('ram:ID');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('ram:Name');
-  if TypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(TypeCode) then
     AList.Add('ram:TypeCode');
   if not CIIDateTimeIsEmpty(IssueDateTime) then
     AList.Add('ram:IssueDateTime');
-  if CopyIndicator <> '' then
+  if not LandrixEInvoiceIsBlank(CopyIndicator) then
     AList.Add('ram:CopyIndicator');
   if not CIIIDIsEmpty(LanguageID) then
     AList.Add('ram:LanguageID');
@@ -3314,14 +3317,14 @@ end;
 
 function TLandrixCIIExchangedDocumentContext.IsEmpty: Boolean;
 begin
-  Result := (TestIndicator = '') and
+  Result := LandrixEInvoiceIsBlank(TestIndicator) and
     ((FBusinessProcessSpecifiedDocumentContextParameter = nil) or FBusinessProcessSpecifiedDocumentContextParameter.IsEmpty) and
     ((FGuidelineSpecifiedDocumentContextParameter = nil) or FGuidelineSpecifiedDocumentContextParameter.IsEmpty);
 end;
 
 procedure TLandrixCIIExchangedDocumentContext.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if TestIndicator <> '' then
+  if not LandrixEInvoiceIsBlank(TestIndicator) then
     AList.Add('ram:TestIndicator');
   if (FBusinessProcessSpecifiedDocumentContextParameter <> nil) and not FBusinessProcessSpecifiedDocumentContextParameter.IsEmpty then
     AList.Add('ram:BusinessProcessSpecifiedDocumentContextParameter');
@@ -3344,13 +3347,13 @@ end;
 
 function TLandrixCIIFinancialAdjustment.IsEmpty: Boolean;
 begin
-  Result := (Reason = '') and
+  Result := LandrixEInvoiceIsBlank(Reason) and
     CIIAmountIsEmpty(ActualAmount);
 end;
 
 procedure TLandrixCIIFinancialAdjustment.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Reason <> '' then
+  if not LandrixEInvoiceIsBlank(Reason) then
     AList.Add('ram:Reason');
   if not CIIAmountIsEmpty(ActualAmount) then
     AList.Add('ram:ActualAmount');
@@ -3520,7 +3523,7 @@ end;
 
 function TLandrixCIIHeaderTradeAgreement.IsEmpty: Boolean;
 begin
-  Result := (BuyerReference = '') and
+  Result := LandrixEInvoiceIsBlank(BuyerReference) and
     ((FSellerTradeParty = nil) or FSellerTradeParty.IsEmpty) and
     ((FBuyerTradeParty = nil) or FBuyerTradeParty.IsEmpty) and
     ((FSalesAgentTradeParty = nil) or FSalesAgentTradeParty.IsEmpty) and
@@ -3540,7 +3543,7 @@ end;
 
 procedure TLandrixCIIHeaderTradeAgreement.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if BuyerReference <> '' then
+  if not LandrixEInvoiceIsBlank(BuyerReference) then
     AList.Add('ram:BuyerReference');
   if (FSellerTradeParty <> nil) and not FSellerTradeParty.IsEmpty then
     AList.Add('ram:SellerTradeParty');
@@ -3876,10 +3879,10 @@ end;
 function TLandrixCIIHeaderTradeSettlement.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(CreditorReferenceID) and
-    (PaymentReference = '') and
-    (TaxCurrencyCode = '') and
-    (InvoiceCurrencyCode = '') and
-    (InvoiceIssuerReference = '') and
+    LandrixEInvoiceIsBlank(PaymentReference) and
+    LandrixEInvoiceIsBlank(TaxCurrencyCode) and
+    LandrixEInvoiceIsBlank(InvoiceCurrencyCode) and
+    LandrixEInvoiceIsBlank(InvoiceIssuerReference) and
     ((FInvoicerTradeParty = nil) or FInvoicerTradeParty.IsEmpty) and
     ((FInvoiceeTradeParty = nil) or FInvoiceeTradeParty.IsEmpty) and
     ((FPayeeTradeParty = nil) or FPayeeTradeParty.IsEmpty) and
@@ -3902,13 +3905,13 @@ procedure TLandrixCIIHeaderTradeSettlement.ListFilledChildren(AList: TLandrixEIn
 begin
   if not CIIIDIsEmpty(CreditorReferenceID) then
     AList.Add('ram:CreditorReferenceID');
-  if PaymentReference <> '' then
+  if not LandrixEInvoiceIsBlank(PaymentReference) then
     AList.Add('ram:PaymentReference');
-  if TaxCurrencyCode <> '' then
+  if not LandrixEInvoiceIsBlank(TaxCurrencyCode) then
     AList.Add('ram:TaxCurrencyCode');
-  if InvoiceCurrencyCode <> '' then
+  if not LandrixEInvoiceIsBlank(InvoiceCurrencyCode) then
     AList.Add('ram:InvoiceCurrencyCode');
-  if InvoiceIssuerReference <> '' then
+  if not LandrixEInvoiceIsBlank(InvoiceIssuerReference) then
     AList.Add('ram:InvoiceIssuerReference');
   if (FInvoicerTradeParty <> nil) and not FInvoicerTradeParty.IsEmpty then
     AList.Add('ram:InvoicerTradeParty');
@@ -4028,7 +4031,7 @@ end;
 function TLandrixCIILegalOrganization.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
-    (TradingBusinessName = '') and
+    LandrixEInvoiceIsBlank(TradingBusinessName) and
     ((FPostalTradeAddress = nil) or FPostalTradeAddress.IsEmpty);
 end;
 
@@ -4036,7 +4039,7 @@ procedure TLandrixCIILegalOrganization.ListFilledChildren(AList: TLandrixEInvoic
 begin
   if not CIIIDIsEmpty(ID) then
     AList.Add('ram:ID');
-  if TradingBusinessName <> '' then
+  if not LandrixEInvoiceIsBlank(TradingBusinessName) then
     AList.Add('ram:TradingBusinessName');
   if (FPostalTradeAddress <> nil) and not FPostalTradeAddress.IsEmpty then
     AList.Add('ram:PostalTradeAddress');
@@ -4439,14 +4442,14 @@ end;
 
 function TLandrixCIILogisticsServiceCharge.IsEmpty: Boolean;
 begin
-  Result := (Description = '') and
+  Result := LandrixEInvoiceIsBlank(Description) and
     CIIAmountIsEmpty(AppliedAmount) and
     ((FAppliedTradeTax = nil) or (FAppliedTradeTax.Count = 0));
 end;
 
 procedure TLandrixCIILogisticsServiceCharge.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Description <> '' then
+  if not LandrixEInvoiceIsBlank(Description) then
     AList.Add('ram:Description');
   if not CIIAmountIsEmpty(AppliedAmount) then
     AList.Add('ram:AppliedAmount');
@@ -4468,12 +4471,12 @@ end;
 
 function TLandrixCIILogisticsTransportMovement.IsEmpty: Boolean;
 begin
-  Result := (ModeCode = '');
+  Result := LandrixEInvoiceIsBlank(ModeCode);
 end;
 
 procedure TLandrixCIILogisticsTransportMovement.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if ModeCode <> '' then
+  if not LandrixEInvoiceIsBlank(ModeCode) then
     AList.Add('ram:ModeCode');
 end;
 
@@ -4494,7 +4497,7 @@ end;
 function TLandrixCIINote.IsEmpty: Boolean;
 begin
   Result := CIICodeIsEmpty(ContentCode) and
-    (Content = '') and
+    LandrixEInvoiceIsBlank(Content) and
     CIICodeIsEmpty(SubjectCode);
 end;
 
@@ -4502,7 +4505,7 @@ procedure TLandrixCIINote.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIICodeIsEmpty(ContentCode) then
     AList.Add('ram:ContentCode');
-  if Content <> '' then
+  if not LandrixEInvoiceIsBlank(Content) then
     AList.Add('ram:Content');
   if not CIICodeIsEmpty(SubjectCode) then
     AList.Add('ram:SubjectCode');
@@ -4524,14 +4527,14 @@ end;
 function TLandrixCIIProcuringProject.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
-    (Name = '');
+    LandrixEInvoiceIsBlank(Name);
 end;
 
 procedure TLandrixCIIProcuringProject.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIIIDIsEmpty(ID) then
     AList.Add('ram:ID');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('ram:Name');
 end;
 
@@ -4553,20 +4556,20 @@ end;
 function TLandrixCIIProductCharacteristic.IsEmpty: Boolean;
 begin
   Result := CIICodeIsEmpty(TypeCode) and
-    (Description = '') and
+    LandrixEInvoiceIsBlank(Description) and
     CIIMeasureIsEmpty(ValueMeasure) and
-    (Value = '');
+    LandrixEInvoiceIsBlank(Value);
 end;
 
 procedure TLandrixCIIProductCharacteristic.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIICodeIsEmpty(TypeCode) then
     AList.Add('ram:TypeCode');
-  if Description <> '' then
+  if not LandrixEInvoiceIsBlank(Description) then
     AList.Add('ram:Description');
   if not CIIMeasureIsEmpty(ValueMeasure) then
     AList.Add('ram:ValueMeasure');
-  if Value <> '' then
+  if not LandrixEInvoiceIsBlank(Value) then
     AList.Add('ram:Value');
 end;
 
@@ -4586,14 +4589,14 @@ end;
 function TLandrixCIIProductClassification.IsEmpty: Boolean;
 begin
   Result := CIICodeIsEmpty(ClassCode) and
-    (ClassificationName = '');
+    LandrixEInvoiceIsBlank(ClassificationName);
 end;
 
 procedure TLandrixCIIProductClassification.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIICodeIsEmpty(ClassCode) then
     AList.Add('ram:ClassCode');
-  if ClassificationName <> '' then
+  if not LandrixEInvoiceIsBlank(ClassificationName) then
     AList.Add('ram:ClassName');
 end;
 
@@ -4621,10 +4624,10 @@ begin
   Result := CIIIDIsEmpty(IssuerAssignedID) and
     CIIIDIsEmpty(URIID) and
     CIIIDIsEmpty(LineID) and
-    (TypeCode = '') and
-    (Name = '') and
+    LandrixEInvoiceIsBlank(TypeCode) and
+    LandrixEInvoiceIsBlank(Name) and
     CIIBinaryObjectIsEmpty(AttachmentBinaryObject) and
-    (ReferenceTypeCode = '') and
+    LandrixEInvoiceIsBlank(ReferenceTypeCode) and
     CIIFormattedDateTimeIsEmpty(FormattedIssueDateTime);
 end;
 
@@ -4636,13 +4639,13 @@ begin
     AList.Add('ram:URIID');
   if not CIIIDIsEmpty(LineID) then
     AList.Add('ram:LineID');
-  if TypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(TypeCode) then
     AList.Add('ram:TypeCode');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('ram:Name');
   if not CIIBinaryObjectIsEmpty(AttachmentBinaryObject) then
     AList.Add('ram:AttachmentBinaryObject');
-  if ReferenceTypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(ReferenceTypeCode) then
     AList.Add('ram:ReferenceTypeCode');
   if not CIIFormattedDateTimeIsEmpty(FormattedIssueDateTime) then
     AList.Add('ram:FormattedIssueDateTime');
@@ -4683,8 +4686,8 @@ begin
     CIIIDIsEmpty(SellerAssignedID) and
     CIIIDIsEmpty(BuyerAssignedID) and
     CIIIDIsEmpty(IndustryAssignedID) and
-    (Name = '') and
-    (Description = '') and
+    LandrixEInvoiceIsBlank(Name) and
+    LandrixEInvoiceIsBlank(Description) and
     CIIQuantityIsEmpty(UnitQuantity);
 end;
 
@@ -4700,9 +4703,9 @@ begin
     AList.Add('ram:BuyerAssignedID');
   if not CIIIDIsEmpty(IndustryAssignedID) then
     AList.Add('ram:IndustryAssignedID');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('ram:Name');
-  if Description <> '' then
+  if not LandrixEInvoiceIsBlank(Description) then
     AList.Add('ram:Description');
   if not CIIQuantityIsEmpty(UnitQuantity) then
     AList.Add('ram:UnitQuantity');
@@ -4725,7 +4728,7 @@ end;
 
 function TLandrixCIISpecifiedPeriod.IsEmpty: Boolean;
 begin
-  Result := (Description = '') and
+  Result := LandrixEInvoiceIsBlank(Description) and
     CIIDateTimeIsEmpty(StartDateTime) and
     CIIDateTimeIsEmpty(EndDateTime) and
     CIIDateTimeIsEmpty(CompleteDateTime);
@@ -4733,7 +4736,7 @@ end;
 
 procedure TLandrixCIISpecifiedPeriod.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Description <> '' then
+  if not LandrixEInvoiceIsBlank(Description) then
     AList.Add('ram:Description');
   if not CIIDateTimeIsEmpty(StartDateTime) then
     AList.Add('ram:StartDateTime');
@@ -4992,14 +4995,14 @@ end;
 function TLandrixCIITradeAccountingAccount.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
-    (TypeCode = '');
+    LandrixEInvoiceIsBlank(TypeCode);
 end;
 
 procedure TLandrixCIITradeAccountingAccount.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIIIDIsEmpty(ID) then
     AList.Add('ram:ID');
-  if TypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(TypeCode) then
     AList.Add('ram:TypeCode');
 end;
 
@@ -5024,29 +5027,29 @@ end;
 function TLandrixCIITradeAddress.IsEmpty: Boolean;
 begin
   Result := CIICodeIsEmpty(PostcodeCode) and
-    (LineOne = '') and
-    (LineTwo = '') and
-    (LineThree = '') and
-    (CityName = '') and
-    (CountryID = '') and
-    (CountrySubDivisionName = '');
+    LandrixEInvoiceIsBlank(LineOne) and
+    LandrixEInvoiceIsBlank(LineTwo) and
+    LandrixEInvoiceIsBlank(LineThree) and
+    LandrixEInvoiceIsBlank(CityName) and
+    LandrixEInvoiceIsBlank(CountryID) and
+    LandrixEInvoiceIsBlank(CountrySubDivisionName);
 end;
 
 procedure TLandrixCIITradeAddress.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIICodeIsEmpty(PostcodeCode) then
     AList.Add('ram:PostcodeCode');
-  if LineOne <> '' then
+  if not LandrixEInvoiceIsBlank(LineOne) then
     AList.Add('ram:LineOne');
-  if LineTwo <> '' then
+  if not LandrixEInvoiceIsBlank(LineTwo) then
     AList.Add('ram:LineTwo');
-  if LineThree <> '' then
+  if not LandrixEInvoiceIsBlank(LineThree) then
     AList.Add('ram:LineThree');
-  if CityName <> '' then
+  if not LandrixEInvoiceIsBlank(CityName) then
     AList.Add('ram:CityName');
-  if CountryID <> '' then
+  if not LandrixEInvoiceIsBlank(CountryID) then
     AList.Add('ram:CountryID');
-  if CountrySubDivisionName <> '' then
+  if not LandrixEInvoiceIsBlank(CountrySubDivisionName) then
     AList.Add('ram:CountrySubDivisionName');
 end;
 
@@ -5081,24 +5084,24 @@ end;
 
 function TLandrixCIITradeAllowanceCharge.IsEmpty: Boolean;
 begin
-  Result := (ChargeIndicator = '') and
-    (SequenceNumeric = '') and
-    (CalculationPercent = '') and
+  Result := LandrixEInvoiceIsBlank(ChargeIndicator) and
+    LandrixEInvoiceIsBlank(SequenceNumeric) and
+    LandrixEInvoiceIsBlank(CalculationPercent) and
     CIIAmountIsEmpty(BasisAmount) and
     CIIQuantityIsEmpty(BasisQuantity) and
     CIIAmountIsEmpty(ActualAmount) and
     CIIAllowanceChargeReasonCodeIsEmpty(ReasonCode) and
-    (Reason = '') and
+    LandrixEInvoiceIsBlank(Reason) and
     ((FCategoryTradeTax = nil) or FCategoryTradeTax.IsEmpty);
 end;
 
 procedure TLandrixCIITradeAllowanceCharge.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if ChargeIndicator <> '' then
+  if not LandrixEInvoiceIsBlank(ChargeIndicator) then
     AList.Add('ram:ChargeIndicator');
-  if SequenceNumeric <> '' then
+  if not LandrixEInvoiceIsBlank(SequenceNumeric) then
     AList.Add('ram:SequenceNumeric');
-  if CalculationPercent <> '' then
+  if not LandrixEInvoiceIsBlank(CalculationPercent) then
     AList.Add('ram:CalculationPercent');
   if not CIIAmountIsEmpty(BasisAmount) then
     AList.Add('ram:BasisAmount');
@@ -5108,7 +5111,7 @@ begin
     AList.Add('ram:ActualAmount');
   if not CIIAllowanceChargeReasonCodeIsEmpty(ReasonCode) then
     AList.Add('ram:ReasonCode');
-  if Reason <> '' then
+  if not LandrixEInvoiceIsBlank(Reason) then
     AList.Add('ram:Reason');
   if (FCategoryTradeTax <> nil) and not FCategoryTradeTax.IsEmpty then
     AList.Add('ram:CategoryTradeTax');
@@ -5160,9 +5163,9 @@ end;
 
 function TLandrixCIITradeContact.IsEmpty: Boolean;
 begin
-  Result := (PersonName = '') and
-    (DepartmentName = '') and
-    (TypeCode = '') and
+  Result := LandrixEInvoiceIsBlank(PersonName) and
+    LandrixEInvoiceIsBlank(DepartmentName) and
+    LandrixEInvoiceIsBlank(TypeCode) and
     ((FTelephoneUniversalCommunication = nil) or FTelephoneUniversalCommunication.IsEmpty) and
     ((FFaxUniversalCommunication = nil) or FFaxUniversalCommunication.IsEmpty) and
     ((FEmailURIUniversalCommunication = nil) or FEmailURIUniversalCommunication.IsEmpty);
@@ -5170,11 +5173,11 @@ end;
 
 procedure TLandrixCIITradeContact.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if PersonName <> '' then
+  if not LandrixEInvoiceIsBlank(PersonName) then
     AList.Add('ram:PersonName');
-  if DepartmentName <> '' then
+  if not LandrixEInvoiceIsBlank(DepartmentName) then
     AList.Add('ram:DepartmentName');
-  if TypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(TypeCode) then
     AList.Add('ram:TypeCode');
   if (FTelephoneUniversalCommunication <> nil) and not FTelephoneUniversalCommunication.IsEmpty then
     AList.Add('ram:TelephoneUniversalCommunication');
@@ -5198,12 +5201,12 @@ end;
 
 function TLandrixCIITradeCountry.IsEmpty: Boolean;
 begin
-  Result := (ID = '');
+  Result := LandrixEInvoiceIsBlank(ID);
 end;
 
 procedure TLandrixCIITradeCountry.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if ID <> '' then
+  if not LandrixEInvoiceIsBlank(ID) then
     AList.Add('ram:ID');
 end;
 
@@ -5224,19 +5227,19 @@ end;
 
 function TLandrixCIITradeCurrencyExchange.IsEmpty: Boolean;
 begin
-  Result := (SourceCurrencyCode = '') and
-    (TargetCurrencyCode = '') and
-    (ConversionRate = '') and
+  Result := LandrixEInvoiceIsBlank(SourceCurrencyCode) and
+    LandrixEInvoiceIsBlank(TargetCurrencyCode) and
+    LandrixEInvoiceIsBlank(ConversionRate) and
     CIIDateTimeIsEmpty(ConversionRateDateTime);
 end;
 
 procedure TLandrixCIITradeCurrencyExchange.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if SourceCurrencyCode <> '' then
+  if not LandrixEInvoiceIsBlank(SourceCurrencyCode) then
     AList.Add('ram:SourceCurrencyCode');
-  if TargetCurrencyCode <> '' then
+  if not LandrixEInvoiceIsBlank(TargetCurrencyCode) then
     AList.Add('ram:TargetCurrencyCode');
-  if ConversionRate <> '' then
+  if not LandrixEInvoiceIsBlank(ConversionRate) then
     AList.Add('ram:ConversionRate');
   if not CIIDateTimeIsEmpty(ConversionRateDateTime) then
     AList.Add('ram:ConversionRateDateTime');
@@ -5266,13 +5269,13 @@ end;
 
 function TLandrixCIITradeDeliveryTerms.IsEmpty: Boolean;
 begin
-  Result := (DeliveryTypeCode = '') and
+  Result := LandrixEInvoiceIsBlank(DeliveryTypeCode) and
     ((FRelevantTradeLocation = nil) or FRelevantTradeLocation.IsEmpty);
 end;
 
 procedure TLandrixCIITradeDeliveryTerms.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if DeliveryTypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(DeliveryTypeCode) then
     AList.Add('ram:DeliveryTypeCode');
   if (FRelevantTradeLocation <> nil) and not FRelevantTradeLocation.IsEmpty then
     AList.Add('ram:RelevantTradeLocation');
@@ -5293,15 +5296,15 @@ end;
 
 function TLandrixCIITradeLocation.IsEmpty: Boolean;
 begin
-  Result := (CountryID = '') and
-    (Name = '');
+  Result := LandrixEInvoiceIsBlank(CountryID) and
+    LandrixEInvoiceIsBlank(Name);
 end;
 
 procedure TLandrixCIITradeLocation.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if CountryID <> '' then
+  if not LandrixEInvoiceIsBlank(CountryID) then
     AList.Add('ram:CountryID');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('ram:Name');
 end;
 
@@ -5393,9 +5396,9 @@ function TLandrixCIITradeParty.IsEmpty: Boolean;
 begin
   Result := ((FID = nil) or (FID.Count = 0)) and
     ((FGlobalID = nil) or (FGlobalID.Count = 0)) and
-    (Name = '') and
-    (RoleCode = '') and
-    (Description = '') and
+    LandrixEInvoiceIsBlank(Name) and
+    LandrixEInvoiceIsBlank(RoleCode) and
+    LandrixEInvoiceIsBlank(Description) and
     ((FSpecifiedLegalOrganization = nil) or FSpecifiedLegalOrganization.IsEmpty) and
     ((FDefinedTradeContact = nil) or (FDefinedTradeContact.Count = 0)) and
     ((FPostalTradeAddress = nil) or FPostalTradeAddress.IsEmpty) and
@@ -5409,11 +5412,11 @@ begin
     AList.Add('ram:ID');
   if (FGlobalID <> nil) and (FGlobalID.Count > 0) then
     AList.Add('ram:GlobalID');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('ram:Name');
-  if RoleCode <> '' then
+  if not LandrixEInvoiceIsBlank(RoleCode) then
     AList.Add('ram:RoleCode');
-  if Description <> '' then
+  if not LandrixEInvoiceIsBlank(Description) then
     AList.Add('ram:Description');
   if (FSpecifiedLegalOrganization <> nil) and not FSpecifiedLegalOrganization.IsEmpty then
     AList.Add('ram:SpecifiedLegalOrganization');
@@ -5448,7 +5451,7 @@ begin
   Result := CIIDateTimeIsEmpty(BasisDateTime) and
     CIIMeasureIsEmpty(BasisPeriodMeasure) and
     CIIAmountIsEmpty(BasisAmount) and
-    (CalculationPercent = '') and
+    LandrixEInvoiceIsBlank(CalculationPercent) and
     CIIAmountIsEmpty(ActualDiscountAmount);
 end;
 
@@ -5460,7 +5463,7 @@ begin
     AList.Add('ram:BasisPeriodMeasure');
   if not CIIAmountIsEmpty(BasisAmount) then
     AList.Add('ram:BasisAmount');
-  if CalculationPercent <> '' then
+  if not LandrixEInvoiceIsBlank(CalculationPercent) then
     AList.Add('ram:CalculationPercent');
   if not CIIAmountIsEmpty(ActualDiscountAmount) then
     AList.Add('ram:ActualDiscountAmount');
@@ -5487,7 +5490,7 @@ begin
   Result := CIIDateTimeIsEmpty(BasisDateTime) and
     CIIMeasureIsEmpty(BasisPeriodMeasure) and
     CIIAmountIsEmpty(BasisAmount) and
-    (CalculationPercent = '') and
+    LandrixEInvoiceIsBlank(CalculationPercent) and
     CIIAmountIsEmpty(ActualPenaltyAmount);
 end;
 
@@ -5499,7 +5502,7 @@ begin
     AList.Add('ram:BasisPeriodMeasure');
   if not CIIAmountIsEmpty(BasisAmount) then
     AList.Add('ram:BasisAmount');
-  if CalculationPercent <> '' then
+  if not LandrixEInvoiceIsBlank(CalculationPercent) then
     AList.Add('ram:CalculationPercent');
   if not CIIAmountIsEmpty(ActualPenaltyAmount) then
     AList.Add('ram:ActualPenaltyAmount');
@@ -5552,7 +5555,7 @@ end;
 
 function TLandrixCIITradePaymentTerms.IsEmpty: Boolean;
 begin
-  Result := (Description = '') and
+  Result := LandrixEInvoiceIsBlank(Description) and
     CIIDateTimeIsEmpty(DueDateDateTime) and
     CIIIDIsEmpty(DirectDebitMandateID) and
     CIIAmountIsEmpty(PartialPaymentAmount) and
@@ -5563,7 +5566,7 @@ end;
 
 procedure TLandrixCIITradePaymentTerms.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if Description <> '' then
+  if not LandrixEInvoiceIsBlank(Description) then
     AList.Add('ram:Description');
   if not CIIDateTimeIsEmpty(DueDateDateTime) then
     AList.Add('ram:DueDateDateTime');
@@ -5731,11 +5734,11 @@ begin
     CIIIDIsEmpty(BuyerAssignedID) and
     CIIIDIsEmpty(IndustryAssignedID) and
     CIIIDIsEmpty(ModelID) and
-    (Name = '') and
-    (Description = '') and
+    LandrixEInvoiceIsBlank(Name) and
+    LandrixEInvoiceIsBlank(Description) and
     ((FBatchID = nil) or (FBatchID.Count = 0)) and
-    (BrandName = '') and
-    (ModelName = '') and
+    LandrixEInvoiceIsBlank(BrandName) and
+    LandrixEInvoiceIsBlank(ModelName) and
     ((FApplicableProductCharacteristic = nil) or (FApplicableProductCharacteristic.Count = 0)) and
     ((FDesignatedProductClassification = nil) or (FDesignatedProductClassification.Count = 0)) and
     ((FIndividualTradeProductInstance = nil) or (FIndividualTradeProductInstance.Count = 0)) and
@@ -5758,15 +5761,15 @@ begin
     AList.Add('ram:IndustryAssignedID');
   if not CIIIDIsEmpty(ModelID) then
     AList.Add('ram:ModelID');
-  if Name <> '' then
+  if not LandrixEInvoiceIsBlank(Name) then
     AList.Add('ram:Name');
-  if Description <> '' then
+  if not LandrixEInvoiceIsBlank(Description) then
     AList.Add('ram:Description');
   if (FBatchID <> nil) and (FBatchID.Count > 0) then
     AList.Add('ram:BatchID');
-  if BrandName <> '' then
+  if not LandrixEInvoiceIsBlank(BrandName) then
     AList.Add('ram:BrandName');
-  if ModelName <> '' then
+  if not LandrixEInvoiceIsBlank(ModelName) then
     AList.Add('ram:ModelName');
   if (FApplicableProductCharacteristic <> nil) and (FApplicableProductCharacteristic.Count > 0) then
     AList.Add('ram:ApplicableProductCharacteristic');
@@ -5825,14 +5828,14 @@ end;
 function TLandrixCIITradeSettlementFinancialCard.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(ID) and
-    (CardholderName = '');
+    LandrixEInvoiceIsBlank(CardholderName);
 end;
 
 procedure TLandrixCIITradeSettlementFinancialCard.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIIIDIsEmpty(ID) then
     AList.Add('ram:ID');
-  if CardholderName <> '' then
+  if not LandrixEInvoiceIsBlank(CardholderName) then
     AList.Add('ram:CardholderName');
 end;
 
@@ -6017,8 +6020,8 @@ end;
 
 function TLandrixCIITradeSettlementPaymentMeans.IsEmpty: Boolean;
 begin
-  Result := (TypeCode = '') and
-    (Information = '') and
+  Result := LandrixEInvoiceIsBlank(TypeCode) and
+    LandrixEInvoiceIsBlank(Information) and
     ((FApplicableTradeSettlementFinancialCard = nil) or FApplicableTradeSettlementFinancialCard.IsEmpty) and
     ((FPayerPartyDebtorFinancialAccount = nil) or FPayerPartyDebtorFinancialAccount.IsEmpty) and
     ((FPayeePartyCreditorFinancialAccount = nil) or FPayeePartyCreditorFinancialAccount.IsEmpty) and
@@ -6028,9 +6031,9 @@ end;
 
 procedure TLandrixCIITradeSettlementPaymentMeans.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
-  if TypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(TypeCode) then
     AList.Add('ram:TypeCode');
-  if Information <> '' then
+  if not LandrixEInvoiceIsBlank(Information) then
     AList.Add('ram:Information');
   if (FApplicableTradeSettlementFinancialCard <> nil) and not FApplicableTradeSettlementFinancialCard.IsEmpty then
     AList.Add('ram:ApplicableTradeSettlementFinancialCard');
@@ -6069,25 +6072,25 @@ end;
 function TLandrixCIITradeTax.IsEmpty: Boolean;
 begin
   Result := CIIAmountIsEmpty(CalculatedAmount) and
-    (TypeCode = '') and
-    (ExemptionReason = '') and
+    LandrixEInvoiceIsBlank(TypeCode) and
+    LandrixEInvoiceIsBlank(ExemptionReason) and
     CIIAmountIsEmpty(BasisAmount) and
     CIIAmountIsEmpty(LineTotalBasisAmount) and
     CIIAmountIsEmpty(AllowanceChargeBasisAmount) and
-    (CategoryCode = '') and
+    LandrixEInvoiceIsBlank(CategoryCode) and
     CIICodeIsEmpty(ExemptionReasonCode) and
     CIIDateIsEmpty(TaxPointDate) and
-    (DueDateTypeCode = '') and
-    (RateApplicablePercent = '');
+    LandrixEInvoiceIsBlank(DueDateTypeCode) and
+    LandrixEInvoiceIsBlank(RateApplicablePercent);
 end;
 
 procedure TLandrixCIITradeTax.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIIAmountIsEmpty(CalculatedAmount) then
     AList.Add('ram:CalculatedAmount');
-  if TypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(TypeCode) then
     AList.Add('ram:TypeCode');
-  if ExemptionReason <> '' then
+  if not LandrixEInvoiceIsBlank(ExemptionReason) then
     AList.Add('ram:ExemptionReason');
   if not CIIAmountIsEmpty(BasisAmount) then
     AList.Add('ram:BasisAmount');
@@ -6095,15 +6098,15 @@ begin
     AList.Add('ram:LineTotalBasisAmount');
   if not CIIAmountIsEmpty(AllowanceChargeBasisAmount) then
     AList.Add('ram:AllowanceChargeBasisAmount');
-  if CategoryCode <> '' then
+  if not LandrixEInvoiceIsBlank(CategoryCode) then
     AList.Add('ram:CategoryCode');
   if not CIICodeIsEmpty(ExemptionReasonCode) then
     AList.Add('ram:ExemptionReasonCode');
   if not CIIDateIsEmpty(TaxPointDate) then
     AList.Add('ram:TaxPointDate');
-  if DueDateTypeCode <> '' then
+  if not LandrixEInvoiceIsBlank(DueDateTypeCode) then
     AList.Add('ram:DueDateTypeCode');
-  if RateApplicablePercent <> '' then
+  if not LandrixEInvoiceIsBlank(RateApplicablePercent) then
     AList.Add('ram:RateApplicablePercent');
 end;
 
@@ -6123,14 +6126,14 @@ end;
 function TLandrixCIIUniversalCommunication.IsEmpty: Boolean;
 begin
   Result := CIIIDIsEmpty(URIID) and
-    (CompleteNumber = '');
+    LandrixEInvoiceIsBlank(CompleteNumber);
 end;
 
 procedure TLandrixCIIUniversalCommunication.ListFilledChildren(AList: TLandrixEInvoiceStringList);
 begin
   if not CIIIDIsEmpty(URIID) then
     AList.Add('ram:URIID');
-  if CompleteNumber <> '' then
+  if not LandrixEInvoiceIsBlank(CompleteNumber) then
     AList.Add('ram:CompleteNumber');
 end;
 

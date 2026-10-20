@@ -34,6 +34,7 @@ uses
   LandrixEInvoiceTestModel,
   LandrixEInvoiceTestCompat,
   LandrixEInvoiceTestSpecs,
+  LandrixEInvoiceTestCheck,
   LandrixEInvoiceTestCII,
   LandrixEInvoiceTestCIIProfiles,
   LandrixEInvoiceTestUBL,
@@ -63,6 +64,7 @@ begin
   LandrixEInvoiceTestModel.Register;
   LandrixEInvoiceTestCompat.Register;
   LandrixEInvoiceTestSpecs.Register;
+  LandrixEInvoiceTestCheck.Register;
   LandrixEInvoiceTestCII.Register;
   LandrixEInvoiceTestCIIProfiles.Register;
   LandrixEInvoiceTestUBL.Register;

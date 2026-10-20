@@ -88,7 +88,13 @@ type
       does not allow; it was left out.
       DE: Abbildung: Inhalt des Rechnungsmodells, den die
       Zielspezifikation nicht erlaubt; er wurde weggelassen. }
-    edk_NotAllowed
+    edk_NotAllowed,
+    { Check: the invoice violates a business rule of the target (RuleID
+      names it, e.g. BR-DE-15; LX-... for rules of this library).
+      DE: Pruefung: die Rechnung verletzt eine Geschaeftsregel des Ziels
+      (RuleID nennt sie, z. B. BR-DE-15; LX-... fuer Regeln dieser
+      Bibliothek). }
+    edk_RuleViolation
   );
 
   { How serious a diagnostic is. Errors mean that data was lost or the
@@ -127,6 +133,12 @@ type
     Offset: Int64;
     { English message. DE: Meldungstext (englisch). }
     Message: TLandrixEInvoiceString;
+    { Identifier of the violated rule (edk_RuleViolation, e.g. BR-DE-15 or
+      LX-CC-04); '' for the other kinds. Rule identifiers are stable.
+      DE: Kennung der verletzten Regel (edk_RuleViolation, z. B. BR-DE-15
+      oder LX-CC-04); '' bei den anderen Arten. Regelkennungen sind
+      stabil. }
+    RuleID: TLandrixEInvoiceString;
   end;
 
   { List of diagnostics (owns its entries).
@@ -146,18 +158,22 @@ type
     { True if an entry has the severity eds_Error.
       DE: True, wenn ein Eintrag die Schwere eds_Error hat. }
     function HasErrors: Boolean;
-    { All entries, one per line: "line:column kind path: message".
-      DE: Alle Eintraege, einer je Zeile: "Zeile:Spalte Art Pfad: Text". }
+    { All entries, one per line: "line:column kind path: message", with
+      " [rule]" after the kind when RuleID is set.
+      DE: Alle Eintraege, einer je Zeile: "Zeile:Spalte Art Pfad: Text",
+      mit " [Regel]" nach der Art, wenn RuleID gesetzt ist. }
     function ToText: TLandrixEInvoiceString;
   end;
 
-{ Default severity of a kind: eds_Error for edk_MissingElement and
-  edk_ConversionFailed (invalid output, lost value), eds_Info for
+{ Default severity of a kind: eds_Error for edk_MissingElement,
+  edk_ConversionFailed and edk_RuleViolation (invalid output, lost value;
+  a rule check sets the severity of its rule), eds_Info for
   edk_UnknownCode, eds_Warning otherwise. Content a target does not allow
   (edk_NotAllowed) is a warning: it is left out and the output stays
   valid, so one invoice can be written to several targets.
-  DE: Standard-Schwere einer Art: eds_Error fuer edk_MissingElement und
-  edk_ConversionFailed (ungueltige Ausgabe, verlorener Wert), eds_Info fuer
+  DE: Standard-Schwere einer Art: eds_Error fuer edk_MissingElement,
+  edk_ConversionFailed und edk_RuleViolation (ungueltige Ausgabe, verlorener
+  Wert; eine Regelpruefung setzt die Schwere ihrer Regel), eds_Info fuer
   edk_UnknownCode, sonst eds_Warning. Inhalt, den ein Ziel nicht erlaubt
   (edk_NotAllowed), ist eine Warnung: er wird weggelassen und die Ausgabe
   bleibt gueltig, so laesst sich eine Rechnung in mehrere Ziele
@@ -175,11 +191,11 @@ const
   KindNames: array[TLandrixEInvoiceDiagnosticKind] of TLandrixEInvoiceString = (
     'UnknownElement', 'DuplicateElement', 'UnexpectedText', 'UnknownAttribute',
     'InvalidValue', 'MissingElement', 'SkippedExtension', 'ConversionFailed',
-    'UnknownCode', 'NotMapped', 'NotAllowed');
+    'UnknownCode', 'NotMapped', 'NotAllowed', 'RuleViolation');
 
   DefaultSeverities: array[TLandrixEInvoiceDiagnosticKind] of TLandrixEInvoiceDiagnosticSeverity = (
     eds_Warning, eds_Warning, eds_Warning, eds_Warning, eds_Warning, eds_Error, eds_Warning,
-    eds_Error, eds_Info, eds_Warning, eds_Warning);
+    eds_Error, eds_Info, eds_Warning, eds_Warning, eds_Error);
 
 function LandrixEInvoiceDiagnosticDefaultSeverity(
   AKind: TLandrixEInvoiceDiagnosticKind): TLandrixEInvoiceDiagnosticSeverity;
@@ -243,8 +259,10 @@ begin
   begin
     D := Items[I];
     Result := Result + TLandrixEInvoiceString(IntToStr(D.Line)) + ':' +
-      TLandrixEInvoiceString(IntToStr(D.Column)) + ' ' + KindNames[D.Kind] + ' ' +
-      D.Path + ': ' + D.Message + #13#10;
+      TLandrixEInvoiceString(IntToStr(D.Column)) + ' ' + KindNames[D.Kind];
+    if D.RuleID <> '' then
+      Result := Result + ' [' + D.RuleID + ']';
+    Result := Result + ' ' + D.Path + ': ' + D.Message + #13#10;
   end;
 end;
 

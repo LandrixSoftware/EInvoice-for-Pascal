@@ -460,12 +460,17 @@ const
         w("")
     w("implementation")
     w("")
+    w("uses")
+    w("  LandrixEInvoiceLexical;")
+    w("")
     # record helpers
     for n in m.records():
         p = m.pascal[n]
         w("function %sIsEmpty(const R: %s): Boolean;" % (p[len("TLandrix"):], p))
         w("begin")
-        cond = ["(R.Value = '')"] + ["(R.%s = '')" % f for f, _, _ in m.record_fields(n)]
+        # blank text counts as absent; attributes keep a read element alive
+        # (the syntax model writes back what it read)
+        cond = ["LandrixEInvoiceIsBlank(R.Value)"] + ["(R.%s = '')" % f for f, _, _ in m.record_fields(n)]
         w("  Result := " + " and ".join(cond) + ";")
         w("end;")
         w("")
@@ -580,7 +585,7 @@ end;
             elif k == "record":
                 conds.append("%sIsEmpty(%s)" % (m.pascal[c["type"]][len("TLandrix"):], c["pname"]))
             else:
-                conds.append("(%s = '')" % c["pname"])
+                conds.append("LandrixEInvoiceIsBlank(%s)" % c["pname"])
         w("  Result := " + (" and\n    ".join(conds) if conds else "True") + ";")
         w("end;")
         w("")
@@ -595,7 +600,7 @@ end;
             elif k == "record":
                 cond = "not %sIsEmpty(%s)" % (m.pascal[c["type"]][len("TLandrix"):], c["pname"])
             else:
-                cond = "%s <> ''" % c["pname"]
+                cond = "not LandrixEInvoiceIsBlank(%s)" % c["pname"]
             w("  if %s then" % cond)
             w("    AList.Add('%s');" % m.qname(c))
         w("end;")
@@ -1431,6 +1436,7 @@ uses
 
 uses
   LandrixXmlBase,
+  LandrixEInvoiceLexical,
   LandrixEInvoiceCIIProfiles;
 
 type
@@ -1445,7 +1451,8 @@ type
 
 uses
   LandrixXmlBase,
-  LandrixEInvoiceTypes;
+  LandrixEInvoiceTypes,
+  LandrixEInvoiceLexical;
 
 type
   TCIIWriter = class(TObject)
@@ -1502,7 +1509,9 @@ end;
         p = m.pascal[n]
         w("function %sIsEmpty(const R: %s): Boolean;" % (p[len("TLandrix"):], p))
         w("begin")
-        cond = ["(R.Value = '')"] + ["(R.%s = '')" % f for f, _, _ in m.record_fields(n)]
+        # blank text counts as absent; attributes keep a read element alive
+        # (the syntax model writes back what it read)
+        cond = ["LandrixEInvoiceIsBlank(R.Value)"] + ["(R.%s = '')" % f for f, _, _ in m.record_fields(n)]
         w("  Result := " + " and ".join(cond) + ";")
         w("end;")
         w("")
@@ -1527,7 +1536,7 @@ end;
                 w("  else")
                 w("    Missing(%s + '/@%s')" % (path_inner, a))
             w("  ;")
-        w("  if AValue.Value <> '' then")
+        w("  if not LandrixEInvoiceIsBlank(AValue.Value) then")
         w("    FWriter.TextW(AValue.Value);")
         if m.kind[n] == "wrapper":
             w("  FWriter.EndElement;")
@@ -1600,7 +1609,7 @@ end;
                     w("  if AObject.%s.Count = 0 then" % c["pname"])
                     w("    Missing(%s);" % cpath)
             else:
-                w("  if AObject.%s <> '' then" % c["pname"])
+                w("  if not LandrixEInvoiceIsBlank(AObject.%s) then" % c["pname"])
                 if not ct.startswith("xs:") and m.kind[ct] == "wrapper":
                     inner = m.wrapped[ct][0]
                     w("  begin")

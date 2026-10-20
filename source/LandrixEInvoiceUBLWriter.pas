@@ -74,7 +74,8 @@ implementation
 
 uses
   LandrixXmlBase,
-  LandrixEInvoiceTypes;
+  LandrixEInvoiceTypes,
+  LandrixEInvoiceLexical;
 
 type
   TUBLWriter = class(TObject)
@@ -153,32 +154,32 @@ end;
 
 function UBLAmountIsEmpty(const R: TLandrixUBLAmount): Boolean;
 begin
-  Result := (R.Value = '') and (R.CurrencyID = '') and (R.CurrencyCodeListVersionID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.CurrencyID = '') and (R.CurrencyCodeListVersionID = '');
 end;
 
 function UBLBinaryObjectIsEmpty(const R: TLandrixUBLBinaryObject): Boolean;
 begin
-  Result := (R.Value = '') and (R.Format = '') and (R.MimeCode = '') and (R.EncodingCode = '') and (R.CharacterSetCode = '') and (R.Uri = '') and (R.Filename = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.Format = '') and (R.MimeCode = '') and (R.EncodingCode = '') and (R.CharacterSetCode = '') and (R.Uri = '') and (R.Filename = '');
 end;
 
 function UBLCodeIsEmpty(const R: TLandrixUBLCode): Boolean;
 begin
-  Result := (R.Value = '') and (R.ListID = '') and (R.ListAgencyID = '') and (R.ListAgencyName = '') and (R.ListName = '') and (R.ListVersionID = '') and (R.Name = '') and (R.LanguageID = '') and (R.ListURI = '') and (R.ListSchemeURI = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.ListID = '') and (R.ListAgencyID = '') and (R.ListAgencyName = '') and (R.ListName = '') and (R.ListVersionID = '') and (R.Name = '') and (R.LanguageID = '') and (R.ListURI = '') and (R.ListSchemeURI = '');
 end;
 
 function UBLIDIsEmpty(const R: TLandrixUBLID): Boolean;
 begin
-  Result := (R.Value = '') and (R.SchemeID = '') and (R.SchemeName = '') and (R.SchemeAgencyID = '') and (R.SchemeAgencyName = '') and (R.SchemeVersionID = '') and (R.SchemeDataURI = '') and (R.SchemeURI = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.SchemeID = '') and (R.SchemeName = '') and (R.SchemeAgencyID = '') and (R.SchemeAgencyName = '') and (R.SchemeVersionID = '') and (R.SchemeDataURI = '') and (R.SchemeURI = '');
 end;
 
 function UBLMeasureIsEmpty(const R: TLandrixUBLMeasure): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '') and (R.UnitCodeListVersionID = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '') and (R.UnitCodeListVersionID = '');
 end;
 
 function UBLQuantityIsEmpty(const R: TLandrixUBLQuantity): Boolean;
 begin
-  Result := (R.Value = '') and (R.UnitCode = '') and (R.UnitCodeListID = '') and (R.UnitCodeListAgencyID = '') and (R.UnitCodeListAgencyName = '');
+  Result := LandrixEInvoiceIsBlank(R.Value) and (R.UnitCode = '') and (R.UnitCodeListID = '') and (R.UnitCodeListAgencyID = '') and (R.UnitCodeListAgencyName = '');
 end;
 
 procedure TUBLWriter.WriteAmount(const AQName: TLandrixXmlUtf8; const AValue: TLandrixUBLAmount; const APath: TLandrixEInvoiceString);
@@ -190,7 +191,7 @@ begin
     Missing(APath + '/@currencyID');
   if AValue.CurrencyCodeListVersionID <> '' then
     FWriter.AttributeW('currencyCodeListVersionID', AValue.CurrencyCodeListVersionID);
-  if AValue.Value <> '' then
+  if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
 end;
@@ -212,7 +213,7 @@ begin
     FWriter.AttributeW('uri', AValue.Uri);
   if AValue.Filename <> '' then
     FWriter.AttributeW('filename', AValue.Filename);
-  if AValue.Value <> '' then
+  if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
 end;
@@ -238,7 +239,7 @@ begin
     FWriter.AttributeW('listURI', AValue.ListURI);
   if AValue.ListSchemeURI <> '' then
     FWriter.AttributeW('listSchemeURI', AValue.ListSchemeURI);
-  if AValue.Value <> '' then
+  if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
 end;
@@ -260,7 +261,7 @@ begin
     FWriter.AttributeW('schemeDataURI', AValue.SchemeDataURI);
   if AValue.SchemeURI <> '' then
     FWriter.AttributeW('schemeURI', AValue.SchemeURI);
-  if AValue.Value <> '' then
+  if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
 end;
@@ -274,7 +275,7 @@ begin
     Missing(APath + '/@unitCode');
   if AValue.UnitCodeListVersionID <> '' then
     FWriter.AttributeW('unitCodeListVersionID', AValue.UnitCodeListVersionID);
-  if AValue.Value <> '' then
+  if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
 end;
@@ -290,7 +291,7 @@ begin
     FWriter.AttributeW('unitCodeListAgencyID', AValue.UnitCodeListAgencyID);
   if AValue.UnitCodeListAgencyName <> '' then
     FWriter.AttributeW('unitCodeListAgencyName', AValue.UnitCodeListAgencyName);
-  if AValue.Value <> '' then
+  if not LandrixEInvoiceIsBlank(AValue.Value) then
     FWriter.TextW(AValue.Value);
   FWriter.EndElement;
 end;
@@ -299,15 +300,15 @@ procedure TUBLWriter.WriteAddress(AObject: TLandrixUBLAddress; const APath: TLan
 var
   I: TLandrixEInvoiceListIndex;
 begin
-  if AObject.StreetName <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.StreetName) then
     FWriter.ElementW('cbc:StreetName', AObject.StreetName);
-  if AObject.AdditionalStreetName <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.AdditionalStreetName) then
     FWriter.ElementW('cbc:AdditionalStreetName', AObject.AdditionalStreetName);
-  if AObject.CityName <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.CityName) then
     FWriter.ElementW('cbc:CityName', AObject.CityName);
-  if AObject.PostalZone <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.PostalZone) then
     FWriter.ElementW('cbc:PostalZone', AObject.PostalZone);
-  if AObject.CountrySubentity <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.CountrySubentity) then
     FWriter.ElementW('cbc:CountrySubentity', AObject.CountrySubentity);
   for I := 0 to AObject.AddressLine.Count - 1 do
   begin
@@ -325,7 +326,7 @@ end;
 
 procedure TUBLWriter.WriteAddressLine(AObject: TLandrixUBLAddressLine; const APath: TLandrixEInvoiceString);
 begin
-  if AObject.Line <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Line) then
     FWriter.ElementW('cbc:Line', AObject.Line)
   else
     Missing(APath + '/cbc:Line');
@@ -335,7 +336,7 @@ procedure TUBLWriter.WriteAllowanceCharge(AObject: TLandrixUBLAllowanceCharge; c
 var
   I: TLandrixEInvoiceListIndex;
 begin
-  if AObject.ChargeIndicator <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.ChargeIndicator) then
     FWriter.ElementW('cbc:ChargeIndicator', AObject.ChargeIndicator)
   else
     Missing(APath + '/cbc:ChargeIndicator');
@@ -343,7 +344,7 @@ begin
     WriteCode('cbc:AllowanceChargeReasonCode', AObject.AllowanceChargeReasonCode);
   for I := 0 to AObject.AllowanceChargeReason.Count - 1 do
     FWriter.ElementW('cbc:AllowanceChargeReason', AObject.AllowanceChargeReason[I]);
-  if AObject.MultiplierFactorNumeric <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.MultiplierFactorNumeric) then
     FWriter.ElementW('cbc:MultiplierFactorNumeric', AObject.MultiplierFactorNumeric);
   if not UBLAmountIsEmpty(AObject.Amount) then
     WriteAmount('cbc:Amount', AObject.Amount, APath + '/cbc:Amount')
@@ -397,7 +398,7 @@ begin
     WriteID('cbc:NetworkID', AObject.NetworkID)
   else
     Missing(APath + '/cbc:NetworkID');
-  if AObject.HolderName <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.HolderName) then
     FWriter.ElementW('cbc:HolderName', AObject.HolderName);
 end;
 
@@ -427,11 +428,11 @@ end;
 
 procedure TUBLWriter.WriteContact(AObject: TLandrixUBLContact);
 begin
-  if AObject.Name <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('cbc:Name', AObject.Name);
-  if AObject.Telephone <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Telephone) then
     FWriter.ElementW('cbc:Telephone', AObject.Telephone);
-  if AObject.ElectronicMail <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.ElectronicMail) then
     FWriter.ElementW('cbc:ElectronicMail', AObject.ElectronicMail);
 end;
 
@@ -455,11 +456,11 @@ begin
     WriteID('cbc:ID', AObject.ID)
   else
     Missing(APath + '/cbc:ID');
-  if AObject.IssueDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.IssueDate) then
     FWriter.ElementW('cbc:IssueDate', AObject.IssueDate)
   else
     Missing(APath + '/cbc:IssueDate');
-  if AObject.TaxPointDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.TaxPointDate) then
     FWriter.ElementW('cbc:TaxPointDate', AObject.TaxPointDate);
   if not UBLCodeIsEmpty(AObject.CreditNoteTypeCode) then
     WriteCode('cbc:CreditNoteTypeCode', AObject.CreditNoteTypeCode);
@@ -469,9 +470,9 @@ begin
     WriteCode('cbc:DocumentCurrencyCode', AObject.DocumentCurrencyCode);
   if not UBLCodeIsEmpty(AObject.TaxCurrencyCode) then
     WriteCode('cbc:TaxCurrencyCode', AObject.TaxCurrencyCode);
-  if AObject.AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.AccountingCost) then
     FWriter.ElementW('cbc:AccountingCost', AObject.AccountingCost);
-  if AObject.BuyerReference <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.BuyerReference) then
     FWriter.ElementW('cbc:BuyerReference', AObject.BuyerReference);
   for I := 0 to AObject.InvoicePeriod.Count - 1 do
   begin
@@ -602,7 +603,7 @@ begin
     WriteQuantity('cbc:CreditedQuantity', AObject.CreditedQuantity);
   if not UBLAmountIsEmpty(AObject.LineExtensionAmount) then
     WriteAmount('cbc:LineExtensionAmount', AObject.LineExtensionAmount, APath + '/cbc:LineExtensionAmount');
-  if AObject.AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.AccountingCost) then
     FWriter.ElementW('cbc:AccountingCost', AObject.AccountingCost);
   for I := 0 to AObject.InvoicePeriod.Count - 1 do
   begin
@@ -666,7 +667,7 @@ end;
 
 procedure TUBLWriter.WriteDelivery(AObject: TLandrixUBLDelivery; const APath: TLandrixEInvoiceString);
 begin
-  if AObject.ActualDeliveryDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.ActualDeliveryDate) then
     FWriter.ElementW('cbc:ActualDeliveryDate', AObject.ActualDeliveryDate);
   if not AObject.DeliveryLocation.IsEmpty then
   begin
@@ -696,11 +697,11 @@ begin
     WriteID('cbc:ID', AObject.ID)
   else
     Missing(APath + '/cbc:ID');
-  if AObject.IssueDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.IssueDate) then
     FWriter.ElementW('cbc:IssueDate', AObject.IssueDate);
   if not UBLCodeIsEmpty(AObject.DocumentTypeCode) then
     WriteCode('cbc:DocumentTypeCode', AObject.DocumentTypeCode);
-  if AObject.DocumentType <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.DocumentType) then
     FWriter.ElementW('cbc:DocumentType', AObject.DocumentType);
   for I := 0 to AObject.DocumentDescription.Count - 1 do
     FWriter.ElementW('cbc:DocumentDescription', AObject.DocumentDescription[I]);
@@ -722,7 +723,7 @@ procedure TUBLWriter.WriteFinancialAccount(AObject: TLandrixUBLFinancialAccount)
 begin
   if not UBLIDIsEmpty(AObject.ID) then
     WriteID('cbc:ID', AObject.ID);
-  if AObject.Name <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('cbc:Name', AObject.Name);
   if not AObject.FinancialInstitutionBranch.IsEmpty then
   begin
@@ -746,25 +747,25 @@ begin
     WriteID('cbc:ID', AObject.ID)
   else
     Missing(APath + '/cbc:ID');
-  if AObject.IssueDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.IssueDate) then
     FWriter.ElementW('cbc:IssueDate', AObject.IssueDate)
   else
     Missing(APath + '/cbc:IssueDate');
-  if AObject.DueDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.DueDate) then
     FWriter.ElementW('cbc:DueDate', AObject.DueDate);
   if not UBLCodeIsEmpty(AObject.InvoiceTypeCode) then
     WriteCode('cbc:InvoiceTypeCode', AObject.InvoiceTypeCode);
   for I := 0 to AObject.Note.Count - 1 do
     FWriter.ElementW('cbc:Note', AObject.Note[I]);
-  if AObject.TaxPointDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.TaxPointDate) then
     FWriter.ElementW('cbc:TaxPointDate', AObject.TaxPointDate);
   if not UBLCodeIsEmpty(AObject.DocumentCurrencyCode) then
     WriteCode('cbc:DocumentCurrencyCode', AObject.DocumentCurrencyCode);
   if not UBLCodeIsEmpty(AObject.TaxCurrencyCode) then
     WriteCode('cbc:TaxCurrencyCode', AObject.TaxCurrencyCode);
-  if AObject.AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.AccountingCost) then
     FWriter.ElementW('cbc:AccountingCost', AObject.AccountingCost);
-  if AObject.BuyerReference <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.BuyerReference) then
     FWriter.ElementW('cbc:BuyerReference', AObject.BuyerReference);
   for I := 0 to AObject.InvoicePeriod.Count - 1 do
   begin
@@ -903,7 +904,7 @@ begin
     WriteAmount('cbc:LineExtensionAmount', AObject.LineExtensionAmount, APath + '/cbc:LineExtensionAmount')
   else
     Missing(APath + '/cbc:LineExtensionAmount');
-  if AObject.AccountingCost <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.AccountingCost) then
     FWriter.ElementW('cbc:AccountingCost', AObject.AccountingCost);
   for I := 0 to AObject.InvoicePeriod.Count - 1 do
   begin
@@ -952,7 +953,7 @@ var
 begin
   for I := 0 to AObject.Description.Count - 1 do
     FWriter.ElementW('cbc:Description', AObject.Description[I]);
-  if AObject.Name <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('cbc:Name', AObject.Name);
   if not AObject.BuyersItemIdentification.IsEmpty then
   begin
@@ -1008,11 +1009,11 @@ end;
 
 procedure TUBLWriter.WriteItemProperty(AObject: TLandrixUBLItemProperty; const APath: TLandrixEInvoiceString);
 begin
-  if AObject.Name <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('cbc:Name', AObject.Name)
   else
     Missing(APath + '/cbc:Name');
-  if AObject.Value <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Value) then
     FWriter.ElementW('cbc:Value', AObject.Value);
 end;
 
@@ -1128,17 +1129,17 @@ end;
 
 procedure TUBLWriter.WritePartyLegalEntity(AObject: TLandrixUBLPartyLegalEntity);
 begin
-  if AObject.RegistrationName <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.RegistrationName) then
     FWriter.ElementW('cbc:RegistrationName', AObject.RegistrationName);
   if not UBLIDIsEmpty(AObject.CompanyID) then
     WriteID('cbc:CompanyID', AObject.CompanyID);
-  if AObject.CompanyLegalForm <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.CompanyLegalForm) then
     FWriter.ElementW('cbc:CompanyLegalForm', AObject.CompanyLegalForm);
 end;
 
 procedure TUBLWriter.WritePartyName(AObject: TLandrixUBLPartyName; const APath: TLandrixEInvoiceString);
 begin
-  if AObject.Name <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Name) then
     FWriter.ElementW('cbc:Name', AObject.Name)
   else
     Missing(APath + '/cbc:Name');
@@ -1183,7 +1184,7 @@ begin
     WriteCode('cbc:PaymentMeansCode', AObject.PaymentMeansCode)
   else
     Missing(APath + '/cbc:PaymentMeansCode');
-  if AObject.PaymentDueDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.PaymentDueDate) then
     FWriter.ElementW('cbc:PaymentDueDate', AObject.PaymentDueDate);
   for I := 0 to AObject.PaymentID.Count - 1 do
     WriteID('cbc:PaymentID', AObject.PaymentID[I]);
@@ -1219,13 +1220,13 @@ procedure TUBLWriter.WritePeriod(AObject: TLandrixUBLPeriod; const APath: TLandr
 var
   I: TLandrixEInvoiceListIndex;
 begin
-  if AObject.StartDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.StartDate) then
     FWriter.ElementW('cbc:StartDate', AObject.StartDate);
-  if AObject.StartTime <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.StartTime) then
     FWriter.ElementW('cbc:StartTime', AObject.StartTime);
-  if AObject.EndDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.EndDate) then
     FWriter.ElementW('cbc:EndDate', AObject.EndDate);
-  if AObject.EndTime <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.EndTime) then
     FWriter.ElementW('cbc:EndTime', AObject.EndTime);
   if not UBLMeasureIsEmpty(AObject.DurationMeasure) then
     WriteMeasure('cbc:DurationMeasure', AObject.DurationMeasure, APath + '/cbc:DurationMeasure');
@@ -1305,9 +1306,9 @@ begin
     WriteCode('cbc:ResponseCode', AObject.ResponseCode);
   for I := 0 to AObject.Description.Count - 1 do
     FWriter.ElementW('cbc:Description', AObject.Description[I]);
-  if AObject.EffectiveDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.EffectiveDate) then
     FWriter.ElementW('cbc:EffectiveDate', AObject.EffectiveDate);
-  if AObject.EffectiveTime <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.EffectiveTime) then
     FWriter.ElementW('cbc:EffectiveTime', AObject.EffectiveTime);
   for I := 0 to AObject.Status.Count - 1 do
   begin
@@ -1323,9 +1324,9 @@ var
 begin
   if not UBLCodeIsEmpty(AObject.ConditionCode) then
     WriteCode('cbc:ConditionCode', AObject.ConditionCode);
-  if AObject.ReferenceDate <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.ReferenceDate) then
     FWriter.ElementW('cbc:ReferenceDate', AObject.ReferenceDate);
-  if AObject.ReferenceTime <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.ReferenceTime) then
     FWriter.ElementW('cbc:ReferenceTime', AObject.ReferenceTime);
   for I := 0 to AObject.Description.Count - 1 do
     FWriter.ElementW('cbc:Description', AObject.Description[I]);
@@ -1337,11 +1338,11 @@ begin
     WriteID('cbc:SequenceID', AObject.SequenceID);
   for I := 0 to AObject.Text.Count - 1 do
     FWriter.ElementW('cbc:Text', AObject.Text[I]);
-  if AObject.IndicationIndicator <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.IndicationIndicator) then
     FWriter.ElementW('cbc:IndicationIndicator', AObject.IndicationIndicator);
-  if AObject.Percent <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Percent) then
     FWriter.ElementW('cbc:Percent', AObject.Percent);
-  if AObject.ReliabilityPercent <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.ReliabilityPercent) then
     FWriter.ElementW('cbc:ReliabilityPercent', AObject.ReliabilityPercent);
   for I := 0 to AObject.Condition.Count - 1 do
   begin
@@ -1367,7 +1368,7 @@ var
 begin
   if not UBLIDIsEmpty(AObject.ID) then
     WriteID('cbc:ID', AObject.ID);
-  if AObject.Percent <> '' then
+  if not LandrixEInvoiceIsBlank(AObject.Percent) then
     FWriter.ElementW('cbc:Percent', AObject.Percent);
   if not UBLCodeIsEmpty(AObject.TaxExemptionReasonCode) then
     WriteCode('cbc:TaxExemptionReasonCode', AObject.TaxExemptionReasonCode);

@@ -295,9 +295,7 @@ uses
   LandrixXmlWriter,
   LandrixEInvoiceTypes,
   LandrixEInvoiceCodes,
-  LandrixEInvoiceLexical,
-  LandrixEInvoiceRules,
-  LandrixEInvoiceCalc,
+  LandrixEInvoiceCheck,
   LandrixEInvoiceCII,
   LandrixEInvoiceCIIReader,
   LandrixEInvoiceCIIWriter,
@@ -686,118 +684,6 @@ end;
 
 { --- ConsistencyCheck --------------------------------------------------------- }
 
-function HasSubInvoiceLines(ALines: TLandrixInvoiceLines): Boolean;
-var
-  I: TLandrixEInvoiceListIndex;
-begin
-  Result := True;
-  for I := 0 to ALines.Count - 1 do
-    if ALines[I].SubInvoiceLines.Count > 0 then
-      Exit;
-  Result := False;
-end;
-
-{ Top level only: an INFORMATION line there would count outside EXTENDED.
-  DE: Nur oberste Ebene: dort wuerde eine INFORMATION-Position ausserhalb
-  von EXTENDED mitgezaehlt. }
-function HasInformationLines(ALines: TLandrixInvoiceLines): Boolean;
-var
-  I: TLandrixEInvoiceListIndex;
-begin
-  Result := True;
-  for I := 0 to ALines.Count - 1 do
-    if ALines[I].LineStatusReasonCode = ilsrc_Information then
-      Exit;
-  Result := False;
-end;
-
-{ BR-FXEXT-08: a GROUP amount equals the sum of its DETAIL and GROUP sub
-  lines, compared on the cent amounts that are written.
-  DE: BR-FXEXT-08: Ein GROUP-Betrag ist die Summe seiner DETAIL- und
-  GROUP-Unterpositionen, verglichen auf den Centbetraegen, die geschrieben
-  werden. }
-function CentAmount(AValue: Currency): Currency;
-var
-  Rounded: Boolean;
-begin
-  if not LandrixEInvoiceTryLexicalToCurrency(LandrixEInvoiceAmountToLexical(AValue), Result, Rounded) then
-    Result := AValue;
-end;
-
-function HasGroupAmountMismatch(ALines: TLandrixInvoiceLines; AIsSubLine: Boolean): Boolean;
-var
-  I, K: TLandrixEInvoiceListIndex;
-  Sum: Currency;
-begin
-  Result := True;
-  for I := 0 to ALines.Count - 1 do
-  begin
-    if LandrixEInvoiceLineStatusOf(ALines[I], AIsSubLine) = ilsrc_Group then
-    begin
-      Sum := 0;
-      for K := 0 to ALines[I].SubInvoiceLines.Count - 1 do
-        if LandrixEInvoiceLineStatusOf(ALines[I].SubInvoiceLines[K], True) in [ilsrc_Detail, ilsrc_Group] then
-          Sum := Sum + CentAmount(ALines[I].SubInvoiceLines[K].LineAmount);
-      if CentAmount(Sum) <> CentAmount(ALines[I].LineAmount) then
-        Exit;
-    end;
-    if HasGroupAmountMismatch(ALines[I].SubInvoiceLines, True) then
-      Exit;
-  end;
-  Result := False;
-end;
-
-{ An explicit DETAIL line with sub lines: EXTENDED counts both levels, UBL
-  only the parent. DE: Eine ausdrueckliche DETAIL-Position mit
-  Unterpositionen: EXTENDED zaehlt beide Ebenen, UBL nur die Oberposition. }
-function HasDetailWithSubInvoiceLines(ALines: TLandrixInvoiceLines): Boolean;
-var
-  I: TLandrixEInvoiceListIndex;
-begin
-  Result := True;
-  for I := 0 to ALines.Count - 1 do
-    if ((ALines[I].LineStatusReasonCode = ilsrc_Detail) and (ALines[I].SubInvoiceLines.Count > 0)) or
-       HasDetailWithSubInvoiceLines(ALines[I].SubInvoiceLines) then
-      Exit;
-  Result := False;
-end;
-
-function HasLineDeliveryData(ALines: TLandrixInvoiceLines): Boolean;
-var
-  I: TLandrixEInvoiceListIndex;
-begin
-  Result := True;
-  for I := 0 to ALines.Count - 1 do
-    if (ALines[I].DeliveryNoteNumber <> '') or (ALines[I].DeliveryNoteLineID <> '') or
-       (ALines[I].DeliveryNoteDate > 0) or (ALines[I].ActualDeliveryDate > 0) or
-       HasLineDeliveryData(ALines[I].SubInvoiceLines) then
-      Exit;
-  Result := False;
-end;
-
-function CountPayments(AInvoice: TLandrixInvoice; ACode: TLandrixInvoicePaymentMeansCode): Integer;
-var
-  I: TLandrixEInvoiceListIndex;
-begin
-  Result := 0;
-  for I := 0 to AInvoice.PaymentTypes.Count - 1 do
-    if AInvoice.PaymentTypes[I].PaymentMeansCode = ACode then
-      Inc(Result);
-end;
-
-{ Peppol: a scheme from the EAS code list is mandatory, 'EM' is none, and
-  the default 'EM' for an empty scheme is not applied (rule table).
-  DE: Peppol: ein Schema aus der EAS-Codeliste ist Pflicht, 'EM' ist
-  keines, und die Vorgabe 'EM' fuer ein leeres Schema gilt nicht
-  (Regel-Tabelle). }
-function BadElectronicAddress(AParty: TLandrixInvoiceAccountingParty; AVersion: TXRechnungVersion;
-  ANoDefaultEM: Boolean): Boolean;
-begin
-  Result := (AParty.ElectronicAddressSellerBuyer <> '') and
-    (((AVersion = PeppolBillingVersion_30) and (AParty.ElectronicAddressSellerBuyerSchemeID = 'EM')) or
-     (ANoDefaultEM and (AParty.ElectronicAddressSellerBuyerSchemeID = '')));
-end;
-
 class function TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo(_Version: TXRechnungVersion): TXRechnungString;
 var
   Spec: TLandrixEInvoiceSpec;
@@ -826,67 +712,36 @@ begin
   Result := ConsistencyCheck(_Invoice, _Version, ErrorCode);
 end;
 
-{ The checks of XRechnung-for-Delphi in their order. The five that have a
-  row in the rule table ask it; for a version that cannot be written
-  (Unknown, ZUGFeRD 1, XRechnung 2.x) third-party payments and line
-  delivery data fail as before. The others are kept as they were until
-  phase 2 moves them into the table.
-  DE: Die Pruefungen von XRechnung-for-Delphi in ihrer Reihenfolge. Die
-  fuenf mit einer Zeile in der Regel-Tabelle fragen sie; fuer eine nicht
-  schreibbare Version (Unknown, ZUGFeRD 1, XRechnung 2.x) scheitern
-  Zahlungen Dritter und Lieferdaten je Position wie bisher. Die uebrigen
-  bleiben, wie sie waren, bis Phase 2 sie in die Tabelle uebernimmt. }
+{ The checks of XRechnung-for-Delphi in their order: the rules LX-CC-01 to
+  LX-CC-12 of LandrixEInvoiceCheck, LX-CC-nn being the old code nn. A
+  version that cannot be written (Unknown, ZUGFeRD 1, XRechnung 2.x) is
+  checked against the empty entry, so third-party payments and line
+  delivery data fail as before.
+  DE: Die Pruefungen von XRechnung-for-Delphi in ihrer Reihenfolge: die
+  Regeln LX-CC-01 bis LX-CC-12 aus LandrixEInvoiceCheck, LX-CC-nn ist der
+  alte Code nn. Eine nicht schreibbare Version (Unknown, ZUGFeRD 1,
+  XRechnung 2.x) wird gegen den leeren Eintrag geprueft, Zahlungen Dritter
+  und Lieferdaten je Position scheitern also wie bisher. }
 class function TXRechnungInvoiceAdapter.ConsistencyCheck(_Invoice: TLandrixInvoice;
   _Version: TXRechnungVersion; out _ErrorCode: Integer): Boolean;
+const
+  RuleIDs: array[ccNoPaymentsCount..ccSubInvoiceLineAmountMismatch] of string = (
+    'LX-CC-01', 'LX-CC-02', 'LX-CC-03', 'LX-CC-04', 'LX-CC-05', 'LX-CC-06',
+    'LX-CC-07', 'LX-CC-08', 'LX-CC-09', 'LX-CC-10', 'LX-CC-11', 'LX-CC-12');
 var
   Spec: TLandrixEInvoiceSpec;
-  NoDefaultEM, Writable: Boolean;
+  Code: Integer;
 begin
-  Writable := SpecOf(_Version, Spec);
-  Result := False;
-  if (_Invoice.PaymentTypes.Count = 0) and (_Version <> ZUGFeRDEN16931Version_250) then
-    _ErrorCode := ccNoPaymentsCount
-  else if (_Version in [XRechnungVersion_30x_UBL, XRechnungVersion_30x_UNCEFACT]) and
-    (_Invoice.InvoiceTypeCode in [itc_DebitnoteRelatedToFinancialAdjustments, itc_SelfBilledCreditNote,
-     itc_DebitNote, itc_PrepaymentInvoice, itc_Cancellation]) then
-    _ErrorCode := ccInvoiceTypeNotSupported
-  else if (_Invoice.PrecedingInvoiceReferences.Count > 1) and
-    (LandrixEInvoiceRuleLevel(Spec, LandrixEInvoiceRuleMultiplePrecedingInvoices) = erl_Forbidden) then
-    _ErrorCode := ccTooManyPrecedingInvoices
-  else if CountPayments(_Invoice, ipmc_SEPADirectDebit) > 1 then
-    _ErrorCode := ccTooManySEPADirectDebit
-  else if CountPayments(_Invoice, ipmc_CreditCard) > 1 then
-    _ErrorCode := ccTooManyCreditCard
-  else if (_Invoice.AccountingSupplierParty.VATCompanyID = '') and (_Invoice.AccountingSupplierParty.CompanyID = '') then
-    _ErrorCode := ccNoBT31BT30
-  else if (_Invoice.AccountingSupplierParty.VATCompanyID = '') and
-    (_Invoice.AccountingSupplierParty.VATCompanyNumber = '') then
-    _ErrorCode := ccNoBT31BT32
-  else if (_Invoice.PrepaidPayments.Count > 0) and (not Writable or
-    (LandrixEInvoiceRuleLevel(Spec, LandrixEInvoiceRuleThirdPartyPayments) = erl_Forbidden)) then
-    _ErrorCode := ccPrepaidPaymentNotSupported
-  else
-  begin
-    NoDefaultEM := LandrixEInvoiceRuleLevel(Spec, LandrixEInvoiceRuleElectronicAddressDefaultEM) = erl_Forbidden;
-    if BadElectronicAddress(_Invoice.AccountingSupplierParty, _Version, NoDefaultEM) or
-       BadElectronicAddress(_Invoice.AccountingCustomerParty, _Version, NoDefaultEM) then
-      _ErrorCode := ccNoEMUnderPeppol
-    else if HasLineDeliveryData(_Invoice.InvoiceLines) and (not Writable or
-      (LandrixEInvoiceRuleLevel(Spec, LandrixEInvoiceRuleLineDelivery) = erl_Forbidden)) then
-      _ErrorCode := ccLineDeliveryOnlyExtended
-    else if (HasSubInvoiceLines(_Invoice.InvoiceLines) and
-       (LandrixEInvoiceRuleLevel(Spec, LandrixEInvoiceRuleLineSubLines) = erl_Forbidden)) or
-      ((_Version <> ZUGFeRDExtendedVersion_250) and
-       (HasInformationLines(_Invoice.InvoiceLines) or HasDetailWithSubInvoiceLines(_Invoice.InvoiceLines))) then
-      _ErrorCode := ccSubInvoiceLinesNotSupported
-    else if (_Version = ZUGFeRDExtendedVersion_250) and HasGroupAmountMismatch(_Invoice.InvoiceLines, False) then
-      _ErrorCode := ccSubInvoiceLineAmountMismatch
-    else
+  SpecOf(_Version, Spec);
+  for Code := Low(RuleIDs) to High(RuleIDs) do
+    if not LandrixEInvoiceCheckRule(_Invoice, Spec, TLandrixEInvoiceString(RuleIDs[Code]), nil) then
     begin
-      _ErrorCode := ccOK;
-      Result := True;
+      _ErrorCode := Code;
+      Result := False;
+      Exit;
     end;
-  end;
+  _ErrorCode := ccOK;
+  Result := True;
 end;
 
 class procedure TXRechnungInvoiceAdapter.CorrectDueDateIfNotDefined(_Invoice: TLandrixInvoice);

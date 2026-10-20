@@ -246,7 +246,21 @@ Supported invoice standards are documented per release.
   `ZUGFERD_INVOICE_PDF_SCHEMA`, `TXRechnungInvoiceAdapter.ZUGFeRDPdfXmpInfo` and `ZUGFeRDPdfFilename`
   as in XRechnung-for-Delphi.
 
+- `LandrixEInvoiceIsBlank` (empty or XML white space only).
+- `LandrixEInvoiceCheck`: business rule checks of an invoice against a target.
+  `LandrixEInvoiceCheckInvoice` runs every rule that applies, `LandrixEInvoiceCheckRule` one rule
+  by its identifier; a violation is reported as the new diagnostic kind `edk_RuleViolation` with the
+  rule in the new field `TLandrixEInvoiceDiagnostic.RuleID` (official identifiers such as BR-DE-15,
+  `LX-...` for rules of this library; identifiers are stable). The checks of
+  `TXRechnungInvoiceAdapter.ConsistencyCheck` are the rules `LX-CC-01` to `LX-CC-12` (number = old
+  code); they serve the compatibility layer only. Further rules follow during phase 2.
+
 ### Changed
+- Text that consists of XML white space only counts as absent, as `normalize-space()` in the
+  Schematron rules (new `LandrixEInvoiceIsBlank`): the generated CII and UBL writers do not write
+  such text (a required element is reported as missing), the mappers treat it like an empty field
+  (no defaults or fallbacks from it, a blank note is no note). The syntax models still write back
+  what they read, including elements with attributes and no text.
 - Unit code XSA is `iuc_sack` (as in XRechnung-for-Delphi); the free texts sack, saecke and sck
   mean XSA (sack) instead of XBG, beutel is XBG (bag).
 - Factur-X EXTENDED logistics service charges (BT-X-271 to BT-X-274) are read as document level

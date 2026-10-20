@@ -175,6 +175,20 @@ type
 
 { --- views ------------------------------------------------------------------ }
 
+{ Blank text (empty or XML white space only) counts as absent, as
+  normalize-space() in the Schematron rules (LandrixEInvoiceIsBlank).
+  DE: Leerer Text (leer oder nur XML-Leerraum) gilt als nicht vorhanden,
+  wie normalize-space() in den Schematron-Regeln. }
+function Blank(const S: TLandrixEInvoiceString): Boolean;
+begin
+  Result := LandrixEInvoiceIsBlank(S);
+end;
+
+function Present(const S: TLandrixEInvoiceString): Boolean;
+begin
+  Result := not LandrixEInvoiceIsBlank(S);
+end;
+
 function InvoiceDocument(AInvoice: TLandrixUBLInvoice): TUBLDocument;
 begin
   Result.Invoice := AInvoice;
@@ -424,9 +438,9 @@ end;
 
 function AddressSet(AAddress: TLandrixInvoiceAddress): Boolean;
 begin
-  Result := (AAddress.StreetName <> '') or (AAddress.AdditionalStreetName <> '') or
-    (AAddress.AddressLine <> '') or (AAddress.City <> '') or (AAddress.PostalZone <> '') or
-    (AAddress.CountrySubentity <> '') or (AAddress.CountryCode <> '');
+  Result := Present(AAddress.StreetName) or Present(AAddress.AdditionalStreetName) or
+    Present(AAddress.AddressLine) or Present(AAddress.City) or Present(AAddress.PostalZone) or
+    Present(AAddress.CountrySubentity) or Present(AAddress.CountryCode);
 end;
 
 { ASCII case-insensitive comparison without a detour through string.
@@ -481,7 +495,7 @@ end;
   DE: Extension-Codes XR01 bis XR03 als Kennungsschema. }
 function IsExtensionScheme(const AValue, AScheme: TLandrixEInvoiceString): Boolean;
 begin
-  Result := (AValue <> '') and (SameAscii(AScheme, 'XR01') or SameAscii(AScheme, 'XR02') or
+  Result := Present(AValue) and (SameAscii(AScheme, 'XR01') or SameAscii(AScheme, 'XR02') or
     SameAscii(AScheme, 'XR03'));
 end;
 
@@ -581,13 +595,13 @@ end;
   sie gesetzt ist, sonst wird der ...Other-Text geschrieben. }
 function TUBLWriteMapper.Code(const AEnumText, AOther, APath: TLandrixEInvoiceString): TLandrixEInvoiceString;
 begin
-  if AEnumText = '' then
+  if Blank(AEnumText) then
   begin
     Result := AOther;
     Exit;
   end;
   Result := AEnumText;
-  if (AOther <> '') and (AOther <> AEnumText) then
+  if Present(AOther) and (AOther <> AEnumText) then
     Report(edk_UnknownCode, APath, 'code ' + AEnumText + ' written; the other code ' + AOther +
       ' is ignored', eds_Warning);
 end;
@@ -626,7 +640,7 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   Result := False;
-  if (FSpec.ExtensionCustomizationID = '') or (FDoc.Invoice = nil) then
+  if Blank(FSpec.ExtensionCustomizationID) or (FDoc.Invoice = nil) then
     Exit;
   Result := True;
   for I := 0 to FInvoice.InvoiceLines.Count - 1 do
@@ -702,7 +716,7 @@ begin
     FDoc.CustomizationID^.Value := FSpec.ExtensionCustomizationID
   else
     FDoc.CustomizationID^.Value := FSpec.CustomizationID;
-  if FInvoice.ProfileID <> '' then
+  if Present(FInvoice.ProfileID) then
     FDoc.ProfileID^.Value := FInvoice.ProfileID
   else
     FDoc.ProfileID^.Value := FSpec.ProfileID;
@@ -723,15 +737,19 @@ begin
     FDoc.Path + '/' + FDoc.TypeCodeName);
   for I := 0 to FInvoice.Notes.Count - 1 do
   begin
+    { BG-1 needs its text (BT-22); a blank note is no note.
+      DE: BG-1 braucht seinen Text (BT-22); eine leere Bemerkung ist keine. }
+    if Blank(FInvoice.Notes[I].Content) then
+      Continue;
     Text := Txt(FInvoice.Notes[I].Content);
     Subject := Code(LandrixEInvoiceNoteSubjectCodeToStr(FInvoice.Notes[I].SubjectCode),
       FInvoice.Notes[I].SubjectCodeOther, FDoc.Path + '/cbc:Note');
-    if Subject <> '' then
+    if Present(Subject) then
       Text := '#' + Subject + '#' + Text;
     FDoc.Note.Add(Text);
   end;
   FDoc.DocumentCurrencyCode^.Value := FInvoice.InvoiceCurrencyCode;
-  if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
+  if Present(FInvoice.TaxCurrencyCode) and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
     FDoc.TaxCurrencyCode^.Value := FInvoice.TaxCurrencyCode;
   FDoc.AccountingCost^ := FInvoice.BuyerAccountingReference;
   PointCode := FInvoice.TaxPointDateCode;
@@ -740,7 +758,7 @@ begin
     FDoc.TaxPointDate^ := LandrixEInvoiceDateToUBL(FInvoice.TaxPointDate.Value);
     { BR-CO-3: BT-7 and BT-8 are mutually exclusive; the date wins.
       DE: BR-CO-3: BT-7 und BT-8 schliessen sich aus; das Datum gewinnt. }
-    if PointCode <> '' then
+    if Present(PointCode) then
     begin
       Report(edk_NotAllowed, FDoc.Path + '/cac:InvoicePeriod/cbc:DescriptionCode', 'VAT point date code ' +
         PointCode + ' (BT-8) left out: the VAT point date (BT-7) is set (BR-CO-3)', eds_Warning);
@@ -749,19 +767,19 @@ begin
   end;
   { BT-8 lives in the invoice period (BG-14) }
   HasPeriod := PeriodSet(FInvoice.InvoicePeriodStartDate, FInvoice.InvoicePeriodEndDate);
-  if HasPeriod or (PointCode <> '') then
+  if HasPeriod or Present(PointCode) then
   begin
     Period := FDoc.InvoicePeriod.Add;
     if HasPeriod and PeriodDateSet(FInvoice.InvoicePeriodStartDate) then
       Period.StartDate := LandrixEInvoiceDateToUBL(FInvoice.InvoicePeriodStartDate);
     if HasPeriod and PeriodDateSet(FInvoice.InvoicePeriodEndDate) then
       Period.EndDate := LandrixEInvoiceDateToUBL(FInvoice.InvoicePeriodEndDate);
-    if PointCode <> '' then
+    if Present(PointCode) then
       Period.DescriptionCode.Add(UBLCode(PointCode));
   end;
   if FInvoice.TestIndicator.HasValue then
     Permit(LandrixEInvoiceRuleTestIndicator, FDoc.Path, 'test indicator');
-  if FInvoice.DocumentName <> '' then
+  if Present(FInvoice.DocumentName) then
     Permit(LandrixEInvoiceRuleDocumentName, FDoc.Path, 'document name');
 end;
 
@@ -791,9 +809,9 @@ begin
       'placeholder ' + FInvoice.BuyerReference + ' (BT-10) left out; only XRechnung and Peppol use it', eds_Info)
   else
     FDoc.BuyerReference^ := FInvoice.BuyerReference;
-  if (FInvoice.PurchaseOrderReference <> '') or (FInvoice.SellerOrderReference <> '') then
+  if Present(FInvoice.PurchaseOrderReference) or Present(FInvoice.SellerOrderReference) then
   begin
-    if FInvoice.PurchaseOrderReference = '' then
+    if Blank(FInvoice.PurchaseOrderReference) then
       FDoc.OrderReference.ID.Value := 'NA'
     else
       FDoc.OrderReference.ID.Value := FInvoice.PurchaseOrderReference;
@@ -812,20 +830,20 @@ begin
     if DateSet(Reference.IssueDate) then
       Billing.InvoiceDocumentReference.IssueDate := LandrixEInvoiceDateToUBL(Reference.IssueDate);
   end;
-  if FInvoice.DeliveryReceiptNumber <> '' then
+  if Present(FInvoice.DeliveryReceiptNumber) then
   begin
     FDoc.DespatchDocumentReference.Add.ID.Value := FInvoice.DeliveryReceiptNumber;
     if DateSet(FInvoice.DeliveryReceiptDate) then
       Permit(LandrixEInvoiceRuleDespatchAdviceDate, FDoc.Path + '/cac:DespatchDocumentReference',
         'despatch advice date');
   end;
-  if FInvoice.ReceiptDocumentReference <> '' then
+  if Present(FInvoice.ReceiptDocumentReference) then
     FDoc.ReceiptDocumentReference.Add.ID.Value := FInvoice.ReceiptDocumentReference;
-  if FInvoice.ContractDocumentReference <> '' then
+  if Present(FInvoice.ContractDocumentReference) then
     FDoc.ContractDocumentReference.Add.ID.Value := FInvoice.ContractDocumentReference;
-  if (FInvoice.ProjectReference <> '') and (FDoc.ProjectReference <> nil) then
+  if Present(FInvoice.ProjectReference) and (FDoc.ProjectReference <> nil) then
     FDoc.ProjectReference.Add.ID.Value := FInvoice.ProjectReference;
-  if FInvoice.DeliveryReceiptNumberExtended <> '' then
+  if Present(FInvoice.DeliveryReceiptNumberExtended) then
     Permit(LandrixEInvoiceRuleDeliveryNote, FDoc.Path, 'delivery note');
 end;
 
@@ -849,7 +867,7 @@ var
   Path, TypeText: TLandrixEInvoiceString;
 begin
   Path := FDoc.Path + '/cac:AdditionalDocumentReference';
-  if (FInvoice.ProjectReference <> '') and (FDoc.ProjectReference = nil) then
+  if Present(FInvoice.ProjectReference) and (FDoc.ProjectReference = nil) then
   begin
     Target := FDoc.AdditionalDocumentReference.Add;
     Target.ID.Value := FInvoice.ProjectReference;
@@ -862,7 +880,7 @@ begin
     Attachment := FInvoice.Attachments[I];
     if Attachment.TypeCode = iatc_50 then
     begin
-      if TenderWritten or (Attachment.ID = '') then
+      if TenderWritten or Blank(Attachment.ID) then
         Report(edk_NotAllowed, FDoc.Path + '/cac:OriginatorDocumentReference', 'tender reference (BT-17) ' +
           Attachment.ID + ' left out: only once and with an identifier', eds_Warning)
       else
@@ -874,7 +892,7 @@ begin
     end;
     if Attachment.TypeCode = iatc_130 then
     begin
-      if ObjectWritten or (Attachment.ID = '') then
+      if ObjectWritten or Blank(Attachment.ID) then
       begin
         Report(edk_NotAllowed, Path, 'object identifier (BT-18) ' + Attachment.ID +
           ' left out: only once and with an identifier', eds_Warning);
@@ -886,19 +904,19 @@ begin
     Target.ID.Value := Attachment.ID;
     if Attachment.TypeCode = iatc_130 then
       Target.ID.SchemeID := Attachment.SchemeID
-    else if Attachment.SchemeID <> '' then
+    else if Present(Attachment.SchemeID) then
       Report(edk_NotAllowed, Path + '/cbc:ID/@schemeID', 'scheme ' + Attachment.SchemeID + ' of attachment ' +
         Attachment.ID + ' left out: only the invoiced object identifier (BT-18) has one', eds_Warning);
     if Attachment.TypeCode = iatc_130 then
       Target.DocumentTypeCode.Value := '130'
-    else if (Attachment.TypeCode <> iatc_916) or (Attachment.TypeCodeOther <> '') then
+    else if (Attachment.TypeCode <> iatc_916) or Present(Attachment.TypeCodeOther) then
     begin
       TypeText := Code(LandrixEInvoiceAttachmentTypeCodeToStr(Attachment.TypeCode), Attachment.TypeCodeOther,
         Path + '/cbc:DocumentTypeCode');
       Report(edk_NotAllowed, Path + '/cbc:DocumentTypeCode', 'document type ' + TypeText + ' of attachment ' +
         Attachment.ID + ' left out: attachments carry no type code in UBL (UBL-CR-114)', eds_Info);
     end;
-    if Attachment.DocumentDescription <> '' then
+    if Present(Attachment.DocumentDescription) then
       Target.DocumentDescription.Add(Txt(Attachment.DocumentDescription));
     if Attachment.ContainsBinaryObject then
     begin
@@ -908,7 +926,7 @@ begin
         Path + '/cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@mimeCode');
       Target.Attachment.EmbeddedDocumentBinaryObject.Filename := Attachment.Filename;
     end;
-    if Attachment.ExternalReference <> '' then
+    if Present(Attachment.ExternalReference) then
       Target.Attachment.ExternalReference.URI.Value := Attachment.ExternalReference;
   end;
 end;
@@ -920,7 +938,7 @@ begin
   ATarget.CityName := AAddress.City;
   ATarget.PostalZone := AAddress.PostalZone;
   ATarget.CountrySubentity := AAddress.CountrySubentity;
-  if AAddress.AddressLine <> '' then
+  if Present(AAddress.AddressLine) then
     ATarget.AddressLine.Add.Line := AAddress.AddressLine;
   ATarget.Country.IdentificationCode.Value := AAddress.CountryCode;
 end;
@@ -950,49 +968,49 @@ var
   RuleKey: string;
   WriteIdentifier: Boolean;
 begin
-  if AParty.ElectronicAddressSellerBuyer <> '' then
+  if Present(AParty.ElectronicAddressSellerBuyer) then
   begin
     Scheme := AParty.ElectronicAddressSellerBuyerSchemeID;
-    if (Scheme = '') and
+    if Blank(Scheme) and
        (LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleElectronicAddressDefaultEM) <> erl_Forbidden) then
       Scheme := 'EM';
     ATarget.EndpointID := UBLID(AParty.ElectronicAddressSellerBuyer, Scheme);
-    if Scheme = '' then
+    if Blank(Scheme) then
       Report(edk_MissingElement, APath + '/cbc:EndpointID/@schemeID', 'electronic address without scheme', eds_Error);
   end;
   if AIsSeller then
     RuleKey := LandrixEInvoiceRuleSellerIDWithGlobalID
   else
     RuleKey := LandrixEInvoiceRuleBuyerIDWithGlobalID;
-  WriteIdentifier := AParty.IdentifierSellerBuyer <> '';
-  if WriteIdentifier and (AParty.GlobalIdentifierSellerBuyer <> '') and
+  WriteIdentifier := Present(AParty.IdentifierSellerBuyer);
+  if WriteIdentifier and Present(AParty.GlobalIdentifierSellerBuyer) and
      (LandrixEInvoiceRuleLevel(FSpec, RuleKey) = erl_Forbidden) then
   begin
     WriteIdentifier := False;
     Report(edk_NotAllowed, APath + '/cac:PartyIdentification',
       'identifier ' + AParty.IdentifierSellerBuyer + ' left out, the global identifier is written', eds_Warning);
   end;
-  if AParty.GlobalIdentifierSellerBuyer <> '' then
+  if Present(AParty.GlobalIdentifierSellerBuyer) then
   begin
     Scheme := AParty.GlobalIdentifierSellerBuyerSchemeID;
-    if Scheme = '' then
+    if Blank(Scheme) then
       Scheme := '0088';
     ATarget.PartyIdentification.Add.ID := UBLID(AParty.GlobalIdentifierSellerBuyer, Scheme);
   end;
   if WriteIdentifier then
     ATarget.PartyIdentification.Add.ID := UBLID(AParty.IdentifierSellerBuyer, '');
-  if AIsSeller and (AParty.BankAssignedCreditorIdentifier <> '') then
+  if AIsSeller and Present(AParty.BankAssignedCreditorIdentifier) then
     ATarget.PartyIdentification.Add.ID := UBLID(AParty.BankAssignedCreditorIdentifier, 'SEPA');
-  if AParty.Name <> '' then
+  if Present(AParty.Name) then
     ATarget.PartyName.Add.Name := Txt(AParty.Name);
   MapAddress(AParty.Address, ATarget.PostalAddress);
-  if AParty.VATCompanyID <> '' then
+  if Present(AParty.VATCompanyID) then
   begin
     TaxScheme := ATarget.PartyTaxScheme.Add;
     TaxScheme.CompanyID.Value := AParty.VATCompanyID;
     TaxScheme.TaxScheme.ID.Value := 'VAT';
   end;
-  if (AParty.VATCompanyNumber <> '') and (AIsSeller or (AParty.VATCompanyID = '')) then
+  if Present(AParty.VATCompanyNumber) and (AIsSeller or Blank(AParty.VATCompanyID)) then
   begin
     TaxScheme := ATarget.PartyTaxScheme.Add;
     TaxScheme.CompanyID.Value := AParty.VATCompanyNumber;
@@ -1000,7 +1018,7 @@ begin
   end;
   LegalEntity := ATarget.PartyLegalEntity.Add;
   LegalEntity.RegistrationName := Txt(AParty.RegistrationName);
-  if AParty.CompanyID <> '' then
+  if Present(AParty.CompanyID) then
     LegalEntity.CompanyID := UBLID(AParty.CompanyID, AParty.CompanyIDSchemeID);
   if AIsSeller then
     LegalEntity.CompanyLegalForm := Txt(AParty.AdditionalLegalInformationSeller);
@@ -1010,10 +1028,10 @@ begin
     DE: BT-41/BT-56 ist die Kontaktstelle: ohne Personennamen ist es die
     Abteilung (wie in CII, wo sie die Alternative zum Namen ist; XRechnung
     verlangt BT-41, BR-DE-5); neben einem Namen hat UBL keinen Platz dafuer. }
-  if AParty.ContactName <> '' then
+  if Present(AParty.ContactName) then
   begin
     ATarget.Contact.Name := AParty.ContactName;
-    if AParty.ContactDepartment <> '' then
+    if Present(AParty.ContactDepartment) then
       Permit(LandrixEInvoiceRuleContactDepartment, APath + '/cac:Contact', 'contact department ' +
         AParty.ContactDepartment);
   end
@@ -1047,28 +1065,28 @@ begin
     Permit(LandrixEInvoiceRuleInvoicee, APath, 'invoicee');
     Exit;
   end;
-  HasContact := (AParty.ContactName <> '') or (AParty.ContactDepartment <> '') or
-    (AParty.ContactTelephone <> '') or (AParty.ContactElectronicMail <> '');
+  HasContact := Present(AParty.ContactName) or Present(AParty.ContactDepartment) or
+    Present(AParty.ContactTelephone) or Present(AParty.ContactElectronicMail);
   if ARole = fpr_Payee then
   begin
-    if HasContact or AddressSet(AParty.Address) or (AParty.VATCompanyID <> '') then
+    if HasContact or AddressSet(AParty.Address) or Present(AParty.VATCompanyID) then
       Permit(LandrixEInvoiceRulePayeeExtended, APath, 'address, contact or VAT identifier of the payee');
-    if AParty.Identifier <> '' then
+    if Present(AParty.Identifier) then
       ATarget.PartyIdentification.Add.ID := UBLID(AParty.Identifier, AParty.IdentifierSchemeID);
-    if AParty.Name <> '' then
+    if Present(AParty.Name) then
       ATarget.PartyName.Add.Name := Txt(AParty.Name);
-    if AParty.CompanyID <> '' then
+    if Present(AParty.CompanyID) then
       ATarget.PartyLegalEntity.Add.CompanyID := UBLID(AParty.CompanyID, AParty.CompanyIDSchemeID);
   end
   else
   begin
-    if HasContact or (AParty.Identifier <> '') or (AParty.CompanyID <> '') then
+    if HasContact or Present(AParty.Identifier) or Present(AParty.CompanyID) then
       Permit(LandrixEInvoiceRuleTaxRepresentativeExtended, APath, 'identifier or contact of the tax representative');
-    if AParty.Name <> '' then
+    if Present(AParty.Name) then
       ATarget.PartyName.Add.Name := Txt(AParty.Name);
     if AddressSet(AParty.Address) then
       MapAddress(AParty.Address, ATarget.PostalAddress);
-    if AParty.VATCompanyID <> '' then
+    if Present(AParty.VATCompanyID) then
     begin
       TaxScheme := ATarget.PartyTaxScheme.Add;
       TaxScheme.CompanyID.Value := AParty.VATCompanyID;
@@ -1089,19 +1107,19 @@ var
   Target: TLandrixUBLDelivery;
 begin
   Info := FInvoice.DeliveryInformation;
-  if (Info.ContactName <> '') or (Info.ContactTelephone <> '') or (Info.ContactElectronicMail <> '') then
+  if Present(Info.ContactName) or Present(Info.ContactTelephone) or Present(Info.ContactElectronicMail) then
     Permit(LandrixEInvoiceRuleDeliveryContact, FDoc.Path + '/cac:Delivery', 'deliver to contact');
-  if not (DateSet(Info.ActualDeliveryDate) or (Info.LocationIdentifier <> '') or (Info.Name <> '') or
+  if not (DateSet(Info.ActualDeliveryDate) or Present(Info.LocationIdentifier) or Present(Info.Name) or
      AddressSet(Info.Address)) then
     Exit;
   Target := FDoc.Delivery.Add;
   if DateSet(Info.ActualDeliveryDate) then
     Target.ActualDeliveryDate := LandrixEInvoiceDateToUBL(Info.ActualDeliveryDate);
-  if Info.LocationIdentifier <> '' then
+  if Present(Info.LocationIdentifier) then
     Target.DeliveryLocation.ID := UBLID(Info.LocationIdentifier, Info.LocationIdentifierSchemeID);
   if AddressSet(Info.Address) then
     MapAddress(Info.Address, Target.DeliveryLocation.Address);
-  if Info.Name <> '' then
+  if Present(Info.Name) then
     Target.DeliveryParty.PartyName.Add.Name := Txt(Info.Name);
 end;
 
@@ -1138,21 +1156,21 @@ begin
   for I := 0 to FInvoice.PaymentTypes.Count - 1 do
   begin
     Payment := FInvoice.PaymentTypes[I];
-    if (Payment.PaymentMeansCode = ipmc_NotImplemented) and (Payment.PaymentMeansCodeOther = '') then
+    if (Payment.PaymentMeansCode = ipmc_NotImplemented) and Blank(Payment.PaymentMeansCodeOther) then
       Continue;
     MeansWritten := True;
     Target := FDoc.PaymentMeans.Add;
     Target.PaymentMeansCode.Value := Code(LandrixEInvoicePaymentMeansCodeToStr(Payment.PaymentMeansCode),
       Payment.PaymentMeansCodeOther, Path + '/cbc:PaymentMeansCode');
     Target.PaymentMeansCode.Name := Txt(Payment.PaymentMeansInformation);
-    if FInvoice.PaymentID <> '' then
+    if Present(FInvoice.PaymentID) then
       Target.PaymentID.Add(UBLID(FInvoice.PaymentID, ''));
     if Payment.PaymentMeansCode = ipmc_SEPADirectDebit then
     begin
       Target.PaymentMandate.ID.Value := FInvoice.PaymentMandateID;
       Target.PaymentMandate.PayerFinancialAccount.ID.Value := Payment.FinancialAccount;
       MandateWritten := True;
-      if Payment.FinancialInstitutionBranch <> '' then
+      if Present(Payment.FinancialInstitutionBranch) then
         Report(edk_NotAllowed, Path + '/cac:PayeeFinancialAccount/cac:FinancialInstitutionBranch',
           'BIC (BT-86) next to a direct debit left out: UBL carries it in the payee account', eds_Warning);
     end
@@ -1162,17 +1180,17 @@ begin
       Target.CardAccount.NetworkID.Value := 'NA';
       Target.CardAccount.HolderName := Payment.FinancialAccountName;
     end
-    else if Payment.FinancialAccount <> '' then
+    else if Present(Payment.FinancialAccount) then
     begin
       Target.PayeeFinancialAccount.ID.Value := Payment.FinancialAccount;
       Target.PayeeFinancialAccount.Name := Payment.FinancialAccountName;
       Target.PayeeFinancialAccount.FinancialInstitutionBranch.ID.Value := Payment.FinancialInstitutionBranch;
     end;
   end;
-  if (FInvoice.PaymentID <> '') and not MeansWritten then
+  if Present(FInvoice.PaymentID) and not MeansWritten then
     Report(edk_NotAllowed, Path + '/cbc:PaymentID',
       'remittance information (BT-83) left out: UBL carries it in a payment instruction', eds_Warning);
-  if (FInvoice.PaymentMandateID <> '') and not MandateWritten then
+  if Present(FInvoice.PaymentMandateID) and not MandateWritten then
     Report(edk_NotAllowed, Path + '/cac:PaymentMandate/cbc:ID',
       'mandate reference (BT-89) left out: UBL carries it in a direct debit instruction', eds_Warning);
 end;
@@ -1189,7 +1207,7 @@ begin
     Permit(LandrixEInvoiceRuleCashDiscountNote, FDoc.Path + '/cac:PaymentTerms/cbc:Note',
       'text of a cash discount level');
   Text := LandrixEInvoicePaymentTermsText(FInvoice);
-  if Text <> '' then
+  if Present(Text) then
     FDoc.PaymentTerms.Add.Note.Add(Txt(Text));
 end;
 
@@ -1231,19 +1249,19 @@ begin
     Target := FDoc.PrepaidPayment.Add;
     Target.ID.Value := Payment.ID;
     Target.PaidAmount := Money(Payment.PaidAmount);
-    if Payment.PaidAmountCurrencyID <> '' then
+    if Present(Payment.PaidAmountCurrencyID) then
       Target.PaidAmount.CurrencyID := Payment.PaidAmountCurrencyID;
     Target.InstructionID.Value := Payment.InstructionID;
-    if (Payment.ID = '') and (Payment.InstructionID = '') then
+    if Blank(Payment.ID) and Blank(Payment.InstructionID) then
       Report(edk_MissingElement, FDoc.Path + '/cac:PrepaidPayment', 'third-party payment without type ' +
         '(BT-DEX-001, BR-DEX-10) and description (BT-DEX-003, BR-DEX-12)', eds_Error)
-    else if Payment.ID = '' then
+    else if Blank(Payment.ID) then
     begin
       Target.ID.Value := Payment.InstructionID;
       Report(edk_MissingElement, FDoc.Path + '/cac:PrepaidPayment/cbc:ID', 'type of a third-party payment ' +
         '(BT-DEX-001, BR-DEX-10) missing; its description is written instead', eds_Warning);
     end
-    else if Payment.InstructionID = '' then
+    else if Blank(Payment.InstructionID) then
     begin
       Target.InstructionID.Value := Payment.ID;
       Report(edk_MissingElement, FDoc.Path + '/cac:PrepaidPayment/cbc:InstructionID', 'description of a ' +
@@ -1272,7 +1290,7 @@ begin
     ReasonText := AllowanceReasonCode(Item, ReasonOther);
     Charge.AllowanceChargeReasonCode.Value := Code(ReasonText, ReasonOther,
       FDoc.Path + '/cac:AllowanceCharge/cbc:AllowanceChargeReasonCode');
-    if Item.Reason <> '' then
+    if Present(Item.Reason) then
       Charge.AllowanceChargeReason.Add(Txt(Item.Reason));
     if Item.MultiplierFactorNumeric <> 0 then
       Charge.MultiplierFactorNumeric := LandrixEInvoiceDecimalToLexical(Item.MultiplierFactorNumeric, 4);
@@ -1309,7 +1327,7 @@ var
 begin
   Total := FDoc.TaxTotal.Add;
   Total.TaxAmount := Money(FInvoice.TaxAmountTotal);
-  if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
+  if Present(FInvoice.TaxCurrencyCode) and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
   begin
     if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
     begin
@@ -1334,7 +1352,7 @@ begin
       Subtotal.TaxCategoryOther, FDoc.Path + '/cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:ID');
     Target.TaxCategory.Percent := LandrixEInvoicePercentToLexical(Subtotal.TaxPercent);
     Target.TaxCategory.TaxExemptionReasonCode.Value := Subtotal.TaxExemptionReasonCode;
-    if Subtotal.TaxExemptionReason <> '' then
+    if Present(Subtotal.TaxExemptionReason) then
       Target.TaxCategory.TaxExemptionReason.Add(Txt(Subtotal.TaxExemptionReason));
     Target.TaxCategory.TaxScheme.ID.Value := 'VAT';
   end;
@@ -1386,7 +1404,7 @@ var
   ReasonText, ReasonOther: TLandrixEInvoiceString;
 begin
   ATarget.ID^.Value := ALine.ID;
-  if ALine.Note <> '' then
+  if Present(ALine.Note) then
     ATarget.Note.Add(Txt(ALine.Note));
   ATarget.Quantity^.Value := LandrixEInvoiceQuantityToLexical(ALine.Quantity);
   ATarget.Quantity^.UnitCode := Code(LandrixEInvoiceUnitCodeToStr(ALine.UnitCode), ALine.UnitCodeOther,
@@ -1401,13 +1419,13 @@ begin
     if PeriodDateSet(ALine.InvoiceLinePeriodEndDate) then
       Period.EndDate := LandrixEInvoiceDateToUBL(ALine.InvoiceLinePeriodEndDate);
   end;
-  if ALine.OrderLineReference <> '' then
+  if Present(ALine.OrderLineReference) then
     ATarget.OrderLineReference.Add.LineID.Value := ALine.OrderLineReference;
-  if ALine.OrderNumber <> '' then
+  if Present(ALine.OrderNumber) then
     Permit(LandrixEInvoiceRuleLineOrderNumber, APath + '/cac:OrderLineReference', 'order number of line ' + ALine.ID);
   if ALine.OrderDate.HasValue then
     Permit(LandrixEInvoiceRuleLineOrderDate, APath + '/cac:OrderLineReference', 'order date of line ' + ALine.ID);
-  if ALine.ObjectIdentifier <> '' then
+  if Present(ALine.ObjectIdentifier) then
   begin
     Document := ATarget.DocumentReference.Add;
     Document.ID := UBLID(ALine.ObjectIdentifier, ALine.ObjectIdentifierSchemeID);
@@ -1421,7 +1439,7 @@ begin
     ReasonText := AllowanceReasonCode(Item, ReasonOther);
     Charge.AllowanceChargeReasonCode.Value := Code(ReasonText, ReasonOther,
       APath + '/cac:AllowanceCharge/cbc:AllowanceChargeReasonCode');
-    if Item.Reason <> '' then
+    if Present(Item.Reason) then
       Charge.AllowanceChargeReason.Add(Txt(Item.Reason));
     if Item.MultiplierFactorNumeric <> 0 then
       Charge.MultiplierFactorNumeric := LandrixEInvoiceDecimalToLexical(Item.MultiplierFactorNumeric, 2);
@@ -1433,9 +1451,9 @@ begin
   end;
   MapLineItem(ALine, ATarget.Item, APath + '/cac:Item');
   MapLinePrice(ALine, ATarget.Price, APath + '/cac:Price');
-  if DateSet(ALine.ActualDeliveryDate) or (ALine.DeliveryNoteNumber <> '') then
+  if DateSet(ALine.ActualDeliveryDate) or Present(ALine.DeliveryNoteNumber) then
     Permit(LandrixEInvoiceRuleLineDelivery, APath, 'delivery data of line ' + ALine.ID);
-  if (ALine.LineStatusReasonCode <> ilsrc_None) or (ALine.LineStatusReasonCodeOther <> '') then
+  if (ALine.LineStatusReasonCode <> ilsrc_None) or Present(ALine.LineStatusReasonCodeOther) then
     Report(edk_NotAllowed, APath, 'line status (BT-X-8) of line ' + ALine.ID +
       ' left out: UBL has no element for it', eds_Warning);
   if ALine.SubInvoiceLines.Count = 0 then
@@ -1471,7 +1489,7 @@ var
   Attribute: TLandrixUBLItemProperty;
   Value, Scheme, Conflict: TLandrixEInvoiceString;
 begin
-  if ALine.Description <> '' then
+  if Present(ALine.Description) then
     AItem.Description.Add(Txt(ALine.Description));
   AItem.Name := Txt(ALine.Name);
   AItem.BuyersItemIdentification.ID.Value := ALine.BuyersItemIdentification;
@@ -1479,19 +1497,19 @@ begin
   if LandrixEInvoiceStandardItemIdentifierOf(ALine, Value, Scheme, Conflict) then
   begin
     AItem.StandardItemIdentification.ID := UBLID(Value, Scheme);
-    if Scheme = '' then
+    if Blank(Scheme) then
       Report(edk_MissingElement, APath + '/cac:StandardItemIdentification/cbc:ID/@schemeID',
         'item standard identifier ' + Value + ' of line ' + ALine.ID + ' without scheme (BR-64)', eds_Error);
-    if Conflict <> '' then
+    if Present(Conflict) then
       Report(edk_NotAllowed, APath + '/cac:StandardItemIdentification', Conflict, eds_Warning);
   end;
   AItem.OriginCountry.IdentificationCode.Value := ALine.OriginTradeCountry;
   for I := 0 to ALine.ItemClassifications.Count - 1 do
   begin
     Classification := ALine.ItemClassifications[I];
-    if Classification.ClassCode = '' then
+    if Blank(Classification.ClassCode) then
       Continue;
-    if Classification.ListID = '' then
+    if Blank(Classification.ListID) then
     begin
       Report(edk_NotAllowed, APath + '/cac:CommodityClassification',
         'item classification ' + Classification.ClassCode + ' without scheme (BR-65); left out', eds_Warning);
@@ -1501,7 +1519,7 @@ begin
     Target.ItemClassificationCode.Value := Classification.ClassCode;
     Target.ItemClassificationCode.ListID := Classification.ListID;
     Target.ItemClassificationCode.ListVersionID := Classification.ListVersionID;
-    if Classification.ClassificationName <> '' then
+    if Present(Classification.ClassificationName) then
       Permit(LandrixEInvoiceRuleLineClassificationName, APath + '/cac:CommodityClassification',
         'classification name of line ' + ALine.ID);
   end;
@@ -1511,7 +1529,7 @@ begin
   if ALine.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax then
     Category.Percent := LandrixEInvoicePercentToLexical(ALine.TaxPercent);
   Category.TaxScheme.ID.Value := 'VAT';
-  if (ALine.TaxExemptionReason <> '') and
+  if Present(ALine.TaxExemptionReason) and
      Permit(LandrixEInvoiceRuleLineTaxExemptionReason, APath + '/cac:ClassifiedTaxCategory/cbc:TaxExemptionReason',
        'VAT exemption reason of line ' + ALine.ID) then
     Category.TaxExemptionReason.Add(Txt(ALine.TaxExemptionReason));

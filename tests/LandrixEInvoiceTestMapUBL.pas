@@ -1002,6 +1002,43 @@ begin
   end;
 end;
 
+{ Blank text counts as absent: a blank note, buyer reference and electronic
+  address are not written (no attribute-only EndpointID), and a third-party
+  payment with a blank type takes its description (BR-DEX-10). }
+procedure TestBlankValues;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillInvoice(Invoice);
+    Invoice.Notes.AddNote.Content := '  ';
+    Invoice.BuyerReference := ' ';
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyer := '   ';
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := '';
+    with Invoice.PrepaidPayments.AddPrepaidPayment do
+    begin
+      ID := ' ';
+      PaidAmount := 5;
+      InstructionID := 'Voucher';
+    end;
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec), 'spec');
+    Xml := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
+    Check(Pos('<cbc:Note>', Xml) = 0, 'blank note not written');
+    Check(Pos('<cbc:BuyerReference>', Xml) = 0, 'blank buyer reference not written');
+    Check(Pos('<cac:AccountingCustomerParty><cac:Party><cbc:EndpointID', StringReplace(StringReplace(Xml,
+      #13#10, '', [rfReplaceAll]), ' ', '', [rfReplaceAll])) = 0, 'no buyer EndpointID');
+    Check(Pos('<cbc:ID>Voucher</cbc:ID>', Xml) > 0, 'description as type of a blank type');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure TestWrongSpec;
 var
   Invoice: TLandrixInvoice;
@@ -1049,6 +1086,7 @@ begin
   RegisterTest('MapUBL.TaxPointDate', TestTaxPointDate);
   RegisterTest('MapUBL.PayeeCreditorIdentifier', TestPayeeCreditorIdentifier);
   RegisterTest('MapUBL.WrongSpec', TestWrongSpec);
+  RegisterTest('MapUBL.BlankValues', TestBlankValues);
 end;
 
 end.

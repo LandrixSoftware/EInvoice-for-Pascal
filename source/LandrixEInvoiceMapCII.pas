@@ -155,6 +155,20 @@ type
 
 { --- helpers ---------------------------------------------------------------- }
 
+{ Blank text (empty or XML white space only) counts as absent, as
+  normalize-space() in the Schematron rules (LandrixEInvoiceIsBlank).
+  DE: Leerer Text (leer oder nur XML-Leerraum) gilt als nicht vorhanden,
+  wie normalize-space() in den Schematron-Regeln. }
+function Blank(const S: TLandrixEInvoiceString): Boolean;
+begin
+  Result := LandrixEInvoiceIsBlank(S);
+end;
+
+function Present(const S: TLandrixEInvoiceString): Boolean;
+begin
+  Result := not LandrixEInvoiceIsBlank(S);
+end;
+
 function DateSet(AValue: TDateTime): Boolean;
 begin
   Result := AValue > 0;
@@ -231,9 +245,9 @@ end;
 
 function AddressSet(AAddress: TLandrixInvoiceAddress): Boolean;
 begin
-  Result := (AAddress.StreetName <> '') or (AAddress.AdditionalStreetName <> '') or
-    (AAddress.AddressLine <> '') or (AAddress.City <> '') or (AAddress.PostalZone <> '') or
-    (AAddress.CountrySubentity <> '') or (AAddress.CountryCode <> '');
+  Result := Present(AAddress.StreetName) or Present(AAddress.AdditionalStreetName) or
+    Present(AAddress.AddressLine) or Present(AAddress.City) or Present(AAddress.PostalZone) or
+    Present(AAddress.CountrySubentity) or Present(AAddress.CountryCode);
 end;
 
 { ASCII case-insensitive comparison without a detour through string.
@@ -346,13 +360,13 @@ end;
   sie gesetzt ist, sonst wird der ...Other-Text geschrieben. }
 function TCIIWriteMapper.Code(const AEnumText, AOther, APath: TLandrixEInvoiceString): TLandrixEInvoiceString;
 begin
-  if AEnumText = '' then
+  if Blank(AEnumText) then
   begin
     Result := AOther;
     Exit;
   end;
   Result := AEnumText;
-  if (AOther <> '') and (AOther <> AEnumText) then
+  if Present(AOther) and (AOther <> AEnumText) then
     Report(edk_UnknownCode, APath, 'code ' + AEnumText + ' written; the other code ' + AOther +
       ' is ignored', eds_Warning);
 end;
@@ -404,7 +418,7 @@ begin
      Permit(LandrixEInvoiceRuleTestIndicator, Root + '/rsm:ExchangedDocumentContext/ram:TestIndicator',
        'test indicator') then
     Context.TestIndicator := BoolText(FInvoice.TestIndicator.Value);
-  if FInvoice.ProfileID <> '' then
+  if Present(FInvoice.ProfileID) then
     Context.BusinessProcessSpecifiedDocumentContextParameter.ID.Value := FInvoice.ProfileID
   else
     Context.BusinessProcessSpecifiedDocumentContextParameter.ID.Value := FSpec.ProfileID;
@@ -418,7 +432,7 @@ end;
   DE: Extension-Codes XR01 bis XR03 als Kennungsschema. }
 function IsExtensionScheme(const AValue, AScheme: TLandrixEInvoiceString): Boolean;
 begin
-  Result := (AValue <> '') and (SameAscii(AScheme, 'XR01') or SameAscii(AScheme, 'XR02') or
+  Result := Present(AValue) and (SameAscii(AScheme, 'XR01') or SameAscii(AScheme, 'XR02') or
     SameAscii(AScheme, 'XR03'));
 end;
 
@@ -440,7 +454,7 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   Result := False;
-  if FSpec.ExtensionCustomizationID = '' then
+  if Blank(FSpec.ExtensionCustomizationID) then
     Exit;
   Result := True;
   for I := 0 to FInvoice.Attachments.Count - 1 do
@@ -473,7 +487,7 @@ var
 begin
   Doc := FCII.ExchangedDocument;
   Doc.ID.Value := FInvoice.InvoiceNumber;
-  if (FInvoice.DocumentName <> '') and
+  if Present(FInvoice.DocumentName) and
      Permit(LandrixEInvoiceRuleDocumentName, Root + '/rsm:ExchangedDocument/ram:Name', 'document name') then
     Doc.Name := Txt(FInvoice.DocumentName);
   Doc.TypeCode := Code(LandrixEInvoiceTypeCodeToStr(FInvoice.InvoiceTypeCode), FInvoice.InvoiceTypeCodeOther,
@@ -482,6 +496,10 @@ begin
     Doc.IssueDateTime := CIIDate(FInvoice.InvoiceIssueDate);
   for I := 0 to FInvoice.Notes.Count - 1 do
   begin
+    { BG-1 needs its text (BT-22); a blank note is no note.
+      DE: BG-1 braucht seinen Text (BT-22); eine leere Bemerkung ist keine. }
+    if Blank(FInvoice.Notes[I].Content) then
+      Continue;
     Note := Doc.IncludedNote.Add;
     Note.Content := Txt(FInvoice.Notes[I].Content);
     Note.SubjectCode.Value := Code(LandrixEInvoiceNoteSubjectCodeToStr(FInvoice.Notes[I].SubjectCode),
@@ -515,10 +533,10 @@ begin
       Code(LandrixEInvoiceLineStatusReasonCodeToStr(Status), ALine.LineStatusReasonCodeOther,
       APath + '/ram:AssociatedDocumentLineDocument/ram:LineStatusReasonCode');
   end
-  else if (ALine.LineStatusReasonCode <> ilsrc_None) or (ALine.LineStatusReasonCodeOther <> '') then
+  else if (ALine.LineStatusReasonCode <> ilsrc_None) or Present(ALine.LineStatusReasonCodeOther) then
     Permit(LandrixEInvoiceRuleLineSubLines, APath + '/ram:AssociatedDocumentLineDocument/ram:LineStatusReasonCode',
       'line status (BT-X-8) of line ' + ALine.ID);
-  if ALine.Note <> '' then
+  if Present(ALine.Note) then
     Item.AssociatedDocumentLineDocument.IncludedNote.Add.Content := Txt(ALine.Note);
   MapLineProduct(ALine, Item.SpecifiedTradeProduct, APath + '/ram:SpecifiedTradeProduct');
   MapLineAgreement(ALine, Item.SpecifiedLineTradeAgreement, APath + '/ram:SpecifiedLineTradeAgreement');
@@ -552,10 +570,10 @@ begin
   if LandrixEInvoiceStandardItemIdentifierOf(ALine, Value, Scheme, Conflict) then
   begin
     AProduct.GlobalID := CIIID(Value, Scheme);
-    if Scheme = '' then
+    if Blank(Scheme) then
       Report(edk_MissingElement, APath + '/ram:GlobalID/@schemeID', 'item standard identifier ' + Value +
         ' of line ' + ALine.ID + ' without scheme (BR-64)', eds_Error);
-    if Conflict <> '' then
+    if Present(Conflict) then
       Report(edk_NotAllowed, APath + '/ram:GlobalID', Conflict, eds_Warning);
   end;
   AProduct.SellerAssignedID.Value := ALine.SellersItemIdentification;
@@ -571,9 +589,9 @@ begin
   for I := 0 to ALine.ItemClassifications.Count - 1 do
   begin
     Classification := ALine.ItemClassifications[I];
-    if Classification.ClassCode = '' then
+    if Blank(Classification.ClassCode) then
       Continue;
-    if Classification.ListID = '' then
+    if Blank(Classification.ListID) then
     begin
       Report(edk_NotAllowed, APath + '/ram:DesignatedProductClassification',
         'item classification ' + Classification.ClassCode + ' without scheme (BR-65); left out', eds_Warning);
@@ -583,7 +601,7 @@ begin
     Target.ClassCode.Value := Classification.ClassCode;
     Target.ClassCode.ListID := Classification.ListID;
     Target.ClassCode.ListVersionID := Classification.ListVersionID;
-    if (Classification.ClassificationName <> '') and
+    if Present(Classification.ClassificationName) and
        Permit(LandrixEInvoiceRuleLineClassificationName, APath + '/ram:DesignatedProductClassification/ram:ClassName',
          'classification name of line ' + ALine.ID) then
       Target.ClassificationName := Classification.ClassificationName;
@@ -604,7 +622,7 @@ var
   HasBaseQuantity: Boolean;
   Discount: TLandrixCIITradeAllowanceCharge;
 begin
-  if (ALine.OrderNumber <> '') and
+  if Present(ALine.OrderNumber) and
      Permit(LandrixEInvoiceRuleLineOrderNumber, APath + '/ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID',
        'order number of line ' + ALine.ID) then
     AAgreement.BuyerOrderReferencedDocument.IssuerAssignedID.Value := ALine.OrderNumber;
@@ -646,13 +664,13 @@ begin
   ADelivery.BilledQuantity.Value := LandrixEInvoiceQuantityToLexical(ALine.Quantity);
   ADelivery.BilledQuantity.UnitCode := Code(LandrixEInvoiceUnitCodeToStr(ALine.UnitCode), ALine.UnitCodeOther,
     APath + '/ram:BilledQuantity');
-  if not (DateSet(ALine.ActualDeliveryDate) or (ALine.DeliveryNoteNumber <> '')) then
+  if not (DateSet(ALine.ActualDeliveryDate) or Present(ALine.DeliveryNoteNumber)) then
     Exit;
   if not Permit(LandrixEInvoiceRuleLineDelivery, APath, 'delivery data of line ' + ALine.ID) then
     Exit;
   if DateSet(ALine.ActualDeliveryDate) then
     ADelivery.ActualDeliverySupplyChainEvent.OccurrenceDateTime := CIIDate(ALine.ActualDeliveryDate);
-  if ALine.DeliveryNoteNumber <> '' then
+  if Present(ALine.DeliveryNoteNumber) then
   begin
     ADelivery.DeliveryNoteReferencedDocument.IssuerAssignedID.Value := ALine.DeliveryNoteNumber;
     ADelivery.DeliveryNoteReferencedDocument.LineID.Value := ALine.DeliveryNoteLineID;
@@ -681,12 +699,12 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   if not ((AStatus in [ilsrc_Group, ilsrc_Information]) and (ALine.TaxCategory = idtfcc_None) and
-     (ALine.TaxCategoryOther = '') and
+     Blank(ALine.TaxCategoryOther) and
      (LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleLineSubLines) <> erl_Forbidden)) then
   begin
     Tax := ASettlement.ApplicableTradeTax.Add;
     Tax.TypeCode := 'VAT';
-    if (ALine.TaxExemptionReason <> '') and
+    if Present(ALine.TaxExemptionReason) and
        Permit(LandrixEInvoiceRuleLineTaxExemptionReason, APath + '/ram:ApplicableTradeTax/ram:ExemptionReason',
          'VAT exemption reason of line ' + ALine.ID) then
       Tax.ExemptionReason := Txt(ALine.TaxExemptionReason);
@@ -722,14 +740,14 @@ begin
     Charge.Reason := Txt(Item.Reason);
   end;
   ASettlement.SpecifiedTradeSettlementLineMonetarySummation.LineTotalAmount := CIIAmount(ALine.LineAmount);
-  if ALine.ObjectIdentifier <> '' then
+  if Present(ALine.ObjectIdentifier) then
   begin
     Document := ASettlement.AdditionalReferencedDocument.Add;
     Document.IssuerAssignedID.Value := ALine.ObjectIdentifier;
     Document.TypeCode := '130';
     Document.ReferenceTypeCode := ALine.ObjectIdentifierSchemeID;
   end;
-  if ALine.BuyerAccountingReference <> '' then
+  if Present(ALine.BuyerAccountingReference) then
     ASettlement.ReceivableSpecifiedTradeAccountingAccount.Add.ID.Value := ALine.BuyerAccountingReference;
 end;
 
@@ -755,14 +773,14 @@ procedure TCIIWriteMapper.MapContact(AParty: TLandrixInvoiceAccountingParty; APa
 var
   Contact: TLandrixCIITradeContact;
 begin
-  if (AParty.ContactName = '') and (AParty.ContactDepartment = '') and (AParty.ContactTelephone = '') and
-     (AParty.ContactElectronicMail = '') then
+  if Blank(AParty.ContactName) and Blank(AParty.ContactDepartment) and Blank(AParty.ContactTelephone) and
+     Blank(AParty.ContactElectronicMail) then
     Exit;
   Contact := AParty2.DefinedTradeContact.Add;
   Contact.PersonName := AParty.ContactName;
-  if AParty.ContactName = '' then
+  if Blank(AParty.ContactName) then
     Contact.DepartmentName := AParty.ContactDepartment
-  else if AParty.ContactDepartment <> '' then
+  else if Present(AParty.ContactDepartment) then
     Report(edk_NotAllowed, APath + '/ram:DefinedTradeContact/ram:DepartmentName', 'contact department ' +
       AParty.ContactDepartment + ' left out: CII allows a person name or a department (CII-SR-465, CII-SR-466)',
       eds_Warning);
@@ -779,13 +797,13 @@ procedure TCIIWriteMapper.MapElectronicAddress(AParty: TLandrixInvoiceAccounting
 var
   Scheme: TLandrixEInvoiceString;
 begin
-  if AParty.ElectronicAddressSellerBuyer = '' then
+  if Blank(AParty.ElectronicAddressSellerBuyer) then
     Exit;
   Scheme := AParty.ElectronicAddressSellerBuyerSchemeID;
-  if (Scheme = '') and (LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleElectronicAddressDefaultEM) <> erl_Forbidden) then
+  if Blank(Scheme) and (LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleElectronicAddressDefaultEM) <> erl_Forbidden) then
     Scheme := 'EM';
   AParty2.URIUniversalCommunication.URIID := CIIID(AParty.ElectronicAddressSellerBuyer, Scheme);
-  if Scheme = '' then
+  if Blank(Scheme) then
     Report(edk_MissingElement, APath + '/ram:URIUniversalCommunication/ram:URIID/@schemeID',
       'electronic address without scheme', eds_Error);
 end;
@@ -806,26 +824,26 @@ var
 begin
   Party := FInvoice.AccountingSupplierParty;
   Target := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.SellerTradeParty;
-  if Party.IdentifierSellerBuyer <> '' then
+  if Present(Party.IdentifierSellerBuyer) then
     Target.ID.Add(CIIID(Party.IdentifierSellerBuyer, ''));
-  if Party.GlobalIdentifierSellerBuyer <> '' then
+  if Present(Party.GlobalIdentifierSellerBuyer) then
   begin
     Scheme := Party.GlobalIdentifierSellerBuyerSchemeID;
-    if Scheme = '' then
+    if Blank(Scheme) then
       Scheme := '0088';
     Target.GlobalID.Add(CIIID(Party.GlobalIdentifierSellerBuyer, Scheme));
   end;
   Target.Name := Txt(Party.RegistrationName);
   Target.Description := Txt(Party.AdditionalLegalInformationSeller);
-  if Party.CompanyID <> '' then
+  if Present(Party.CompanyID) then
     Target.SpecifiedLegalOrganization.ID := CIIID(Party.CompanyID, Party.CompanyIDSchemeID);
   Target.SpecifiedLegalOrganization.TradingBusinessName := Txt(Party.Name);
   MapContact(Party, Target, Agreement + '/ram:SellerTradeParty');
   MapAddress(Party.Address, Target.PostalTradeAddress);
   MapElectronicAddress(Party, Target, Agreement + '/ram:SellerTradeParty');
-  if Party.VATCompanyID <> '' then
+  if Present(Party.VATCompanyID) then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyID, 'VA');
-  if Party.VATCompanyNumber <> '' then
+  if Present(Party.VATCompanyNumber) then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyNumber, 'FC');
 end;
 
@@ -843,9 +861,9 @@ var
 begin
   Party := FInvoice.AccountingCustomerParty;
   Target := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.BuyerTradeParty;
-  if Party.IdentifierSellerBuyer <> '' then
+  if Present(Party.IdentifierSellerBuyer) then
   begin
-    if Party.GlobalIdentifierSellerBuyer = '' then
+    if Blank(Party.GlobalIdentifierSellerBuyer) then
       Target.ID.Add(CIIID(Party.IdentifierSellerBuyer, ''))
     else if LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleBuyerIDWithGlobalID) <> erl_Forbidden then
       Target.ID.Add(CIIID(Party.IdentifierSellerBuyer, ''))
@@ -853,23 +871,23 @@ begin
       Report(edk_NotAllowed, Agreement + '/ram:BuyerTradeParty/ram:ID',
         'buyer identifier left out, the global identifier is written (BT-46 only once, CII-SR-450)', eds_Warning);
   end;
-  if Party.GlobalIdentifierSellerBuyer <> '' then
+  if Present(Party.GlobalIdentifierSellerBuyer) then
   begin
     Scheme := Party.GlobalIdentifierSellerBuyerSchemeID;
-    if Scheme = '' then
+    if Blank(Scheme) then
       Scheme := '0088';
     Target.GlobalID.Add(CIIID(Party.GlobalIdentifierSellerBuyer, Scheme));
   end;
   Target.Name := Txt(Party.RegistrationName);
-  if Party.CompanyID <> '' then
+  if Present(Party.CompanyID) then
     Target.SpecifiedLegalOrganization.ID := CIIID(Party.CompanyID, Party.CompanyIDSchemeID);
   Target.SpecifiedLegalOrganization.TradingBusinessName := Txt(Party.Name);
   MapContact(Party, Target, Agreement + '/ram:BuyerTradeParty');
   MapAddress(Party.Address, Target.PostalTradeAddress);
   MapElectronicAddress(Party, Target, Agreement + '/ram:BuyerTradeParty');
-  if Party.VATCompanyID <> '' then
+  if Present(Party.VATCompanyID) then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyID, 'VA')
-  else if Party.VATCompanyNumber <> '' then
+  else if Present(Party.VATCompanyNumber) then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyNumber, 'FC');
 end;
 
@@ -893,18 +911,18 @@ var
 begin
   if AParty.IsEmpty then
     Exit;
-  HasContact := (AParty.ContactName <> '') or (AParty.ContactDepartment <> '') or
-    (AParty.ContactTelephone <> '') or (AParty.ContactElectronicMail <> '');
+  HasContact := Present(AParty.ContactName) or Present(AParty.ContactDepartment) or
+    Present(AParty.ContactTelephone) or Present(AParty.ContactElectronicMail);
   case ARole of
     fpr_Payee:
       begin
-        HasExtra := HasContact or AddressSet(AParty.Address) or (AParty.VATCompanyID <> '');
+        HasExtra := HasContact or AddressSet(AParty.Address) or Present(AParty.VATCompanyID);
         Full := HasExtra and Permit(LandrixEInvoiceRulePayeeExtended, APath,
           'address, contact or VAT identifier of the payee');
       end;
     fpr_TaxRepresentative:
       begin
-        HasExtra := HasContact or (AParty.Identifier <> '') or (AParty.CompanyID <> '');
+        HasExtra := HasContact or Present(AParty.Identifier) or Present(AParty.CompanyID);
         Full := HasExtra and Permit(LandrixEInvoiceRuleTaxRepresentativeExtended, APath,
           'identifier or contact of the tax representative');
       end;
@@ -917,14 +935,14 @@ begin
   end;
   if (ARole <> fpr_TaxRepresentative) or Full then
   begin
-    if AParty.Identifier <> '' then
+    if Present(AParty.Identifier) then
     begin
-      if AParty.IdentifierSchemeID = '' then
+      if Blank(AParty.IdentifierSchemeID) then
         ATarget.ID.Add(CIIID(AParty.Identifier, ''))
       else
         ATarget.GlobalID.Add(CIIID(AParty.Identifier, AParty.IdentifierSchemeID));
     end;
-    if AParty.CompanyID <> '' then
+    if Present(AParty.CompanyID) then
       ATarget.SpecifiedLegalOrganization.ID := CIIID(AParty.CompanyID, AParty.CompanyIDSchemeID);
   end;
   ATarget.Name := Txt(AParty.Name);
@@ -938,7 +956,7 @@ begin
   end;
   if ((ARole <> fpr_Payee) or Full) and AddressSet(AParty.Address) then
     MapAddress(AParty.Address, ATarget.PostalTradeAddress);
-  if ((ARole <> fpr_Payee) or Full) and (AParty.VATCompanyID <> '') then
+  if ((ARole <> fpr_Payee) or Full) and Present(AParty.VATCompanyID) then
     ATarget.SpecifiedTaxRegistration.Add.ID := CIIID(AParty.VATCompanyID, 'VA');
 end;
 
@@ -972,7 +990,7 @@ begin
         CIIFormattedDate(FInvoice.PurchaseOrderReferenceDate.Value);
   end;
   Target.ContractReferencedDocument.IssuerAssignedID.Value := FInvoice.ContractDocumentReference;
-  if FInvoice.ProjectReference <> '' then
+  if Present(FInvoice.ProjectReference) then
   begin
     Target.SpecifiedProcuringProject.ID.Value := FInvoice.ProjectReference;
     Target.SpecifiedProcuringProject.Name := 'Project reference';
@@ -1001,7 +1019,7 @@ begin
     Attachment := FInvoice.Attachments[I];
     if Attachment.TypeCode = iatc_50 then
     begin
-      if TenderWritten or (Attachment.ID = '') then
+      if TenderWritten or Blank(Attachment.ID) then
       begin
         Report(edk_NotAllowed, Path, 'tender reference (BT-17) ' + Attachment.ID +
           ' left out: only once and with an identifier (CII-SR-457)', eds_Warning);
@@ -1011,7 +1029,7 @@ begin
     end;
     if Attachment.TypeCode = iatc_130 then
     begin
-      if ObjectWritten or (Attachment.ID = '') then
+      if ObjectWritten or Blank(Attachment.ID) then
       begin
         Report(edk_NotAllowed, Path, 'object identifier (BT-18) ' + Attachment.ID +
           ' left out: only once and with an identifier (CII-SR-458)', eds_Warning);
@@ -1026,7 +1044,7 @@ begin
       Path + '/ram:TypeCode');
     if Attachment.TypeCode = iatc_130 then
       Target.ReferenceTypeCode := Attachment.SchemeID
-    else if Attachment.SchemeID <> '' then
+    else if Present(Attachment.SchemeID) then
       Report(edk_NotAllowed, Path + '/ram:ReferenceTypeCode', 'scheme ' + Attachment.SchemeID + ' of attachment ' +
         Attachment.ID + ' left out: only the invoiced object identifier (BT-18) has one', eds_Warning);
     Target.Name := Txt(Attachment.DocumentDescription);
@@ -1058,15 +1076,15 @@ var
 begin
   Info := FInvoice.DeliveryInformation;
   Target := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeDelivery;
-  if Info.LocationIdentifier <> '' then
+  if Present(Info.LocationIdentifier) then
   begin
-    if Info.LocationIdentifierSchemeID = '' then
+    if Blank(Info.LocationIdentifierSchemeID) then
       Target.ShipToTradeParty.ID.Add(CIIID(Info.LocationIdentifier, ''))
     else
       Target.ShipToTradeParty.GlobalID.Add(CIIID(Info.LocationIdentifier, Info.LocationIdentifierSchemeID));
   end;
   Target.ShipToTradeParty.Name := Txt(Info.Name);
-  if ((Info.ContactName <> '') or (Info.ContactTelephone <> '') or (Info.ContactElectronicMail <> '')) and
+  if (Present(Info.ContactName) or Present(Info.ContactTelephone) or Present(Info.ContactElectronicMail)) and
      Permit(LandrixEInvoiceRuleDeliveryContact, Delivery + '/ram:ShipToTradeParty/ram:DefinedTradeContact',
        'deliver to contact') then
   begin
@@ -1079,7 +1097,7 @@ begin
     MapAddress(Info.Address, Target.ShipToTradeParty.PostalTradeAddress);
   if DateSet(Info.ActualDeliveryDate) then
     Target.ActualDeliverySupplyChainEvent.OccurrenceDateTime := CIIDate(Info.ActualDeliveryDate);
-  if FInvoice.DeliveryReceiptNumber <> '' then
+  if Present(FInvoice.DeliveryReceiptNumber) then
   begin
     Target.DespatchAdviceReferencedDocument.IssuerAssignedID.Value := FInvoice.DeliveryReceiptNumber;
     if DateSet(FInvoice.DeliveryReceiptDate) and
@@ -1088,7 +1106,7 @@ begin
       Target.DespatchAdviceReferencedDocument.FormattedIssueDateTime := CIIFormattedDate(FInvoice.DeliveryReceiptDate);
   end;
   Target.ReceivingAdviceReferencedDocument.IssuerAssignedID.Value := FInvoice.ReceiptDocumentReference;
-  if (FInvoice.DeliveryReceiptNumberExtended <> '') and
+  if Present(FInvoice.DeliveryReceiptNumberExtended) and
      Permit(LandrixEInvoiceRuleDeliveryNote, Delivery + '/ram:DeliveryNoteReferencedDocument', 'delivery note') then
   begin
     Target.DeliveryNoteReferencedDocument.IssuerAssignedID.Value := FInvoice.DeliveryReceiptNumberExtended;
@@ -1166,7 +1184,7 @@ begin
   for I := 0 to FInvoice.PaymentTypes.Count - 1 do
   begin
     Payment := FInvoice.PaymentTypes[I];
-    if (Payment.PaymentMeansCode = ipmc_NotImplemented) and (Payment.PaymentMeansCodeOther = '') then
+    if (Payment.PaymentMeansCode = ipmc_NotImplemented) and Blank(Payment.PaymentMeansCodeOther) then
       Continue;
     Target := HeaderSettlement.SpecifiedTradeSettlementPaymentMeans.Add;
     Target.TypeCode := Code(LandrixEInvoicePaymentMeansCodeToStr(Payment.PaymentMeansCode),
@@ -1177,9 +1195,9 @@ begin
       DE: BT-86 gehoert zum Konto des Zahlungsempfaengers; neben einer
       Lastschrift wird es auch ohne Konto geschrieben (ZUGFeRD-Beispiel X01) }
     if not IsCardPayment(Payment.PaymentMeansCode) and
-       ((Payment.FinancialAccount <> '') or (Payment.PaymentMeansCode = ipmc_SEPADirectDebit)) then
+       (Present(Payment.FinancialAccount) or (Payment.PaymentMeansCode = ipmc_SEPADirectDebit)) then
       Target.PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := Payment.FinancialInstitutionBranch;
-    if Payment.FinancialAccount = '' then
+    if Blank(Payment.FinancialAccount) then
       Continue;
     if Payment.PaymentMeansCode = ipmc_SEPADirectDebit then
       Target.PayerPartyDebtorFinancialAccount.IBANID.Value := Payment.FinancialAccount
@@ -1220,14 +1238,14 @@ begin
   PointCode := '';
   { BR-CO-3: BT-7 and BT-8 are mutually exclusive; the date wins.
     DE: BR-CO-3: BT-7 und BT-8 schliessen sich aus; das Datum gewinnt. }
-  if FInvoice.TaxPointDate.HasValue and (FInvoice.TaxPointDateCode <> '') then
+  if FInvoice.TaxPointDate.HasValue and Present(FInvoice.TaxPointDateCode) then
     Report(edk_NotAllowed, Settlement + '/ram:ApplicableTradeTax/ram:DueDateTypeCode', 'VAT point date code ' +
       FInvoice.TaxPointDateCode + ' (BT-8) left out: the VAT point date (BT-7) is set (BR-CO-3)', eds_Warning)
-  else if (FInvoice.TaxPointDateCode <> '') and
+  else if Present(FInvoice.TaxPointDateCode) and
      not LandrixEInvoiceTaxPointDateCodeToCII(FInvoice.TaxPointDateCode, PointCode) then
     Report(edk_UnknownCode, Settlement + '/ram:ApplicableTradeTax/ram:DueDateTypeCode', 'VAT point date code ' +
       FInvoice.TaxPointDateCode + ' (BT-8) is none of 3, 35, 432; written unchanged', eds_Warning);
-  if (FInvoice.TaxPointDate.HasValue or (PointCode <> '')) and (FInvoice.TaxAmountSubtotals.Count = 0) then
+  if (FInvoice.TaxPointDate.HasValue or Present(PointCode)) and (FInvoice.TaxAmountSubtotals.Count = 0) then
     Report(edk_NotAllowed, Settlement + '/ram:ApplicableTradeTax', 'VAT point date (BT-7, BT-8) left out: ' +
       'CII carries it in the VAT breakdown, which is empty', eds_Warning);
   for I := 0 to FInvoice.TaxAmountSubtotals.Count - 1 do
@@ -1343,8 +1361,8 @@ var
   Base, Actual: Currency;
   Note: TLandrixEInvoiceString;
 begin
-  if DateSet(FInvoice.InvoiceDueDate) or (FInvoice.PaymentMandateID <> '') or
-     (FInvoice.PaymentTermNetNote <> '') then
+  if DateSet(FInvoice.InvoiceDueDate) or Present(FInvoice.PaymentMandateID) or
+     Present(FInvoice.PaymentTermNetNote) then
   begin
     Terms := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradePaymentTerms.Add;
     Terms.Description := Txt(FInvoice.PaymentTermNetNote);
@@ -1429,7 +1447,7 @@ begin
   TaxTotal := CIIAmount(FInvoice.TaxAmountTotal);
   TaxTotal.CurrencyID := FInvoice.InvoiceCurrencyCode;
   Sum.TaxTotalAmount.Add(TaxTotal);
-  if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
+  if Present(FInvoice.TaxCurrencyCode) and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
   begin
     if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
     begin
@@ -1486,7 +1504,7 @@ begin
     if DateSet(Reference.IssueDate) then
       Target.FormattedIssueDateTime := CIIFormattedDate(Reference.IssueDate);
   end;
-  if FInvoice.BuyerAccountingReference <> '' then
+  if Present(FInvoice.BuyerAccountingReference) then
     Settlement2.ReceivableSpecifiedTradeAccountingAccount.Add.ID.Value := FInvoice.BuyerAccountingReference;
 end;
 
@@ -1520,10 +1538,10 @@ begin
   begin
     Payment := FInvoice.PrepaidPayments[I];
     Target := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedFinancialAdjustment.Add;
-    if Payment.InstructionID <> '' then
+    if Present(Payment.InstructionID) then
     begin
       Target.Reason := Payment.InstructionID;
-      if Payment.ID <> '' then
+      if Present(Payment.ID) then
         Report(edk_NotAllowed, Settlement + '/ram:SpecifiedFinancialAdjustment', 'type ' + Payment.ID +
           ' of a third-party payment (BT-DEX-001) left out: a financial adjustment has one reason', eds_Warning);
     end
