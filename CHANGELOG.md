@@ -288,6 +288,12 @@ Supported invoice standards are documented per release.
   (`ELandrixEInvoiceWriteError`, nothing written); options `TLandrixEInvoiceOptions` (strict mode,
   no rule check, write despite errors, check on read, invoice only, no PDF). Exceptions
   `ELandrixEInvoiceTargetError`, `ELandrixEInvoiceFormatError`, `ELandrixEInvoicePdfError`.
+- `TLandrixEInvoice.CalculateLineAmounts` (BT-131 from quantity, net price, base quantity and
+  line allowances and charges; groups as the sum of their sub lines) and `CalculateTotals` (VAT
+  breakdown by category and rate, document totals BT-106 to BT-110, BT-112 and BT-115), on request,
+  rounded half away from zero; they return the number of errors and leave the invoice unchanged
+  then. Test `Calculate.SweepOracle` recalculates the sweep invoices
+  (`tests/data/calc-exceptions.txt`).
 - `TLandrixEInvoice.LoadFromText` (XML as decoded UTF-16 text; the encoding declaration is not
   consulted) and `SaveToText` (as `SaveToUtf8`, as text that keeps `encoding="UTF-8"`).
 - `Assign` on `TLandrixInvoice` and its parts: a deep copy (owned objects, lists and attachment

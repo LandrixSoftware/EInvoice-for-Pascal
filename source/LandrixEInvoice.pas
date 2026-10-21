@@ -312,6 +312,45 @@ type
     class function ToUBLCreditNote(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
       ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixUBLCreditNote;
 
+    { Calculates BT-131 of every line: quantity x net price / base quantity
+      (0 counts as 1), rounded to cents half away from zero, minus the line
+      allowances, plus the line charges; a group (a line with sub lines)
+      gets the sum of its DETAIL and GROUP sub lines. Overwrites the line
+      amounts. Returns the number of errors (reasons in ADiagnostics); with
+      errors AInvoice stays unchanged.
+      DE: Berechnet BT-131 jeder Position: Menge x Nettopreis / Basismenge
+      (0 gilt als 1), halb weg von null auf Cent gerundet, minus
+      Positionsnachlaesse, plus Positionszuschlaege; eine Gruppe (Position
+      mit Unterpositionen) erhaelt die Summe ihrer DETAIL- und
+      GROUP-Unterpositionen. Ueberschreibt die Positionsbetraege. Liefert
+      die Anzahl der Fehler (Gruende in ADiagnostics); bei Fehlern bleibt
+      AInvoice unveraendert. }
+    class function CalculateLineAmounts(AInvoice: TLandrixInvoice;
+      ADiagnostics: TLandrixEInvoiceDiagnostics = nil): Integer;
+    { Calculates the VAT breakdown (BG-23) and the document totals (BT-106
+      to BT-110, BT-112, BT-115) from the line amounts as they are and the document
+      allowances and charges: grouped by VAT category and rate, the tax of
+      each group from its taxable amount, rounded once. Existing breakdowns
+      keep their exemption reasons, missing ones are added, unused ones are
+      removed (warning). BT-111 (tax currency), BT-113 (prepaid) and BT-114
+      (rounding) stay as given; BT-115 includes third-party payments
+      (BG-DEX-09). Overwrites what it calculates. Returns the number of
+      errors (reasons in ADiagnostics); with errors AInvoice stays
+      unchanged.
+      DE: Berechnet die Steueraufschluesselung (BG-23) und die Belegsummen
+      (BT-106 bis BT-110, BT-112, BT-115) aus den Positionsbetraegen, wie sie sind,
+      und den Nachlaessen und Zuschlaegen der Dokumentebene: nach
+      Umsatzsteuerkategorie und Satz gruppiert, die Steuer jeder Gruppe aus
+      ihrer Bemessungsgrundlage, einmal gerundet. Vorhandene Eintraege
+      behalten ihre Befreiungsgruende, fehlende kommen dazu, nicht benutzte
+      werden entfernt (Warnung). BT-111 (Steuerwaehrung), BT-113
+      (Vorauszahlung) und BT-114 (Rundung) bleiben wie gegeben; BT-115
+      enthaelt Zahlungen Dritter (BG-DEX-09). Ueberschreibt, was sie
+      berechnet. Liefert die Anzahl der Fehler (Gruende in ADiagnostics);
+      bei Fehlern bleibt AInvoice unveraendert. }
+    class function CalculateTotals(AInvoice: TLandrixInvoice;
+      ADiagnostics: TLandrixEInvoiceDiagnostics = nil): Integer;
+
     { Runs the checks of SaveTo* without writing and returns the number of
       errors SaveTo* would refuse on.
       DE: Fuehrt die Pruefungen von SaveTo* aus, ohne zu schreiben, und
@@ -365,6 +404,7 @@ uses
   LandrixXmlWriter,
   LandrixEInvoiceLexical,
   LandrixEInvoiceFiles,
+  LandrixEInvoiceCalc,
   LandrixEInvoiceCheck,
   LandrixEInvoiceCIIProfiles,
   LandrixEInvoiceCIIReader,
@@ -893,6 +933,18 @@ class function TLandrixEInvoice.ToUBLCreditNote(AInvoice: TLandrixInvoice; const
   ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixUBLCreditNote;
 begin
   Result := LandrixEInvoiceInvoiceToUBLCreditNote(AInvoice, WritableSpec(ATarget, mk_UBLCreditNote), ADiagnostics);
+end;
+
+class function TLandrixEInvoice.CalculateLineAmounts(AInvoice: TLandrixInvoice;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := LandrixEInvoiceCalculateLineAmounts(AInvoice, ADiagnostics);
+end;
+
+class function TLandrixEInvoice.CalculateTotals(AInvoice: TLandrixInvoice;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := LandrixEInvoiceCalculateTotals(AInvoice, ADiagnostics);
 end;
 
 class function TLandrixEInvoice.Check(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;

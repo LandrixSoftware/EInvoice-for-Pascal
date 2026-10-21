@@ -80,8 +80,9 @@ end;
 ```
 
 Das vollständige Programm ist [examples/WriteXRechnung](../../examples/WriteXRechnung/WriteXRechnung.dpr).
-Die Bibliothek rechnet nicht: Positionsbeträge, Steueraufschlüsselung und Summen setzt Ihr
-Programm.
+Positionsbeträge, Steueraufschlüsselung und Summen werden auf Aufruf berechnet
+(`CalculateLineAmounts`, `CalculateTotals`, siehe [Schreiben](writing.md#beträge-berechnen));
+das Schreiben selbst ändert nie Beträge.
 
 ## Beispiele
 

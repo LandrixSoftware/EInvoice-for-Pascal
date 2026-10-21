@@ -69,8 +69,26 @@ Auch ein Syntaxmodell wird gegen das Ziel geprüft: Inhalt, den sein Factur-X-Pr
 enthält, Inhalt, den Schema und Profil verlangen, und dass seine BT-24 zum Ziel gehört. Die
 Geschäftsregeln brauchen das semantische Modell und werden für Syntaxmodelle nicht geprüft.
 
-## Summen
+## Beträge berechnen
 
-Die Bibliothek rechnet nicht. Positionsbeträge (BT-131), Steueraufschlüsselung (BG-23) und
-Belegsummen (BG-22) kommen aus Ihrem Programm; die Prüfung meldet die Rechenregeln (BR-CO-10
-bis BR-CO-17), wenn sie nicht aufgehen.
+Das Schreiben ändert nie Beträge. Berechnen Sie sie vor dem Schreiben auf Aufruf:
+
+```pascal
+TLandrixEInvoice.CalculateLineAmounts(Invoice);   // BT-131 jeder Position
+TLandrixEInvoice.CalculateTotals(Invoice);        // BG-23 und BG-22
+```
+
+- `CalculateLineAmounts`: Menge x Nettopreis / Basismenge (0 gilt als 1), halb weg von null auf
+  Cent gerundet, minus Positionsnachlässe, plus Positionszuschläge. Eine Gruppe (Position mit
+  Unterpositionen) erhält die Summe ihrer DETAIL- und GROUP-Unterpositionen. Lassen Sie diesen
+  Aufruf weg, wenn Ihre Positionsbeträge von anderswo kommen.
+- `CalculateTotals`: die Steueraufschlüsselung nach Umsatzsteuerkategorie und Satz (die Steuer
+  jeder Gruppe einmal auf ihre Bemessungsgrundlage gerundet; vorhandene Einträge behalten ihre
+  Befreiungsgründe, fehlende kommen dazu, nicht benutzte werden entfernt) und die Belegsummen
+  BT-106 bis BT-110, BT-112 und BT-115. BT-111 (Steuerwährung), BT-113 (Vorauszahlung) und BT-114
+  (Rundung) bleiben, wie Sie sie setzen; BT-115 enthält Zahlungen Dritter.
+
+Beide überschreiben, was sie berechnen, liefern die Anzahl der Fehler und lassen die Rechnung
+bei einem Fehler unverändert (z. B. eine Position ohne Umsatzsteuerkategorie, eine Gruppe,
+deren Unterpositionen verschiedene Steuersätze haben). Die Prüfung meldet die Rechenregeln
+(BR-CO-10 bis BR-CO-17), wenn Beträge Ihres Programms nicht aufgehen.

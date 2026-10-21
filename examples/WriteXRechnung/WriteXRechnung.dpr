@@ -42,12 +42,11 @@ uses
   LandrixEInvoice;
 
 { The invoice: seller, buyer, two lines with 19 % VAT, SEPA credit transfer.
-  The library does not calculate: the totals are set here. }
+  Line amounts, VAT breakdown and totals are calculated afterwards. }
 procedure FillInvoice(Invoice: TLandrixInvoice);
 var
   Party: TLandrixInvoiceAccountingParty;
   Line: TLandrixInvoiceLine;
-  Tax: TLandrixInvoiceTaxAmount;
   Payment: TLandrixInvoicePaymentType;
 begin
   Invoice.InvoiceNumber := 'RE-2026-0001';
@@ -87,7 +86,6 @@ begin
   Line.Quantity := 8;
   Line.UnitCode := iuc_hour;
   Line.NetPriceAmount := 120;
-  Line.LineAmount := 960;
   Line.TaxCategory := idtfcc_S_StandardRate;
   Line.TaxPercent := 19;
 
@@ -97,21 +95,8 @@ begin
   Line.Quantity := 1;
   Line.UnitCode := iuc_piece;
   Line.NetPriceAmount := 40;
-  Line.LineAmount := 40;
   Line.TaxCategory := idtfcc_S_StandardRate;
   Line.TaxPercent := 19;
-
-  Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
-  Tax.TaxableAmount := 1000;
-  Tax.TaxAmount := 190;
-  Tax.TaxCategory := idtfcc_S_StandardRate;
-  Tax.TaxPercent := 19;
-
-  Invoice.LineAmount := 1000;
-  Invoice.TaxExclusiveAmount := 1000;
-  Invoice.TaxAmountTotal := 190;
-  Invoice.TaxInclusiveAmount := 1190;
-  Invoice.PayableAmount := 1190;
 
   Payment := Invoice.PaymentTypes.AddPaymentType;
   Payment.PaymentMeansCode := ipmc_SEPACreditTransfer;
@@ -149,6 +134,7 @@ end;
 
 var
   Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
   Folder: TLandrixEInvoiceString;
   Ok: Boolean;
 begin
@@ -158,6 +144,20 @@ begin
   Invoice := TLandrixInvoice.Create;
   try
     FillInvoice(Invoice);
+    { BT-131 from quantity and price, then the VAT breakdown (BG-23) and the
+      totals (BG-22): 960 + 40 = 1000 net, 190 VAT, 1190 payable }
+    D := TLandrixEInvoiceDiagnostics.Create;
+    try
+      if (TLandrixEInvoice.CalculateLineAmounts(Invoice, D) > 0) or
+         (TLandrixEInvoice.CalculateTotals(Invoice, D) > 0) then
+      begin
+        WriteLn('Not calculated: ', string(D.ToText));
+        ExitCode := 1;
+        Exit;
+      end;
+    finally
+      D.Free;
+    end;
     Ok := Save(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Folder + 'xrechnung-ubl.xml');
     Ok := Save(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), Folder + 'xrechnung-cii.xml') and Ok;
   finally

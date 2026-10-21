@@ -69,8 +69,27 @@ A syntax model is checked against the target too: content its Factur-X profile d
 contain, content the schema and the profile require, and that its BT-24 belongs to the target.
 The business rules need the semantic model and are not checked for syntax models.
 
-## Totals
+## Calculating amounts
 
-The library does not calculate. Line amounts (BT-131), the VAT breakdown (BG-23) and the
-document totals (BG-22) come from your program; the check reports the calculation rules
-(BR-CO-10 to BR-CO-17) when they do not add up.
+Writing never changes amounts. Calculate them on request before writing:
+
+```pascal
+TLandrixEInvoice.CalculateLineAmounts(Invoice);   // BT-131 of every line
+TLandrixEInvoice.CalculateTotals(Invoice);        // BG-23 and BG-22
+```
+
+- `CalculateLineAmounts`: quantity x net price / base quantity (0 counts as 1), rounded to cents
+  half away from zero, minus line allowances, plus line charges. A group (a line with sub
+  lines) gets the sum of its DETAIL and GROUP sub lines. Skip this call if your line amounts
+  come from elsewhere.
+- `CalculateTotals`: the VAT breakdown grouped by VAT category and rate (the tax of each group
+  rounded once on its taxable amount; existing entries keep their exemption reasons, missing
+  ones are added, unused ones removed) and the document totals BT-106 to BT-110, BT-112 and
+  BT-115.
+  BT-111 (tax currency), BT-113 (prepaid) and BT-114 (rounding) stay as you set them; BT-115
+  includes third-party payments.
+
+Both overwrite what they calculate, return the number of errors and leave the invoice unchanged
+when there is one (e.g. a line without VAT category, a group whose sub lines have different VAT
+rates). The check reports the calculation rules (BR-CO-10 to BR-CO-17) when amounts set by your
+program do not add up.

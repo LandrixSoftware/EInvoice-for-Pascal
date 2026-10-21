@@ -1,0 +1,40 @@
+# Calculation oracle exceptions (tests/LandrixEInvoiceTestCalculate.pas, Calculate.SweepOracle):
+# corpus/file<TAB>finding prefix. Every line needs a reason in the comment above it; an unused
+# line fails the test.
+
+# The written price is rounded, the source computed the line amount from the unrounded price
+# (245 x 0.1973 = 48.3385, the source writes 48.33; 804878.94 x 0.01146 = 9223.9126 -> 9223.92;
+# 804878.94 x 0.0003 = 241.4637 -> 241.47; 2100 x 3.2916 = 6912.36 -> 6912.37). EN 16931 does
+# not require BT-131 = BT-129 x BT-146; the helper calculates from the written values.
+kosit-xr302/standard_03.01a-INVOICE_ubl.xml	BT-131 line 3.3
+kosit-xr302/standard_03.01a-INVOICE_uncefact.xml	BT-131 line 3.3
+kosit-xr302/standard_03.04a-INVOICE_ubl.xml	BT-131 line 2
+kosit-xr302/standard_03.04a-INVOICE_ubl.xml	BT-131 line 3
+kosit-xr302/standard_03.04a-INVOICE_uncefact.xml	BT-131 line 2
+kosit-xr302/standard_03.04a-INVOICE_uncefact.xml	BT-131 line 3
+kosit-xr302/standard_03.05a-INVOICE_ubl.xml	BT-131 line 2
+kosit-xr302/standard_03.05a-INVOICE_uncefact.xml	BT-131 line 2
+
+# The source's BT-117 is one cent above taxable amount x rate (30 x 132.878 = 3986.34, 19 % =
+# 757.4046, the source writes 757.41); BR-CO-17 tolerates it. The helper writes 757.40.
+kosit-xr302/technical-cases_cius_01.06_minimal_test_ubl.xml	BT-110
+kosit-xr302/technical-cases_cius_01.06_minimal_test_ubl.xml	BT-112
+kosit-xr302/technical-cases_cius_01.06_minimal_test_ubl.xml	BT-115
+kosit-xr302/technical-cases_cius_01.06_minimal_test_ubl.xml	BG-23 S 19 BT-117
+kosit-xr302/technical-cases_cius_01.06_minimal_test_uncefact.xml	BT-110
+kosit-xr302/technical-cases_cius_01.06_minimal_test_uncefact.xml	BT-112
+kosit-xr302/technical-cases_cius_01.06_minimal_test_uncefact.xml	BT-115
+kosit-xr302/technical-cases_cius_01.06_minimal_test_uncefact.xml	BG-23 S 19 BT-117
+
+# The line total contains 16.34 % insurance tax (1163.40) on a net price of 1000; it is no
+# product of quantity and net price.
+zugferd252/E23_01_Sachversicherung_berechneter_Steuersatz.xml	BT-131 line 1
+
+# A DETAIL line with (INFORMATION) sub lines: a line with sub lines must be a GROUP for the
+# helper; not supported, refused.
+zugferd252/X06_01_Fallschutz-Set_SubInvoiceLine_Bsp5.xml	lines refused
+zugferd252/X06_01_Fallschutz-Set_SubInvoiceLine_Bsp5.xml	totals refused
+
+# A group whose sub lines have different VAT rates: the breakdown would depend on the target
+# (EXTENDED counts the DETAIL lines, UBL the top level); not supported, refused.
+zugferd252/X18_01_SubInvoiceLines_Kaffee_Bundle_Set_Bsp4___.xml	totals refused

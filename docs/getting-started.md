@@ -80,8 +80,9 @@ end;
 ```
 
 The complete program is [examples/WriteXRechnung](../examples/WriteXRechnung/WriteXRechnung.dpr).
-The library does not calculate: line amounts, the VAT breakdown and the totals are set by
-your program.
+Line amounts, the VAT breakdown and the totals are calculated on request
+(`CalculateLineAmounts`, `CalculateTotals`, see [Writing](writing.md#calculating-amounts));
+writing itself never changes amounts.
 
 ## Examples
 
