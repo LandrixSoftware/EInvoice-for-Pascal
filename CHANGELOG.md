@@ -288,8 +288,14 @@ Supported invoice standards are documented per release.
   (`ELandrixEInvoiceWriteError`, nothing written); options `TLandrixEInvoiceOptions` (strict mode,
   no rule check, write despite errors, check on read, invoice only, no PDF). Exceptions
   `ELandrixEInvoiceTargetError`, `ELandrixEInvoiceFormatError`, `ELandrixEInvoicePdfError`.
+- `Assign` on `TLandrixInvoice` and its parts: a deep copy (owned objects, lists and attachment
+  data are copied).
 
 ### Changed
+- The compatibility adapter reads and writes through the facade `TLandrixEInvoice` (writing without
+  business rule check and despite errors, as before); an unknown specification identifier now also
+  adds a warning to its diagnostics. A failed load leaves the invoice unchanged (before, it was
+  cleared or partly filled); XML errors of files, streams and text all start with 'Not valid XML: '.
 - The compatibility adapter opens files through `LandrixEInvoiceFiles`: on Free Pascal file names
   outside the system code page are no longer lost.
 - `LandrixEInvoiceCheckCII` reports content the Factur-X profile does not contain as an error

@@ -169,6 +169,11 @@ type
     procedure SetDataFromBase64(const AValue: TLandrixEInvoiceString);
     { True if Data is not empty. DE: True, wenn Data nicht leer ist. }
     function ContainsBinaryObject: Boolean;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceAttachment);
   end;
 
   { List of attachments (BG-24). DE: Liste der Anhaenge (BG-24). }
@@ -206,6 +211,11 @@ type
     PaidAmountCurrencyID: TLandrixEInvoiceString;
     { BT-DEX-003 DE: BT-DEX-003 }
     InstructionID: TLandrixEInvoiceString;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoicePrepaidPayment);
   end;
 
   { List of third party payments. DE: Liste der Zahlungen durch Dritte. }
@@ -275,6 +285,11 @@ type
       TaxCategory den Wert idtfcc_None hat; ein gesetztes TaxCategory gewinnt beim
       Schreiben. }
     TaxCategoryOther: TLandrixEInvoiceString;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceAllowanceCharge);
   end;
 
   { List of allowances and charges. DE: Liste der Nachlaesse und
@@ -301,6 +316,11 @@ type
     Name: TLandrixEInvoiceString;
     { BT-161 value. DE: BT-161 Wert. }
     Value: TLandrixEInvoiceString;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceLineItemAttribute);
   end;
 
   { List of item attributes. DE: Liste der Artikeleigenschaften. }
@@ -334,6 +354,11 @@ type
       not allowed elsewhere. DE: Name der Klassifizierung, nur
       ZUGFeRD/Factur-X EXTENDED (ram:ClassName), sonst unzulaessig. }
     ClassificationName: TLandrixEInvoiceString;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceLineItemClassification);
   end;
 
   { List of item classifications. DE: Liste der Artikelklassifizierungen. }
@@ -554,6 +579,11 @@ type
       cleared, not replaced. DE: Setzt alle Felder auf die Werte nach Create
       zurueck; eigene Unterobjekte werden geleert, nicht ersetzt. }
     procedure Clear;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceLine);
   end;
 
   { List of invoice lines. DE: Liste der Rechnungspositionen. }
@@ -598,6 +628,11 @@ type
     TaxExemptionReasonCode: TLandrixEInvoiceString;
   public
     constructor Create;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceTaxAmount);
   end;
 
   { List of VAT breakdowns. DE: Liste der Umsatzsteueraufschluesselungen. }
@@ -642,6 +677,11 @@ type
     { Resets all fields to the values after Create. DE: Setzt alle Felder
       auf die Werte nach Create zurueck. }
     procedure Clear;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceAddress);
   end;
 
   { Seller (BG-4) or buyer (BG-7). DE: Verkaeufer (BG-4) oder Kaeufer
@@ -747,6 +787,11 @@ type
       cleared, not replaced. DE: Setzt alle Felder auf die Werte nach Create
       zurueck; eigene Unterobjekte werden geleert, nicht ersetzt. }
     procedure Clear;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceAccountingParty);
   end;
 
   { A further party of the invoice: payee (BG-10), seller tax
@@ -800,6 +845,11 @@ type
     procedure Clear;
     { True if no field is set. DE: True, wenn kein Feld gesetzt ist. }
     function IsEmpty: Boolean;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceParty);
   end;
 
   { Delivery information (BG-13). DE: Lieferinformationen (BG-13). }
@@ -842,6 +892,11 @@ type
       cleared, not replaced. DE: Setzt alle Felder auf die Werte nach Create
       zurueck; eigene Unterobjekte werden geleert, nicht ersetzt. }
     procedure Clear;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceDeliveryInformation);
   end;
 
   { Preceding invoice reference (BG-3). DE: Referenz auf eine vorausgegangene
@@ -854,6 +909,11 @@ type
     { BT-26 preceding invoice issue date. DE: BT-26 Datum der
       vorausgegangenen Rechnung. }
     IssueDate: TDateTime;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoicePrecedingInvoiceReference);
   end;
 
   { List of preceding invoice references. DE: Liste der Referenzen auf
@@ -893,6 +953,11 @@ type
     SubjectCodeOther: TLandrixEInvoiceString;
   public
     constructor Create;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoiceNote);
   end;
 
   { List of invoice notes. DE: Liste der Hinweise zur Rechnung. }
@@ -949,6 +1014,11 @@ type
     FinancialInstitutionBranch: TLandrixEInvoiceString;
   public
     constructor Create;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoicePaymentType);
   end;
 
   { List of payment instructions. DE: Liste der Zahlungsanweisungen. }
@@ -1202,6 +1272,11 @@ type
       erhalten die Werte nach Create, alle Listen werden geleert, eigene
       Unterobjekte werden geleert, nicht ersetzt. }
     procedure Clear;
+    { Makes this object a deep copy of ASource (owned objects and lists are
+      copied, not shared).
+      DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
+      Unterobjekte und Listen werden kopiert, nicht geteilt). }
+    procedure Assign(ASource: TLandrixInvoice);
   end;
 
 { BT-X-8 code of a line status reason ('' for ilsrc_None) and the reverse
@@ -2548,6 +2623,343 @@ begin
   PrepaidAmount := 0;
   PayableRoundingAmount := 0;
   PayableAmount := 0;
+end;
+
+{ --- Assign ------------------------------------------------------------- }
+
+procedure TLandrixInvoiceAttachment.Assign(ASource: TLandrixInvoiceAttachment);
+begin
+  if ASource = Self then
+    Exit;
+  ID := ASource.ID;
+  DocumentDescription := ASource.DocumentDescription;
+  Filename := ASource.Filename;
+  TypeCode := ASource.TypeCode;
+  TypeCodeOther := ASource.TypeCodeOther;
+  AttachmentType := ASource.AttachmentType;
+  AttachmentTypeOther := ASource.AttachmentTypeOther;
+  Data.Clear;
+  Data.WriteBuffer(ASource.Data.Memory^, Integer(ASource.Data.Size));
+  Data.Position := 0;
+  ExternalReference := ASource.ExternalReference;
+  SchemeID := ASource.SchemeID;
+end;
+
+procedure TLandrixInvoicePrepaidPayment.Assign(ASource: TLandrixInvoicePrepaidPayment);
+begin
+  if ASource = Self then
+    Exit;
+  ID := ASource.ID;
+  PaidAmount := ASource.PaidAmount;
+  PaidAmountCurrencyID := ASource.PaidAmountCurrencyID;
+  InstructionID := ASource.InstructionID;
+end;
+
+procedure TLandrixInvoiceAllowanceCharge.Assign(ASource: TLandrixInvoiceAllowanceCharge);
+begin
+  if ASource = Self then
+    Exit;
+  ChargeIndicator := ASource.ChargeIndicator;
+  ReasonCodeAllowance := ASource.ReasonCodeAllowance;
+  ReasonCodeAllowanceOther := ASource.ReasonCodeAllowanceOther;
+  ReasonCodeCharge := ASource.ReasonCodeCharge;
+  ReasonCodeChargeOther := ASource.ReasonCodeChargeOther;
+  Reason := ASource.Reason;
+  BaseAmount := ASource.BaseAmount;
+  MultiplierFactorNumeric := ASource.MultiplierFactorNumeric;
+  Amount := ASource.Amount;
+  TaxPercent := ASource.TaxPercent;
+  TaxCategory := ASource.TaxCategory;
+  TaxCategoryOther := ASource.TaxCategoryOther;
+end;
+
+procedure TLandrixInvoiceLineItemAttribute.Assign(ASource: TLandrixInvoiceLineItemAttribute);
+begin
+  if ASource = Self then
+    Exit;
+  Name := ASource.Name;
+  Value := ASource.Value;
+end;
+
+procedure TLandrixInvoiceLineItemClassification.Assign(ASource: TLandrixInvoiceLineItemClassification);
+begin
+  if ASource = Self then
+    Exit;
+  ClassCode := ASource.ClassCode;
+  ListID := ASource.ListID;
+  ListVersionID := ASource.ListVersionID;
+  ClassificationName := ASource.ClassificationName;
+end;
+
+procedure TLandrixInvoiceLine.Assign(ASource: TLandrixInvoiceLine);
+var
+  I: TLandrixEInvoiceListIndex;
+  Subs, Old: TLandrixInvoiceLines;
+begin
+  if ASource = Self then
+    Exit;
+  ID := ASource.ID;
+  GlobalID_EAN_GTIN := ASource.GlobalID_EAN_GTIN;
+  StandardItemIdentifier := ASource.StandardItemIdentifier;
+  StandardItemIdentifierSchemeID := ASource.StandardItemIdentifierSchemeID;
+  Note := ASource.Note;
+  ObjectIdentifier := ASource.ObjectIdentifier;
+  ObjectIdentifierSchemeID := ASource.ObjectIdentifierSchemeID;
+  Name := ASource.Name;
+  Description := ASource.Description;
+  Quantity := ASource.Quantity;
+  UnitCode := ASource.UnitCode;
+  UnitCodeOther := ASource.UnitCodeOther;
+  SellersItemIdentification := ASource.SellersItemIdentification;
+  BuyersItemIdentification := ASource.BuyersItemIdentification;
+  OrderNumber := ASource.OrderNumber;
+  OrderDate := ASource.OrderDate;
+  OrderLineReference := ASource.OrderLineReference;
+  BuyerAccountingReference := ASource.BuyerAccountingReference;
+  TaxPercent := ASource.TaxPercent;
+  TaxCategory := ASource.TaxCategory;
+  TaxCategoryOther := ASource.TaxCategoryOther;
+  TaxExemptionReason := ASource.TaxExemptionReason;
+  GrossPriceAmount := ASource.GrossPriceAmount;
+  DiscountOnTheGrossPrice := ASource.DiscountOnTheGrossPrice;
+  NetPriceAmount := ASource.NetPriceAmount;
+  BaseQuantity := ASource.BaseQuantity;
+  BaseQuantityUnitCode := ASource.BaseQuantityUnitCode;
+  BaseQuantityUnitCodeOther := ASource.BaseQuantityUnitCodeOther;
+  LineAmount := ASource.LineAmount;
+  AllowanceCharges.Clear;
+  for I := 0 to ASource.AllowanceCharges.Count - 1 do
+    AllowanceCharges.AddAllowanceCharge.Assign(ASource.AllowanceCharges[I]);
+  InvoiceLinePeriodStartDate := ASource.InvoiceLinePeriodStartDate;
+  InvoiceLinePeriodEndDate := ASource.InvoiceLinePeriodEndDate;
+  ItemClassifications.Clear;
+  for I := 0 to ASource.ItemClassifications.Count - 1 do
+    ItemClassifications.AddItemClassification.Assign(ASource.ItemClassifications[I]);
+  OriginTradeCountry := ASource.OriginTradeCountry;
+  ItemAttributes.Clear;
+  for I := 0 to ASource.ItemAttributes.Count - 1 do
+    ItemAttributes.AddItemAttribute.Assign(ASource.ItemAttributes[I]);
+  DeliveryNoteNumber := ASource.DeliveryNoteNumber;
+  DeliveryNoteLineID := ASource.DeliveryNoteLineID;
+  DeliveryNoteDate := ASource.DeliveryNoteDate;
+  ActualDeliveryDate := ASource.ActualDeliveryDate;
+  LineStatusReasonCode := ASource.LineStatusReasonCode;
+  LineStatusReasonCodeOther := ASource.LineStatusReasonCodeOther;
+  { ASource may be one of the own sub-lines (promoting a sub-line): copy
+    into a new list first, free the old one (and with it ASource) last.
+    DE: ASource kann eine der eigenen Unterpositionen sein (Unterposition
+    hochstufen): erst in eine neue Liste kopieren, die alte (und damit
+    ASource) zuletzt freigeben. }
+  Subs := TLandrixInvoiceLines.Create;
+  for I := 0 to ASource.SubInvoiceLines.Count - 1 do
+    Subs.AddInvoiceLine.Assign(ASource.SubInvoiceLines[I]);
+  Old := SubInvoiceLines;
+  SubInvoiceLines := Subs;
+  Old.Free;
+end;
+
+procedure TLandrixInvoiceTaxAmount.Assign(ASource: TLandrixInvoiceTaxAmount);
+begin
+  if ASource = Self then
+    Exit;
+  TaxableAmount := ASource.TaxableAmount;
+  TaxAmount := ASource.TaxAmount;
+  TaxPercent := ASource.TaxPercent;
+  TaxCategory := ASource.TaxCategory;
+  TaxCategoryOther := ASource.TaxCategoryOther;
+  TaxExemptionReason := ASource.TaxExemptionReason;
+  TaxExemptionReasonCode := ASource.TaxExemptionReasonCode;
+end;
+
+procedure TLandrixInvoiceAddress.Assign(ASource: TLandrixInvoiceAddress);
+begin
+  if ASource = Self then
+    Exit;
+  StreetName := ASource.StreetName;
+  AdditionalStreetName := ASource.AdditionalStreetName;
+  City := ASource.City;
+  PostalZone := ASource.PostalZone;
+  CountrySubentity := ASource.CountrySubentity;
+  AddressLine := ASource.AddressLine;
+  CountryCode := ASource.CountryCode;
+end;
+
+procedure TLandrixInvoiceAccountingParty.Assign(ASource: TLandrixInvoiceAccountingParty);
+begin
+  if ASource = Self then
+    Exit;
+  Name := ASource.Name;
+  RegistrationName := ASource.RegistrationName;
+  CompanyID := ASource.CompanyID;
+  CompanyIDSchemeID := ASource.CompanyIDSchemeID;
+  Address.Assign(ASource.Address);
+  IdentifierSellerBuyer := ASource.IdentifierSellerBuyer;
+  GlobalIdentifierSellerBuyer := ASource.GlobalIdentifierSellerBuyer;
+  GlobalIdentifierSellerBuyerSchemeID := ASource.GlobalIdentifierSellerBuyerSchemeID;
+  BankAssignedCreditorIdentifier := ASource.BankAssignedCreditorIdentifier;
+  VATCompanyID := ASource.VATCompanyID;
+  VATCompanyNumber := ASource.VATCompanyNumber;
+  ContactName := ASource.ContactName;
+  ContactDepartment := ASource.ContactDepartment;
+  ContactTelephone := ASource.ContactTelephone;
+  ContactElectronicMail := ASource.ContactElectronicMail;
+  AdditionalLegalInformationSeller := ASource.AdditionalLegalInformationSeller;
+  ElectronicAddressSellerBuyer := ASource.ElectronicAddressSellerBuyer;
+  ElectronicAddressSellerBuyerSchemeID := ASource.ElectronicAddressSellerBuyerSchemeID;
+end;
+
+procedure TLandrixInvoiceParty.Assign(ASource: TLandrixInvoiceParty);
+begin
+  if ASource = Self then
+    Exit;
+  Name := ASource.Name;
+  Identifier := ASource.Identifier;
+  IdentifierSchemeID := ASource.IdentifierSchemeID;
+  CompanyID := ASource.CompanyID;
+  CompanyIDSchemeID := ASource.CompanyIDSchemeID;
+  VATCompanyID := ASource.VATCompanyID;
+  Address.Assign(ASource.Address);
+  ContactName := ASource.ContactName;
+  ContactDepartment := ASource.ContactDepartment;
+  ContactTelephone := ASource.ContactTelephone;
+  ContactElectronicMail := ASource.ContactElectronicMail;
+end;
+
+procedure TLandrixInvoiceDeliveryInformation.Assign(ASource: TLandrixInvoiceDeliveryInformation);
+begin
+  if ASource = Self then
+    Exit;
+  Name := ASource.Name;
+  LocationIdentifier := ASource.LocationIdentifier;
+  LocationIdentifierSchemeID := ASource.LocationIdentifierSchemeID;
+  Address.Assign(ASource.Address);
+  ActualDeliveryDate := ASource.ActualDeliveryDate;
+  ContactName := ASource.ContactName;
+  ContactTelephone := ASource.ContactTelephone;
+  ContactElectronicMail := ASource.ContactElectronicMail;
+end;
+
+procedure TLandrixInvoicePrecedingInvoiceReference.Assign(ASource: TLandrixInvoicePrecedingInvoiceReference);
+begin
+  if ASource = Self then
+    Exit;
+  ID := ASource.ID;
+  IssueDate := ASource.IssueDate;
+end;
+
+procedure TLandrixInvoiceNote.Assign(ASource: TLandrixInvoiceNote);
+begin
+  if ASource = Self then
+    Exit;
+  Content := ASource.Content;
+  SubjectCode := ASource.SubjectCode;
+  SubjectCodeOther := ASource.SubjectCodeOther;
+end;
+
+procedure TLandrixInvoicePaymentType.Assign(ASource: TLandrixInvoicePaymentType);
+begin
+  if ASource = Self then
+    Exit;
+  PaymentMeansCode := ASource.PaymentMeansCode;
+  PaymentMeansCodeOther := ASource.PaymentMeansCodeOther;
+  PaymentMeansInformation := ASource.PaymentMeansInformation;
+  FinancialAccount := ASource.FinancialAccount;
+  FinancialAccountName := ASource.FinancialAccountName;
+  FinancialInstitutionBranch := ASource.FinancialInstitutionBranch;
+end;
+
+procedure TLandrixInvoice.Assign(ASource: TLandrixInvoice);
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  if ASource = Self then
+    Exit;
+  ProfileID := ASource.ProfileID;
+  TestIndicator := ASource.TestIndicator;
+  InvoiceNumber := ASource.InvoiceNumber;
+  DocumentName := ASource.DocumentName;
+  InvoiceIssueDate := ASource.InvoiceIssueDate;
+  InvoiceDueDate := ASource.InvoiceDueDate;
+  InvoicePeriodStartDate := ASource.InvoicePeriodStartDate;
+  InvoicePeriodEndDate := ASource.InvoicePeriodEndDate;
+  InvoiceTypeCode := ASource.InvoiceTypeCode;
+  InvoiceTypeCodeOther := ASource.InvoiceTypeCodeOther;
+  InvoiceCurrencyCode := ASource.InvoiceCurrencyCode;
+  TaxCurrencyCode := ASource.TaxCurrencyCode;
+  TaxPointDate := ASource.TaxPointDate;
+  TaxPointDateCode := ASource.TaxPointDateCode;
+  BuyerReference := ASource.BuyerReference;
+  Notes.Clear;
+  for I := 0 to ASource.Notes.Count - 1 do
+    Notes.AddNote.Assign(ASource.Notes[I]);
+  SellerOrderReference := ASource.SellerOrderReference;
+  SellerOrderReferenceDate := ASource.SellerOrderReferenceDate;
+  PurchaseOrderReference := ASource.PurchaseOrderReference;
+  PurchaseOrderReferenceDate := ASource.PurchaseOrderReferenceDate;
+  ProjectReference := ASource.ProjectReference;
+  ReceiptDocumentReference := ASource.ReceiptDocumentReference;
+  ContractDocumentReference := ASource.ContractDocumentReference;
+  DeliveryReceiptNumber := ASource.DeliveryReceiptNumber;
+  DeliveryReceiptDate := ASource.DeliveryReceiptDate;
+  DeliveryReceiptNumberExtended := ASource.DeliveryReceiptNumberExtended;
+  DeliveryReceiptDateExtended := ASource.DeliveryReceiptDateExtended;
+  BuyerAccountingReference := ASource.BuyerAccountingReference;
+  AccountingSupplierParty.Assign(ASource.AccountingSupplierParty);
+  AccountingCustomerParty.Assign(ASource.AccountingCustomerParty);
+  DeliveryInformation.Assign(ASource.DeliveryInformation);
+  PayeeParty.Assign(ASource.PayeeParty);
+  TaxRepresentativeParty.Assign(ASource.TaxRepresentativeParty);
+  InvoiceeParty.Assign(ASource.InvoiceeParty);
+  PaymentID := ASource.PaymentID;
+  PaymentTypes.Clear;
+  for I := 0 to ASource.PaymentTypes.Count - 1 do
+    PaymentTypes.AddPaymentType.Assign(ASource.PaymentTypes[I]);
+  PaymentMandateID := ASource.PaymentMandateID;
+  PaymentTermsType := ASource.PaymentTermsType;
+  PaymentTermNetNote := ASource.PaymentTermNetNote;
+  PaymentTermCashDiscount1Days := ASource.PaymentTermCashDiscount1Days;
+  PaymentTermCashDiscount1Percent := ASource.PaymentTermCashDiscount1Percent;
+  PaymentTermCashDiscount1Base := ASource.PaymentTermCashDiscount1Base;
+  PaymentTermCashDiscount1ActualAmount := ASource.PaymentTermCashDiscount1ActualAmount;
+  PaymentTermCashDiscount2Days := ASource.PaymentTermCashDiscount2Days;
+  PaymentTermCashDiscount2Percent := ASource.PaymentTermCashDiscount2Percent;
+  PaymentTermCashDiscount2Base := ASource.PaymentTermCashDiscount2Base;
+  PaymentTermCashDiscount2ActualAmount := ASource.PaymentTermCashDiscount2ActualAmount;
+  PaymentTermCashDiscount3Days := ASource.PaymentTermCashDiscount3Days;
+  PaymentTermCashDiscount3Percent := ASource.PaymentTermCashDiscount3Percent;
+  PaymentTermCashDiscount3Base := ASource.PaymentTermCashDiscount3Base;
+  PaymentTermCashDiscount3ActualAmount := ASource.PaymentTermCashDiscount3ActualAmount;
+  PaymentTermCashDiscount1Note := ASource.PaymentTermCashDiscount1Note;
+  PaymentTermCashDiscount2Note := ASource.PaymentTermCashDiscount2Note;
+  PaymentTermCashDiscount3Note := ASource.PaymentTermCashDiscount3Note;
+  InvoiceLines.Clear;
+  for I := 0 to ASource.InvoiceLines.Count - 1 do
+    InvoiceLines.AddInvoiceLine.Assign(ASource.InvoiceLines[I]);
+  Attachments.Clear;
+  for I := 0 to ASource.Attachments.Count - 1 do
+    Attachments.AddAttachment(ASource.Attachments[I].AttachmentType).Assign(ASource.Attachments[I]);
+  PrepaidPayments.Clear;
+  for I := 0 to ASource.PrepaidPayments.Count - 1 do
+    PrepaidPayments.AddPrepaidPayment.Assign(ASource.PrepaidPayments[I]);
+  AllowanceCharges.Clear;
+  for I := 0 to ASource.AllowanceCharges.Count - 1 do
+    AllowanceCharges.AddAllowanceCharge.Assign(ASource.AllowanceCharges[I]);
+  PrecedingInvoiceReferences.Clear;
+  for I := 0 to ASource.PrecedingInvoiceReferences.Count - 1 do
+    PrecedingInvoiceReferences.AddPrecedingInvoiceReference.Assign(ASource.PrecedingInvoiceReferences[I]);
+  TaxAmountTotal := ASource.TaxAmountTotal;
+  TaxAmountTotalInTaxCurrency := ASource.TaxAmountTotalInTaxCurrency;
+  TaxAmountSubtotals.Clear;
+  for I := 0 to ASource.TaxAmountSubtotals.Count - 1 do
+    TaxAmountSubtotals.AddTaxAmount.Assign(ASource.TaxAmountSubtotals[I]);
+  LineAmount := ASource.LineAmount;
+  TaxExclusiveAmount := ASource.TaxExclusiveAmount;
+  TaxInclusiveAmount := ASource.TaxInclusiveAmount;
+  AllowanceTotalAmount := ASource.AllowanceTotalAmount;
+  ChargeTotalAmount := ASource.ChargeTotalAmount;
+  PrepaidAmount := ASource.PrepaidAmount;
+  PayableRoundingAmount := ASource.PayableRoundingAmount;
+  PayableAmount := ASource.PayableAmount;
 end;
 
 end.

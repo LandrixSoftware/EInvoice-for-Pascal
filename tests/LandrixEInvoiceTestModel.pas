@@ -1043,6 +1043,59 @@ begin
   end;
 end;
 
+{ Assign copies every field (completeness through FillInvoiceAll), deeply
+  (changing the source afterwards does not change the copy) and replaces
+  what the target held before (lists, fields set only there). }
+procedure TestAssign;
+var
+  A, B, C: TLandrixInvoice;
+  Diffs: TStringList;
+  I: Integer;
+  Path: string;
+begin
+  A := TLandrixInvoice.Create;
+  B := TLandrixInvoice.Create;
+  C := TLandrixInvoice.Create;
+  Diffs := TStringList.Create;
+  try
+    FillInvoiceAll(A);
+    B.Assign(A);
+    CompareInvoices(A, B, Diffs);
+    CheckEquals(0, Diffs.Count, 'copy equals the source: ' + Diffs.Text);
+    FillInvoiceAll(C);
+    B.Assign(B);
+    Diffs.Clear;
+    CompareInvoices(C, B, Diffs);
+    CheckEquals(0, Diffs.Count, 'assign to itself keeps everything: ' + Diffs.Text);
+    for I := 0 to InvoiceLeafCount - 1 do
+      MutateInvoiceLeaf(A, I, Path);
+    Diffs.Clear;
+    CompareInvoices(C, B, Diffs);
+    CheckEquals(0, Diffs.Count, 'copy unchanged when the source changes: ' + Diffs.Text);
+    { an empty source empties the target }
+    A.Free;
+    A := TLandrixInvoice.Create;
+    B.Assign(A);
+    Diffs.Clear;
+    CompareInvoices(A, B, Diffs);
+    CheckEquals(0, Diffs.Count, 'empty source: ' + Diffs.Text);
+    { promote a sub-line: the source is owned by the target }
+    FillInvoiceAll(B);
+    Check(B.InvoiceLines[0].SubInvoiceLines.Count > 0, 'filled invoice has sub-lines');
+    C.Clear;
+    C.InvoiceLines.AddInvoiceLine.Assign(B.InvoiceLines[0].SubInvoiceLines[0]);
+    B.InvoiceLines[0].Assign(B.InvoiceLines[0].SubInvoiceLines[0]);
+    CheckEqualsInvoiceStr(C.InvoiceLines[0].ID, B.InvoiceLines[0].ID, 'sub-line promoted');
+    CheckEquals(Integer(C.InvoiceLines[0].SubInvoiceLines.Count), Integer(B.InvoiceLines[0].SubInvoiceLines.Count),
+      'its sub-lines kept');
+  finally
+    Diffs.Free;
+    C.Free;
+    B.Free;
+    A.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Codes.TypeCode', TestTypeCodes);
@@ -1068,6 +1121,7 @@ begin
   RegisterTest('Model.CompareComplete', TestCompareComplete);
   RegisterTest('Model.ClearAll', TestClearAll);
   RegisterTest('Model.Dump', TestDump);
+  RegisterTest('Model.Assign', TestAssign);
 end;
 
 end.

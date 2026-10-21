@@ -293,20 +293,12 @@ uses
   SysUtils,
   LandrixXmlBase,
   LandrixXmlReader,
-  LandrixXmlWriter,
   LandrixEInvoiceTypes,
   LandrixEInvoiceCodes,
   LandrixEInvoiceCheck,
-  LandrixEInvoiceCII,
-  LandrixEInvoiceCIIReader,
-  LandrixEInvoiceCIIWriter,
-  LandrixEInvoiceMapCII,
-  LandrixEInvoiceUBL,
-  LandrixEInvoiceUBLReader,
-  LandrixEInvoiceUBLWriter,
   LandrixEInvoicePdf,
   LandrixEInvoiceFiles,
-  LandrixEInvoiceMapUBL;
+  LandrixEInvoice;
 
 { --- helpers ---------------------------------------------------------------- }
 
@@ -471,116 +463,68 @@ begin
   Result := LandrixEInvoiceFindSpec(Target, ASpec);
 end;
 
-{ Maps and writes _Invoice; the old SaveDocument raised for other versions.
-  DE: Bildet ab und schreibt _Invoice; das alte SaveDocument loeste bei
-  anderen Versionen eine Ausnahme aus. }
+{ Maps and writes _Invoice through the facade as before: no business rule
+  check, written despite errors (they are in the diagnostics); the old
+  SaveDocument raised for other versions.
+  DE: Bildet ab und schreibt _Invoice wie bisher ueber die Fassade: ohne
+  Pruefung der Geschaeftsregeln, trotz Fehlern geschrieben (sie stehen in
+  den Meldungen); das alte SaveDocument loeste bei anderen Versionen eine
+  Ausnahme aus. }
 function SaveToUtf8(AInvoice: TLandrixInvoice; AVersion: TXRechnungVersion;
   ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixXmlUtf8;
 var
   Spec: TLandrixEInvoiceSpec;
-  W: TLandrixXmlWriter;
-  CII: TLandrixCIIInvoice;
-  UBLInvoice: TLandrixUBLInvoice;
-  UBLCreditNote: TLandrixUBLCreditNote;
 begin
   if not SpecOf(AVersion, Spec) then
     raise ELandrixEInvoiceError.Create('TXRechnungInvoiceAdapter: version ' + IntToStr(Ord(AVersion)) +
       ' cannot be written');
-  W := TLandrixXmlWriter.Create;
-  try
-    W.Indent := True;
-    if Spec.Target.Syntax = esy_CII then
-    begin
-      CII := LandrixEInvoiceInvoiceToCII(AInvoice, Spec, ADiagnostics);
-      try
-        LandrixEInvoiceWriteCII(CII, W, ADiagnostics, Spec.Target.Profile);
-      finally
-        CII.Free;
-      end;
-    end
-    else if LandrixEInvoiceUBLRootFor(AInvoice, Spec) = eur_CreditNote then
-    begin
-      UBLCreditNote := LandrixEInvoiceInvoiceToUBLCreditNote(AInvoice, Spec, ADiagnostics);
-      try
-        LandrixEInvoiceWriteUBLCreditNote(UBLCreditNote, W, ADiagnostics);
-      finally
-        UBLCreditNote.Free;
-      end;
-    end
-    else
-    begin
-      UBLInvoice := LandrixEInvoiceInvoiceToUBLInvoice(AInvoice, Spec, ADiagnostics);
-      try
-        LandrixEInvoiceWriteUBLInvoice(UBLInvoice, W, ADiagnostics);
-      finally
-        UBLInvoice.Free;
-      end;
-    end;
-    W.EndDocument;
-    Result := W.AsUtf8;
-  finally
-    W.Free;
-  end;
+  Result := TLandrixEInvoice.SaveToUtf8(AInvoice, Spec.Target, [eio_NoRuleCheck, eio_WriteDespiteErrors],
+    ADiagnostics);
 end;
 
-{ Reads the loaded document into AInvoice by its root element.
-  DE: Liest das geladene Dokument nach seinem Wurzelelement in AInvoice. }
-function LoadFromReader(AInvoice: TLandrixInvoice; AReader: TLandrixXmlReader; out AError: TXRechnungString;
+{ Reads the XML in AStream (from its position) through the facade into
+  AInvoice, which stays unchanged on failure; XML errors start with
+  'Not valid XML: '.
+  DE: Liest das XML in AStream (ab seiner Position) ueber die Fassade in
+  AInvoice, das bei einem Fehler unveraendert bleibt; XML-Fehler beginnen
+  mit 'Not valid XML: '. }
+function ReadXmlStream(AInvoice: TLandrixInvoice; AStream: TStream; out AError: TXRechnungString;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+const
+  NotWellFormed = 'Not well-formed XML: ';
 var
-  CII: TLandrixCIIInvoice;
-  UBLInvoice: TLandrixUBLInvoice;
-  UBLCreditNote: TLandrixUBLCreditNote;
+  Doc: TLandrixEInvoiceDocument;
+  I: TLandrixEInvoiceListIndex;
+  Item: TLandrixEInvoiceDiagnostic;
+  Text: string;
 begin
   Result := False;
   AError := '';
   try
-    if not MoveToRoot(AReader) then
-    begin
-      AError := 'No root element';
-      Exit;
-    end;
-    if LandrixXmlSpanEquals(AReader.LocalNameSpan, 'Invoice') then
-    begin
-      UBLInvoice := LandrixEInvoiceReadUBLInvoice(AReader, ADiagnostics);
-      try
-        LandrixEInvoiceUBLInvoiceToInvoice(UBLInvoice, AInvoice, ADiagnostics);
-      finally
-        UBLInvoice.Free;
-      end;
-    end
-    else if LandrixXmlSpanEquals(AReader.LocalNameSpan, 'CreditNote') then
-    begin
-      UBLCreditNote := LandrixEInvoiceReadUBLCreditNote(AReader, ADiagnostics);
-      try
-        LandrixEInvoiceUBLCreditNoteToInvoice(UBLCreditNote, AInvoice, ADiagnostics);
-      finally
-        UBLCreditNote.Free;
-      end;
-    end
-    else if LandrixXmlSpanEquals(AReader.LocalNameSpan, 'CrossIndustryInvoice') then
-    begin
-      CII := LandrixEInvoiceReadCII(AReader, ADiagnostics);
-      try
-        LandrixEInvoiceCIIToInvoice(CII, AInvoice, ADiagnostics);
-      finally
-        CII.Free;
-      end;
-    end
-    else if LandrixXmlSpanEquals(AReader.LocalNameSpan, 'CrossIndustryDocument') then
-    begin
-      AError := 'ZUGFeRD 1 (CrossIndustryDocument) is not supported';
-      Exit;
-    end
-    else
-    begin
-      AError := 'Unsupported invoice format (root element ' + CompatText(AReader.ElementPath) + ')';
-      Exit;
+    Doc := TLandrixEInvoice.LoadFromStream(AStream, [eio_NoPdf]);
+    try
+      AInvoice.Assign(Doc.Invoice);
+      if ADiagnostics <> nil then
+        for I := 0 to Doc.Diagnostics.Count - 1 do
+        begin
+          Item := ADiagnostics.AddDiagnostic(Doc.Diagnostics[I].Kind, Doc.Diagnostics[I].Path,
+            Doc.Diagnostics[I].Line, Doc.Diagnostics[I].Column, Doc.Diagnostics[I].Offset,
+            Doc.Diagnostics[I].Message);
+          Item.Severity := Doc.Diagnostics[I].Severity;
+          Item.RuleID := Doc.Diagnostics[I].RuleID;
+        end;
+    finally
+      Doc.Free;
     end;
     Result := True;
   except
-    on E: ELandrixXmlError do
-      AError := CompatText('Not valid XML: ' + E.Message);
+    on E: ELandrixEInvoiceFormatError do
+    begin
+      Text := E.Message;
+      if Copy(Text, 1, Length(NotWellFormed)) = NotWellFormed then
+        Text := 'Not valid XML: ' + Copy(Text, Length(NotWellFormed) + 1, Length(Text));
+      AError := CompatText(Text);
+    end;
     on E: Exception do
       AError := CompatText(E.ClassName + ': ' + E.Message);
   end;
@@ -801,7 +745,6 @@ end;
 class function TXRechnungInvoiceAdapter.LoadFromStream(_Invoice: TLandrixInvoice; _Stream: TStream;
   out _Error: TXRechnungString; _ProcessPdfFiles: Boolean; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
-  R: TLandrixXmlReader;
   AttachmentName: TXRechnungString;
 begin
   Result := False;
@@ -813,27 +756,12 @@ begin
     Result := LoadFromPdfStream(_Invoice, _Stream, _Error, AttachmentName, _Diagnostics);
     Exit;
   end;
-  R := TLandrixXmlReader.Create;
-  try
-    try
-      R.LoadFromStream(_Stream);
-    except
-      on E: Exception do
-      begin
-        _Error := CompatText('Stream is not valid XML: ' + E.Message);
-        Exit;
-      end;
-    end;
-    Result := LoadFromReader(_Invoice, R, _Error, _Diagnostics);
-  finally
-    R.Free;
-  end;
+  Result := ReadXmlStream(_Invoice, _Stream, _Error, _Diagnostics);
 end;
 
 class function TXRechnungInvoiceAdapter.LoadFromFile(_Invoice: TLandrixInvoice; const _Filename: TXRechnungString;
   out _Error: TXRechnungString; _ProcessPdfFiles: Boolean; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
-  R: TLandrixXmlReader;
   AttachmentName: TXRechnungString;
   Stream: TStream;
 begin
@@ -857,25 +785,9 @@ begin
   end;
   try
     if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfStream(Stream) then
-    begin
-      Result := LoadFromPdfStream(_Invoice, Stream, _Error, AttachmentName, _Diagnostics);
-      Exit;
-    end;
-    R := TLandrixXmlReader.Create;
-    try
-      try
-        R.LoadFromStream(Stream);
-      except
-        on E: Exception do
-        begin
-          _Error := CompatText('File is not valid XML: ' + E.Message);
-          Exit;
-        end;
-      end;
-      Result := LoadFromReader(_Invoice, R, _Error, _Diagnostics);
-    finally
-      R.Free;
-    end;
+      Result := LoadFromPdfStream(_Invoice, Stream, _Error, AttachmentName, _Diagnostics)
+    else
+      Result := ReadXmlStream(_Invoice, Stream, _Error, _Diagnostics);
   finally
     Stream.Free;
   end;
@@ -884,28 +796,21 @@ end;
 class function TXRechnungInvoiceAdapter.LoadFromXMLStr(_Invoice: TLandrixInvoice; const _XML: TXRechnungString;
   out _Error: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
-  R: TLandrixXmlReader;
   Bytes: TLandrixXmlUtf8;
+  M: TMemoryStream;
 begin
   Result := False;
   _Error := '';
   if (_Invoice = nil) or (_XML = '') then
     Exit;
-  R := TLandrixXmlReader.Create;
+  Bytes := XmlBytes(_XML);
+  M := TMemoryStream.Create;
   try
-    try
-      Bytes := XmlBytes(_XML);
-      R.LoadFromBuffer(PAnsiChar(Bytes)^, Length(Bytes));
-    except
-      on E: Exception do
-      begin
-        _Error := CompatText('Text is not valid XML: ' + E.Message);
-        Exit;
-      end;
-    end;
-    Result := LoadFromReader(_Invoice, R, _Error, _Diagnostics);
+    M.WriteBuffer(PAnsiChar(Bytes)^, Length(Bytes));
+    M.Position := 0;
+    Result := ReadXmlStream(_Invoice, M, _Error, _Diagnostics);
   finally
-    R.Free;
+    M.Free;
   end;
 end;
 

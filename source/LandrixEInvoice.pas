@@ -310,9 +310,10 @@ type
       AOptions: TLandrixEInvoiceOptions = []): TLandrixEInvoiceDocument;
     class function LoadFromStream(AStream: TStream;
       AOptions: TLandrixEInvoiceOptions = []): TLandrixEInvoiceDocument;
-    { XML as UTF-8 bytes (or in the encoding its declaration names).
-      DE: XML als UTF-8-Bytes (oder in der Kodierung, die seine Deklaration
-      nennt). }
+    { XML as UTF-8 bytes; the encoding declaration is not consulted
+      (LoadFromStream follows it).
+      DE: XML als UTF-8-Bytes; die Kodierungsangabe der Deklaration wird
+      nicht beachtet (LoadFromStream folgt ihr). }
     class function LoadFromUtf8(const AXml: TLandrixXmlUtf8;
       AOptions: TLandrixEInvoiceOptions = []): TLandrixEInvoiceDocument;
   end;
@@ -662,7 +663,8 @@ begin
     else if Root = 'CrossIndustryDocument' then
       raise ELandrixEInvoiceFormatError.CreateAt('ZUGFeRD 1 (CrossIndustryDocument) is not supported', 0, 0, -1)
     else
-      raise ELandrixEInvoiceFormatError.CreateAt('No invoice: root element ' + AReader.ElementPath, 0, 0, -1);
+      raise ELandrixEInvoiceFormatError.CreateAt('Unsupported invoice format (root element ' + AReader.ElementPath +
+        ')', 0, 0, -1);
   except
     on E: ELandrixXmlError do
       raise FormatErrorOf(E);
