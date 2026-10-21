@@ -101,6 +101,7 @@ begin
   Invoice.InvoiceIssueDate := EncodeDate(2026, 10, 20);
   Invoice.InvoiceTypeCode := itc_CommercialInvoice;
   Invoice.InvoiceCurrencyCode := 'EUR';
+  Invoice.InvoiceDueDate := EncodeDate(2026, 11, 19);
   Invoice.BuyerReference := 'LW-1';
   Party := Invoice.AccountingSupplierParty;
   Party.RegistrationName := 'Seller GmbH';
@@ -298,6 +299,22 @@ begin
     Seller.VATCompanyID := 'XX123456789'
   else if AID = 'BR-CO-18' then
     Invoice.TaxAmountSubtotals.Clear
+  else if AID = 'BR-CO-21' then
+    AddAllowanceCharge(Invoice, False, True, False)
+  else if AID = 'BR-CO-22' then
+    AddAllowanceCharge(Invoice, True, True, False)
+  else if (AID = 'BR-CO-23') or (AID = 'BR-CO-24') then
+    with Line.AllowanceCharges.AddAllowanceCharge do
+    begin
+      ChargeIndicator := AID = 'BR-CO-24';
+      Amount := 1;
+    end
+  else if AID = 'BR-CO-25' then
+    Invoice.InvoiceDueDate := 0
+  else if AID = 'BR-CO-26' then
+    Seller.VATCompanyID := ' '
+  else if AID = 'BR-FXEXT-CO-04' then
+    Line.TaxCategory := idtfcc_None
   else if AID = 'BR-DE-1' then
     Invoice.PaymentTypes.Clear
   else if AID = 'BR-DE-2' then
@@ -415,7 +432,7 @@ type
   end;
 
 const
-  RuleCases: array[0..94] of TRuleCase = (
+  RuleCases: array[0..101] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -505,6 +522,13 @@ const
     (ID: 'BR-CO-16'; Target: tk_FXEN16931; NotApplicable: tk_FXExtended),
     (ID: 'BR-CO-17'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
     (ID: 'BR-CO-18'; Target: tk_XRUBL; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CO-21'; Target: tk_XRCII; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CO-22'; Target: tk_XRUBL; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CO-23'; Target: tk_FXExtended; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-CO-24'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CO-25'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CO-26'; Target: tk_FXMinimum; NotApplicable: tk_None),
+    (ID: 'BR-FXEXT-CO-04'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'BR-FXEXT-CO-10'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'BR-FXEXT-CO-11'; Target: tk_FXExtended; NotApplicable: tk_XRUBL),
     (ID: 'BR-FXEXT-CO-12'; Target: tk_FXExtended; NotApplicable: tk_XRCII),
@@ -1220,7 +1244,7 @@ end;
 { The VAT category rules BR-S-nn to BR-AG-nn: the invoice of each group
   passes them for every target; each rule breaks for XRechnung UBL and CII
   (except BR-AF-09 and BR-AG-09, which CII does not test) and does not apply
-  to Factur-X MINIMUM. }
+  to Factur-X MINIMUM; BR-FXEXT-xx-01 applies to EXTENDED only. }
 procedure TestVatCategories;
 var
   Invoice: TLandrixInvoice;
@@ -1240,9 +1264,17 @@ begin
         begin
           D.Clear;
           LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D);
-          Check(not HasVatGroupRule(D, VatGroupCases[G].Group), VatGroupCases[G].Group + ' passes target ' +
-            IntToStr(Ord(K)) + ': ' + string(D.ToText));
+          Check(not HasVatGroupRule(D, VatGroupCases[G].Group) and
+            not HasRule(D, 'BR-FXEXT-' + VatGroupCases[G].Group + '-01'), VatGroupCases[G].Group +
+            ' passes target ' + IntToStr(Ord(K)) + ': ' + string(D.ToText));
         end;
+        { BR-FXEXT-xx-01: EXTENDED only, a use without breakdown }
+        ID := 'BR-FXEXT-' + VatGroupCases[G].Group + '-01';
+        Invoice.TaxAmountSubtotals.Clear;
+        Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), TLandrixEInvoiceString(ID), nil),
+          ID + ' violated');
+        Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXEN16931), TLandrixEInvoiceString(ID), nil),
+          ID + ' only in EXTENDED');
       finally
         Invoice.Free;
       end;
@@ -1402,6 +1434,57 @@ begin
   end;
 end;
 
+{ BR-CO-25 (EXTENDED): a positive amount due needs a due date or terms; a
+  net note or a cash discount is enough, an amount of 0 needs none.
+  BR-CO-26: a seller identifier with scheme SEPA (the creditor identifier)
+  counts in CII, not in UBL; the identifier without scheme not next to a
+  global one in UBL and not in MINIMUM. BR-FXEXT-CO-04 skips a line with
+  another status. }
+procedure TestTermsAndSeller;
+var
+  Invoice: TLandrixInvoice;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceDueDate := 0;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-CO-25', nil), 'no due date');
+    Invoice.PaymentTermNetNote := 'Net 30 days';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-CO-25', nil), 'net note');
+    Invoice.PaymentTermNetNote := '';
+    Invoice.PaymentTermsType := iptt_CashDiscount1;
+    Invoice.PaymentTermCashDiscount1Days := 10;
+    Invoice.PaymentTermCashDiscount1Percent := 2;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-CO-25', nil), 'cash discount');
+    Invoice.PaymentTermsType := iptt_None;
+    Invoice.PayableAmount := 0;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-CO-25', nil), 'nothing due');
+    Invoice.AccountingSupplierParty.VATCompanyID := '';
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := 'DE98ZZZ09999999999';
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := 'SEPA';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-26', nil), 'UBL: SEPA does not count');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-26', nil), 'CII: global identifier');
+    { UBL writes only the global identifier next to it }
+    Invoice.AccountingSupplierParty.IdentifierSellerBuyer := 'S-1';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-26', nil), 'UBL: identifier left out');
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-26', nil), 'UBL: identifier');
+    { MINIMUM has no seller identifier }
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXMinimum), 'BR-CO-26', nil), 'MINIMUM: identifier');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXBasicWL), 'BR-CO-26', nil), 'BASIC WL: identifier');
+    Invoice.AccountingSupplierParty.CompanyID := 'HRB 1';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-26', nil), 'UBL: legal registration');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXMinimum), 'BR-CO-26', nil), 'MINIMUM: legal registration');
+    { BR-FXEXT-CO-04: a written status other than DETAIL excludes the line }
+    Invoice.InvoiceLines[0].TaxCategory := idtfcc_None;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-FXEXT-CO-04', nil), 'no status');
+    Invoice.InvoiceLines[0].LineStatusReasonCodeOther := 'X1';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-FXEXT-CO-04', nil), 'other status');
+  finally
+    Invoice.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -1423,6 +1506,7 @@ begin
   RegisterTest('Check.VatCategories', TestVatCategories);
   RegisterTest('Check.VatSyntaxes', TestVatSyntaxes);
   RegisterTest('Check.VatIdentifiers', TestVatIdentifiers);
+  RegisterTest('Check.TermsAndSeller', TestTermsAndSeller);
 end;
 
 end.

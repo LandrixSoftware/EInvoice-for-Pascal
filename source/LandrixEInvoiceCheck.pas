@@ -23,8 +23,10 @@
   The official rules judge the invoice as the mappers would write it to the
   target: blank text (LandrixEInvoiceIsBlank) is absent, a rule the mappers
   always meet has no row (BR-01, BR-12 to BR-15, BR-22, BR-24, BR-26,
-  BR-31, BR-36, BR-41, BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-DE-14,
-  BR-DE-18, BR-DE-21, PEPPOL-EN16931-R001), and where the syntaxes differ
+  BR-31, BR-36, BR-41, BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-CO-05
+  to BR-CO-08 (their schematron test is true), BR-CO-19, BR-CO-20 (an empty
+  period is not written), BR-DE-14, BR-DE-18, BR-DE-21,
+  PEPPOL-EN16931-R001), and where the syntaxes differ
   the row follows the validator of each syntax (e.g. BR-DE-23-b, BR-DE-30).
   The Factur-X profiles get the rules their schematron contains. BR-29,
   BR-30, BR-65 and BR-CO-03 are checked on the model: the mappers leave a reversed
@@ -34,12 +36,12 @@
   to 13, 15 and 16 with their tolerance, XRechnung UBL with third-party payments:
   BR-DEX-09) compare the amounts as they are written (two decimals). The
   VAT category rules BR-S-nn to BR-AG-nn (S, Z, E, AE, IC, G, O, AF, AG)
-  have no rows: their identifiers come from the group and the number, and
-  each follows the schematron of its syntax, which differ in context and
-  tolerance; BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09 and BR-CO-18
-  have rows. Code list and format rules (BR-DE-17, BR-DE-19, BR-DE-20,
-  BR-DE-27, BR-DE-28, BR-51, BR-CO-05 to BR-CO-08, BR-CO-19 to
-  BR-CO-26) and the BR-FXEXT-xx-01 of Factur-X EXTENDED are not part of this set yet.
+  and BR-FXEXT-xx-01 of Factur-X EXTENDED have no rows: their identifiers
+  come from the group and the number, and each follows the schematron of
+  its syntax, which differ in context and tolerance; BR-B-01, BR-B-02,
+  BR-CO-03, BR-CO-04, BR-CO-09, BR-CO-18, BR-CO-21 to BR-CO-26 and
+  BR-FXEXT-CO-04 have rows. Code list and format rules (BR-DE-17, BR-DE-19, BR-DE-20,
+  BR-DE-27, BR-DE-28, BR-51) are not part of this set yet.
 
   The rules LX-CC-01 to LX-CC-12 are the checks of
   TXRechnungInvoiceAdapter.ConsistencyCheck of XRechnung-for-Delphi. They
@@ -60,8 +62,10 @@
   das Ziel schreiben wuerden: Text aus Leerraum (LandrixEInvoiceIsBlank)
   fehlt, eine Regel, die die Mapper immer erfuellen, hat keine Zeile
   (BR-01, BR-12 bis BR-15, BR-22, BR-24, BR-26, BR-31, BR-36, BR-41,
-  BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-DE-14, BR-DE-18, BR-DE-21,
-  PEPPOL-EN16931-R001), und wo die Syntaxen sich unterscheiden, folgt die
+  BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-CO-05 bis BR-CO-08 (ihr
+  Schematron-Test ist true), BR-CO-19, BR-CO-20 (ein leerer Zeitraum wird
+  nicht geschrieben), BR-DE-14, BR-DE-18, BR-DE-21, PEPPOL-EN16931-R001),
+  und wo die Syntaxen sich unterscheiden, folgt die
   Zeile dem Validator der jeweiligen Syntax (z. B. BR-DE-23-b, BR-DE-30).
   Die Factur-X-Profile bekommen die Regeln, die ihr Schematron enthaelt.
   BR-29, BR-30, BR-65 und BR-CO-03 werden am Modell geprueft: die Mapper lassen einen
@@ -71,12 +75,12 @@
   bis 13, 15 und 16 mit ihrer Toleranz, XRechnung UBL mit Zahlungen Dritter:
   BR-DEX-09) vergleichen die Betraege so, wie sie geschrieben werden (zwei
   Nachkommastellen). Die Steuerkategorieregeln BR-S-nn bis BR-AG-nn (S, Z,
-  E, AE, IC, G, O, AF, AG) haben keine Zeilen: ihre Kennungen ergeben sich
-  aus Gruppe und Nummer, und jede folgt dem Schematron ihrer Syntax, die
-  sich in Kontext und Toleranz unterscheiden; BR-B-01, BR-B-02, BR-CO-03,
-  BR-CO-04, BR-CO-09 und BR-CO-18 haben Zeilen. Codelisten- und
-  Formatregeln (BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28, BR-51,
-  BR-CO-05 bis BR-CO-08, BR-CO-19 bis BR-CO-26) und die BR-FXEXT-xx-01 von Factur-X EXTENDED
+  E, AE, IC, G, O, AF, AG) und BR-FXEXT-xx-01 von Factur-X EXTENDED haben
+  keine Zeilen: ihre Kennungen ergeben sich aus Gruppe und Nummer, und jede
+  folgt dem Schematron ihrer Syntax, die sich in Kontext und Toleranz
+  unterscheiden; BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09, BR-CO-18,
+  BR-CO-21 bis BR-CO-26 und BR-FXEXT-CO-04 haben Zeilen. Codelisten- und
+  Formatregeln (BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28, BR-51)
   gehoeren noch nicht dazu.
 
   Die Regeln LX-CC-01 bis LX-CC-12 sind die Pruefungen von
@@ -207,6 +211,7 @@ type
     cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061,
     cr_BRCO03, cr_BRCO04, cr_BRCO09,
     cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17, cr_BRCO18,
+    cr_BRCO21, cr_BRCO22, cr_BRCO23, cr_BRCO24, cr_BRCO25, cr_BRCO26, cr_BRFXEXTCO04,
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
     cr_BRDEX09);
 
@@ -667,6 +672,37 @@ const
      Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BG-23';
      Message: 'an invoice shall have at least one VAT breakdown (BG-23)';
      Source: EN16931Source),
+    (ID: 'BR-CO-21'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BT-97, BT-98';
+     Message: 'each document level allowance (BG-20) shall have a reason (BT-97) or a reason code (BT-98)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-22'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-104, BT-105';
+     Message: 'each document level charge (BG-21) shall have a reason (BT-104) or a reason code (BT-105)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-23'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasic; Severity: eds_Error; Legacy: False; Terms: 'BT-139, BT-140';
+     Message: 'each invoice line allowance (BG-27) shall have a reason (BT-139) or a reason code (BT-140)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-24'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-144, BT-145';
+     Message: 'each invoice line charge (BG-28) shall have a reason (BT-144) or a reason code (BT-145)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-25'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-9, BT-20';
+     Message: 'with a positive amount due for payment (BT-115) the payment due date (BT-9) or the payment ' +
+       'terms (BT-20) shall be provided';
+     Source: FacturXExtendedSource),
+    (ID: 'BR-CO-26'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-29, BT-30, BT-31';
+     Message: 'the seller identifier (BT-29), legal registration identifier (BT-30) or VAT identifier (BT-31) ' +
+       'shall be provided';
+     Source: EN16931Source),
+    (ID: 'BR-FXEXT-CO-04'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-151';
+     Message: 'each invoice line without status or with status DETAIL (BG-25, also a sub line) shall have an ' +
+       'invoiced item VAT category code (BT-151)';
+     Source: FacturXExtendedSource),
     (ID: 'BR-FXEXT-CO-10'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
      Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-106, BT-131';
      Message: 'sum of invoice line net amount (BT-106) differs from the sum of the DETAIL line net amounts ' +
@@ -1808,6 +1844,13 @@ begin
   IsCII := ASpec.Target.Syntax = esy_CII;
   HasBreakdown := CountTaxUses(ATaxUses, Code, [tuk_Breakdown]) > 0;
   case ANumber of
+    0:
+      { BR-FXEXT-xx-01: its line context does not see the status (a sibling),
+        so every written line counts. DE: BR-FXEXT-xx-01: sein
+        Positionskontext sieht den Status nicht (ein Geschwister), also zaehlt
+        jede geschriebene Position. }
+      Result := (CountTaxUses(ATaxUses, Code, [tuk_Line, tuk_SubLine, tuk_Allowance, tuk_Charge]) > 0) <>
+        HasBreakdown;
     1:
       Result := BreakdownCountWrong(AGroup, ATaxUses, ASpec);
     2, 3, 4:
@@ -1873,15 +1916,17 @@ end;
   level rules 03, 04, 06, 07, 09 and 10 and BR-IC-11, BR-IC-12, BR-O-11,
   BR-O-13 and BR-O-14, BASIC and EN 16931 have all, EXTENDED has 02 to 07
   (O: 05 to 07), 09 (not S), 10 (not S, Z, AF, AG), BR-IC-11 and BR-IC-12
-  (its BR-FXEXT-xx-01 are not checked).
+  and its own BR-FXEXT-xx-01 (number 0).
   DE: Die Factur-X-1.09-Profile jeder Steuerregel: BASIC WL hat die Regeln
   der Dokumentebene 03, 04, 06, 07, 09 und 10 sowie BR-IC-11, BR-IC-12,
   BR-O-11, BR-O-13 und BR-O-14, BASIC und EN 16931 haben alle, EXTENDED hat
   02 bis 07 (O: 05 bis 07), 09 (nicht S), 10 (nicht S, Z, AF, AG), BR-IC-11
-  und BR-IC-12 (seine BR-FXEXT-xx-01 werden nicht geprueft). }
+  und BR-IC-12 sowie seine eigenen BR-FXEXT-xx-01 (Nummer 0). }
 function VatProfiles(AGroup: TVatGroup; ANumber: Integer): TProfiles;
 begin
   case ANumber of
+    0:
+      Result := [epr_Extended];
     1, 8:
       Result := FromBasicNoExtended;
     2, 5:
@@ -1905,7 +1950,10 @@ end;
 
 function VatRuleID(AGroup: TVatGroup; ANumber: Integer): string;
 begin
-  Result := 'BR-' + VatGroupIDs[AGroup] + '-' + Chr(Ord('0') + ANumber div 10) + Chr(Ord('0') + ANumber mod 10);
+  if ANumber = 0 then
+    Result := 'BR-FXEXT-' + VatGroupIDs[AGroup] + '-01'
+  else
+    Result := 'BR-' + VatGroupIDs[AGroup] + '-' + Chr(Ord('0') + ANumber div 10) + Chr(Ord('0') + ANumber mod 10);
 end;
 
 { Business terms and message of VAT rule AGroup/ANumber, the rule texts in
@@ -1932,6 +1980,12 @@ begin
     Rate := 'BT-103';
   end;
   case ANumber of
+    0:
+      begin
+        ATerms := 'BT-118';
+        AMessage := 'lines (all levels), allowances or charges with ' + Name + ' need at least one VAT ' +
+          'breakdown (BG-23) of that category, and such a breakdown needs one of them';
+      end;
     1:
       begin
         ATerms := 'BT-118';
@@ -2119,6 +2173,88 @@ begin
       (CIIPayeeFull(AInvoice, ASpec) and ForeignCountry(AInvoice.PayeeParty.Address.CountryCode)) or
       ((ASpec.Target.Syntax = esy_UBL) and ForeignOrigin(AInvoice.InvoiceLines,
         not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines)));
+end;
+
+{ BR-FXEXT-CO-04: every line without status or with status DETAIL, on
+  every level; a status code other than DETAIL that the model holds as text
+  is written and excludes the line.
+  DE: BR-FXEXT-CO-04: jede Position ohne Status oder mit Status DETAIL, auf
+  jeder Ebene; ein anderer Statuscode, den das Modell als Text haelt, wird
+  geschrieben und schliesst die Position aus. }
+function OtherLineStatus(ALine: TLandrixInvoiceLine; AIsSubLine: Boolean): Boolean;
+begin
+  Result := (LandrixEInvoiceLineStatusOf(ALine, AIsSubLine) = ilsrc_None) and
+    Present(ALine.LineStatusReasonCodeOther) and (ALine.LineStatusReasonCodeOther <> 'DETAIL');
+end;
+
+function DetailTaxCategoryMissing(ALines: TLandrixInvoiceLines; AIsSubLine: Boolean): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  Line: TLandrixInvoiceLine;
+begin
+  Result := True;
+  for I := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[I];
+    if ((LandrixEInvoiceLineStatusOf(Line, AIsSubLine) in [ilsrc_None, ilsrc_Detail]) and
+        not OtherLineStatus(Line, AIsSubLine) and
+        not Present(TaxCategoryText(Line.TaxCategory, Line.TaxCategoryOther))) or
+       DetailTaxCategoryMissing(Line.SubInvoiceLines, True) then
+      Exit;
+  end;
+  Result := False;
+end;
+
+{ BR-CO-25 (Factur-X EXTENDED): a due date or a payment term text as the
+  mapper writes them: in the structured payment terms the due date, the net
+  note or a cash discount (which always has a due date), otherwise the
+  payment terms text and the due date (not on a credit note where the
+  target forbids it).
+  DE: BR-CO-25 (Factur-X EXTENDED): ein Faelligkeitsdatum oder ein Text der
+  Zahlungsbedingungen, wie der Mapper sie schreibt: in den strukturierten
+  Zahlungsbedingungen das Faelligkeitsdatum, der Nettohinweis oder ein
+  Skonto (das immer eine Faelligkeit hat), sonst der Text der
+  Zahlungsbedingungen und das Faelligkeitsdatum (nicht auf einer
+  Gutschrift, wo das Ziel es verbietet). }
+function PaymentTermsMissing(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  if Cents(AInvoice.PayableAmount) <= 0 then
+    Result := False
+  else if not Forbidden(ASpec, LandrixEInvoiceRuleStructuredPaymentTerms) then
+    Result := not (AInvoice.InvoiceDueDate > 0) and not Present(AInvoice.PaymentTermNetNote) and
+      not (AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3])
+  else
+    Result := not Present(LandrixEInvoicePaymentTermsText(AInvoice)) and
+      not ((AInvoice.InvoiceDueDate > 0) and not ((AInvoice.InvoiceTypeCode = itc_CreditNote) and
+        Forbidden(ASpec, LandrixEInvoiceRuleCreditNoteDueDate)));
+end;
+
+{ BR-CO-26: a seller identifier as written (not in Factur-X MINIMUM, which
+  has no ram:ID or ram:GlobalID; UBL: not with scheme SEPA, the creditor
+  identifier, and the identifier without scheme is left out next to a
+  global identifier where the target forbids both), the legal registration
+  or the VAT identifier.
+  DE: BR-CO-26: eine Verkaeuferkennung, wie sie geschrieben wird (nicht in
+  Factur-X MINIMUM, das weder ram:ID noch ram:GlobalID hat; UBL: nicht mit
+  Schema SEPA, der Glaeubiger-ID, und die Kennung ohne Schema faellt neben
+  einer globalen Kennung weg, wo das Ziel beide verbietet), die
+  Registernummer oder die USt-IdNr. }
+function SellerIdentifierMissing(ASeller: TLandrixInvoiceAccountingParty; const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  Identifier, Global: Boolean;
+begin
+  Global := Present(ASeller.GlobalIdentifierSellerBuyer);
+  Identifier := Present(ASeller.IdentifierSellerBuyer) and
+    not (Global and Forbidden(ASpec, LandrixEInvoiceRuleSellerIDWithGlobalID));
+  if ASpec.Target.Syntax = esy_UBL then
+    Global := Global and (ASeller.GlobalIdentifierSellerBuyerSchemeID <> 'SEPA');
+  if ASpec.Target.Profile = epr_Minimum then
+  begin
+    Identifier := False;
+    Global := False;
+  end;
+  Result := not Present(ASeller.VATCompanyID) and not Present(ASeller.CompanyID) and not Identifier and
+    not Global;
 end;
 
 function LineTaxCategoryMissing(AInvoice: TLandrixInvoice): Boolean;
@@ -2311,6 +2447,22 @@ begin
         (CIIPayeeFull(AInvoice, ASpec) and VATPrefixWrong(AInvoice.PayeeParty.VATCompanyID, ASpec));
     cr_BRCO18:
       Result := BreakdownMissing(AInvoice, ASpec);
+    { BR-CO-21 to 24 repeat BR-33, BR-38, BR-42 and BR-44. DE: BR-CO-21 bis
+      24 wiederholen BR-33, BR-38, BR-42 und BR-44. }
+    cr_BRCO21:
+      Result := AllowanceChargeViolated(cr_BR33, AInvoice, False);
+    cr_BRCO22:
+      Result := AllowanceChargeViolated(cr_BR38, AInvoice, True);
+    cr_BRCO23:
+      Result := AnyLineViolated(cr_BR42, AInvoice.InvoiceLines, ASpec.Target.Syntax = esy_CII);
+    cr_BRCO24:
+      Result := AnyLineViolated(cr_BR44, AInvoice.InvoiceLines, ASpec.Target.Syntax = esy_CII);
+    cr_BRCO25:
+      Result := PaymentTermsMissing(AInvoice, ASpec);
+    cr_BRCO26:
+      Result := SellerIdentifierMissing(Seller, ASpec);
+    cr_BRFXEXTCO04:
+      Result := DetailTaxCategoryMissing(AInvoice.InvoiceLines, False);
     cr_BRDE01:
       Result := not HasPayment(AInvoice, pk_Written);
     cr_BRDE02:
@@ -2436,7 +2588,7 @@ begin
       Inc(Result);
   CollectTaxUses(AInvoice, ASpec, TaxUses);
   for G := Low(TVatGroup) to High(TVatGroup) do
-    for N := 1 to VatGroupLast[G] do
+    for N := 0 to VatGroupLast[G] do
       if not RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics) then
         Inc(Result);
 end;
@@ -2456,7 +2608,7 @@ begin
       Exit;
     end;
   for G := Low(TVatGroup) to High(TVatGroup) do
-    for N := 1 to VatGroupLast[G] do
+    for N := 0 to VatGroupLast[G] do
       if TLandrixEInvoiceString(VatRuleID(G, N)) = ARuleID then
       begin
         CollectTaxUses(AInvoice, ASpec, TaxUses);

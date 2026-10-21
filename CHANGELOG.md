@@ -273,6 +273,11 @@ Supported invoice standards are documented per release.
   BR-S-08 within 1 per rate in UBL, exact in CII; BR-CO-09 with SS in UBL and AN in CII) and per
   Factur-X profile as its Schematron has them. The rule oracle knows them; categories, rates and
   amounts are judged as written.
+- The remaining BR-CO rules in `LandrixEInvoiceCheck`: BR-CO-21 to BR-CO-24 (reasons of
+  allowances and charges), BR-CO-26 (seller identifier; UBL does not count scheme SEPA) and, for
+  Factur-X EXTENDED, BR-CO-25 (due date or payment terms), BR-FXEXT-CO-04 and BR-FXEXT-S-01 to
+  BR-FXEXT-AG-01. BR-CO-05 to BR-CO-08 always hold in the Schematron, BR-CO-19 and BR-CO-20 in
+  the written document.
 - `LandrixEInvoiceCheckCII`, `LandrixEInvoiceCheckUBLInvoice` and `LandrixEInvoiceCheckUBLCreditNote`:
   check the required content of a syntax model for a target as the writer reports it, returning
   the number of errors.
