@@ -2412,7 +2412,14 @@ begin
     end;
     if not Source.PayeeFinancialAccount.IsEmpty then
     begin
-      if Payment.FinancialAccount <> '' then
+      { With a direct debit (49, 59) the model's account is the debited
+        account (BT-91); a credit transfer account (BG-17) is reported.
+        DE: Bei einer Lastschrift (49, 59) ist das Konto des Modells das
+        belastete Konto (BT-91); ein Ueberweisungskonto (BG-17) wird
+        gemeldet. }
+      if IsDirectDebit(Payment.PaymentMeansCode) then
+        NotMapped(Path + '/cac:PayeeFinancialAccount', 'credit transfer account with a direct debit')
+      else if Payment.FinancialAccount <> '' then
         NotMapped(Path + '/cac:PayeeFinancialAccount', 'second account of one payment means')
       else
       begin

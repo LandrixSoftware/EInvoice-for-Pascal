@@ -1042,6 +1042,42 @@ begin
   end;
 end;
 
+{ A credit transfer account (BG-17) next to a direct debit is reported; the
+  debited account (BT-91) of the mandate is read. }
+procedure TestDirectDebitPayeeAccount;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Payment: TLandrixInvoicePaymentType;
+  UBL: TLandrixUBLInvoice;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  UBL := nil;
+  try
+    FillInvoice(Invoice);
+    Invoice.PaymentMandateID := 'M-49';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_DirectDebit;
+    Payment.FinancialAccount := 'NO9876543210987';
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.PeppolBIS('3.0'), Spec), 'spec');
+    UBL := LandrixEInvoiceInvoiceToUBLInvoice(Invoice, Spec, D);
+    UBL.PaymentMeans[0].PayeeFinancialAccount.ID.Value := 'DE21860000000086001055';
+    D.Clear;
+    LandrixEInvoiceUBLInvoiceToInvoice(UBL, Back, D);
+    Check(Back.PaymentTypes[0].PaymentMeansCode = ipmc_DirectDebit, 'code read back');
+    CheckEqualsInvoiceStr('NO9876543210987', Back.PaymentTypes[0].FinancialAccount, 'debited account');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/cac:PayeeFinancialAccount'), 'reported');
+  finally
+    UBL.Free;
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { Code 49 is a direct debit like 59 (PEPPOL-EN16931-R061): the mandate and
   the debited account go into cac:PaymentMandate. }
 procedure TestDirectDebit49;
@@ -1171,6 +1207,7 @@ begin
   RegisterTest('MapUBL.PayeeCreditorIdentifier', TestPayeeCreditorIdentifier);
   RegisterTest('MapUBL.WrongSpec', TestWrongSpec);
   RegisterTest('MapUBL.DirectDebit49', TestDirectDebit49);
+  RegisterTest('MapUBL.DirectDebitPayeeAccount', TestDirectDebitPayeeAccount);
   RegisterTest('MapUBL.Periods', TestPeriods);
   RegisterTest('MapUBL.BlankValues', TestBlankValues);
 end;

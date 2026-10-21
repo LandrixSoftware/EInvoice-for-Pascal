@@ -1067,6 +1067,41 @@ begin
   end;
 end;
 
+{ A credit transfer account (BG-17) next to a direct debit is reported and
+  not read as the debited account (BT-91). }
+procedure TestDirectDebitPayeeAccount;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  CII: TLandrixCIIInvoice;
+  Payment: TLandrixInvoicePaymentType;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  CII := nil;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_DirectDebit;
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), Spec), 'spec');
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    CII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementPaymentMeans[0].
+      PayeePartyCreditorFinancialAccount.IBANID.Value := 'DE21860000000086001055';
+    D.Clear;
+    LandrixEInvoiceCIIToInvoice(CII, Back, D);
+    Check(Back.PaymentTypes[0].PaymentMeansCode = ipmc_DirectDebit, 'code read back');
+    CheckEqualsInvoiceStr('', Back.PaymentTypes[0].FinancialAccount, 'not the debited account');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:PayeePartyCreditorFinancialAccount'), 'reported');
+  finally
+    CII.Free;
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { Code 49 is a direct debit like 59: the account is the debited account
   (BT-91), the BIC is written without a payee account. }
 procedure TestDirectDebit49;
@@ -1199,6 +1234,7 @@ begin
   RegisterTest('MapCII.LogisticsCharge', TestLogisticsCharge);
   RegisterTest('MapCII.ThirdPartyPayments', TestThirdPartyPayments);
   RegisterTest('MapCII.DirectDebit49', TestDirectDebit49);
+  RegisterTest('MapCII.DirectDebitPayeeAccount', TestDirectDebitPayeeAccount);
   RegisterTest('MapCII.Periods', TestPeriods);
   RegisterTest('MapCII.BlankPayee', TestBlankPayee);
   RegisterTest('MapCII.TaxCurrency', TestTaxCurrency);
