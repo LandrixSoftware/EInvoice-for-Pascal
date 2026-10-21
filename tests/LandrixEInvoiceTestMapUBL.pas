@@ -1042,6 +1042,58 @@ begin
   end;
 end;
 
+{ The creditor identifier (BT-90) goes to a written payee (XRechnung
+  example direct-debit-bt-90-payee), otherwise to the seller; both read
+  back into BT-90. }
+procedure TestCreditorIdentifierPlace;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  UBL: TLandrixUBLInvoice;
+  Xml: TLandrixXmlUtf8;
+  Text, Sepa: string;
+  P: Integer;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    FillInvoice(Invoice);
+    Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := 'DE98ZZZ09999999999';
+    Sepa := '<cac:PartyIdentification><cbc:IDschemeID="SEPA">DE98ZZZ09999999999</cbc:ID></cac:PartyIdentification>';
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec), 'spec');
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := StringReplace(StringReplace(StringReplace(LandrixXmlUtf8ToString(Xml), #13, '', [rfReplaceAll]),
+      #10, '', [rfReplaceAll]), ' ', '', [rfReplaceAll]);
+    P := Pos(Sepa, Text);
+    Check((P > Pos('<cac:AccountingSupplierParty>', Text)) and (P < Pos('<cac:AccountingCustomerParty>', Text)),
+      'seller without payee');
+    CheckEquals(0, Pos('SEPA', Copy(Text, P + Length(Sepa), MaxInt)), 'once');
+    Invoice.PayeeParty.Name := 'Payee';
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := StringReplace(StringReplace(StringReplace(LandrixXmlUtf8ToString(Xml), #13, '', [rfReplaceAll]),
+      #10, '', [rfReplaceAll]), ' ', '', [rfReplaceAll]);
+    P := Pos('<cac:PayeeParty>' + Sepa, Text);
+    Check(P > 0, 'payee');
+    CheckEquals(P + Length('<cac:PayeeParty>'), Pos(Sepa, Text), 'not at the seller');
+    CheckEquals(0, Pos('SEPA', Copy(Text, P + Length('<cac:PayeeParty>' + Sepa), MaxInt)), 'once (UBL-SR-29)');
+    UBL := ReadUBLInvoice(Xml, D);
+    try
+      LandrixEInvoiceUBLInvoiceToInvoice(UBL, Back, D);
+    finally
+      UBL.Free;
+    end;
+    CheckEqualsInvoiceStr('DE98ZZZ09999999999', Back.AccountingSupplierParty.BankAssignedCreditorIdentifier,
+      'read back as BT-90');
+    CheckEqualsInvoiceStr('', Back.PayeeParty.Identifier, 'not the payee identifier');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { A credit transfer account (BG-17) next to a direct debit is reported; the
   debited account (BT-91) of the mandate is read. }
 procedure TestDirectDebitPayeeAccount;
@@ -1208,6 +1260,7 @@ begin
   RegisterTest('MapUBL.WrongSpec', TestWrongSpec);
   RegisterTest('MapUBL.DirectDebit49', TestDirectDebit49);
   RegisterTest('MapUBL.DirectDebitPayeeAccount', TestDirectDebitPayeeAccount);
+  RegisterTest('MapUBL.CreditorIdentifierPlace', TestCreditorIdentifierPlace);
   RegisterTest('MapUBL.Periods', TestPeriods);
   RegisterTest('MapUBL.BlankValues', TestBlankValues);
 end;

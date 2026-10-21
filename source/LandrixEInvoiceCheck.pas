@@ -1087,15 +1087,22 @@ end;
 
 { BR-17: the payee needs a name and must not repeat the seller. UBL
   compares with the trading name (cac:PartyName) and the party
-  identifiers, CII with the seller name (BT-27), the identifier ram:ID
+  identifiers; the creditor identifier BT-90 is one of the payee's there,
+  CII with the seller name (BT-27), the identifier ram:ID
   (a payee identifier with scheme is written as ram:GlobalID and not
   compared) and the legal registration.
   DE: BR-17: Der Zahlungsempfaenger braucht einen Namen und darf den
   Verkaeufer nicht wiederholen. UBL vergleicht mit dem Handelsnamen
-  (cac:PartyName) und den Parteikennungen, CII mit dem Verkaeufernamen
+  (cac:PartyName) und den Parteikennungen; die Glaeubiger-ID BT-90 gehoert
+  dort zu denen des Zahlungsempfaengers, CII mit dem Verkaeufernamen
   (BT-27), der Kennung ram:ID (eine Kennung des Zahlungsempfaengers mit
   Schema wird als ram:GlobalID geschrieben und nicht verglichen) und der
   Registernummer. }
+function SellerIdentifier(const AID: TLandrixEInvoiceString; ASeller: TLandrixInvoiceAccountingParty): Boolean;
+begin
+  Result := Present(AID) and ((AID = ASeller.IdentifierSellerBuyer) or (AID = ASeller.GlobalIdentifierSellerBuyer));
+end;
+
 function PayeeViolated(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
 var
   Payee: TLandrixInvoiceParty;
@@ -1111,9 +1118,7 @@ begin
     Exit;
   if ASpec.Target.Syntax = esy_UBL then
     Result := (Present(Seller.Name) and (Payee.Name = Seller.Name)) or
-      (Present(Payee.Identifier) and ((Payee.Identifier = Seller.IdentifierSellerBuyer) or
-       (Payee.Identifier = Seller.GlobalIdentifierSellerBuyer) or
-       (Payee.Identifier = Seller.BankAssignedCreditorIdentifier)))
+      SellerIdentifier(Payee.Identifier, Seller) or SellerIdentifier(Seller.BankAssignedCreditorIdentifier, Seller)
   else
     Result := (Payee.Name = Seller.RegistrationName) or
       (Present(Payee.Identifier) and not Present(Payee.IdentifierSchemeID) and

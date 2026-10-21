@@ -471,6 +471,15 @@ begin
     Present(AParty.ContactElectronicMail);
 end;
 
+{ The payee is written with BT-59, BT-60 or BT-61; then it carries the
+  creditor identifier BT-90.
+  DE: Der Zahlungsempfaenger wird mit BT-59, BT-60 oder BT-61 geschrieben;
+  dann traegt er die Glaeubiger-ID BT-90. }
+function PayeeWritten(AParty: TLandrixInvoiceParty): Boolean;
+begin
+  Result := Present(AParty.Name) or Present(AParty.Identifier) or Present(AParty.CompanyID);
+end;
+
 { ASCII case-insensitive comparison without a detour through string.
   DE: Vergleich ohne Beachtung der ASCII-Gross-/Kleinschreibung, ohne Umweg
   ueber string. }
@@ -978,15 +987,17 @@ end;
   scheme the default 'EM' where the specification allows it), BT-29/BT-46
   identifier and global identifier (default scheme 0088; both together only
   where the rule table allows it), BT-90 creditor identifier (seller,
-  scheme SEPA), BT-28/BT-45 trading name, BG-5/BG-8 address, BT-31/BT-32
-  VAT and tax registration (the buyer has one: the VAT identifier wins),
+  scheme SEPA, unless a payee is written), BT-28/BT-45 trading name,
+  BG-5/BG-8 address, BT-31/BT-32 VAT and tax registration (the buyer has
+  one: the VAT identifier wins),
   BT-27/BT-44 name, BT-30/BT-47 legal registration, BT-33 additional legal
   information (seller), BG-6/BG-9 contact.
   DE: BG-4 Verkaeufer und BG-7 Kaeufer: BT-34/BT-49 elektronische Adresse
   (ohne Schema gilt 'EM', wo die Spezifikation es erlaubt), BT-29/BT-46
   Kennung und globale Kennung (Vorgabeschema 0088; beide zusammen nur, wo
   die Regel-Tabelle es erlaubt), BT-90 Glaeubiger-ID (Verkaeufer, Schema
-  SEPA), BT-28/BT-45 Handelsname, BG-5/BG-8 Anschrift, BT-31/BT-32 USt-IdNr.
+  SEPA, ausser ein Zahlungsempfaenger wird geschrieben), BT-28/BT-45
+  Handelsname, BG-5/BG-8 Anschrift, BT-31/BT-32 USt-IdNr.
   und Steuernummer (der Kaeufer hat eine: die USt-IdNr. gewinnt), BT-27/
   BT-44 Name, BT-30/BT-47 Registernummer, BT-33 weitere rechtliche
   Informationen (Verkaeufer), BG-6/BG-9 Kontakt. }
@@ -1030,7 +1041,7 @@ begin
   end;
   if WriteIdentifier then
     ATarget.PartyIdentification.Add.ID := UBLID(AParty.IdentifierSellerBuyer, '');
-  if AIsSeller and Present(AParty.BankAssignedCreditorIdentifier) then
+  if AIsSeller and Present(AParty.BankAssignedCreditorIdentifier) and not PayeeWritten(FInvoice.PayeeParty) then
     ATarget.PartyIdentification.Add.ID := UBLID(AParty.BankAssignedCreditorIdentifier, 'SEPA');
   if Present(AParty.Name) then
     ATarget.PartyName.Add.Name := Txt(AParty.Name);
@@ -1072,13 +1083,16 @@ begin
   ATarget.Contact.ElectronicMail := AParty.ContactElectronicMail;
 end;
 
-{ BG-10 payee (cac:PayeeParty: BT-60 identifier, BT-59 name, BT-61 legal
-  registration) and BG-11 tax representative (cac:TaxRepresentativeParty:
-  BT-62 name, BG-12 address, BT-63 VAT identifier). Everything else of
-  these parties and the invoicee (BG-X-36) exists in Factur-X EXTENDED only
-  and is reported as left out.
-  DE: BG-10 Zahlungsempfaenger (cac:PayeeParty: BT-60 Kennung, BT-59 Name,
-  BT-61 Registernummer) und BG-11 Steuervertreter
+{ BG-10 payee (cac:PayeeParty: BT-60 identifier, the creditor identifier
+  BT-90 with scheme SEPA as the XRechnung example direct-debit-bt-90-payee,
+  BT-59 name, BT-61 legal registration) and BG-11 tax representative
+  (cac:TaxRepresentativeParty: BT-62 name, BG-12 address, BT-63 VAT
+  identifier). Everything else of these parties and the invoicee (BG-X-36)
+  exists in Factur-X EXTENDED only and is reported as left out.
+  DE: BG-10 Zahlungsempfaenger (cac:PayeeParty: BT-60 Kennung, die
+  Glaeubiger-ID BT-90 mit Schema SEPA wie im XRechnung-Beispiel
+  direct-debit-bt-90-payee, BT-59 Name, BT-61 Registernummer) und BG-11
+  Steuervertreter
   (cac:TaxRepresentativeParty: BT-62 Name, BG-12 Anschrift, BT-63
   USt-IdNr.). Alles Weitere dieser Parteien und der Rechnungsempfaenger
   (BG-X-36) gibt es nur in Factur-X EXTENDED; es wird als weggelassen
@@ -1104,6 +1118,9 @@ begin
       Permit(LandrixEInvoiceRulePayeeExtended, APath, 'address, contact or VAT identifier of the payee');
     if Present(AParty.Identifier) then
       ATarget.PartyIdentification.Add.ID := UBLID(AParty.Identifier, AParty.IdentifierSchemeID);
+    if PayeeWritten(AParty) and Present(FInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier) then
+      ATarget.PartyIdentification.Add.ID := UBLID(FInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier,
+        'SEPA');
     if Present(AParty.Name) then
       ATarget.PartyName.Add.Name := Txt(AParty.Name);
     if Present(AParty.CompanyID) then
