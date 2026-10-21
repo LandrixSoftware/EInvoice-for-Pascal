@@ -11,9 +11,9 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
 
 ## Was geprüft wird
 
-- Die Geschäftsregeln des Ziels: EN 16931 (BR-...), die Rechenregeln (BR-CO-...), die Regeln
-  der Steuerkategorien, XRechnung (BR-DE-...), Peppol (PEPPOL-EN16931-...) und die
-  Rechenregeln von Factur-X EXTENDED (BR-FXEXT-CO-...). Jeder Verstoß ist ein Eintrag der Art
+- Die Geschäftsregeln des Ziels: EN 16931 (BR-...), die Rechenregeln (BR-CO-10 bis
+  BR-CO-17), XRechnung (BR-DE-...), Peppol (PEPPOL-EN16931-...) und die Rechenregeln von
+  Factur-X EXTENDED (BR-FXEXT-CO-...). Jeder Verstoß ist ein Eintrag der Art
   `edk_RuleViolation` mit der Regelkennung in `RuleID`.
 - Alles, was die Abbildung meldet: Inhalt, den das Ziel oder sein Factur-X-Profil nicht
   aufnehmen kann (`edk_NotAllowed`), fehlender Pflichtinhalt (`edk_MissingElement`), Werte,
@@ -21,7 +21,10 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
 
 Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dokument melden
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
-Konfiguration bleiben der Maßstab.
+Konfiguration bleiben der Maßstab. Noch nicht geprüft werden unter anderem die Regeln der Steuerkategorien
+(BR-S-..., BR-Z-..., BR-E-..., BR-AE-..., BR-IC-..., BR-G-..., BR-O-..., BR-CO-3 bis BR-CO-9),
+Codelisten- und Formatregeln sowie einige XRechnung-Regeln (BR-DE-17, BR-DE-19, BR-DE-20,
+BR-DE-27, BR-DE-28) und BR-51.
 
 ## Schwere
 
