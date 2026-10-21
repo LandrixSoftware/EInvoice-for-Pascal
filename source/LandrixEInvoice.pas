@@ -236,6 +236,19 @@ type
     class function SaveToUtf8(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
       AOptions: TLandrixEInvoiceOptions = []; ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixXmlUtf8;
       overload;
+    { As SaveToUtf8, as text. The text keeps the declaration
+      encoding="UTF-8": store it as UTF-8 (LandrixEInvoiceStringToUtf8, or
+      SaveToFile/SaveToStream), never through a code page. On Delphi 6-2007
+      the result is a WideString; assigning it to a string loses characters
+      outside the system code page.
+      DE: Wie SaveToUtf8, als Text. Der Text behaelt die Deklaration
+      encoding="UTF-8": als UTF-8 speichern (LandrixEInvoiceStringToUtf8
+      oder SaveToFile/SaveToStream), nie ueber eine Codepage. Unter Delphi
+      6-2007 ist das Ergebnis ein WideString; die Zuweisung an einen string
+      verliert Zeichen ausserhalb der System-Codepage. }
+    class function SaveToText(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+      AOptions: TLandrixEInvoiceOptions = []; ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixEInvoiceString;
+      overload;
 
     { Writes a syntax model for ATarget. Checked are the content the
       Factur-X profile does not contain, the content the schema and the
@@ -272,6 +285,15 @@ type
       overload;
     class function SaveToUtf8(AUBL: TLandrixUBLCreditNote; const ATarget: TLandrixEInvoiceTarget;
       AOptions: TLandrixEInvoiceOptions = []; ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixXmlUtf8;
+      overload;
+    class function SaveToText(ACII: TLandrixCIIInvoice; const ATarget: TLandrixEInvoiceTarget;
+      AOptions: TLandrixEInvoiceOptions = []; ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixEInvoiceString;
+      overload;
+    class function SaveToText(AUBL: TLandrixUBLInvoice; const ATarget: TLandrixEInvoiceTarget;
+      AOptions: TLandrixEInvoiceOptions = []; ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixEInvoiceString;
+      overload;
+    class function SaveToText(AUBL: TLandrixUBLCreditNote; const ATarget: TLandrixEInvoiceTarget;
+      AOptions: TLandrixEInvoiceOptions = []; ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixEInvoiceString;
       overload;
 
     { Maps AInvoice to the syntax model of ATarget for changes before
@@ -313,11 +335,25 @@ type
       AOptions: TLandrixEInvoiceOptions = []): TLandrixEInvoiceDocument;
     class function LoadFromStream(AStream: TStream;
       AOptions: TLandrixEInvoiceOptions = []): TLandrixEInvoiceDocument;
-    { XML as UTF-8 bytes; the encoding declaration is not consulted
-      (LoadFromStream follows it).
-      DE: XML als UTF-8-Bytes; die Kodierungsangabe der Deklaration wird
-      nicht beachtet (LoadFromStream folgt ihr). }
+    { XML as UTF-8 bytes, never a PDF; the encoding declaration is not
+      consulted (LoadFromStream follows it).
+      DE: XML als UTF-8-Bytes, nie ein PDF; die Kodierungsangabe der
+      Deklaration wird nicht beachtet (LoadFromStream folgt ihr). }
     class function LoadFromUtf8(const AXml: TLandrixXmlUtf8;
+      AOptions: TLandrixEInvoiceOptions = []): TLandrixEInvoiceDocument;
+    { XML as decoded text, never a PDF; the encoding declaration is not
+      consulted (LoadFromStream follows it). An unpaired surrogate raises
+      ELandrixEInvoiceFormatError. On Delphi 6-2007 an AnsiString holding
+      UTF-8 bytes belongs in LoadFromUtf8: passed here, it is converted
+      through the system code page and characters are garbled without a
+      message.
+      DE: XML als dekodierter Text, nie ein PDF; die Kodierungsangabe der
+      Deklaration wird nicht beachtet (LoadFromStream folgt ihr). Ein ungepaartes
+      Surrogat loest ELandrixEInvoiceFormatError aus. Unter Delphi 6-2007
+      gehoert ein AnsiString mit UTF-8-Bytes in LoadFromUtf8: hier
+      uebergeben, wird er ueber die System-Codepage umgewandelt, und
+      Zeichen werden ohne Meldung verfaelscht. }
+    class function LoadFromText(const AXml: TLandrixEInvoiceString;
       AOptions: TLandrixEInvoiceOptions = []): TLandrixEInvoiceDocument;
   end;
 
@@ -757,6 +793,12 @@ begin
   Result := Produce(mk_Invoice, AInvoice, ATarget, AOptions, ADiagnostics);
 end;
 
+class function TLandrixEInvoice.SaveToText(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  AOptions: TLandrixEInvoiceOptions; ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixEInvoiceString;
+begin
+  Result := LandrixEInvoiceUtf8ToString(Produce(mk_Invoice, AInvoice, ATarget, AOptions, ADiagnostics));
+end;
+
 class procedure TLandrixEInvoice.SaveToFile(ACII: TLandrixCIIInvoice; const AFileName: TLandrixEInvoiceString;
   const ATarget: TLandrixEInvoiceTarget; AOptions: TLandrixEInvoiceOptions;
   ADiagnostics: TLandrixEInvoiceDiagnostics);
@@ -815,6 +857,24 @@ class function TLandrixEInvoice.SaveToUtf8(AUBL: TLandrixUBLCreditNote; const AT
   AOptions: TLandrixEInvoiceOptions; ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixXmlUtf8;
 begin
   Result := Produce(mk_UBLCreditNote, AUBL, ATarget, AOptions, ADiagnostics);
+end;
+
+class function TLandrixEInvoice.SaveToText(ACII: TLandrixCIIInvoice; const ATarget: TLandrixEInvoiceTarget;
+  AOptions: TLandrixEInvoiceOptions; ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixEInvoiceString;
+begin
+  Result := LandrixEInvoiceUtf8ToString(Produce(mk_CII, ACII, ATarget, AOptions, ADiagnostics));
+end;
+
+class function TLandrixEInvoice.SaveToText(AUBL: TLandrixUBLInvoice; const ATarget: TLandrixEInvoiceTarget;
+  AOptions: TLandrixEInvoiceOptions; ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixEInvoiceString;
+begin
+  Result := LandrixEInvoiceUtf8ToString(Produce(mk_UBLInvoice, AUBL, ATarget, AOptions, ADiagnostics));
+end;
+
+class function TLandrixEInvoice.SaveToText(AUBL: TLandrixUBLCreditNote; const ATarget: TLandrixEInvoiceTarget;
+  AOptions: TLandrixEInvoiceOptions; ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixEInvoiceString;
+begin
+  Result := LandrixEInvoiceUtf8ToString(Produce(mk_UBLCreditNote, AUBL, ATarget, AOptions, ADiagnostics));
 end;
 
 class function TLandrixEInvoice.ToCII(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
@@ -931,6 +991,20 @@ begin
     Result.Free;
     raise;
   end;
+end;
+
+class function TLandrixEInvoice.LoadFromText(const AXml: TLandrixEInvoiceString;
+  AOptions: TLandrixEInvoiceOptions): TLandrixEInvoiceDocument;
+var
+  Bytes: TLandrixXmlUtf8;
+begin
+  try
+    Bytes := LandrixEInvoiceStringToUtf8(AXml);
+  except
+    on E: ELandrixXmlError do
+      raise FormatErrorOf(E);
+  end;
+  Result := LoadFromUtf8(Bytes, AOptions);
 end;
 
 end.

@@ -30,7 +30,8 @@
     calls with that flag compile unchanged.
   - On Delphi 6 to 2007 SaveToXMLStr returns UTF-8 bytes (as the XML
     declaration says) and LoadFromXMLStr takes bytes in the encoding of the
-    declaration.
+    declaration. Where String is Unicode, LoadFromXMLStr takes decoded text
+    and does not consult the encoding declaration.
   - No IXMLDocument overloads, no Java validation. The PDF extraction is
     LandrixEInvoicePdf (old names: LandrixEInvoiceCompatXRechnungPdf).
   - Messages are English.
@@ -58,7 +59,8 @@
     unveraendert kompilieren.
   - Unter Delphi 6 bis 2007 liefert SaveToXMLStr UTF-8-Bytes (wie die
     XML-Deklaration sagt), LoadFromXMLStr nimmt Bytes in der Kodierung der
-    Deklaration.
+    Deklaration. Wo String Unicode ist, nimmt LoadFromXMLStr dekodierten
+    Text und beachtet die Kodierungsangabe nicht.
   - Keine IXMLDocument-Ueberladungen, keine Java-Validierung. Die
     PDF-Extraktion ist LandrixEInvoicePdf (alte Namen:
     LandrixEInvoiceCompatXRechnungPdf).
@@ -486,14 +488,15 @@ begin
     ADiagnostics);
 end;
 
-{ Reads the XML in AStream (from its position) through the facade into
-  AInvoice, which stays unchanged on failure; XML errors start with
-  'Not valid XML: '.
-  DE: Liest das XML in AStream (ab seiner Position) ueber die Fassade in
-  AInvoice, das bei einem Fehler unveraendert bleibt; XML-Fehler beginnen
-  mit 'Not valid XML: '. }
-function ReadXmlStream(AInvoice: TLandrixInvoice; AStream: TStream; out AError: TXRechnungString;
-  ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+{ Reads the XML in AStream (from its position) or, with AStream = nil, the
+  decoded text AText through the facade into AInvoice, which stays
+  unchanged on failure; XML errors start with 'Not valid XML: '.
+  DE: Liest das XML in AStream (ab seiner Position) oder, mit AStream =
+  nil, den dekodierten Text AText ueber die Fassade in AInvoice, das bei
+  einem Fehler unveraendert bleibt; XML-Fehler beginnen mit
+  'Not valid XML: '. }
+function ReadXml(AInvoice: TLandrixInvoice; AStream: TStream; const AText: TLandrixEInvoiceString;
+  out AError: TXRechnungString; ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 const
   NotWellFormed = 'Not well-formed XML: ';
 var
@@ -505,7 +508,10 @@ begin
   Result := False;
   AError := '';
   try
-    Doc := TLandrixEInvoice.LoadFromStream(AStream, [eio_NoPdf]);
+    if AStream <> nil then
+      Doc := TLandrixEInvoice.LoadFromStream(AStream, [eio_NoPdf])
+    else
+      Doc := TLandrixEInvoice.LoadFromText(AText, [eio_NoPdf]);
     try
       AInvoice.Assign(Doc.Invoice);
       if ADiagnostics <> nil then
@@ -532,6 +538,12 @@ begin
     on E: Exception do
       AError := CompatText(E.ClassName + ': ' + E.Message);
   end;
+end;
+
+function ReadXmlStream(AInvoice: TLandrixInvoice; AStream: TStream; out AError: TXRechnungString;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+begin
+  Result := ReadXml(AInvoice, AStream, '', AError, ADiagnostics);
 end;
 
 { --- TXRechnungValidationHelper --------------------------------------------- }
@@ -612,7 +624,13 @@ begin
   try
     try
       Bytes := XmlBytes(_XML);
+      { as LoadFromXMLStr: Unicode text without the encoding declaration
+        DE: wie LoadFromXMLStr: Unicode-Text ohne die Kodierungsangabe }
+      {$IF Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE)}
+      R.LoadFromUtf8(Bytes);
+      {$ELSE}
       R.LoadFromBuffer(PAnsiChar(Bytes)^, Length(Bytes));
+      {$IFEND}
       Result := VersionOf(R);
     except
       on Exception do
@@ -797,25 +815,33 @@ begin
   end;
 end;
 
+{ Unicode text is already decoded and read without the encoding
+  declaration; an AnsiString holds bytes in the encoding of the declaration.
+  DE: Unicode-Text ist schon dekodiert und wird ohne die Kodierungsangabe
+  gelesen; ein AnsiString enthaelt Bytes in der Kodierung der Deklaration. }
 class function TXRechnungInvoiceAdapter.LoadFromXMLStr(_Invoice: TLandrixInvoice; const _XML: TXRechnungString;
   out _Error: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+{$IF not (Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE))}
 var
-  Bytes: TLandrixXmlUtf8;
   M: TMemoryStream;
+{$IFEND}
 begin
   Result := False;
   _Error := '';
   if (_Invoice = nil) or (_XML = '') then
     Exit;
-  Bytes := XmlBytes(_XML);
+  {$IF Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE)}
+  Result := ReadXml(_Invoice, nil, TLandrixEInvoiceString(_XML), _Error, _Diagnostics);
+  {$ELSE}
   M := TMemoryStream.Create;
   try
-    M.WriteBuffer(PAnsiChar(Bytes)^, Length(Bytes));
+    M.WriteBuffer(PAnsiChar(_XML)^, Length(_XML));
     M.Position := 0;
     Result := ReadXmlStream(_Invoice, M, _Error, _Diagnostics);
   finally
     M.Free;
   end;
+  {$IFEND}
 end;
 
 class function TXRechnungInvoiceAdapter.LoadFromPdfStream(_Invoice: TLandrixInvoice; _Stream: TStream;

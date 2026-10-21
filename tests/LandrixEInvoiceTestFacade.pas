@@ -336,6 +336,53 @@ begin
   end;
 end;
 
+{ SaveToText is SaveToUtf8 as text; LoadFromText does not consult the
+  encoding declaration and refuses an unpaired surrogate. }
+procedure TestText;
+const
+  Utf8Decl = '<?xml version="1.0" encoding="UTF-8"?>';
+var
+  Invoice: TLandrixInvoice;
+  UBL: TLandrixUBLInvoice;
+  Doc: TLandrixEInvoiceDocument;
+  Name, Text, Latin: TLandrixEInvoiceString;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Name := 'M';
+    Name := Name + WideChar($00FC) + 'ller ' + WideChar($20AC);
+    Invoice.AccountingCustomerParty.Name := Name;
+    Text := TLandrixEInvoice.SaveToText(Invoice, XRCII);
+    Check(Text = LandrixEInvoiceUtf8ToString(TLandrixEInvoice.SaveToUtf8(Invoice, XRCII)), 'invoice as text');
+    UBL := TLandrixEInvoice.ToUBLInvoice(Invoice, XRUBL);
+    try
+      Check(TLandrixEInvoice.SaveToText(UBL, XRUBL) = LandrixEInvoiceUtf8ToString(TLandrixEInvoice.SaveToUtf8(UBL,
+        XRUBL)), 'syntax model as text');
+    finally
+      UBL.Free;
+    end;
+  finally
+    Invoice.Free;
+  end;
+  CheckEqualsInvoiceStr(Utf8Decl, Copy(Text, 1, Length(Utf8Decl)), 'declaration of the text');
+  Latin := '<?xml version="1.0" encoding="ISO-8859-1"?>';
+  Latin := Latin + Copy(Text, Length(Utf8Decl) + 1, Length(Text));
+  Doc := TLandrixEInvoice.LoadFromText(Latin);
+  try
+    CheckEqualsInvoiceStr(Name, Doc.Invoice.AccountingCustomerParty.Name, 'declaration not consulted');
+    Check(Doc.Info.Source = eso_Xml, 'source XML');
+  finally
+    Doc.Free;
+  end;
+  try
+    TLandrixEInvoice.LoadFromText(Copy(Text, 1, 100) + WideChar($D800) + Copy(Text, 101, Length(Text))).Free;
+    FailNotRaised('ELandrixEInvoiceFormatError for an unpaired surrogate');
+  except
+    on ELandrixEInvoiceFormatError do ;
+  end;
+end;
+
 { A syntax model with content its profile does not contain is refused; its
   BT-24 must belong to the target. }
 procedure TestSyntaxModel;
@@ -523,6 +570,7 @@ begin
   RegisterTest('Facade.Targets', TestTargets);
   RegisterTest('Facade.Strict', TestStrict);
   RegisterTest('Facade.Read', TestRead);
+  RegisterTest('Facade.Text', TestText);
   RegisterTest('Facade.SyntaxModel', TestSyntaxModel);
   RegisterTest('Facade.ModelsAndFiles', TestModelsAndFiles);
   RegisterTest('Facade.Pdf', TestPdf);

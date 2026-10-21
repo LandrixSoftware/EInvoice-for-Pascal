@@ -288,6 +288,8 @@ Supported invoice standards are documented per release.
   (`ELandrixEInvoiceWriteError`, nothing written); options `TLandrixEInvoiceOptions` (strict mode,
   no rule check, write despite errors, check on read, invoice only, no PDF). Exceptions
   `ELandrixEInvoiceTargetError`, `ELandrixEInvoiceFormatError`, `ELandrixEInvoicePdfError`.
+- `TLandrixEInvoice.LoadFromText` (XML as decoded UTF-16 text; the encoding declaration is not
+  consulted) and `SaveToText` (as `SaveToUtf8`, as text that keeps `encoding="UTF-8"`).
 - `Assign` on `TLandrixInvoice` and its parts: a deep copy (owned objects, lists and attachment
   data are copied).
 - API levels: every unit states `API: stable` or `API: internal` before its `unit` line; the
@@ -323,6 +325,10 @@ Supported invoice standards are documented per release.
   Factur-X identifier.
 - Factur-X EXTENDED takes several invoiced object identifiers (BT-18); the other targets keep the
   first (CII-SR-458, UBL-SR-04).
+- Compatibility layer: where `String` is Unicode (Delphi 2009+, Free Pascal),
+  `LoadFromXMLStr` and `GetXRechnungVersionFromString` read the text as decoded and no longer
+  follow its encoding declaration, which garbled non-ASCII text declared as e.g. ISO-8859-1;
+  an unpaired surrogate makes `LoadFromXMLStr` return False instead of raising.
 - UBL: the creditor identifier (BT-90) is written in the payee (`cac:PayeeParty`) when a payee is
   written, as in the XRechnung example `direct-debit-bt-90-payee`, otherwise in the seller.
 - The CII writer also reports content that the schema leaves optional but the Factur-X profile

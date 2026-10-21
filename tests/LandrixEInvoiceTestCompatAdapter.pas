@@ -509,6 +509,48 @@ begin
   end;
 end;
 
+{ Where String is Unicode, LoadFromXMLStr and GetXRechnungVersionFromString
+  read decoded text and do not consult the encoding declaration; on Delphi
+  6-2007 the bytes follow it. }
+procedure TestDeclaredEncoding;
+const
+  Utf8Decl = '<?xml version="1.0" encoding="UTF-8"?>';
+  LatinDecl = '<?xml version="1.0" encoding="ISO-8859-1"?>';
+var
+  Invoice, Back: TLandrixInvoice;
+  Xml, Error: TXRechnungString;
+  Name: TLandrixEInvoiceString;
+begin
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    FillValid(Invoice);
+    Name := 'M';
+    Name := Name + WideChar($00FC) + 'ller';
+    Invoice.AccountingCustomerParty.Name := Name;
+    TXRechnungInvoiceAdapter.SaveToXMLStr(Invoice, XRechnungVersion_30x_UBL, Xml);
+    CheckEqualsStr(Utf8Decl, string(Copy(Xml, 1, Length(Utf8Decl))), 'declaration as written');
+{$IF Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE)}
+    Xml := LatinDecl + Copy(Xml, Length(Utf8Decl) + 1, Length(Xml));
+{$ELSE}
+    Xml := LatinDecl + StringReplace(Copy(Xml, Length(Utf8Decl) + 1, Length(Xml)), #$C3#$BC, #$FC, [rfReplaceAll]);
+{$IFEND}
+    Check(TXRechnungInvoiceAdapter.LoadFromXMLStr(Back, Xml, Error), 'load: ' + string(Error));
+    CheckEqualsInvoiceStr(Name, Back.AccountingCustomerParty.Name, 'non-ASCII name');
+    Check(TXRechnungValidationHelper.GetXRechnungVersionFromString(Xml) = XRechnungVersion_30x_UBL, 'version');
+{$IF Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE)}
+    Xml := '<?xml version="1.0" encoding="UTF-16"?>' + Copy(Xml, Length(LatinDecl) + 1, Length(Xml));
+    Check(TXRechnungValidationHelper.GetXRechnungVersionFromString(Xml) = XRechnungVersion_30x_UBL,
+      'version with a UTF-16 declaration');
+    Check(TXRechnungInvoiceAdapter.LoadFromXMLStr(Back, Xml, Error), 'load with a UTF-16 declaration: ' +
+      string(Error));
+{$IFEND}
+  finally
+    Back.Free;
+    Invoice.Free;
+  end;
+end;
+
 function BytesStream(const S: AnsiString): TMemoryStream;
 begin
   Result := TMemoryStream.Create;
@@ -729,6 +771,7 @@ begin
   RegisterTest('CompatAdapter.CorrectDueDate', TestCorrectDueDate);
   RegisterTest('CompatAdapter.LoadErrors', TestLoadErrors);
   RegisterTest('CompatAdapter.TextAndStream', TestTextAndStream);
+  RegisterTest('CompatAdapter.DeclaredEncoding', TestDeclaredEncoding);
   RegisterTest('CompatAdapter.PdfMetadata', TestPdfMetadata);
   RegisterTest('CompatAdapter.Pdf', TestPdf);
   RegisterTest('Cross.Write', TestCrossWrite);
