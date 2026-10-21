@@ -32,6 +32,7 @@ unit LandrixEInvoiceTestScenarios;
 interface
 
 uses
+  LandrixXmlBase,
   LandrixEInvoiceTypes,
   LandrixEInvoiceInvoice;
 
@@ -44,6 +45,13 @@ type
   (111 calls). AAttachmentDir is the folder with attachment.pdf/.png/.jpg/.csv
   and ends with a path delimiter. }
 procedure RunAllScenarios(ASave: TScenarioSave; AData: Pointer; const AAttachmentDir: string);
+
+{ AXml as the golden file AFileName shows it. The golden files of
+  XRechnung-for-Delphi carry one invoiced object identifier (BT-18);
+  Factur-X EXTENDED takes the second of the scenario as well (owner
+  decision 2026-10-21), so it is removed from an EXTENDED output before
+  the comparison. }
+function GoldenView(const AFileName: string; const AXml: TLandrixXmlUtf8): TLandrixXmlUtf8;
 
 implementation
 
@@ -526,7 +534,8 @@ begin
     ID := 'BT-17 67890';
     TypeCode := iatc_50;
   end;
-  { Same for BT-18: only the first entry with ID is written (UBL-SR-04, CII-SR-458). }
+  { Same for BT-18: only the first entry with ID is written (UBL-SR-04, CII-SR-458);
+    Factur-X EXTENDED writes both (see GoldenView). }
   with AInvoice.Attachments.AddAttachment(iat_application_None) do
   begin
     ID := 'BT-18 12345';
@@ -1492,6 +1501,46 @@ begin
 end;
 
 { Golden file sequence }
+
+function MatchesAt(const S, ASub: TLandrixXmlUtf8; AAt: Integer): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if (AAt < 1) or (AAt + Length(ASub) - 1 > Length(S)) then
+    Exit;
+  for I := 1 to Length(ASub) do
+    if S[AAt + I - 1] <> ASub[I] then
+      Exit;
+  Result := True;
+end;
+
+function GoldenView(const AFileName: string; const AXml: TLandrixXmlUtf8): TLandrixXmlUtf8;
+const
+  Second: TLandrixXmlUtf8 = '<ram:IssuerAssignedID>BT-18 67890</ram:IssuerAssignedID>';
+  StartTag: TLandrixXmlUtf8 = '<ram:AdditionalReferencedDocument>';
+  EndTag: TLandrixXmlUtf8 = '</ram:AdditionalReferencedDocument>';
+var
+  P, First, Last: Integer;
+begin
+  Result := AXml;
+  if Pos('-ciiextended-', AFileName) = 0 then
+    Exit;
+  P := 1;
+  while (P <= Length(Result)) and not MatchesAt(Result, Second, P) do
+    Inc(P);
+  if P > Length(Result) then
+    Exit;
+  First := P;
+  while (First > 0) and not MatchesAt(Result, StartTag, First) do
+    Dec(First);
+  Last := P;
+  while (Last <= Length(Result)) and not MatchesAt(Result, EndTag, Last) do
+    Inc(Last);
+  if (First = 0) or (Last > Length(Result)) then
+    Exit;
+  Delete(Result, First, Last + Length(EndTag) - First);
+end;
 
 procedure RunAllScenarios(ASave: TScenarioSave; AData: Pointer; const AAttachmentDir: string);
 var

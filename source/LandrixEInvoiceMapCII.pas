@@ -1034,10 +1034,11 @@ end;
 
 { BG-24 attachments, BT-17 tender reference (type 50) and BT-18 object
   identifier (type 130): BT-17 and BT-18 only once and only with an
-  identifier (CII-SR-457, CII-SR-458).
+  identifier (CII-SR-457, CII-SR-458); Factur-X EXTENDED takes several
+  BT-18.
   DE: BG-24 Anlagen, BT-17 Vergabe (Art 50) und BT-18 Objektkennung (Art
   130): BT-17 und BT-18 nur einmal und nur mit Kennung (CII-SR-457,
-  CII-SR-458). }
+  CII-SR-458); Factur-X EXTENDED nimmt mehrere BT-18. }
 procedure TCIIWriteMapper.MapAttachments;
 var
   I: TLandrixEInvoiceListIndex;
@@ -1064,12 +1065,15 @@ begin
     end;
     if Attachment.TypeCode = iatc_130 then
     begin
-      if ObjectWritten or Blank(Attachment.ID) then
+      if Blank(Attachment.ID) then
       begin
-        Report(edk_NotAllowed, Path, 'object identifier (BT-18) ' + Attachment.ID +
-          ' left out: only once and with an identifier (CII-SR-458)', eds_Warning);
+        Report(edk_NotAllowed, Path, 'object identifier (BT-18) left out: only with an identifier (CII-SR-458)',
+          eds_Warning);
         Continue;
       end;
+      if ObjectWritten and not Permit(LandrixEInvoiceRuleFurtherObjectIdentifier, Path,
+        'further object identifier (BT-18) ' + Attachment.ID) then
+        Continue;
       ObjectWritten := True;
     end;
     Target := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeAgreement.AdditionalReferencedDocument.Add;

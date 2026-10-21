@@ -150,7 +150,7 @@ begin
       CII.Free;
     end;
     Errors := DiagnosticsOf(D, [edk_ConversionFailed, edk_MissingElement, edk_NotAllowed]);
-    if not XmlEquivalent(LoadFile(State^.Dir + AFileName), Written, Diff) then
+    if not XmlEquivalent(LoadFile(State^.Dir + AFileName), GoldenView(AFileName, Written), Diff) then
     begin
       Inc(State^.Failed);
       WriteLn('  ', AFileName, ': ', Diff);
@@ -1067,6 +1067,45 @@ begin
   end;
 end;
 
+{ Factur-X EXTENDED takes several invoiced object identifiers (BT-18);
+  elsewhere only the first is written (CII-SR-458). }
+procedure TestObjectIdentifiers;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    with Invoice.Attachments.AddAttachment(iat_application_None) do
+    begin
+      ID := 'OBJ-1';
+      TypeCode := iatc_130;
+    end;
+    with Invoice.Attachments.AddAttachment(iat_application_None) do
+    begin
+      ID := 'OBJ-2';
+      TypeCode := iatc_130;
+    end;
+    Xml := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, Back));
+    Check(Pos('<ram:IssuerAssignedID>OBJ-2</ram:IssuerAssignedID>', Xml) > 0, 'second identifier in EXTENDED');
+    CheckEquals(0, CountKind(D, edk_NotAllowed, '/ram:AdditionalReferencedDocument'), 'EXTENDED: no report');
+    CheckEquals(2, Back.Attachments.Count, 'both read back');
+    D.Clear;
+    Xml := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil));
+    Check(Pos('<ram:IssuerAssignedID>OBJ-1</ram:IssuerAssignedID>', Xml) > 0, 'first identifier in XRechnung');
+    CheckEquals(0, Occurrences('OBJ-2', Xml), 'second identifier left out in XRechnung');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:AdditionalReferencedDocument'), 'XRechnung: reported');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { A credit transfer account (BG-17) next to a direct debit is reported and
   not read as the debited account (BT-91). }
 procedure TestDirectDebitPayeeAccount;
@@ -1235,6 +1274,7 @@ begin
   RegisterTest('MapCII.ThirdPartyPayments', TestThirdPartyPayments);
   RegisterTest('MapCII.DirectDebit49', TestDirectDebit49);
   RegisterTest('MapCII.DirectDebitPayeeAccount', TestDirectDebitPayeeAccount);
+  RegisterTest('MapCII.ObjectIdentifiers', TestObjectIdentifiers);
   RegisterTest('MapCII.Periods', TestPeriods);
   RegisterTest('MapCII.BlankPayee', TestBlankPayee);
   RegisterTest('MapCII.TaxCurrency', TestTaxCurrency);

@@ -167,15 +167,15 @@ var
 begin
   State := PGoldenState(AData);
   Inc(State^.Files);
-  if not XmlEquivalent(LoadFile(State^.Dir + AFileName), SaveToBytes(AInvoice, VersionOfTarget(ATarget), nil),
-    Diff) then
+  if not XmlEquivalent(LoadFile(State^.Dir + AFileName),
+    GoldenView(AFileName, SaveToBytes(AInvoice, VersionOfTarget(ATarget), nil)), Diff) then
   begin
     Inc(State^.Failed);
     WriteLn('  ', AFileName, ' (SaveToStream): ', Diff);
     Exit;
   end;
   TXRechnungInvoiceAdapter.SaveToXMLStr(AInvoice, VersionOfTarget(ATarget), Xml);
-  if not XmlEquivalent(LoadFile(State^.Dir + AFileName), TextBytes(Xml), Diff) then
+  if not XmlEquivalent(LoadFile(State^.Dir + AFileName), GoldenView(AFileName, TextBytes(Xml)), Diff) then
   begin
     Inc(State^.Failed);
     WriteLn('  ', AFileName, ' (SaveToXMLStr): ', Diff);

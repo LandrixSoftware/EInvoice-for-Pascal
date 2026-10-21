@@ -170,6 +170,9 @@ const
   { Text of a cash discount level (BT-20 of a discount term).
     DE: Text einer Skontostufe (BT-20 einer Skontobedingung). }
   LandrixEInvoiceRuleCashDiscountNote = 'Payment.CashDiscountNote';
+  { Invoiced object identifiers (BT-18) after the first.
+    DE: Objektkennungen (BT-18) nach der ersten. }
+  LandrixEInvoiceRuleFurtherObjectIdentifier = 'Attachment.FurtherObjectIdentifier';
 
 { Level of AKey for ASpec (erl_Allowed if no row matches).
   DE: Stufe von AKey fuer ASpec (erl_Allowed, wenn keine Zeile passt). }
@@ -195,7 +198,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..34] of TLandrixEInvoiceRule = (
+  Rules: array[0..35] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules }
     (Key: LandrixEInvoiceRuleLineSubLines; Standards: [est_FacturX]; Syntaxes: [esy_CII];
@@ -310,6 +313,12 @@ const
     (Key: LandrixEInvoiceRuleCashDiscountNote; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-20';
      Source: 'text per cash discount level only in the structured terms of Factur-X EXTENDED'),
+    { CII-SR-458 and UBL-SR-04 belong to the EN 16931 Schematron; the Factur-X
+      Schematron has no such rule. DE: CII-SR-458 und UBL-SR-04 gehoeren zum
+      EN-16931-Schematron; das Factur-X-Schematron kennt keine solche Regel. }
+    (Key: LandrixEInvoiceRuleFurtherObjectIdentifier; Standards: AnyStandard; Syntaxes: [esy_CII];
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-18';
+     Source: 'one object identifier (CII-SR-458, UBL-SR-04); several only in Factur-X EXTENDED'),
     { UBL cac:Contact has no department }
     (Key: LandrixEInvoiceRuleContactDepartment; Standards: AnyStandard; Syntaxes: [esy_UBL];
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-41-0, BT-56-0';

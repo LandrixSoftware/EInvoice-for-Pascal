@@ -319,6 +319,8 @@ Supported invoice standards are documented per release.
 - The ZUGFeRD identifiers `urn:zugferd.de:2p0:...` (BT-24), which Factur-X 1.09 accepts for
   MINIMUM, BASIC WL, BASIC and EXTENDED, are recognised when reading; written is always the
   Factur-X identifier.
+- Factur-X EXTENDED takes several invoiced object identifiers (BT-18); the other targets keep the
+  first (CII-SR-458, UBL-SR-04).
 - The CII writer also reports content that the schema leaves optional but the Factur-X profile
   requires below an existing parent, e.g. the invoiced quantity, its unit code, the net price and
   the line total of a line in BASIC (BR-22, BR-23, BR-26, BR-24). The profile pruning treats blank

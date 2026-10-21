@@ -33,8 +33,6 @@ zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	added BT-9 =
 # Several discounts on the gross price (EXTENDED): the model holds one (plan, Phase 2 step 1).
 zugferd252_X14_01_Rechnungskorrektur-ciiextended-25.xml	lost BG-25[2]/BG-29[1]/BT-147 =
 zugferd252_X19_01_Warenrechnung-ciiextended-25.xml	lost BG-25[3]/BG-29[1]/BT-147 =
-# Two invoiced object identifiers (BT-18) in EXTENDED; only the first is written (backlog).
-zugferd252_X14_01_Rechnungskorrektur-ciiextended-25.xml	lost BT-18 =
 # The sources carry person name and department together (CII-SR-465, KoSIT rejects them); the
 # writer keeps the person name.
 zugferd252_XRECHNUNG_Einfach-cii-30x.xml	lost BG-4[1]/BG-6[1]/BT-41 =

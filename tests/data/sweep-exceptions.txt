@@ -28,10 +28,6 @@ zugferd252/XRECHNUNG_Elektron.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:S
 kosit-xr302/technical-cases_cvd_02.01a-cvd_INVOICE_ubl.xml	detect urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#compliant#urn:xeinkauf.de:kosit:xrechnung:cvd_0.9
 kosit-xr302/technical-cases_cvd_02.01a-cvd_INVOICE_uncefact.xml	detect urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#compliant#urn:xeinkauf.de:kosit:xrechnung:cvd_0.9
 zugferd252/XRECHNUNG_Betriebskostenabrechnung.xml	detect urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.1
-# Two invoiced object identifiers (BT-18) in EXTENDED; like XRechnung-for-Delphi only the first
-# is written (golden files). Open question in the backlog.
-zugferd252/X14_01_Rechnungskorrektur.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:AdditionalReferencedDocument
-zugferd252/X14_01_Rechnungskorrektur.xml	compare Attachments (BG-24).Count
 # The sources carry person name and department together, which CII-SR-465 forbids (the KoSIT
 # validator rejects these three examples); the writer keeps the person name.
 zugferd252/XRECHNUNG_Einfach.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:DefinedTradeContact/ram:DepartmentName
