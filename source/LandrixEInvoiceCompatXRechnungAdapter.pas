@@ -35,8 +35,8 @@
     LandrixEInvoicePdf (old names: LandrixEInvoiceCompatXRechnungPdf).
   - Messages are English.
   - As before, SaveToFile writes nothing for a file name without folder.
-    On FPC file names pass the RTL as AnsiString: characters outside the
-    system code page are lost.
+    File names are opened through LandrixEInvoiceFiles, so Unicode names
+    are kept where TXRechnungString is Unicode (Delphi 2009+, FPC).
 
   DE: Kompatibilitaet mit XRechnung-for-Delphi, zweiter Teil (Unit
   intf.XRechnung, in der Delphi-6-Fassung intfXRechnung): die Fassade
@@ -64,8 +64,9 @@
     LandrixEInvoiceCompatXRechnungPdf).
   - Meldungen sind englisch.
   - Wie bisher schreibt SaveToFile nichts fuer einen Dateinamen ohne
-    Ordner. Unter FPC gehen Dateinamen als AnsiString an die RTL: Zeichen
-    ausserhalb der System-Codepage gehen verloren. }
+    Ordner. Dateinamen werden ueber LandrixEInvoiceFiles geoeffnet,
+    Unicode-Namen bleiben also erhalten, wo TXRechnungString Unicode ist
+    (Delphi 2009+, FPC). }
 
 unit LandrixEInvoiceCompatXRechnungAdapter;
 
@@ -304,6 +305,7 @@ uses
   LandrixEInvoiceUBLReader,
   LandrixEInvoiceUBLWriter,
   LandrixEInvoicePdf,
+  LandrixEInvoiceFiles,
   LandrixEInvoiceMapUBL;
 
 { --- helpers ---------------------------------------------------------------- }
@@ -313,9 +315,17 @@ begin
   Result := TXRechnungString(S);
 end;
 
-function NativeFileName(const S: TXRechnungString): string;
+{ The folder of a file name with its trailing delimiter, as ExtractFilePath;
+  '' without folder. }
+function FolderOf(const S: TXRechnungString): TXRechnungString;
+var
+  I: Integer;
 begin
-  Result := string(S);
+  I := Length(S);
+  while (I > 0) and (S[I] <> '/') and (S[I] <> PathDelim) and
+    ((S[I] <> ':') or (PathDelim = '/')) do
+    Dec(I);
+  Result := Copy(S, 1, I);
 end;
 
 { The XML text of the caller as bytes: UTF-8 of the Unicode text, or the
@@ -581,38 +591,21 @@ end;
 class function TXRechnungValidationHelper.GetXRechnungVersion(const _Filename: TXRechnungString;
   _ProcessPdfFiles: Boolean): TXRechnungVersion;
 var
-  R: TLandrixXmlReader;
-  Stream: TFileStream;
+  Stream: TStream;
 begin
   Result := XRechnungVersion_Unknown;
-  if not FileExists(NativeFileName(_Filename)) then
+  if not LandrixEInvoiceFileExists(_Filename) then
     Exit;
-  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfFile(NativeFileName(_Filename)) then
-  begin
-    try
-      Stream := TFileStream.Create(NativeFileName(_Filename), fmOpenRead or fmShareDenyWrite);
-      try
-        Result := GetXRechnungVersion(Stream, True);
-      finally
-        Stream.Free;
-      end;
-    except
-      on Exception do
-        Result := XRechnungVersion_Unknown;
-    end;
-    Exit;
-  end;
-  R := TLandrixXmlReader.Create;
   try
+    Stream := LandrixEInvoiceOpenFile(_Filename, efm_Read);
     try
-      R.LoadFromFile(NativeFileName(_Filename));
-      Result := VersionOf(R);
-    except
-      on Exception do
-        Result := XRechnungVersion_Unknown;
+      Result := GetXRechnungVersion(Stream, _ProcessPdfFiles);
+    finally
+      Stream.Free;
     end;
-  finally
-    R.Free;
+  except
+    on Exception do
+      Result := XRechnungVersion_Unknown;
   end;
 end;
 
@@ -780,14 +773,14 @@ class procedure TXRechnungInvoiceAdapter.SaveToFile(_Invoice: TLandrixInvoice; _
   const _Filename: TXRechnungString; _Diagnostics: TLandrixEInvoiceDiagnostics);
 var
   Bytes: TLandrixXmlUtf8;
-  Stream: TFileStream;
+  Stream: TStream;
 begin
   if (_Invoice = nil) or (_Filename = '') then
     Exit;
-  if not DirectoryExists(ExtractFilePath(NativeFileName(_Filename))) then
+  if (FolderOf(_Filename) = '') or not LandrixEInvoiceDirectoryExists(FolderOf(_Filename)) then
     Exit;
   Bytes := SaveToUtf8(_Invoice, _Version, _Diagnostics);
-  Stream := TFileStream.Create(NativeFileName(_Filename), fmCreate);
+  Stream := LandrixEInvoiceOpenFile(_Filename, efm_Create);
   try
     if Bytes <> '' then
       Stream.WriteBuffer(PAnsiChar(Bytes)^, Length(Bytes));
@@ -842,35 +835,49 @@ class function TXRechnungInvoiceAdapter.LoadFromFile(_Invoice: TLandrixInvoice; 
 var
   R: TLandrixXmlReader;
   AttachmentName: TXRechnungString;
+  Stream: TStream;
 begin
   Result := False;
   _Error := '';
   if (_Invoice = nil) or (_Filename = '') then
     Exit;
-  if not FileExists(NativeFileName(_Filename)) then
+  if not LandrixEInvoiceFileExists(_Filename) then
   begin
     _Error := 'File not found: ' + _Filename;
     Exit;
   end;
-  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfFile(NativeFileName(_Filename)) then
-  begin
-    Result := LoadFromPdfFile(_Invoice, _Filename, _Error, AttachmentName, _Diagnostics);
-    Exit;
-  end;
-  R := TLandrixXmlReader.Create;
   try
-    try
-      R.LoadFromFile(NativeFileName(_Filename));
-    except
-      on E: Exception do
-      begin
-        _Error := CompatText('File is not valid XML: ' + E.Message);
-        Exit;
-      end;
+    Stream := LandrixEInvoiceOpenFile(_Filename, efm_Read);
+  except
+    on E: Exception do
+    begin
+      _Error := CompatText('File not readable: ' + E.Message);
+      Exit;
     end;
-    Result := LoadFromReader(_Invoice, R, _Error, _Diagnostics);
+  end;
+  try
+    if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfStream(Stream) then
+    begin
+      Result := LoadFromPdfStream(_Invoice, Stream, _Error, AttachmentName, _Diagnostics);
+      Exit;
+    end;
+    R := TLandrixXmlReader.Create;
+    try
+      try
+        R.LoadFromStream(Stream);
+      except
+        on E: Exception do
+        begin
+          _Error := CompatText('File is not valid XML: ' + E.Message);
+          Exit;
+        end;
+      end;
+      Result := LoadFromReader(_Invoice, R, _Error, _Diagnostics);
+    finally
+      R.Free;
+    end;
   finally
-    R.Free;
+    Stream.Free;
   end;
 end;
 
@@ -943,20 +950,20 @@ class function TXRechnungInvoiceAdapter.LoadFromPdfFile(_Invoice: TLandrixInvoic
   out _Error: TXRechnungString; out _AttachmentName: TXRechnungString;
   _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
-  Stream: TFileStream;
+  Stream: TStream;
 begin
   Result := False;
   _Error := '';
   _AttachmentName := '';
   if _Invoice = nil then
     Exit;
-  if not FileExists(NativeFileName(_Filename)) then
+  if not LandrixEInvoiceFileExists(_Filename) then
   begin
     _Error := 'File not found: ' + _Filename;
     Exit;
   end;
   try
-    Stream := TFileStream.Create(NativeFileName(_Filename), fmOpenRead or fmShareDenyWrite);
+    Stream := LandrixEInvoiceOpenFile(_Filename, efm_Read);
   except
     on E: Exception do
     begin

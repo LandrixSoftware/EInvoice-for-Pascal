@@ -278,8 +278,13 @@ Supported invoice standards are documented per release.
   the model cannot hold) are listed with reasons in `tools/rulecheck/oracle-exceptions.txt`.
 - `LandrixEInvoiceCheckCIIProfile`: reports what `LandrixEInvoicePruneCII` would remove from a CII
   model, as errors, without changing the model.
+- `LandrixEInvoiceFiles`: `LandrixEInvoiceOpenFile`, `LandrixEInvoiceFileExists` and
+  `LandrixEInvoiceDirectoryExists` take UTF-16 file names on every compiler (Delphi 6-2007 through
+  `CreateFileW`, Free Pascal through the Unicode or UTF-8 file functions).
 
 ### Changed
+- The compatibility adapter opens files through `LandrixEInvoiceFiles`: on Free Pascal file names
+  outside the system code page are no longer lost.
 - `LandrixEInvoiceCheckCII` reports content the Factur-X profile does not contain as an error
   (`edk_NotAllowed`) instead of ignoring it.
 - Invoice and line periods (BG-14, BG-26) are compared as dates, as BR-29/BR-30 do: a period that

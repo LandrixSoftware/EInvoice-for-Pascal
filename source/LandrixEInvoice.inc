@@ -22,13 +22,18 @@
                              describes the native string, not whether invoice
                              text is Unicode-safe: TLandrixEInvoiceString is
                              UTF-16 and lossless on every compiler.
+    LANDRIXEINVOICE_WIN32W   Delphi 6-2007: Unicode file names need the W
+                             functions of kernel32 (LandrixEInvoiceFiles).
 
   DE: Zentrale Compiler-Schalter. Werden in jeder Unit direkt nach dem
   Unit-Kopf eingebunden. LANDRIXEINVOICE_UNICODE ist ab Delphi 2009 gesetzt:
   Der native string ist UTF-16 (string = UnicodeString, Char = WideChar).
   Unter Delphi 6 bis 2007 und unter FPC ist er nicht gesetzt. Er beschreibt
   den nativen string, nicht ob Rechnungstext Unicode-sicher ist:
-  TLandrixEInvoiceString ist unter jedem Compiler UTF-16 und verlustfrei. }
+  TLandrixEInvoiceString ist unter jedem Compiler UTF-16 und verlustfrei.
+  LANDRIXEINVOICE_WIN32W ist unter Delphi 6 bis 2007 gesetzt: Unicode-
+  Dateinamen brauchen dort die W-Funktionen von kernel32
+  (LandrixEInvoiceFiles). }
 
 {$IFDEF FPC}
   {$MODE DELPHI}
@@ -49,4 +54,8 @@
     { Delphi 2009+: string = UnicodeString, Char = WideChar }
     {$DEFINE LANDRIXEINVOICE_UNICODE}
   {$IFEND}
+  {$IFNDEF LANDRIXEINVOICE_UNICODE}
+    { Delphi 6-2007 }
+    {$DEFINE LANDRIXEINVOICE_WIN32W}
+  {$ENDIF}
 {$ENDIF}

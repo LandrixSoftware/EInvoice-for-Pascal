@@ -46,10 +46,19 @@ uses
   LandrixEInvoiceSpecs,
   LandrixEInvoiceCompatXRechnungAdapter,
   LandrixEInvoiceCompatXRechnungPdf,
+  LandrixEInvoiceFiles,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestPdf,
   LandrixEInvoiceTestXmlCompare,
   LandrixEInvoiceTestScenarios;
+
+{ TXRechnungString is Unicode }
+{$IFDEF FPC}
+  {$DEFINE UNICODE_FILE_NAMES}
+{$ENDIF}
+{$IFDEF LANDRIXEINVOICE_UNICODE}
+  {$DEFINE UNICODE_FILE_NAMES}
+{$ENDIF}
 
 function LocalDir(const AName: string): string;
 begin
@@ -442,6 +451,9 @@ var
   M: TMemoryStream;
   Name: TLandrixEInvoiceString;
   D: TLandrixEInvoiceDiagnostics;
+{$IFDEF UNICODE_FILE_NAMES}
+  FileName: TXRechnungString;
+{$ENDIF}
 begin
   Invoice := TLandrixInvoice.Create;
   Back := TLandrixInvoice.Create;
@@ -477,6 +489,18 @@ begin
     TXRechnungInvoiceAdapter.SaveToFile(Invoice, XRechnungVersion_30x_UBL,
       TXRechnungString(LocalDir('no-such-folder') + 'x.xml'));
     Check(not FileExists(LocalDir('no-such-folder') + 'x.xml'), 'missing folder: nothing written');
+{$IFDEF UNICODE_FILE_NAMES}
+    { a file name outside the ANSI code page (TXRechnungString is Unicode) }
+    FileName := TXRechnungString(ExtractFilePath(ParamStr(0)) + 'files' + PathDelim);
+    Check(ForceDirectories(string(FileName)), 'files folder');
+    FileName := FileName + 'A' + WideChar($00FC) + WideChar($4E2D) + '.xml';
+    TXRechnungInvoiceAdapter.SaveToFile(Invoice, XRechnungVersion_30x_UBL, FileName);
+    Check(LandrixEInvoiceFileExists(FileName), 'Unicode file name written');
+    Check(TXRechnungValidationHelper.GetXRechnungVersion(FileName) = XRechnungVersion_30x_UBL,
+      'version of the Unicode file');
+    Check(TXRechnungInvoiceAdapter.LoadFromFile(Back, FileName, Error), 'load Unicode file: ' + string(Error));
+    CheckEqualsInvoiceStr(Name, Back.AccountingCustomerParty.Name, 'read from the Unicode file');
+{$ENDIF}
   finally
     M.Free;
     D.Free;

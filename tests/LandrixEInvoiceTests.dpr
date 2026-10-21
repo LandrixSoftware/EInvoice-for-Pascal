@@ -30,6 +30,7 @@ uses
   LandrixEInvoiceTestSelf,
   LandrixEInvoiceTestTypes,
   LandrixEInvoiceTestLexical,
+  LandrixEInvoiceTestFiles,
   LandrixEInvoiceTestNullable,
   LandrixEInvoiceTestModel,
   LandrixEInvoiceTestCompat,
@@ -60,6 +61,7 @@ begin
   LandrixEInvoiceTestSelf.Register;
   LandrixEInvoiceTestTypes.Register;
   LandrixEInvoiceTestLexical.Register;
+  LandrixEInvoiceTestFiles.Register;
   LandrixEInvoiceTestNullable.Register;
   LandrixEInvoiceTestModel.Register;
   LandrixEInvoiceTestCompat.Register;
