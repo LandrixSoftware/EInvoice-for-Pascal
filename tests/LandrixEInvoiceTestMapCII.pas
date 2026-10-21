@@ -1093,7 +1093,7 @@ begin
     Xml := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, Back));
     Check(Pos('<ram:IssuerAssignedID>OBJ-2</ram:IssuerAssignedID>', Xml) > 0, 'second identifier in EXTENDED');
     CheckEquals(0, CountKind(D, edk_NotAllowed, '/ram:AdditionalReferencedDocument'), 'EXTENDED: no report');
-    CheckEquals(2, Back.Attachments.Count, 'both read back');
+    CheckEquals(2, Integer(Back.Attachments.Count), 'both read back');
     D.Clear;
     Xml := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil));
     Check(Pos('<ram:IssuerAssignedID>OBJ-1</ram:IssuerAssignedID>', Xml) > 0, 'first identifier in XRechnung');

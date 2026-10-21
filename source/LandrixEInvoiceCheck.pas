@@ -1317,7 +1317,7 @@ begin
     LineCount, AllLines);
   Allowances := AllowanceChargeCents(AInvoice, False, AllowanceCount);
   Charges := AllowanceChargeCents(AInvoice, True, ChargeCount);
-  Tolerance := LineCount + AllowanceCount + ChargeCount;
+  Tolerance := Int64(LineCount) + AllowanceCount + ChargeCount;
   Result := False;
   case AIndex of
     cr_BRCO10:
