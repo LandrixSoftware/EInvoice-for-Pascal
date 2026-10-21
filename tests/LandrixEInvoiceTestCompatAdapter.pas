@@ -13,7 +13,7 @@
 }
 
 { Tests for LandrixEInvoiceCompatXRechnungAdapter (TXRechnungInvoiceAdapter):
-  - every scenario of LandrixEInvoiceTestScenarios saved through the facade
+  - every scenario of LandrixEInvoiceExampleScenarios saved through the facade
     equals its golden file (tests/data/local/golden/, git-ignored);
   - every golden file is detected as its version, loaded and saved again
     unchanged;
@@ -50,7 +50,8 @@ uses
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestPdf,
   LandrixEInvoiceTestXmlCompare,
-  LandrixEInvoiceTestScenarios;
+  LandrixEInvoiceExampleScenarios,
+  LandrixEInvoiceTestGolden;
 
 { TXRechnungString is Unicode }
 {$IFDEF FPC}
@@ -187,14 +188,14 @@ var
   State: TGoldenState;
 begin
   State.Dir := LocalDir('golden');
-  if not DirectoryExists(State.Dir) or not DirectoryExists(LocalDir('attachments')) then
+  if not DirectoryExists(State.Dir) then
   begin
-    Skip('no local golden files or attachments');
+    Skip('no local golden files');
     Exit;
   end;
   State.Files := 0;
   State.Failed := 0;
-  RunAllScenarios(GoldenSink, @State, LocalDir('attachments'));
+  RunAllScenarios(GoldenSink, @State, ScenarioAttachmentDir);
   CheckEquals(111, State.Files, 'outputs');
   CheckEquals(0, State.Failed, IntToStr(State.Files) + ' outputs, differences to the golden files');
 end;
@@ -700,15 +701,10 @@ procedure TestCrossWrite;
 var
   Files: Integer;
 begin
-  if not DirectoryExists(LocalDir('attachments')) then
-  begin
-    Skip('no local attachments');
-    Exit;
-  end;
   { tools/build.ps1 clears the folder before each run }
   Check(ForceDirectories(CrossOutDir), 'cross folder');
   Files := 0;
-  RunAllScenarios(CrossSink, @Files, LocalDir('attachments'));
+  RunAllScenarios(CrossSink, @Files, ScenarioAttachmentDir);
   CheckEquals(111, Files, 'scenario outputs');
 end;
 

@@ -40,7 +40,8 @@ uses
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestCheck,
   LandrixEInvoiceTestPdf,
-  LandrixEInvoiceTestScenarios;
+  LandrixEInvoiceExampleScenarios,
+  LandrixEInvoiceTestGolden;
 
 function XRUBL: TLandrixEInvoiceTarget;
 begin
@@ -135,12 +136,7 @@ var
   I: Integer;
   Dir: string;
 begin
-  Dir := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim + 'attachments' + PathDelim;
-  if not DirectoryExists(Dir) then
-  begin
-    Skip('no local attachments');
-    Exit;
-  end;
+  Dir := ScenarioAttachmentDir;
   State.Files := 0;
   State.Failures := TStringList.Create;
   try

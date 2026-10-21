@@ -325,6 +325,10 @@ Supported invoice standards are documented per release.
   Factur-X identifier.
 - Factur-X EXTENDED takes several invoiced object identifiers (BT-18); the other targets keep the
   first (CII-SR-458, UBL-SR-04).
+- The scenario unit moved from the tests to `examples/BusinessCases/LandrixEInvoiceExampleScenarios.pas`;
+  its four attachments are in the repository (`examples/BusinessCases/attachments/`), so the
+  golden-file, cross and profile tests no longer need local attachments.
+  `tools/check-forbidden.py` checks `examples/` instead of the missing `samples/`.
 - Compatibility layer: where `String` is Unicode (Delphi 2009+, Free Pascal),
   `LoadFromXMLStr` and `GetXRechnungVersionFromString` read the text as decoded and no longer
   follow its encoding declaration, which garbled non-ASCII text declared as e.g. ISO-8859-1;

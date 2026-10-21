@@ -14,7 +14,7 @@
 
 { Tests for LandrixEInvoiceMapUBL against the golden files of
   XRechnung-for-Delphi (tests/data/local/golden/, git-ignored):
-  - Golden write: every UBL scenario of LandrixEInvoiceTestScenarios is
+  - Golden write: every UBL scenario of LandrixEInvoiceExampleScenarios is
     mapped with the root LandrixEInvoiceUBLRootFor chooses, written and
     compared with its golden file;
   - Golden read: every UBL golden file is read, mapped to the invoice model,
@@ -54,7 +54,8 @@ uses
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestMapCII,
   LandrixEInvoiceTestXmlCompare,
-  LandrixEInvoiceTestScenarios;
+  LandrixEInvoiceExampleScenarios,
+  LandrixEInvoiceTestGolden;
 
 function LocalDir(const AName: string): string;
 begin
@@ -256,14 +257,14 @@ var
   State: TGoldenState;
 begin
   State.Dir := LocalDir('golden');
-  if not DirectoryExists(State.Dir) or not DirectoryExists(LocalDir('attachments')) then
+  if not DirectoryExists(State.Dir) then
   begin
-    Skip('no local golden files or attachments');
+    Skip('no local golden files');
     Exit;
   end;
   State.Files := 0;
   State.Failed := 0;
-  RunAllScenarios(GoldenSink, @State, LocalDir('attachments'));
+  RunAllScenarios(GoldenSink, @State, ScenarioAttachmentDir);
   CheckEquals(44, State.Files, 'UBL outputs');
   CheckEquals(0, State.Failed, IntToStr(State.Files) + ' UBL outputs, differences to the golden files');
 end;

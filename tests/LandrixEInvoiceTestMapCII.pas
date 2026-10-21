@@ -14,7 +14,7 @@
 
 { Tests for LandrixEInvoiceMapCII against the golden files of
   XRechnung-for-Delphi (tests/data/local/golden/, git-ignored):
-  - Golden write: every CII scenario of LandrixEInvoiceTestScenarios is
+  - Golden write: every CII scenario of LandrixEInvoiceExampleScenarios is
     mapped, written and compared with its golden file;
   - Golden read: every CII golden file is read, mapped to the invoice model,
     mapped back with the specification of its identifier, written and
@@ -54,7 +54,8 @@ uses
   LandrixEInvoiceMapCII,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestXmlCompare,
-  LandrixEInvoiceTestScenarios;
+  LandrixEInvoiceExampleScenarios,
+  LandrixEInvoiceTestGolden;
 
 function LocalDir(const AName: string): string;
 begin
@@ -174,14 +175,14 @@ var
   State: TGoldenState;
 begin
   State.Dir := LocalDir('golden');
-  if not DirectoryExists(State.Dir) or not DirectoryExists(LocalDir('attachments')) then
+  if not DirectoryExists(State.Dir) then
   begin
-    Skip('no local golden files or attachments');
+    Skip('no local golden files');
     Exit;
   end;
   State.Files := 0;
   State.Failed := 0;
-  RunAllScenarios(GoldenSink, @State, LocalDir('attachments'));
+  RunAllScenarios(GoldenSink, @State, ScenarioAttachmentDir);
   CheckEquals(67, State.Files, 'CII outputs');
   CheckEquals(0, State.Failed, IntToStr(State.Files) + ' CII outputs, differences to the golden files');
 end;

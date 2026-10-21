@@ -29,7 +29,7 @@
         all (everything above plus d6-checked and d13-win64-checked).
 
   Cross test: every test run writes all scenarios to build/<toolchain>/cross/
-  (test Cross.Write, needs tests/data/local). After the runs, each local
+  (test Cross.Write). After the runs, each local
   toolchain that ran reads the files of the next one in the list
   (-filter=Cross.Read -cross=<folder>, the last reads the first), so Delphi
   reads what FPC wrote and the other way round. Before that, the outputs of
@@ -70,7 +70,7 @@ $MacRunner = Join-Path $env:USERPROFILE '.local\share\remote-toolchains\macos-fp
 
 # Unit and include search paths, relative to the repository root.
 $XmlSource = 'external/landrix-xml/source'
-$UnitDirs = @('source', $XmlSource, 'tests')
+$UnitDirs = @('source', $XmlSource, 'tests', 'examples/BusinessCases')
 $IncDirs = @('source', $XmlSource)
 
 if (-not (Test-Path "$XmlSource/LandrixXmlBase.pas")) {
@@ -276,7 +276,7 @@ if ($Validate -and -not $NoRun) {
     $results += @{ Name = 'KoSIT validation'; Build = 0; Diag = 0; Run = 1 }
   } else {
     foreach ($folder in @('cross', 'profiles', 'cases', 'sweep')) {
-      # profiles/ needs the local attachments like cross/ (test CIIProfiles.WriteScenarios);
+      # profiles/ comes from the example scenarios like cross/ (test CIIProfiles.WriteScenarios);
       # cases/ comes from the business cases (Cases.*), sweep/ from Sweep.Official (local
       # corpora); sweep-cross/ is not validated: a source with third-party payments (BG-DEX-09)
       # has no valid form in XRechnung CII and is reported as an error

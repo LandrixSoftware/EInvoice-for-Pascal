@@ -16,6 +16,8 @@
 
 # Test data must stay byte-exact (encodings, BOMs, line endings).
 tests/data/** -text
+# Example attachments are embedded byte for byte (golden files).
+examples/*/attachments/** -text
 
 # Code list sources must stay byte-exact (checksums in tools/codelists/manifest.json).
 tools/codelists/src/** -text

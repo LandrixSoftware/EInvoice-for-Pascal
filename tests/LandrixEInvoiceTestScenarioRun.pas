@@ -12,10 +12,8 @@
   SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
 }
 
-{ Runs the golden file sequence of LandrixEInvoiceTestScenarios with a sink
-  that counts the outputs and checks that every target is known. Needs the
-  local attachments (tests/data/local/attachments/); skipped when the folder
-  does not exist. }
+{ Runs the golden file sequence of LandrixEInvoiceExampleScenarios with a sink
+  that counts the outputs and checks that every target is known. }
 
 unit LandrixEInvoiceTestScenarioRun;
 
@@ -35,7 +33,8 @@ uses
   LandrixEInvoiceCheck,
   LandrixEInvoiceSpecs,
   LandrixEInvoiceTestFramework,
-  LandrixEInvoiceTestScenarios;
+  LandrixEInvoiceExampleScenarios,
+  LandrixEInvoiceTestGolden;
 
 type
   PRunState = ^TRunState;
@@ -80,13 +79,7 @@ var
   Dir: string;
   State: TRunState;
 begin
-  Dir := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim +
-    'attachments' + PathDelim;
-  if not DirectoryExists(Dir) then
-  begin
-    Skip('no local attachments in ' + Dir);
-    Exit;
-  end;
+  Dir := ScenarioAttachmentDir;
   State.Count := 0;
   State.WithoutInvoice := 0;
   State.UnknownTargets := '';

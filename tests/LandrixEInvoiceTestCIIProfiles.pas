@@ -47,7 +47,8 @@ uses
   LandrixEInvoiceCIIProfiles,
   LandrixEInvoiceMapCII,
   LandrixEInvoiceTestFramework,
-  LandrixEInvoiceTestScenarios,
+  LandrixEInvoiceExampleScenarios,
+  LandrixEInvoiceTestGolden,
   LandrixEInvoiceTestMapCII;
 
 const
@@ -463,12 +464,7 @@ var
   Run: TProfileRun;
   Dir: string;
 begin
-  Dir := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim + 'attachments' + PathDelim;
-  if not DirectoryExists(Dir) then
-  begin
-    Skip('no local attachments');
-    Exit;
-  end;
+  Dir := ScenarioAttachmentDir;
   Check(ForceDirectories(ProfilesOutDir), 'profiles folder');
   Run.Files := 0;
   Run.Errors := '';
