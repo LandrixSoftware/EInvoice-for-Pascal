@@ -45,7 +45,8 @@ uses
   LandrixEInvoiceTestCompatAdapter,
   LandrixEInvoiceTestPdf,
   LandrixEInvoiceTestSweep,
-  LandrixEInvoiceTestBusinessCases;
+  LandrixEInvoiceTestBusinessCases,
+  LandrixEInvoiceTestFacade;
 
 function FilterParam: string;
 var
@@ -77,5 +78,6 @@ begin
   LandrixEInvoiceTestPdf.Register;
   LandrixEInvoiceTestSweep.Register;
   LandrixEInvoiceTestBusinessCases.Register;
+  LandrixEInvoiceTestFacade.Register;
   ExitCode := RunAllTests(FilterParam);
 end.

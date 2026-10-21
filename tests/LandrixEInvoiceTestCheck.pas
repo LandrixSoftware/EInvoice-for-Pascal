@@ -27,6 +27,12 @@ unit LandrixEInvoiceTestCheck;
 
 interface
 
+uses
+  LandrixEInvoiceInvoice;
+
+{ An invoice that meets every official rule of every target. }
+procedure FillComplete(Invoice: TLandrixInvoice);
+
 procedure Register;
 
 implementation
@@ -37,7 +43,6 @@ uses
   LandrixEInvoiceDiagnostics,
   LandrixEInvoiceCodes,
   LandrixEInvoiceSpecs,
-  LandrixEInvoiceInvoice,
   LandrixEInvoiceCalc,
   LandrixEInvoiceCII,
   LandrixEInvoiceMapCII,

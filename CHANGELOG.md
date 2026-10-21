@@ -281,6 +281,13 @@ Supported invoice standards are documented per release.
 - `LandrixEInvoiceFiles`: `LandrixEInvoiceOpenFile`, `LandrixEInvoiceFileExists` and
   `LandrixEInvoiceDirectoryExists` take UTF-16 file names on every compiler (Delphi 6-2007 through
   `CreateFileW`, Free Pascal through the Unicode or UTF-8 file functions).
+- Facade `LandrixEInvoice`: `TLandrixEInvoice.SaveToFile/SaveToStream/SaveToUtf8` (invoice or
+  syntax model), `ToCII/ToUBLInvoice/ToUBLCreditNote`, `Check` and `LoadFromFile/LoadFromStream/
+  LoadFromUtf8` returning a `TLandrixEInvoiceDocument` (invoice, syntax model, diagnostics,
+  `TLandrixEInvoiceDocumentInfo`). Writing checks the business rules and refuses on errors
+  (`ELandrixEInvoiceWriteError`, nothing written); options `TLandrixEInvoiceOptions` (strict mode,
+  no rule check, write despite errors, check on read, invoice only, no PDF). Exceptions
+  `ELandrixEInvoiceTargetError`, `ELandrixEInvoiceFormatError`, `ELandrixEInvoicePdfError`.
 
 ### Changed
 - The compatibility adapter opens files through `LandrixEInvoiceFiles`: on Free Pascal file names
