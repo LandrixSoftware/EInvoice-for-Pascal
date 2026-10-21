@@ -290,6 +290,9 @@ Supported invoice standards are documented per release.
   `ELandrixEInvoiceTargetError`, `ELandrixEInvoiceFormatError`, `ELandrixEInvoicePdfError`.
 - `Assign` on `TLandrixInvoice` and its parts: a deep copy (owned objects, lists and attachment
   data are copied).
+- API levels: every unit states `API: stable` or `API: internal` before its `unit` line; the
+  README lists both groups and `tools/check-forbidden.py` checks that stable interfaces use no
+  internal unit.
 
 ### Changed
 - The compatibility adapter reads and writes through the facade `TLandrixEInvoice` (writing without

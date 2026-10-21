@@ -60,6 +60,10 @@
   - Bibliothekseigene Listen (Art der Zahlungsbedingungen, Untertyp der
     Rechnungsposition) stehen in LandrixEInvoiceInvoice. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoiceCodes;
 
 {$I LandrixEInvoice.inc}

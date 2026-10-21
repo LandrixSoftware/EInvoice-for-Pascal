@@ -44,6 +44,10 @@
   (ELandrixEInvoiceFormatError, ELandrixEInvoicePdfError); alles zum Inhalt
   steht in den Meldungen des Dokuments. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoice;
 
 {$I LandrixEInvoice.inc}
@@ -70,10 +74,10 @@ type
       DE: Inhalt, den das Ziel nicht erlaubt oder von dem es abraet
       (edk_NotAllowed), ist ein Fehler, auch wo die Abbildung ihn weglaesst. }
     eio_Strict,
-    { Writing and Check do not run the business rules
-      (LandrixEInvoiceCheckInvoice).
-      DE: Schreiben und Check pruefen die Geschaeftsregeln nicht
-      (LandrixEInvoiceCheckInvoice). }
+    { Writing and Check do not check the business rules (BR-..., BR-DE-...,
+      Peppol rules) of the invoice model.
+      DE: Schreiben und Check pruefen die Geschaeftsregeln (BR-...,
+      BR-DE-..., Peppol-Regeln) des Rechnungsmodells nicht. }
     eio_NoRuleCheck,
     { Writing writes despite errors; ADiagnostics still receives them.
       DE: Schreiben schreibt trotz Fehlern; ADiagnostics erhaelt sie
@@ -234,15 +238,14 @@ type
       overload;
 
     { Writes a syntax model for ATarget. Checked are the content the
-      Factur-X profile does not contain and the required content (as
-      LandrixEInvoiceCheckCII and LandrixEInvoiceCheckUBLInvoice do) and
-      that BT-24 of the model belongs to ATarget; the business rules need
-      the invoice model and are not checked here.
+      Factur-X profile does not contain, the content the schema and the
+      profile require, and that BT-24 of the model belongs to ATarget; the
+      business rules need the invoice model and are not checked here.
       DE: Schreibt ein Syntaxmodell fuer ATarget. Geprueft werden Inhalt,
-      den das Factur-X-Profil nicht enthaelt, und der Pflichtinhalt (wie
-      LandrixEInvoiceCheckCII und LandrixEInvoiceCheckUBLInvoice) sowie dass
-      BT-24 des Modells zu ATarget gehoert; die Geschaeftsregeln brauchen das
-      Rechnungsmodell und werden hier nicht geprueft. }
+      den das Factur-X-Profil nicht enthaelt, der Inhalt, den Schema und
+      Profil verlangen, und dass BT-24 des Modells zu ATarget gehoert; die
+      Geschaeftsregeln brauchen das Rechnungsmodell und werden hier nicht
+      geprueft. }
     class procedure SaveToFile(ACII: TLandrixCIIInvoice; const AFileName: TLandrixEInvoiceString;
       const ATarget: TLandrixEInvoiceTarget; AOptions: TLandrixEInvoiceOptions = [];
       ADiagnostics: TLandrixEInvoiceDiagnostics = nil); overload;
@@ -273,13 +276,13 @@ type
 
     { Maps AInvoice to the syntax model of ATarget for changes before
       writing; nothing is refused here, SaveTo* checks. The caller frees the
-      result. ToUBLInvoice and ToUBLCreditNote: see LandrixEInvoiceUBLRootFor
-      for the root a target expects.
+      result. In UBL a credit note (BT-3 = 381) is written as CreditNote
+      (ToUBLCreditNote), every other invoice as Invoice (ToUBLInvoice).
       DE: Bildet AInvoice auf das Syntaxmodell von ATarget ab, fuer
       Aenderungen vor dem Schreiben; hier wird nichts verweigert, SaveTo*
-      prueft. Der Aufrufer gibt das Ergebnis frei. ToUBLInvoice und
-      ToUBLCreditNote: welche Wurzel ein Ziel erwartet, sagt
-      LandrixEInvoiceUBLRootFor. }
+      prueft. Der Aufrufer gibt das Ergebnis frei. In UBL wird eine
+      Gutschrift (BT-3 = 381) als CreditNote geschrieben (ToUBLCreditNote),
+      jede andere Rechnung als Invoice (ToUBLInvoice). }
     class function ToCII(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
       ADiagnostics: TLandrixEInvoiceDiagnostics = nil): TLandrixCIIInvoice;
     class function ToUBLInvoice(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;

@@ -76,6 +76,12 @@
   fuehrt LandrixEInvoiceCheckInvoice sie nicht aus, die
   Kompatibilitaetsschicht fragt sie einzeln mit LandrixEInvoiceCheckRule
   ab. }
+
+{ API: internal. May change in any release; use the facade LandrixEInvoice
+  or the stable units instead.
+  DE: API: intern. Kann sich in jeder Version aendern; stattdessen die
+  Fassade LandrixEInvoice oder die stabilen Units verwenden. }
+
 unit LandrixEInvoiceCheck;
 
 {$I LandrixEInvoice.inc}

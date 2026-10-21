@@ -42,6 +42,11 @@
   passendem Schluessel, deren Mengen die Spezifikation enthalten,
   entscheidet; ein Schluessel ohne passende Zeile ist erlaubt. }
 
+{ API: internal. May change in any release; use the facade LandrixEInvoice
+  or the stable units instead.
+  DE: API: intern. Kann sich in jeder Version aendern; stattdessen die
+  Fassade LandrixEInvoice oder die stabilen Units verwenden. }
+
 unit LandrixEInvoiceRules;
 
 {$I LandrixEInvoice.inc}

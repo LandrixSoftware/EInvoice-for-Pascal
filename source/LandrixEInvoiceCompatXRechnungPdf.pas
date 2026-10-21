@@ -43,6 +43,10 @@
   - Meldungen sind englisch.
   - Neu fuer Delphi 6 bis 2007: die alte Unit brauchte Delphi 2009. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoiceCompatXRechnungPdf;
 
 {$I LandrixEInvoice.inc}

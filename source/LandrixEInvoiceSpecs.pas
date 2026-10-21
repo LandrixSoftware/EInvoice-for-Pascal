@@ -34,6 +34,10 @@
   nichts haengt vom Systemdatum ab. Regeln zu den erlaubten
   Geschaeftsbegriffen je Spezifikation folgen mit der Abbildung. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoiceSpecs;
 
 {$I LandrixEInvoice.inc}

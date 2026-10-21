@@ -21,6 +21,10 @@
   Dokument. Leser und Schreiber fuegen Eintraege hinzu und arbeiten weiter;
   in diesen Faellen loesen sie keine Ausnahme aus. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoiceDiagnostics;
 
 {$I LandrixEInvoice.inc}

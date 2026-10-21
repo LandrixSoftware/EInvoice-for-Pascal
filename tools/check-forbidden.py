@@ -8,6 +8,12 @@ A line may opt out of the identifier checks with the marker comment
 ``// check-forbidden: allow`` (only for conditional compatibility code, e.g.
 ``NativeInt`` inside a ``{$IF CompilerVersion >= 20.0}`` branch).
 
+API levels: every unit in source/ carries one marker comment
+``{ API: stable.`` or ``{ API: internal.`` before its unit line, and the
+interface section of a stable unit uses only stable units of this library
+(internal units may change in any release, so a stable signature must not
+depend on them).
+
 Usage: python tools/check-forbidden.py [path ...]
 Default paths: source, tests, samples.
 """
@@ -250,6 +256,55 @@ def check_file(path, violations):
                 violations.append(Violation(path, no, msg))
 
 
+API_MARKER = re.compile(r"\{ API: (stable|internal)\.")
+
+
+def check_api(files, violations):
+    """API markers of the library units and the uses of stable interfaces.
+    The levels of all units in the folder of a checked unit are read, so a
+    single file can be checked too."""
+    checked = set(os.path.abspath(f) for f in files
+                  if os.path.basename(os.path.dirname(os.path.abspath(f))) == "source"
+                  and f.lower().endswith(".pas"))
+    folders = set(os.path.dirname(f) for f in checked)
+    units = {}
+    for folder in folders:
+        for fn in sorted(os.listdir(folder)):
+            if not fn.lower().endswith(".pas"):
+                continue
+            path = os.path.join(folder, fn)
+            with open(path, encoding="latin-1") as f:
+                text = f.read()
+            markers = list(API_MARKER.finditer(text))
+            level = None
+            if len(markers) == 1:
+                end = text.find("}", markers[0].end())
+                if end >= 0 and re.match(r"\s*unit\b", text[end + 1:], re.IGNORECASE):
+                    level = markers[0].group(1)
+            if level is None:
+                if path in checked:
+                    violations.append(Violation(path, 1, "needs exactly one API marker directly before the unit line "
+                                                "({ API: stable. or { API: internal.)"))
+                continue
+            units[fn[:-4].lower()] = (path, level, text)
+    for name, (path, level, text) in sorted(units.items()):
+        if level != "stable" or path not in checked:
+            continue
+        code, _ = strip_comments(text)
+        m = re.search(r"\binterface\b(.*?)\bimplementation\b", code, re.IGNORECASE | re.DOTALL)
+        if not m:
+            continue
+        u = re.search(r"\buses\b(.*?);", m.group(1), re.IGNORECASE | re.DOTALL)
+        if not u:
+            continue
+        for item in u.group(1).split(","):
+            used = item.strip().split()[0].lower() if item.strip() else ""
+            if used in units and units[used][1] != "stable":
+                line = code.count("\n", 0, m.start(1) + u.start()) + 1
+                violations.append(Violation(path, line, "stable unit uses internal unit %s in its interface" %
+                                            item.strip().split()[0]))
+
+
 def main(argv):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     paths = argv[1:] or [os.path.join(root, d) for d in ("source", "tests", "samples")]
@@ -266,6 +321,7 @@ def main(argv):
     violations = []
     for f in files:
         check_file(f, violations)
+    check_api(files, violations)
     for v in violations:
         print(v)
     print("check-forbidden: %d file(s), %d violation(s)" % (len(files), len(violations)))

@@ -26,6 +26,24 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
   [LandrixXML for Pascal](https://github.com/LandrixSoftware/LandrixXML-for-Pascal),
   included as a Git submodule.
 
+## Public API
+
+The facade `TLandrixEInvoice` (unit `LandrixEInvoice`) reads and writes invoices with one call;
+the stable units below are covered by semantic versioning from release 1.0 on. Every unit states
+its level in a comment before its `unit` line (`API: stable` or `API: internal`), and
+`tools/check-forbidden.py` checks that the interface of a stable unit uses no internal unit.
+
+- **Stable:** `LandrixEInvoice` (facade, documents, exceptions), `LandrixEInvoiceTypes`,
+  `LandrixEInvoiceInvoice`, `LandrixEInvoiceCodes`, `LandrixEInvoiceDiagnostics`,
+  `LandrixEInvoiceSpecs`, `LandrixEInvoiceCII` and `LandrixEInvoiceUBL` (syntax models),
+  `LandrixEInvoicePdf`, `LandrixEInvoiceCompatXRechnung`, `LandrixEInvoiceCompatXRechnungAdapter`,
+  `LandrixEInvoiceCompatXRechnungPdf`.
+- **Internal** (may change in any release): `LandrixEInvoiceMapCII`, `LandrixEInvoiceMapUBL`,
+  `LandrixEInvoiceCheck`, `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceLexical`,
+  `LandrixEInvoiceFiles`, `LandrixEInvoiceCIIProfiles`, and the readers and writers
+  `LandrixEInvoiceCIIReader`, `LandrixEInvoiceCIIWriter`, `LandrixEInvoiceUBLReader`,
+  `LandrixEInvoiceUBLWriter`. What they offer is reachable through the facade.
+
 ## Getting the sources
 
 ```sh

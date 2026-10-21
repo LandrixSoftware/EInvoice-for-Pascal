@@ -350,6 +350,10 @@ def gen_model(m):
   Records; ein Record ist vorhanden, wenn eines seiner Felder nicht '' ist.
   Text '' bedeutet nicht vorhanden. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoice%(syn)s;
 
 {$I LandrixEInvoice.inc}
@@ -982,6 +986,11 @@ def gen_reader(m):
   Meldungen festgehalten und uebersprungen bzw. als Text behalten; das Lesen
   geht weiter. }
 
+{ API: internal. May change in any release; use the facade LandrixEInvoice
+  or the stable units instead.
+  DE: API: intern. Kann sich in jeder Version aendern; stattdessen die
+  Fassade LandrixEInvoice oder die stabilen Units verwenden. }
+
 unit LandrixEInvoice%(syn)sReader;
 
 {$I LandrixEInvoice.inc}
@@ -1464,7 +1473,12 @@ def gen_writer(m):
     np = writer_needs_path(m)
     elems, attrs = profile_required(m)
     cii = CFG["syn"] == "CII"
-    w(HEADER + (CII_WRITER_HEAD if cii else UBL_WRITER_HEAD) + """unit LandrixEInvoice%(syn)sWriter;
+    w(HEADER + (CII_WRITER_HEAD if cii else UBL_WRITER_HEAD) + """{ API: internal. May change in any release; use the facade LandrixEInvoice
+  or the stable units instead.
+  DE: API: intern. Kann sich in jeder Version aendern; stattdessen die
+  Fassade LandrixEInvoice oder die stabilen Units verwenden. }
+
+unit LandrixEInvoice%(syn)sWriter;
 
 {$I LandrixEInvoice.inc}
 
@@ -1756,6 +1770,11 @@ PROFILES_HEAD = """{
   '/rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:Name', Attribute als
   '.../@schemeID'. Fuer EXTENDED und fuer Ziele ohne Factur-X-Profil
   entscheidet das EXTENDED-Schema. }
+
+{ API: internal. May change in any release; use the facade LandrixEInvoice
+  or the stable units instead.
+  DE: API: intern. Kann sich in jeder Version aendern; stattdessen die
+  Fassade LandrixEInvoice oder die stabilen Units verwenden. }
 
 unit LandrixEInvoiceCIIProfiles;
 

@@ -73,6 +73,8 @@ Every new source file starts with this header:
 }
 ```
 
+A library unit in `source/` also states its API level in a comment directly before its `unit` line, `{ API: stable. ...}` or `{ API: internal. ...}` (English, then `DE:`); the interface section of a stable unit may use only stable units of this library. `tools/check-forbidden.py` checks both; the README lists the units per level. Generated units get the comment from their generator.
+
 Files that contain code derived from other projects need a different header and an entry in `THIRD-PARTY-NOTICES.md`; see **Third-party code** below.
 
 ## Comments and documentation

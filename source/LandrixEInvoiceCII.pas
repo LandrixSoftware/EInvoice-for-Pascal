@@ -34,6 +34,10 @@
   Records; ein Record ist vorhanden, wenn eines seiner Felder nicht '' ist.
   Text '' bedeutet nicht vorhanden. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoiceCII;
 
 {$I LandrixEInvoice.inc}

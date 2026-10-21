@@ -52,6 +52,10 @@
     LandrixEInvoiceCompatXRechnungAdapter, die intf.XRechnung ersetzt.
   Neuer Code sollte die TLandrix...-Namen verwenden. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoiceCompatXRechnung;
 
 {$I LandrixEInvoice.inc}

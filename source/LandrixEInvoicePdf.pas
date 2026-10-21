@@ -59,6 +59,10 @@
   echtes Benutzerpasswort werden gemeldet, nicht geraten. Anhaenge auf
   Seitenebene werden nicht gesucht. }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoicePdf;
 
 {$I LandrixEInvoice.inc}

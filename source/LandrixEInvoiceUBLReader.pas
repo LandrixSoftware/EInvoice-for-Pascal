@@ -36,6 +36,11 @@
   Meldungen festgehalten und uebersprungen bzw. als Text behalten; das Lesen
   geht weiter. }
 
+{ API: internal. May change in any release; use the facade LandrixEInvoice
+  or the stable units instead.
+  DE: API: intern. Kann sich in jeder Version aendern; stattdessen die
+  Fassade LandrixEInvoice oder die stabilen Units verwenden. }
+
 unit LandrixEInvoiceUBLReader;
 
 {$I LandrixEInvoice.inc}

@@ -60,6 +60,10 @@
   cwstring; Lazarus bringt einen mit) Zeichen ausserhalb von Latin-1 zu '?';
   FPC warnt dabei (4104, 4105). }
 
+{ API: stable. Covered by semantic versioning from release 1.0 on.
+  DE: API: stabil. Ab Version 1.0 durch die semantische Versionierung
+  abgedeckt. }
+
 unit LandrixEInvoiceTypes;
 
 {$I LandrixEInvoice.inc}
