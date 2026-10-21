@@ -28,6 +28,13 @@
   Sets: min (fpc322-linux, fpc322-linux-checked, d6, d13-win32),
         all (everything above plus d6-checked and d13-win64-checked).
 
+  Examples: after the tests, every example of the list $Examples
+  (examples/<Name>/<Name>.dpr) is compiled
+  into build/<toolchain>/examples/ (reusing the compiled units) and run there
+  in a fixed order with fixed arguments; a build error, a diagnostic or an
+  exit code other than 0 fails the toolchain. Not for mac, d13-osxarm64 and
+  the -checked variants, and only for the default program.
+
   Cross test: every test run writes all scenarios to build/<toolchain>/cross/
   (test Cross.Write). After the runs, each local
   toolchain that ran reads the files of the next one in the list
@@ -93,6 +100,7 @@ foreach ($t in ($Toolchains -join ',').Split(',')) {
   if ($Sets.ContainsKey($t)) { $expanded += $Sets[$t] } else { $expanded += $t }
 }
 
+$IsTestRunner = ($Program -replace '\\', '/') -eq 'tests/LandrixEInvoiceTests.dpr'
 $Program = $Program -replace '\\', '/'
 $ProgramName = [IO.Path]::GetFileNameWithoutExtension($Program)
 $WslRoot = '/mnt/' + $Root.Substring(0, 1).ToLower() + ($Root.Substring(2) -replace '\\', '/')
@@ -110,6 +118,84 @@ function Count-OwnDiagnostics([string[]]$Lines) {
     $_ -match '\.(pas|inc|dpr|lpr)\(\d+(,\d+)?\)'
   }
   return @($own)
+}
+
+# Examples in run order with their arguments (run in build/<toolchain>/examples/);
+# later ones read what WriteXRechnung wrote.
+$Examples = @(
+  @{ Name = 'WriteXRechnung';  Args = @('.') },
+  @{ Name = 'ReadInvoice';     Args = @('xrechnung-ubl.xml') },
+  @{ Name = 'CheckInvoice';    Args = @('xrechnung-ubl.xml') },
+  @{ Name = 'ConvertCIIToUBL'; Args = @('xrechnung-cii.xml', 'converted-ubl.xml') },
+  @{ Name = 'CompatXRechnung'; Args = @('xrechnung-ubl.xml') },
+  @{ Name = 'BusinessCases';   Args = @('business-cases', '../../../examples/BusinessCases/attachments') }
+)
+
+# Compiles and runs the examples with one toolchain; returns the number of
+# failures and adds the compiler diagnostics to $Result.Diag.
+function Invoke-Examples([string]$Name, [string]$Base, [string[]]$Checks, $Result) {
+  $out = "build/$Name"
+  $exOut = "$out/examples"
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $exOut
+  New-Item -ItemType Directory -Force $exOut | Out-Null
+  $failed = 0
+  foreach ($ex in $Examples) {
+    $dpr = "examples/$($ex.Name)/$($ex.Name).dpr"
+    if (-not (Test-Path $dpr)) { continue }
+    $runCmd = $null
+    switch -Regex ($Base) {
+      '^fpc(\d+)-linux$' {
+        $fpc = "~/.local/bin/fpc$($Matches[1])"
+        $log = & wsl.exe -e bash -lc "cd '$WslRoot' && $fpc -vewnhi $($Checks -join ' ') $($FpcPaths -join ' ') -FU$out -FE$exOut '$dpr' 2>&1"
+        $code = $LASTEXITCODE
+        $argText = ($ex.Args | ForEach-Object { "'$_'" }) -join ' '
+        $runCmd = { & wsl.exe -e bash -lc "cd '$WslRoot/$exOut' && './$($ex.Name)' $argText" }
+      }
+      '^fpc\d+-win(32|64|arm)$' {
+        $log = & (Join-Path $LocalBin "$Base.cmd") -vewnhi @Checks @FpcPaths "-FU$out" "-FE$exOut" $dpr 2>&1
+        $code = $LASTEXITCODE
+      }
+      '^d(6|7)$' {
+        $d = if ($Matches[1] -eq '6') { $Delphi6 } else { $Delphi7 }
+        $winOut = (Resolve-Path $out).Path
+        $log = & "$d\Bin\dcc32.exe" -Q -W -H @Checks "-U$d\Lib;$winOut;$DccUnits" "-I$DccIncs" "-N$winOut" "-E$winOut\examples" ($dpr -replace '/', '\') 2>&1
+        $code = $LASTEXITCODE
+      }
+      '^d13-win(32|64)$' {
+        $bits = $Matches[1]
+        $dcc = if ($bits -eq '32') { 'dcc32.exe' } else { 'dcc64.exe' }
+        $log = & "$Delphi13\bin\$dcc" -Q -W -H @Checks '-NSSystem;System.Win;Winapi' "-U$Delphi13\lib\win$bits\release;$out;$DccUnits" "-I$DccIncs" "-NU$out" "-E$exOut" $dpr 2>&1
+        $code = $LASTEXITCODE
+      }
+      default { return 0 }
+    }
+    $log = @($log | ForEach-Object { "$_" })
+    $log | Set-Content -Encoding utf8 "$exOut/$($ex.Name).build.log"
+    $diag = Count-OwnDiagnostics $log
+    $Result.Diag += $diag.Count
+    $diag | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+    if ($code -ne 0) {
+      $log | Select-Object -Last 20 | ForEach-Object { Write-Host "  $_" }
+      Write-Host "FAIL example $($ex.Name): build" -ForegroundColor Red
+      $failed++
+      continue
+    }
+    if ($runCmd) {
+      $runLog = & $runCmd 2>&1
+    } else {
+      Push-Location $exOut
+      try { $runLog = & ".\$($ex.Name).exe" @($ex.Args) 2>&1 } finally { Pop-Location }
+    }
+    $runCode = $LASTEXITCODE
+    @($runLog | ForEach-Object { "$_" }) | Set-Content -Encoding utf8 "$exOut/$($ex.Name).run.log"
+    if ($runCode -ne 0) {
+      $runLog | Select-Object -Last 20 | ForEach-Object { Write-Host "  $_" }
+      Write-Host "FAIL example $($ex.Name): exit code $runCode" -ForegroundColor Red
+      $failed++
+    }
+  }
+  Write-Host "  examples: $failed failure(s)"
+  return $failed
 }
 
 function Invoke-Toolchain([string]$Name) {
@@ -210,6 +296,10 @@ function Invoke-Toolchain([string]$Name) {
   if (-not $NoRun) {
     if ($runCmd) { & $runCmd | Out-Host } else { & $exe $Root | Out-Host }
     $result.Run = $LASTEXITCODE
+    if ($IsTestRunner -and -not $Checked) {
+      $checks = if ($Base -like 'fpc*') { $fpcChecks } else { $dccChecks }
+      if ((Invoke-Examples $Name $Base $checks $result) -gt 0 -and $result.Run -eq 0) { $result.Run = 1 }
+    }
   }
   return $result
 }

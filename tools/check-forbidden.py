@@ -15,7 +15,7 @@ interface section of a stable unit uses only stable units of this library
 depend on them).
 
 Usage: python tools/check-forbidden.py [path ...]
-Default paths: source, tests, samples.
+Default paths: source, tests, examples.
 """
 
 import os
@@ -307,7 +307,7 @@ def check_api(files, violations):
 
 def main(argv):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    paths = argv[1:] or [os.path.join(root, d) for d in ("source", "tests", "samples")]
+    paths = argv[1:] or [os.path.join(root, d) for d in ("source", "tests", "examples")]
     files = []
     for p in paths:
         if os.path.isfile(p):

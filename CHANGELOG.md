@@ -292,6 +292,12 @@ Supported invoice standards are documented per release.
   consulted) and `SaveToText` (as `SaveToUtf8`, as text that keeps `encoding="UTF-8"`).
 - `Assign` on `TLandrixInvoice` and its parts: a deep copy (owned objects, lists and attachment
   data are copied).
+- Examples in `examples/` (console programs, `.dpr` for Delphi and `.lpi` for Lazarus):
+  WriteXRechnung, ReadInvoice, CheckInvoice, ConvertCIIToUBL, CompatXRechnung and
+  BusinessCases, which writes the 24 business cases of XRechnung-for-Delphi for every target
+  they fit (111 files). `tools/build.ps1` compiles and runs them after the tests.
+- Documentation in `docs/` (English) and `docs/de/` (German): getting started, writing,
+  reading, checking, moving from XRechnung-for-Delphi; README with a quick start.
 - API levels: every unit states `API: stable` or `API: internal` before its `unit` line; the
   README lists both groups and `tools/check-forbidden.py` checks that stable interfaces use no
   internal unit.

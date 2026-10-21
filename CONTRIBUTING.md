@@ -33,6 +33,8 @@ Please:
 
 Changes affecting generated invoice XML should, where applicable, be tested against the official or commonly used validation tools for the respective invoice format (for example the KoSIT validator for XRechnung).
 
+Examples in `examples/<Name>/` are console programs that compile with every supported compiler; `tools/build.ps1` builds and runs them after the tests. A new example needs a `.dpr`, an `.lpi` and an entry in the example list of `tools/build.ps1`.
+
 Generated units (syntax models, code lists) must not be edited by hand. Change the generator or its input under `tools/` and regenerate.
 
 ## Compatibility
@@ -84,7 +86,8 @@ Code is written in English: identifiers, test messages and purely technical comm
 The code is documented directly in the source, in English and German:
 
 * In the library sources (`source/`), every public declaration in an `interface` section and every business rule in an implementation (business terms `BT-...`/`BG-...`, profile rules, special cases) has a comment block: first English, then a paragraph starting with `DE:` in German.
-* Purely technical comments inside implementations are English only, and so are tests and tools.
+* Purely technical comments inside implementations are English only, and so are tests, tools and examples.
+* The documentation in `docs/` exists in English and German (`docs/de/`); change both.
 * Self-explanatory code needs no comment.
 * Sources stay ASCII-only, so German umlauts are written as `ae`, `oe`, `ue` and `ss`.
 

@@ -113,3 +113,10 @@ addons/java-tools/*
 
 # Local backlog (never commit)
 BACKLOG.md
+
+# Example programs built in place (Lazarus, FPC on Unix: no extension)
+examples/*/*
+!examples/*/*.dpr
+!examples/*/*.lpi
+!examples/*/*.pas
+!examples/*/attachments/

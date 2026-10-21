@@ -1,0 +1,76 @@
+# Schreiben
+
+[English](../writing.md)
+
+`TLandrixEInvoice` (Unit `LandrixEInvoice`) schreibt eine Rechnung für ein Ziel:
+
+```pascal
+TLandrixEInvoice.SaveToFile(Invoice, 'invoice.xml', Target);
+TLandrixEInvoice.SaveToStream(Invoice, Stream, Target);
+Bytes := TLandrixEInvoice.SaveToUtf8(Invoice, Target);   // TLandrixXmlUtf8
+Text := TLandrixEInvoice.SaveToText(Invoice, Target);    // TLandrixEInvoiceString
+```
+
+Alle nehmen zwei optionale Parameter: `AOptions: TLandrixEInvoiceOptions = []` und
+`ADiagnostics: TLandrixEInvoiceDiagnostics = nil`.
+
+## Was passiert
+
+1. Das Ziel wird aufgelöst. Ein unbekanntes oder nur lesbares Ziel löst
+   `ELandrixEInvoiceTargetError` aus, bevor etwas gelesen oder geschrieben wird.
+2. Die Geschäftsregeln des Ziels werden geprüft (EN 16931, XRechnung, Peppol,
+   Factur-X-Profilregeln), siehe [Prüfen](checking.md).
+3. Die Rechnung wird auf das Syntaxmodell abgebildet und im Speicher serialisiert.
+4. Bei Fehlern wird `ELandrixEInvoiceWriteError` ausgelöst und **nichts geschrieben**. Die
+   Ausnahme besitzt eine Kopie der Meldungen: `E.Diagnostics`.
+
+Meldungen, die keine Fehler sind (Inhalt, den das Ziel nicht aufnehmen kann, eine angewandte
+Vorgabe), landen in `ADiagnostics`, wenn Sie eine Liste übergeben.
+
+## Optionen
+
+| Option | Wirkung |
+|---|---|
+| `eio_Strict` | Inhalt, den das Ziel nicht erlaubt (`edk_NotAllowed`), und Abgeratenes zählen als Fehler. |
+| `eio_NoRuleCheck` | Geschäftsregeln überspringen; die Abbildung und ihre Meldungen laufen trotzdem. |
+| `eio_WriteDespiteErrors` | Trotz Fehlern schreiben (Notausgang, z. B. um die Ausgabe anzusehen). |
+| `eio_InvoiceOnly` | Lesen: das Syntaxmodell nach der Abbildung freigeben. |
+| `eio_CheckOnRead` | Lesen: die Geschäftsregeln der erkannten Spezifikation prüfen. |
+| `eio_NoPdf` | Lesen: die Eingabe nie als PDF behandeln. |
+
+## Text und Kodierungen
+
+Das XML ist immer UTF-8 mit der Deklaration `encoding="UTF-8"`. `SaveToText` liefert dasselbe
+Dokument als UTF-16-Text: als UTF-8 speichern (`LandrixEInvoiceStringToUtf8` oder
+`SaveToFile` / `SaveToStream`), nie über eine Codepage. Unter Delphi 6 bis 2007 ist der Text ein
+`WideString`; die Zuweisung an einen `string` verliert Zeichen außerhalb der System-Codepage.
+
+## UBL Invoice oder CreditNote
+
+In UBL wird eine Gutschrift (BT-3 = 381) als `CreditNote` geschrieben, jede andere Rechnung als
+`Invoice`. CII hat eine Wurzel für beide.
+
+## Das Dokument vor dem Schreiben ändern
+
+`ToCII`, `ToUBLInvoice` und `ToUBLCreditNote` liefern das Syntaxmodell einer Rechnung. Ändern
+Sie es und schreiben Sie es mit den `SaveTo*`-Überladungen für Syntaxmodelle:
+
+```pascal
+CII := TLandrixEInvoice.ToCII(Invoice, Target);
+try
+  // z. B. Inhalt, den nur Factur-X EXTENDED kennt
+  TLandrixEInvoice.SaveToFile(CII, 'factur-x.xml', Target);
+finally
+  CII.Free;
+end;
+```
+
+Auch ein Syntaxmodell wird gegen das Ziel geprüft: Inhalt, den sein Factur-X-Profil nicht
+enthält, Inhalt, den Schema und Profil verlangen, und dass seine BT-24 zum Ziel gehört. Die
+Geschäftsregeln brauchen das semantische Modell und werden für Syntaxmodelle nicht geprüft.
+
+## Summen
+
+Die Bibliothek rechnet nicht. Positionsbeträge (BT-131), Steueraufschlüsselung (BG-23) und
+Belegsummen (BG-22) kommen aus Ihrem Programm; die Prüfung meldet die Rechenregeln (BR-CO-10
+bis BR-CO-17), wenn sie nicht aufgehen.

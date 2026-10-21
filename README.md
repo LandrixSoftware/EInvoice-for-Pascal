@@ -3,9 +3,9 @@
 A unified electronic invoicing library for Delphi and Free Pascal supporting XRechnung,
 ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
 
-> **Status:** early development. The repository currently contains the project foundation
-> (licensing, contribution rules, tooling). The library code is being built; the API is not
-> stable yet and there is no release.
+> **Status:** before release 1.0. Reading, writing and checking work for XRechnung 3.0,
+> ZUGFeRD 2.5 / Factur-X 1.09 and Peppol BIS 3.0; the API may still change until 1.0, and
+> there is no release yet.
 
 ## Goals
 
@@ -25,6 +25,36 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
 - No dependency on MSXML or other XML libraries: XML is handled by
   [LandrixXML for Pascal](https://github.com/LandrixSoftware/LandrixXML-for-Pascal),
   included as a Git submodule.
+
+## Quick start
+
+```pascal
+uses
+  LandrixEInvoiceTypes, LandrixEInvoiceSpecs, LandrixEInvoiceInvoice, LandrixEInvoice;
+
+// write
+TLandrixEInvoice.SaveToFile(Invoice, 'invoice.xml', TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL));
+
+// read XML or a ZUGFeRD / Factur-X PDF
+Doc := TLandrixEInvoice.LoadFromFile('invoice.pdf');
+try
+  WriteLn(string(Doc.Invoice.InvoiceNumber));
+finally
+  Doc.Free;
+end;
+```
+
+Writing checks the business rules of the target and refuses an invalid invoice
+(`ELandrixEInvoiceWriteError`, nothing written).
+
+## Documentation
+
+- [Getting started](docs/getting-started.md) ([Deutsch](docs/de/getting-started.md)): setup,
+  the three models, targets
+- [Writing](docs/writing.md), [Reading](docs/reading.md), [Checking](docs/checking.md)
+- [Moving from XRechnung-for-Delphi](docs/compat-xrechnung.md)
+- [Examples](examples/): console programs for Delphi (`.dpr`) and Lazarus (`.lpi`), including
+  the 24 business cases of XRechnung-for-Delphi
 
 ## Public API
 
