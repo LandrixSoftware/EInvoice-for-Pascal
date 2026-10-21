@@ -12,7 +12,9 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
 ## What is checked
 
 - The business rules of the target: EN 16931 (BR-...), the calculation rules (BR-CO-10 to
-  BR-CO-17), XRechnung (BR-DE-...), Peppol (PEPPOL-EN16931-...) and the calculation rules of
+  BR-CO-17), the VAT category rules (BR-S-..., BR-Z-..., BR-E-..., BR-AE-..., BR-IC-...,
+  BR-G-..., BR-O-..., BR-AF-..., BR-AG-..., BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09,
+  BR-CO-18), XRechnung (BR-DE-...), Peppol (PEPPOL-EN16931-...) and the calculation rules of
   Factur-X EXTENDED (BR-FXEXT-CO-...). Each violation is an entry of kind
   `edk_RuleViolation` with its rule identifier in `RuleID`.
 - Everything the mapping reports: content the target or its Factur-X profile cannot hold
@@ -21,9 +23,12 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
 
 The rule check predicts what the KoSIT validator would report for the written document. It
 does not replace the validator: schema and Schematron checks of the official configuration
-remain the reference. Not checked yet, among others: the VAT category rules (BR-S-..., BR-Z-..., BR-E-...,
-BR-AE-..., BR-IC-..., BR-G-..., BR-O-..., BR-CO-3 to BR-CO-9), code list and format rules, and a
-few XRechnung rules (BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28) and BR-51.
+remain the reference. Not checked yet, among others: code list and format rules, a few
+XRechnung rules (BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28), BR-51, BR-CO-05 to BR-CO-08, BR-CO-19 to BR-CO-26
+and the VAT category rules of Factur-X EXTENDED (BR-FXEXT-S-01 and the like).
+
+The rules judge the invoice as it would be written. A VAT rate the invoice does not set is 0
+and is written as 0; lines, allowances and charges of category O are written without rate.
 
 ## Severity
 

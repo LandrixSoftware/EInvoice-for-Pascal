@@ -30,8 +30,11 @@ ubl-inv-br-de-20-paymentmeans-code59-test-10[57]-identity.xml	missed BR-DE-25-b
 ubl-inv-contact-tests-*.xml	missed BR-DE-23-b
 
 # Blank text counts as absent (normalize-space, plan Phase 2 step 4): an empty IBAN is no
-# account and is not written; KoSIT accepts the empty element for BR-DE-23-a.
+# account and is not written; KoSIT accepts the empty element for BR-DE-23-a. An empty VAT
+# category code of a line is no category and is not written; KoSIT accepts the empty element for
+# BR-CO-04.
 cii-br-de-19-iban-tests-895-empty.xml	extra BR-DE-23-a
+cii-peppol-en16931-r008-1027-empty.xml	extra BR-CO-04
 
 # An empty electronic address container (ram:URIUniversalCommunication without ram:URIID) is
 # no address and is not written; KoSIT reports BR-62/BR-63 for the empty container, both sides
@@ -51,11 +54,27 @@ cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-CO-14
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	missed BR-CO-15
 
 # Two VAT totals with breakdown in the invoice currency (PEPPOL-EN16931-R053 tests): the model
-# holds one VAT total and the writers write one, so BR-CO-15 holds in the output.
+# holds one VAT total and the writers write one, so BR-CO-15 holds in the output. The breakdown of
+# the second total (19 %: taxable amount 400.00, lines 325.00) is not read, so BR-S-08 holds too.
 *-peppol-en16931-r053-2-*.xml	missed BR-CO-15
+ubl-*-peppol-en16931-r053-2-*-identity.xml	missed BR-S-08
 
 # XRechnung CII with sub lines (extension): the rule table leaves sub lines out of XRechnung
 # CII, so the written sum of line net amounts (BT-106, including the sub lines) no longer
-# matches the lines; the output would fail BR-CO-10.
+# matches the lines; the output would fail BR-CO-10, and BR-S-08 for the breakdown.
 cii-br-dex-15-test-on-sub-invoice-lines-1014-identity.xml	extra BR-CO-10
+cii-br-dex-15-test-on-sub-invoice-lines-1014-identity.xml	extra BR-S-08
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra BR-53
+
+# A missing VAT rate has no place in the model: it is read as 0 and written as 0. A line whose
+# category was changed from O (no rate) to Z, E, AE, K, G, L or M therefore gets the rate 0, which
+# BR-xx-05 accepts (except BR-AF-05 in CII, where both sides report it); a breakdown without rate
+# (BR-DE-14 tests) gets 0 % and no longer matches the standard rated lines (BR-S-08).
+*-br-de-16-*-code-Z.xml	missed BR-Z-05
+*-br-de-16-*-code-E.xml	missed BR-E-05
+*-br-de-16-*-code-AE.xml	missed BR-AE-05
+*-br-de-16-*-code-K.xml	missed BR-IC-05
+*-br-de-16-*-code-G.xml	missed BR-G-05
+ubl-*-br-de-16-*-code-L.xml	missed BR-AF-05
+*-br-de-16-*-code-M.xml	missed BR-AG-05
+*-br-de-14-test-*-remove.xml	extra BR-S-08

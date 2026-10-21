@@ -260,13 +260,19 @@ Supported invoice standards are documented per release.
   (the required terms and payment groups; BR-DE-26 as a warning); PEPPOL-EN16931-R003 (Peppol),
   R010, R020 and R061 (Peppol and XRechnung). The rules judge the invoice as the mappers would write
   it; where UBL and CII differ, each follows the validator of its syntax (e.g. BR-61 in UBL only,
-  BR-DE-23-b, BR-DE-24-b, BR-DE-25-b in CII only, BR-DE-30/31 by syntax). Code list, format, VAT
-  category and calculation rules follow.
+  BR-DE-23-b, BR-DE-24-b, BR-DE-25-b in CII only, BR-DE-30/31 by syntax). Code list and format
+  rules follow.
 - Calculation rules in `LandrixEInvoiceCheck`: BR-CO-10 to BR-CO-17 on the amounts as written (two
   decimals; BR-CO-17 with the tolerance of its Schematron, strict in UBL, inclusive in CII),
   Factur-X EXTENDED BR-CO-14 and BR-FXEXT-CO-10 to 13, 15 and 16 (0.01 per amount, DETAIL lines only), and
   BR-DEX-09 for XRechnung UBL invoices with third-party payments (BR-CO-16 gives way there, as
   in the KoSIT extension scenario).
+- VAT category rules in `LandrixEInvoiceCheck`: BR-S, BR-Z, BR-E, BR-AE, BR-IC, BR-G, BR-O, BR-AF
+  and BR-AG (01 to 10, BR-IC-11/12, BR-O-11 to 14), BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09
+  and BR-CO-18, each with the context and tolerance of the Schematron of its syntax (e.g.
+  BR-S-08 within 1 per rate in UBL, exact in CII; BR-CO-09 with SS in UBL and AN in CII) and per
+  Factur-X profile as its Schematron has them. The rule oracle knows them; categories, rates and
+  amounts are judged as written.
 - `LandrixEInvoiceCheckCII`, `LandrixEInvoiceCheckUBLInvoice` and `LandrixEInvoiceCheckUBLCreditNote`:
   check the required content of a syntax model for a target as the writer reports it, returning
   the number of errors.

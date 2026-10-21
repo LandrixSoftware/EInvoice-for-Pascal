@@ -67,6 +67,15 @@ def implemented_rules():
     count = len(enum.group(1).split(",")) if enum else -1
     if len(rows) != count:
         sys.exit("%d check rows found, TCheckRuleIndex has %d: adjust implemented_rules" % (len(rows), count))
+    # the VAT category rules BR-<group>-01 to BR-<group>-<last> have no rows
+    groups = re.search(r"VatGroupIDs: array\[TVatGroup\] of string = \(([^)]*)\)", text)
+    last = re.search(r"VatGroupLast: array\[TVatGroup\] of Integer = \(([^)]*)\)", text)
+    if not groups or not last:
+        sys.exit("VatGroupIDs or VatGroupLast not found: adjust implemented_rules")
+    ids = [g.strip().strip("'") for g in groups.group(1).split(",")]
+    lasts = [int(n) for n in last.group(1).split(",")]
+    for group, count in zip(ids, lasts):
+        rules.update("BR-%s-%02d" % (group, n) for n in range(1, count + 1))
     return rules
 
 

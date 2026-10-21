@@ -27,15 +27,19 @@
   BR-DE-18, BR-DE-21, PEPPOL-EN16931-R001), and where the syntaxes differ
   the row follows the validator of each syntax (e.g. BR-DE-23-b, BR-DE-30).
   The Factur-X profiles get the rules their schematron contains. BR-29,
-  BR-30 and BR-65 are checked on the model: the mappers leave a reversed
+  BR-30, BR-65 and BR-CO-03 are checked on the model: the mappers leave a reversed
   period or a classification without scheme out instead of writing it
   invalid, so the rule reports content that would be lost. The
   calculation rules BR-CO-10 to BR-CO-17 (Factur-X EXTENDED: BR-FXEXT-CO-10
   to 13, 15 and 16 with their tolerance, XRechnung UBL with third-party payments:
-  BR-DEX-09) compare the amounts as they are written (two decimals). Code
-  list, format and VAT category rules (BR-S ..., BR-CO-3 to BR-CO-9,
-  BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28, BR-51) are not part of
-  this set yet.
+  BR-DEX-09) compare the amounts as they are written (two decimals). The
+  VAT category rules BR-S-nn to BR-AG-nn (S, Z, E, AE, IC, G, O, AF, AG)
+  have no rows: their identifiers come from the group and the number, and
+  each follows the schematron of its syntax, which differ in context and
+  tolerance; BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09 and BR-CO-18
+  have rows. Code list and format rules (BR-DE-17, BR-DE-19, BR-DE-20,
+  BR-DE-27, BR-DE-28, BR-51, BR-CO-05 to BR-CO-08, BR-CO-19 to
+  BR-CO-26) and the BR-FXEXT-xx-01 of Factur-X EXTENDED are not part of this set yet.
 
   The rules LX-CC-01 to LX-CC-12 are the checks of
   TXRechnungInvoiceAdapter.ConsistencyCheck of XRechnung-for-Delphi. They
@@ -60,15 +64,20 @@
   PEPPOL-EN16931-R001), und wo die Syntaxen sich unterscheiden, folgt die
   Zeile dem Validator der jeweiligen Syntax (z. B. BR-DE-23-b, BR-DE-30).
   Die Factur-X-Profile bekommen die Regeln, die ihr Schematron enthaelt.
-  BR-29, BR-30 und BR-65 werden am Modell geprueft: die Mapper lassen einen
+  BR-29, BR-30, BR-65 und BR-CO-03 werden am Modell geprueft: die Mapper lassen einen
   umgekehrten Zeitraum oder eine Klassifizierung ohne Schema weg, statt sie
   ungueltig zu schreiben; die Regel meldet also Inhalt, der verloren ginge.
   Die Rechenregeln BR-CO-10 bis BR-CO-17 (Factur-X EXTENDED: BR-FXEXT-CO-10
   bis 13, 15 und 16 mit ihrer Toleranz, XRechnung UBL mit Zahlungen Dritter:
   BR-DEX-09) vergleichen die Betraege so, wie sie geschrieben werden (zwei
-  Nachkommastellen). Codelisten-, Format- und Steuerkategorieregeln (BR-S
-  ..., BR-CO-3 bis BR-CO-9, BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27,
-  BR-DE-28, BR-51) gehoeren noch nicht dazu.
+  Nachkommastellen). Die Steuerkategorieregeln BR-S-nn bis BR-AG-nn (S, Z,
+  E, AE, IC, G, O, AF, AG) haben keine Zeilen: ihre Kennungen ergeben sich
+  aus Gruppe und Nummer, und jede folgt dem Schematron ihrer Syntax, die
+  sich in Kontext und Toleranz unterscheiden; BR-B-01, BR-B-02, BR-CO-03,
+  BR-CO-04, BR-CO-09 und BR-CO-18 haben Zeilen. Codelisten- und
+  Formatregeln (BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28, BR-51,
+  BR-CO-05 bis BR-CO-08, BR-CO-19 bis BR-CO-26) und die BR-FXEXT-xx-01 von Factur-X EXTENDED
+  gehoeren noch nicht dazu.
 
   Die Regeln LX-CC-01 bis LX-CC-12 sind die Pruefungen von
   TXRechnungInvoiceAdapter.ConsistencyCheck aus XRechnung-for-Delphi. Es
@@ -190,13 +199,14 @@ type
     cr_BR10, cr_BR11, cr_BR16, cr_BR17, cr_BR18, cr_BR19, cr_BR20, cr_BR21,
     cr_BR23, cr_BR25, cr_BR27, cr_BR28, cr_BR29, cr_BR30, cr_BR32, cr_BR33,
     cr_BR37, cr_BR38, cr_BR42, cr_BR44, cr_BR47, cr_BR52, cr_BR53, cr_BR54,
-    cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65,
+    cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65, cr_BRB01, cr_BRB02,
     cr_BRDE01, cr_BRDE02, cr_BRDE03, cr_BRDE04, cr_BRDE05, cr_BRDE06,
     cr_BRDE07, cr_BRDE08, cr_BRDE09, cr_BRDE10, cr_BRDE11, cr_BRDE15,
     cr_BRDE16, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
     cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE30, cr_BRDE31,
     cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061,
-    cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17,
+    cr_BRCO03, cr_BRCO04, cr_BRCO09,
+    cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17, cr_BRCO18,
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
     cr_BRDEX09);
 
@@ -486,6 +496,15 @@ const
      Profiles: FromBasic; Severity: eds_Error; Legacy: False; Terms: 'BT-158';
      Message: 'the item classification identifier (BT-158) shall have a scheme identifier';
      Source: EN16931Source),
+    (ID: 'BR-B-01'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasic; Severity: eds_Error; Legacy: False; Terms: 'BT-40, BT-55';
+     Message: 'an invoice with VAT category B (split payment) shall be a domestic Italian invoice (every ' +
+       'country code IT)';
+     Source: EN16931Source),
+    (ID: 'BR-B-02'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasic; Severity: eds_Error; Legacy: False; Terms: 'BT-118, BT-151, BT-95, BT-102';
+     Message: 'an invoice with VAT category B (split payment) shall not contain VAT category S';
+     Source: EN16931Source),
     (ID: 'BR-DE-1'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BG-16';
      Message: 'an invoice shall contain payment instructions (BG-16)';
@@ -598,6 +617,19 @@ const
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-89';
      Message: 'a direct debit (payment means 49 or 59) shall have a mandate reference (BT-89)';
      Source: PeppolXRechnungSource),
+    (ID: 'BR-CO-03'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BT-7, BT-8';
+     Message: 'the VAT point date (BT-7) and the VAT point date code (BT-8) are mutually exclusive';
+     Source: EN16931Source),
+    (ID: 'BR-CO-04'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-151';
+     Message: 'each invoice line (BG-25) shall have an invoiced item VAT category code (BT-151)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-09'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-31, BT-48, BT-63';
+     Message: 'a VAT identifier (BT-31, BT-48, BT-63) shall start with an ISO 3166-1 alpha-2 country code ' +
+       '(Greece: EL)';
+     Source: EN16931Source),
     (ID: 'BR-CO-10'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
      Profiles: FromBasicNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-106, BT-131';
      Message: 'sum of invoice line net amount (BT-106) = sum of invoice line net amounts (BT-131)';
@@ -630,6 +662,10 @@ const
      Profiles: FromBasicWLNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-117';
      Message: 'VAT category tax amount (BT-117) = VAT category taxable amount (BT-116) x rate (BT-119) / 100, ' +
        'rounded to two decimals (tolerance 1)';
+     Source: EN16931Source),
+    (ID: 'BR-CO-18'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
+     Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BG-23';
+     Message: 'an invoice shall have at least one VAT breakdown (BG-23)';
      Source: EN16931Source),
     (ID: 'BR-FXEXT-CO-10'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
      Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BT-106, BT-131';
@@ -1381,6 +1417,767 @@ begin
   end;
 end;
 
+{ --- VAT category rules ---------------------------------------------------------- }
+
+type
+  { The VAT categories with a rule group of their own: BR-S-nn (standard
+    rated) to BR-AG-nn (IPSI). DE: Die Umsatzsteuerkategorien mit eigener
+    Regelgruppe: BR-S-nn (Normalsatz) bis BR-AG-nn (IPSI). }
+  TVatGroup = (vg_S, vg_Z, vg_E, vg_AE, vg_IC, vg_G, vg_O, vg_AF, vg_AG);
+
+  TTaxUseKind = (tuk_Line, tuk_SubLine, tuk_Allowance, tuk_Charge, tuk_Breakdown);
+  TTaxUseKinds = set of TTaxUseKind;
+
+  { One VAT category as written: of an invoice line, a document level
+    allowance or charge, or a VAT breakdown; amounts in cents, the rate in
+    hundredths of a percent.
+    DE: Eine Umsatzsteuerkategorie, wie sie geschrieben wird: einer
+    Rechnungsposition, eines Nachlasses oder Zuschlags der Dokumentebene
+    oder einer Steueraufschluesselung; Betraege in Cent, der Satz in
+    Hundertstel Prozent. }
+  TTaxUse = record
+    Kind: TTaxUseKind;
+    Code: TLandrixEInvoiceString;
+    HasRate: Boolean;
+    Rate: Int64;
+    Amount: Int64;
+    TaxAmount: Int64;
+    Exemption: Boolean;
+  end;
+
+  TTaxUses = record
+    Items: array of TTaxUse;
+    Count: Integer;
+  end;
+
+const
+  { The group in the rule identifier, its category code (UNCL5305) and its
+    last rule number. DE: Die Gruppe in der Regelkennung, ihr
+    Kategoriecode (UNCL5305) und ihre letzte Regelnummer. }
+  VatGroupIDs: array[TVatGroup] of string = ('S', 'Z', 'E', 'AE', 'IC', 'G', 'O', 'AF', 'AG');
+  VatGroupCodes: array[TVatGroup] of string = ('S', 'Z', 'E', 'AE', 'K', 'G', 'O', 'L', 'M');
+  VatGroupLast: array[TVatGroup] of Integer = (10, 10, 10, 10, 12, 10, 14, 10, 10);
+  VatGroupNames: array[TVatGroup] of string = ('standard rated', 'zero rated', 'exempt from VAT',
+    'reverse charge', 'intra-community supply', 'export outside the EU', 'not subject to VAT',
+    'IGIC (Canary Islands)', 'IPSI (Ceuta and Melilla)');
+
+{ The rate as written (two decimals), in hundredths of a percent.
+  DE: Der Satz, wie er geschrieben wird (zwei Nachkommastellen), in
+  Hundertstel Prozent. }
+function RateHundredths(AValue: Double): Int64;
+var
+  Value: Currency;
+  Rounded: Boolean;
+begin
+  if LandrixEInvoiceTryLexicalToCurrency(LandrixEInvoicePercentToLexical(AValue), Value, Rounded) then
+    Result := Trunc(Value * 100)
+  else
+    Result := 0;
+end;
+
+procedure AddTaxUse(var AUses: TTaxUses; AKind: TTaxUseKind; const ACode: TLandrixEInvoiceString;
+  AHasRate: Boolean; ARate: Double; AAmount: Int64);
+begin
+  if AUses.Count = Length(AUses.Items) then
+    SetLength(AUses.Items, 2 * AUses.Count + 8);
+  AUses.Items[AUses.Count].Kind := AKind;
+  AUses.Items[AUses.Count].Code := ACode;
+  AUses.Items[AUses.Count].HasRate := AHasRate;
+  AUses.Items[AUses.Count].Rate := RateHundredths(ARate);
+  AUses.Items[AUses.Count].Amount := AAmount;
+  AUses.Items[AUses.Count].TaxAmount := 0;
+  AUses.Items[AUses.Count].Exemption := False;
+  Inc(AUses.Count);
+end;
+
+{ The lines as the mappers write their VAT category: the rate is left out
+  for category O; sub lines only where the target has them. A line without
+  category counts for no group.
+  DE: Die Positionen, wie die Mapper ihre Steuerkategorie schreiben: der
+  Satz faellt bei Kategorie O weg; Unterpositionen nur, wo das Ziel sie
+  hat. Eine Position ohne Kategorie zaehlt fuer keine Gruppe. }
+procedure AddLineTaxUses(var AUses: TTaxUses; ALines: TLandrixInvoiceLines; AKind: TTaxUseKind;
+  ASubLines: Boolean);
+var
+  I: TLandrixEInvoiceListIndex;
+  Line: TLandrixInvoiceLine;
+begin
+  for I := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[I];
+    AddTaxUse(AUses, AKind, TaxCategoryText(Line.TaxCategory, Line.TaxCategoryOther),
+      Line.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax, Line.TaxPercent, Cents(Line.LineAmount));
+    if ASubLines then
+      AddLineTaxUses(AUses, Line.SubInvoiceLines, tuk_SubLine, True);
+  end;
+end;
+
+procedure CollectTaxUses(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec; out AUses: TTaxUses);
+var
+  I: TLandrixEInvoiceListIndex;
+  Item: TLandrixInvoiceAllowanceCharge;
+  Subtotal: TLandrixInvoiceTaxAmount;
+  Kind: TTaxUseKind;
+begin
+  AUses.Items := nil;
+  AUses.Count := 0;
+  AddLineTaxUses(AUses, AInvoice.InvoiceLines, tuk_Line, not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines));
+  for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
+  begin
+    Item := AInvoice.AllowanceCharges[I];
+    Kind := tuk_Allowance;
+    if Item.ChargeIndicator then
+      Kind := tuk_Charge;
+    AddTaxUse(AUses, Kind, TaxCategoryText(Item.TaxCategory, Item.TaxCategoryOther),
+      Item.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax, Item.TaxPercent, Cents(Item.Amount));
+  end;
+  for I := 0 to AInvoice.TaxAmountSubtotals.Count - 1 do
+  begin
+    Subtotal := AInvoice.TaxAmountSubtotals[I];
+    AddTaxUse(AUses, tuk_Breakdown, TaxCategoryText(Subtotal.TaxCategory, Subtotal.TaxCategoryOther), True,
+      Subtotal.TaxPercent, Cents(Subtotal.TaxableAmount));
+    AUses.Items[AUses.Count - 1].TaxAmount := Cents(Subtotal.TaxAmount);
+    AUses.Items[AUses.Count - 1].Exemption := Present(Subtotal.TaxExemptionReason) or
+      Present(Subtotal.TaxExemptionReasonCode);
+  end;
+end;
+
+function AnyTaxUse(const AUses: TTaxUses; AKind: TTaxUseKind): Boolean;
+var
+  I: Integer;
+begin
+  Result := True;
+  for I := 0 to AUses.Count - 1 do
+    if AUses.Items[I].Kind = AKind then
+      Exit;
+  Result := False;
+end;
+
+function CountTaxUses(const AUses: TTaxUses; const ACode: TLandrixEInvoiceString; AKinds: TTaxUseKinds): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to AUses.Count - 1 do
+    if (AUses.Items[I].Kind in AKinds) and (AUses.Items[I].Code = ACode) then
+      Inc(Result);
+end;
+
+{ A use of another category than ACode; a use without category is none.
+  DE: Eine Verwendung einer anderen Kategorie als ACode; eine ohne
+  Kategorie zaehlt nicht. }
+function HasOtherTaxUse(const AUses: TTaxUses; const ACode: TLandrixEInvoiceString; AKinds: TTaxUseKinds): Boolean;
+var
+  I: Integer;
+begin
+  Result := True;
+  for I := 0 to AUses.Count - 1 do
+    if (AUses.Items[I].Kind in AKinds) and Present(AUses.Items[I].Code) and (AUses.Items[I].Code <> ACode) then
+      Exit;
+  Result := False;
+end;
+
+{ BR-xx-08: the lines (UBL: top level only) and document level allowances
+  and charges of ACode (and with ARate, if AByRate), net in cents; AFound
+  tells whether one exists. DE: BR-xx-08: Positionen (UBL: nur oberste
+  Ebene) und Nachlaesse und Zuschlaege der Dokumentebene mit ACode (und
+  ARate, wenn AByRate), netto in Cent; AFound sagt, ob es eine gibt. }
+function TaxUseNet(const AUses: TTaxUses; const ACode: TLandrixEInvoiceString; AByRate: Boolean; ARate: Int64;
+  ALineKinds: TTaxUseKinds; out AFound: Boolean): Int64;
+var
+  I: Integer;
+  U: TTaxUse;
+begin
+  Result := 0;
+  AFound := False;
+  for I := 0 to AUses.Count - 1 do
+  begin
+    U := AUses.Items[I];
+    if (U.Code <> ACode) or (AByRate and (not U.HasRate or (U.Rate <> ARate))) then
+      Continue;
+    if U.Kind in ALineKinds then
+      Inc(Result, U.Amount)
+    else if U.Kind = tuk_Charge then
+      Inc(Result, U.Amount)
+    else if U.Kind = tuk_Allowance then
+      Dec(Result, U.Amount)
+    else
+      Continue;
+    AFound := True;
+  end;
+end;
+
+{ BR-S-09 (and BR-AF-09, BR-AG-09 in UBL): the tax amount lies strictly
+  within 1 of taxable amount x rate / 100, rounded half up to cents
+  (exactly, in integers).
+  DE: BR-S-09 (und BR-AF-09, BR-AG-09 in UBL): der Steuerbetrag liegt echt
+  innerhalb von 1 um Bemessungsgrundlage x Satz / 100, halb aufwaerts auf
+  Cent gerundet (genau, in ganzen Zahlen). }
+function BreakdownTaxWrong(const AUse: TTaxUse): Boolean;
+var
+  Product, Expected: Int64;
+begin
+  Product := Abs(AUse.Amount) * AUse.Rate + 5000;
+  Expected := Product div 10000;
+  if (Product < 0) and (Product mod 10000 <> 0) then
+    Dec(Expected);
+  Result := not ((Abs(AUse.TaxAmount) - 100 < Expected) and (Abs(AUse.TaxAmount) + 100 > Expected));
+end;
+
+{ BR-xx-02 to 04: the seller and buyer identifiers each group needs (S, Z,
+  E, AE, AF, AG: also the seller tax registration BT-32; O: none of the
+  VAT identifiers).
+  DE: BR-xx-02 bis 04: die Kennungen von Verkaeufer und Kaeufer, die jede
+  Gruppe braucht (S, Z, E, AE, AF, AG: auch die Steuernummer BT-32; O:
+  keine der Umsatzsteuer-IdNr.). }
+function PartiesWrong(AGroup: TVatGroup; AInvoice: TLandrixInvoice): Boolean;
+var
+  SellerVAT, SellerTax, BuyerVAT: Boolean;
+begin
+  SellerVAT := Present(AInvoice.AccountingSupplierParty.VATCompanyID) or
+    Present(AInvoice.TaxRepresentativeParty.VATCompanyID);
+  SellerTax := SellerVAT or Present(AInvoice.AccountingSupplierParty.VATCompanyNumber);
+  BuyerVAT := Present(AInvoice.AccountingCustomerParty.VATCompanyID);
+  case AGroup of
+    vg_AE:
+      Result := not SellerTax or not (BuyerVAT or Present(AInvoice.AccountingCustomerParty.CompanyID));
+    vg_IC:
+      Result := not SellerVAT or not BuyerVAT;
+    vg_G:
+      Result := not SellerVAT;
+    vg_O:
+      Result := SellerVAT or BuyerVAT;
+  else
+    Result := not SellerTax;
+  end;
+end;
+
+{ BR-xx-05 to 07: the rate of a line, allowance or charge (S: above 0, O:
+  none, AF: at least 0 in UBL and above 0 in CII, AG: at least 0, the
+  others: 0). DE: BR-xx-05 bis 07: der Satz einer Position, eines
+  Nachlasses oder Zuschlags (S: ueber 0, O: keiner, AF: mindestens 0 in
+  UBL und ueber 0 in CII, AG: mindestens 0, die uebrigen: 0). }
+function RateWrong(AGroup: TVatGroup; const AUse: TTaxUse; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  if AGroup = vg_O then
+    Result := AUse.HasRate
+  else if not AUse.HasRate then
+    Result := True
+  else
+    case AGroup of
+      vg_S:
+        Result := AUse.Rate <= 0;
+      vg_AF:
+        Result := (AUse.Rate < 0) or ((AUse.Rate = 0) and (ASpec.Target.Syntax = esy_CII));
+      vg_AG:
+        Result := AUse.Rate < 0;
+    else
+      Result := AUse.Rate <> 0;
+    end;
+end;
+
+{ BR-xx-01: with lines, allowances or charges of the category a VAT
+  breakdown of it, as each schematron counts: UBL: S, AF, AG at least one
+  (and none without use), the others exactly one; CII: S, AF, AG count
+  lines and allowances/charges each together with the breakdowns (at least
+  two), the others exactly one with a use, none without, and O only tests
+  an existing breakdown.
+  DE: BR-xx-01: bei Positionen, Nachlaessen oder Zuschlaegen der Kategorie
+  eine Steueraufschluesselung dafuer, wie jedes Schematron zaehlt: UBL: S,
+  AF, AG mindestens eine (und keine ohne Verwendung), die uebrigen genau
+  eine; CII: S, AF, AG zaehlen Positionen und Nachlaesse/Zuschlaege jeweils
+  zusammen mit den Aufschluesselungen (mindestens zwei), die uebrigen genau
+  eine mit Verwendung, keine ohne, und O prueft nur eine vorhandene
+  Aufschluesselung. }
+function BreakdownCountWrong(AGroup: TVatGroup; const AUses: TTaxUses; const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+  Lines, Others, Breakdowns: Integer;
+begin
+  Code := TLandrixEInvoiceString(VatGroupCodes[AGroup]);
+  Lines := CountTaxUses(AUses, Code, [tuk_Line, tuk_SubLine]);
+  Others := CountTaxUses(AUses, Code, [tuk_Allowance, tuk_Charge]);
+  Breakdowns := CountTaxUses(AUses, Code, [tuk_Breakdown]);
+  if ASpec.Target.Syntax = esy_UBL then
+  begin
+    if AGroup in [vg_S, vg_AF, vg_AG] then
+      Result := (Lines + Others > 0) <> (Breakdowns > 0)
+    else
+      Result := (Lines + Others + Breakdowns > 0) and (Breakdowns <> 1);
+  end
+  else if AGroup in [vg_S, vg_AF, vg_AG] then
+    Result := ((Lines > 0) and (Lines + Breakdowns < 2)) or ((Others > 0) and (Others + Breakdowns < 2))
+  else if AGroup = vg_O then
+    Result := (Breakdowns > 0) and not ((Breakdowns = 1) and (Lines + Others > 0))
+  else
+    Result := not (((Breakdowns = 0) and (Lines + Others = 0)) or ((Breakdowns = 1) and (Lines + Others > 0)));
+end;
+
+{ BR-xx-08 to 10 on each VAT breakdown of the category. BR-xx-08 compares
+  the taxable amount with the lines, allowances and charges: by rate for S,
+  AF and AG (UBL: within 1 and, for S, with one of that rate; CII:
+  exactly), for the others over the category (UBL: exactly; CII: strictly
+  within 1, Factur-X up to 1 below inclusively, O exactly); UBL needs an
+  invoice line except for S. BR-xx-09: S, AF, AG (CII: S only) strictly
+  within 1 of the rounded amount, the others 0. BR-xx-10: S, Z, AF, AG without, the others with exemption
+  reason.
+  DE: BR-xx-08 bis 10 auf jeder Steueraufschluesselung der Kategorie.
+  BR-xx-08 vergleicht die Bemessungsgrundlage mit Positionen, Nachlaessen
+  und Zuschlaegen: je Satz fuer S, AF und AG (UBL: innerhalb von 1 und, fuer
+  S, mit einer Verwendung dieses Satzes; CII: genau), fuer die uebrigen
+  ueber die Kategorie (UBL: genau; CII: echt innerhalb von 1, Factur-X bis
+  1 nach unten einschliesslich, O genau); UBL verlangt ausser fuer S eine
+  Rechnungsposition. BR-xx-09: S, AF, AG (CII: nur S) echt innerhalb von 1
+  um den gerundeten Betrag, die uebrigen 0. BR-xx-10: S, Z, AF, AG ohne, die uebrigen mit
+  Befreiungsgrund. }
+function BreakdownWrong(AGroup: TVatGroup; ANumber: Integer; const AUse: TTaxUse; const AUses: TTaxUses;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  ByRate, IsUBL: Boolean;
+  Found: Boolean;
+  Net: Int64;
+  LineKinds: TTaxUseKinds;
+begin
+  ByRate := AGroup in [vg_S, vg_AF, vg_AG];
+  IsUBL := ASpec.Target.Syntax = esy_UBL;
+  Result := False;
+  case ANumber of
+    8:
+      begin
+        LineKinds := [tuk_Line, tuk_SubLine];
+        if IsUBL then
+          LineKinds := [tuk_Line];
+        Net := TaxUseNet(AUses, AUse.Code, ByRate, AUse.Rate, LineKinds, Found);
+        if not IsUBL and (AGroup = vg_O) then
+          Result := AUse.Amount <> Net
+        else if not IsUBL and not ByRate and (ASpec.Target.Standard = est_FacturX) then
+          Result := (AUse.Amount - Net > 100) or (Net - AUse.Amount >= 100)
+        else if ByRate = IsUBL then
+          Result := Abs(AUse.Amount - Net) >= 100
+        else
+          Result := AUse.Amount <> Net;
+        if IsUBL and (AGroup = vg_S) and not Found then
+          Result := True;
+        { UBL: the groups other than S also need an invoice line }
+        if IsUBL and (AGroup <> vg_S) and not AnyTaxUse(AUses, tuk_Line) then
+          Result := True;
+      end;
+    9:
+      if AGroup = vg_S then
+        Result := BreakdownTaxWrong(AUse)
+      else if AGroup in [vg_AF, vg_AG] then
+        Result := IsUBL and BreakdownTaxWrong(AUse)
+      else
+        Result := AUse.TaxAmount <> 0;
+    10:
+      Result := AUse.Exemption = (AGroup in [vg_S, vg_Z, vg_AF, vg_AG]);
+  end;
+end;
+
+{ BR-IC-11: an intra-community supply needs the actual delivery date
+  (BT-72) or the invoicing period (BG-14; UBL: also with only the VAT point
+  date code BT-8 in it). DE: BR-IC-11: eine innergemeinschaftliche
+  Lieferung braucht das tatsaechliche Lieferdatum (BT-72) oder den
+  Rechnungszeitraum (BG-14; UBL: auch nur mit dem Code BT-8 darin). }
+function DeliveryDateMissing(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  Result := not (AInvoice.DeliveryInformation.ActualDeliveryDate > 0) and
+    not ((PeriodDateSet(AInvoice.InvoicePeriodStartDate) or PeriodDateSet(AInvoice.InvoicePeriodEndDate)) and
+      not PeriodReversed(AInvoice.InvoicePeriodStartDate, AInvoice.InvoicePeriodEndDate)) and
+    not ((ASpec.Target.Syntax = esy_UBL) and Present(AInvoice.TaxPointDateCode) and
+      not AInvoice.TaxPointDate.HasValue);
+end;
+
+{ True if VAT rule AGroup/ANumber is violated. The rules judge the
+  categories as written; context and tolerances follow the schematron of
+  each syntax (CEN EN 16931 1.3).
+  DE: True, wenn die Steuerregel AGroup/ANumber verletzt ist. Die Regeln
+  beurteilen die Kategorien, wie sie geschrieben werden; Kontext und
+  Toleranzen folgen dem Schematron der jeweiligen Syntax (CEN EN 16931
+  1.3). }
+function VatViolated(AGroup: TVatGroup; ANumber: Integer; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec; const ATaxUses: TTaxUses): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+  I: Integer;
+  Kinds: TTaxUseKinds;
+  IsCII, HasBreakdown: Boolean;
+begin
+  Result := False;
+  Code := TLandrixEInvoiceString(VatGroupCodes[AGroup]);
+  IsCII := ASpec.Target.Syntax = esy_CII;
+  HasBreakdown := CountTaxUses(ATaxUses, Code, [tuk_Breakdown]) > 0;
+  case ANumber of
+    1:
+      Result := BreakdownCountWrong(AGroup, ATaxUses, ASpec);
+    2, 3, 4:
+      begin
+        case ANumber of
+          2: Kinds := [tuk_Line, tuk_SubLine];
+          3: Kinds := [tuk_Allowance];
+        else
+          Kinds := [tuk_Charge];
+        end;
+        Result := (CountTaxUses(ATaxUses, Code, Kinds) > 0) and PartiesWrong(AGroup, AInvoice);
+      end;
+    5, 6, 7:
+      begin
+        case ANumber of
+          5:
+            if IsCII then
+              Kinds := [tuk_Line, tuk_SubLine]
+            else
+              Kinds := [tuk_Line];
+          6: Kinds := [tuk_Allowance];
+        else
+          Kinds := [tuk_Charge];
+        end;
+        for I := 0 to ATaxUses.Count - 1 do
+          if (ATaxUses.Items[I].Kind in Kinds) and (ATaxUses.Items[I].Code = Code) and
+             RateWrong(AGroup, ATaxUses.Items[I], ASpec) then
+            Result := True;
+      end;
+    8, 9, 10:
+      for I := 0 to ATaxUses.Count - 1 do
+        if (ATaxUses.Items[I].Kind = tuk_Breakdown) and (ATaxUses.Items[I].Code = Code) and
+           BreakdownWrong(AGroup, ANumber, ATaxUses.Items[I], ATaxUses, ASpec) then
+          Result := True;
+    11:
+      if AGroup = vg_IC then
+        Result := HasBreakdown and DeliveryDateMissing(AInvoice, ASpec)
+      else
+        { CII tests breakdowns and lines together for BR-O-11 and 12 }
+        Result := HasBreakdown and (HasOtherTaxUse(ATaxUses, Code, [tuk_Breakdown]) or
+          (IsCII and HasOtherTaxUse(ATaxUses, Code, [tuk_Line, tuk_SubLine])));
+    12:
+      if AGroup = vg_IC then
+        Result := HasBreakdown and not Present(AInvoice.DeliveryInformation.Address.CountryCode)
+      else
+        Result := HasBreakdown and (HasOtherTaxUse(ATaxUses, Code, [tuk_Line, tuk_SubLine]) or
+          (IsCII and HasOtherTaxUse(ATaxUses, Code, [tuk_Breakdown])));
+    13, 14:
+      begin
+        { CII tests allowances and charges together for BR-O-13 and 14 }
+        if IsCII then
+          Kinds := [tuk_Allowance, tuk_Charge]
+        else if ANumber = 13 then
+          Kinds := [tuk_Allowance]
+        else
+          Kinds := [tuk_Charge];
+        Result := HasBreakdown and HasOtherTaxUse(ATaxUses, Code, Kinds);
+      end;
+  end;
+end;
+
+{ The Factur-X 1.09 profiles of each VAT rule: BASIC WL has the document
+  level rules 03, 04, 06, 07, 09 and 10 and BR-IC-11, BR-IC-12, BR-O-11,
+  BR-O-13 and BR-O-14, BASIC and EN 16931 have all, EXTENDED has 02 to 07
+  (O: 05 to 07), 09 (not S), 10 (not S, Z, AF, AG), BR-IC-11 and BR-IC-12
+  (its BR-FXEXT-xx-01 are not checked).
+  DE: Die Factur-X-1.09-Profile jeder Steuerregel: BASIC WL hat die Regeln
+  der Dokumentebene 03, 04, 06, 07, 09 und 10 sowie BR-IC-11, BR-IC-12,
+  BR-O-11, BR-O-13 und BR-O-14, BASIC und EN 16931 haben alle, EXTENDED hat
+  02 bis 07 (O: 05 bis 07), 09 (nicht S), 10 (nicht S, Z, AF, AG), BR-IC-11
+  und BR-IC-12 (seine BR-FXEXT-xx-01 werden nicht geprueft). }
+function VatProfiles(AGroup: TVatGroup; ANumber: Integer): TProfiles;
+begin
+  case ANumber of
+    1, 8:
+      Result := FromBasicNoExtended;
+    2, 5:
+      Result := FromBasic;
+    3, 4, 6, 7, 9, 10:
+      Result := FromBasicWL;
+    11, 12:
+      if AGroup = vg_IC then
+        Result := FromBasicWL
+      else if ANumber = 12 then
+        Result := FromBasicNoExtended
+      else
+        Result := FromBasicWLNoExtended;
+  else
+    Result := FromBasicWLNoExtended;
+  end;
+  if ((AGroup = vg_O) and (ANumber in [2, 3, 4])) or ((AGroup = vg_S) and (ANumber = 9)) or
+     ((AGroup in [vg_S, vg_Z, vg_AF, vg_AG]) and (ANumber = 10)) then
+    Result := Result - [epr_Extended];
+end;
+
+function VatRuleID(AGroup: TVatGroup; ANumber: Integer): string;
+begin
+  Result := 'BR-' + VatGroupIDs[AGroup] + '-' + Chr(Ord('0') + ANumber div 10) + Chr(Ord('0') + ANumber mod 10);
+end;
+
+{ Business terms and message of VAT rule AGroup/ANumber, the rule texts in
+  short. DE: Geschaeftsbegriffe und Meldung der Steuerregel
+  AGroup/ANumber, die Regeltexte in Kurzform. }
+procedure VatRuleText(AGroup: TVatGroup; ANumber: Integer; out ATerms, AMessage: string);
+var
+  Name, Item, Rate: string;
+begin
+  Name := 'VAT category ' + VatGroupCodes[AGroup] + ' (' + VatGroupNames[AGroup] + ')';
+  case ANumber of
+    2, 5:
+      begin
+        Item := 'an invoice line (BG-25)';
+        Rate := 'BT-152';
+      end;
+    3, 6, 13:
+      begin
+        Item := 'a document level allowance (BG-20)';
+        Rate := 'BT-96';
+      end;
+  else
+    Item := 'a document level charge (BG-21)';
+    Rate := 'BT-103';
+  end;
+  case ANumber of
+    1:
+      begin
+        ATerms := 'BT-118';
+        if AGroup in [vg_S, vg_AF, vg_AG] then
+          AMessage := 'lines, allowances or charges with ' + Name + ' need at least one VAT breakdown (BG-23) of ' +
+            'that category, and such a breakdown needs one of them'
+        else
+          AMessage := 'lines, allowances or charges with ' + Name + ' need exactly one VAT breakdown (BG-23) of ' +
+            'that category';
+      end;
+    2, 3, 4:
+      case AGroup of
+        vg_O:
+          begin
+            ATerms := 'BT-31, BT-63, BT-48';
+            AMessage := Item + ' with ' + Name + ' excludes the seller VAT identifier (BT-31), the tax ' +
+              'representative VAT identifier (BT-63) and the buyer VAT identifier (BT-48)';
+          end;
+        vg_G:
+          begin
+            ATerms := 'BT-31, BT-63';
+            AMessage := Item + ' with ' + Name + ' needs the seller VAT identifier (BT-31) or the tax ' +
+              'representative VAT identifier (BT-63)';
+          end;
+        vg_IC:
+          begin
+            ATerms := 'BT-31, BT-63, BT-48';
+            AMessage := Item + ' with ' + Name + ' needs the seller VAT identifier (BT-31) or the tax ' +
+              'representative VAT identifier (BT-63), and the buyer VAT identifier (BT-48)';
+          end;
+        vg_AE:
+          begin
+            ATerms := 'BT-31, BT-32, BT-63, BT-48, BT-47';
+            AMessage := Item + ' with ' + Name + ' needs the seller VAT identifier (BT-31), tax registration ' +
+              'identifier (BT-32) or tax representative VAT identifier (BT-63), and the buyer VAT identifier ' +
+              '(BT-48) or legal registration identifier (BT-47)';
+          end;
+      else
+        ATerms := 'BT-31, BT-32, BT-63';
+        AMessage := Item + ' with ' + Name + ' needs the seller VAT identifier (BT-31), tax registration ' +
+          'identifier (BT-32) or tax representative VAT identifier (BT-63)';
+      end;
+    5, 6, 7:
+      begin
+        ATerms := Rate;
+        case AGroup of
+          vg_S:
+            AMessage := 'a VAT rate (' + Rate + ') above 0';
+          vg_O:
+            AMessage := 'no VAT rate (' + Rate + ')';
+          vg_AF:
+            AMessage := 'a VAT rate (' + Rate + ') of 0 or more (CII: above 0)';
+          vg_AG:
+            AMessage := 'a VAT rate (' + Rate + ') of 0 or more';
+        else
+          AMessage := 'the VAT rate (' + Rate + ') 0';
+        end;
+        AMessage := Item + ' with ' + Name + ' shall have ' + AMessage;
+      end;
+    8:
+      begin
+        ATerms := 'BT-116, BT-131, BT-92, BT-99';
+        AMessage := 'the taxable amount (BT-116) of a VAT breakdown with ' + Name + ' shall be the sum of the ' +
+          'line net amounts (BT-131) plus charges (BT-99) minus allowances (BT-92) of that category';
+        if AGroup in [vg_S, vg_AF, vg_AG] then
+          AMessage := AMessage + ' and rate';
+      end;
+    9:
+      begin
+        ATerms := 'BT-117';
+        if AGroup in [vg_S, vg_AF, vg_AG] then
+          AMessage := 'the VAT amount (BT-117) of a VAT breakdown with ' + Name + ' shall be the taxable amount ' +
+            '(BT-116) x rate (BT-119) / 100 (tolerance 1)'
+        else
+          AMessage := 'the VAT amount (BT-117) of a VAT breakdown with ' + Name + ' shall be 0';
+      end;
+    10:
+      begin
+        ATerms := 'BT-120, BT-121';
+        if AGroup in [vg_S, vg_Z, vg_AF, vg_AG] then
+          AMessage := 'a VAT breakdown with ' + Name + ' shall have no exemption reason (BT-120) or reason code ' +
+            '(BT-121)'
+        else
+          AMessage := 'a VAT breakdown with ' + Name + ' shall have an exemption reason (BT-120) or reason code ' +
+            '(BT-121)';
+      end;
+    11:
+      if AGroup = vg_IC then
+      begin
+        ATerms := 'BT-72, BG-14';
+        AMessage := 'an invoice with a VAT breakdown of ' + Name + ' needs the actual delivery date (BT-72) or ' +
+          'the invoicing period (BG-14)';
+      end
+      else
+      begin
+        ATerms := 'BT-118';
+        AMessage := 'an invoice with a VAT breakdown of ' + Name + ' shall have no VAT breakdown of another ' +
+          'category';
+      end;
+    12:
+      if AGroup = vg_IC then
+      begin
+        ATerms := 'BT-80';
+        AMessage := 'an invoice with a VAT breakdown of ' + Name + ' needs the deliver to country code (BT-80)';
+      end
+      else
+      begin
+        ATerms := 'BT-151';
+        AMessage := 'an invoice with a VAT breakdown of ' + Name + ' shall have no invoice line of another ' +
+          'VAT category';
+      end;
+  else
+    if ANumber = 13 then
+      ATerms := 'BT-95'
+    else
+      ATerms := 'BT-102';
+    AMessage := 'an invoice with a VAT breakdown of ' + Name + ' shall have no ' + Copy(Item, 3, MaxInt) +
+      ' of another VAT category';
+  end;
+end;
+
+{ BR-B-01, BR-B-02: VAT category B (split payment, Italy) in a line,
+  allowance, charge or breakdown; BR-B-01 needs every written country code
+  to be IT (UBL also the item country of origin BT-159), BR-B-02 excludes
+  category S.
+  DE: BR-B-01, BR-B-02: Umsatzsteuerkategorie B (Split Payment, Italien)
+  in einer Position, einem Nachlass, Zuschlag oder einer Aufschluesselung;
+  BR-B-01 verlangt IT als jeden geschriebenen Laendercode (UBL auch das
+  Ursprungsland BT-159), BR-B-02 schliesst Kategorie S aus. }
+function ForeignCountry(const ACode: TLandrixEInvoiceString): Boolean;
+begin
+  Result := Present(ACode) and (ACode <> 'IT');
+end;
+
+function ForeignOrigin(ALines: TLandrixInvoiceLines; ASubLines: Boolean): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := True;
+  for I := 0 to ALines.Count - 1 do
+    if ForeignCountry(ALines[I].OriginTradeCountry) or
+       (ASubLines and ForeignOrigin(ALines[I].SubInvoiceLines, True)) then
+      Exit;
+  Result := False;
+end;
+
+{ CII also writes the invoicee (BT-X-..., where the target allows it) and,
+  in Factur-X EXTENDED, the address and VAT identifier of the payee; the
+  CII schematron tests every ram:CountryID and VA registration.
+  DE: CII schreibt auch den Rechnungsempfaenger (wo das Ziel ihn erlaubt)
+  und, in Factur-X EXTENDED, Anschrift und USt-IdNr. des
+  Zahlungsempfaengers; das CII-Schematron prueft jede ram:CountryID und
+  VA-Registrierung. }
+function CIIInvoiceeWritten(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  Result := (ASpec.Target.Syntax = esy_CII) and PartySet(AInvoice.InvoiceeParty) and
+    not Forbidden(ASpec, LandrixEInvoiceRuleInvoicee);
+end;
+
+function CIIPayeeFull(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  Result := (ASpec.Target.Syntax = esy_CII) and PartySet(AInvoice.PayeeParty) and
+    not Forbidden(ASpec, LandrixEInvoiceRulePayeeExtended);
+end;
+
+function SplitPaymentViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  TaxUses: TTaxUses;
+  AllKinds: TTaxUseKinds;
+begin
+  CollectTaxUses(AInvoice, ASpec, TaxUses);
+  AllKinds := [Low(TTaxUseKind)..High(TTaxUseKind)];
+  Result := CountTaxUses(TaxUses, 'B', AllKinds) > 0;
+  if not Result then
+    Exit;
+  if AIndex = cr_BRB02 then
+    Result := CountTaxUses(TaxUses, 'S', AllKinds) > 0
+  else
+    Result := ForeignCountry(AInvoice.AccountingSupplierParty.Address.CountryCode) or
+      ForeignCountry(AInvoice.AccountingCustomerParty.Address.CountryCode) or
+      ForeignCountry(AInvoice.TaxRepresentativeParty.Address.CountryCode) or
+      ForeignCountry(AInvoice.DeliveryInformation.Address.CountryCode) or
+      (CIIInvoiceeWritten(AInvoice, ASpec) and ForeignCountry(AInvoice.InvoiceeParty.Address.CountryCode)) or
+      (CIIPayeeFull(AInvoice, ASpec) and ForeignCountry(AInvoice.PayeeParty.Address.CountryCode)) or
+      ((ASpec.Target.Syntax = esy_UBL) and ForeignOrigin(AInvoice.InvoiceLines,
+        not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines)));
+end;
+
+function LineTaxCategoryMissing(AInvoice: TLandrixInvoice): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := True;
+  for I := 0 to AInvoice.InvoiceLines.Count - 1 do
+    if not Present(TaxCategoryText(AInvoice.InvoiceLines[I].TaxCategory,
+      AInvoice.InvoiceLines[I].TaxCategoryOther)) then
+      Exit;
+  Result := False;
+end;
+
+const
+  { BR-CO-09: the country codes of the CEN schematron (ISO 3166-1 alpha-2,
+    EL for Greece, XI for Northern Ireland) without AN and SS, which only
+    one syntax has. DE: BR-CO-09: die Laendercodes des CEN-Schematrons
+    (ISO 3166-1 alpha-2, EL fuer Griechenland, XI fuer Nordirland) ohne AN
+    und SS, die nur eine Syntax hat. }
+  VATCountryPrefixes =
+    ' 1A AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW' +
+    ' BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH EL ER ES ET FI' +
+    ' FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO' +
+    ' IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG' +
+    ' MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK' +
+    ' PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR ST SV SX SY SZ TC TD' +
+    ' TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XI YE YT ZA ZM ZW ';
+
+{ BR-CO-09 as each schematron tests it: UBL looks for the first two
+  characters anywhere in the list (with SS), CII for the code between
+  blanks (with AN).
+  DE: BR-CO-09, wie jedes Schematron es prueft: UBL sucht die ersten zwei
+  Zeichen irgendwo in der Liste (mit SS), CII den Code zwischen
+  Leerzeichen (mit AN). }
+function VATPrefixWrong(const AID: TLandrixEInvoiceString; const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  Prefix: string;
+begin
+  Result := False;
+  if not Present(AID) then
+    Exit;
+  Prefix := string(Copy(AID, 1, 2));
+  if ASpec.Target.Syntax = esy_UBL then
+    Result := (Prefix <> 'SS') and (Pos(Prefix, VATCountryPrefixes) = 0)
+  else
+    Result := (Prefix <> 'AN') and (Pos(' ' + Prefix + ' ', VATCountryPrefixes) = 0);
+end;
+
+{ BR-CO-18: UBL always; the CEN CII schematron only with lines (its context
+  is the line), Factur-X always.
+  DE: BR-CO-18: UBL immer; das CEN-CII-Schematron nur mit Positionen (sein
+  Kontext ist die Position), Factur-X immer. }
+function BreakdownMissing(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  Result := (AInvoice.TaxAmountSubtotals.Count = 0) and ((ASpec.Target.Syntax = esy_UBL) or
+    (AInvoice.InvoiceLines.Count > 0) or (ASpec.Target.Standard = est_FacturX));
+end;
+
 { --- rules --------------------------------------------------------------------- }
 
 { True if rule AIndex is violated by AInvoice for ASpec. The LX-CC rules keep
@@ -1500,6 +2297,20 @@ begin
       Result := Present(Buyer.ElectronicAddressSellerBuyer) and
         not Present(Buyer.ElectronicAddressSellerBuyerSchemeID) and
         Forbidden(ASpec, LandrixEInvoiceRuleElectronicAddressDefaultEM);
+    cr_BRB01, cr_BRB02:
+      Result := SplitPaymentViolated(AIndex, AInvoice, ASpec);
+    { BR-CO-03 on the model: the mappers leave BT-8 out next to BT-7 }
+    cr_BRCO03:
+      Result := AInvoice.TaxPointDate.HasValue and Present(AInvoice.TaxPointDateCode);
+    cr_BRCO04:
+      Result := LineTaxCategoryMissing(AInvoice);
+    cr_BRCO09:
+      Result := VATPrefixWrong(Seller.VATCompanyID, ASpec) or VATPrefixWrong(Buyer.VATCompanyID, ASpec) or
+        VATPrefixWrong(TaxRepresentative.VATCompanyID, ASpec) or
+        (CIIInvoiceeWritten(AInvoice, ASpec) and VATPrefixWrong(AInvoice.InvoiceeParty.VATCompanyID, ASpec)) or
+        (CIIPayeeFull(AInvoice, ASpec) and VATPrefixWrong(AInvoice.PayeeParty.VATCompanyID, ASpec));
+    cr_BRCO18:
+      Result := BreakdownMissing(AInvoice, ASpec);
     cr_BRDE01:
       Result := not HasPayment(AInvoice, pk_Written);
     cr_BRDE02:
@@ -1565,22 +2376,47 @@ begin
   end;
 end;
 
+procedure AddViolation(ADiagnostics: TLandrixEInvoiceDiagnostics; const AID, ATerms, AMessage: string;
+  ASeverity: TLandrixEInvoiceDiagnosticSeverity);
+var
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  if ADiagnostics = nil then
+    Exit;
+  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, TLandrixEInvoiceString(ATerms), 0, 0, 0,
+    TLandrixEInvoiceString(AMessage));
+  D.Severity := ASeverity;
+  D.RuleID := TLandrixEInvoiceString(AID);
+end;
+
 { Runs rule AIndex if it applies; False and a diagnostic on a violation. }
 function Run(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
-var
-  D: TLandrixEInvoiceDiagnostic;
 begin
   Result := True;
   if not Applies(CheckRows[AIndex], ASpec) or not Violated(AIndex, AInvoice, ASpec) then
     Exit;
   Result := False;
-  if ADiagnostics = nil then
+  AddViolation(ADiagnostics, CheckRows[AIndex].ID, CheckRows[AIndex].Terms, CheckRows[AIndex].Message,
+    CheckRows[AIndex].Severity);
+end;
+
+{ Runs VAT rule AGroup/ANumber (EN 16931 targets, the profiles of
+  VatProfiles); False and an error on a violation.
+  DE: Fuehrt die Steuerregel AGroup/ANumber aus (EN-16931-Ziele, die
+  Profile aus VatProfiles); False und ein Fehler bei einem Verstoss. }
+function RunVat(AGroup: TVatGroup; ANumber: Integer; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
+  const ATaxUses: TTaxUses; ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+var
+  Terms, Message: string;
+begin
+  Result := True;
+  if not (ASpec.Target.Standard in EN16931Standards) or not (ASpec.Target.Profile in VatProfiles(AGroup, ANumber)) or
+     not VatViolated(AGroup, ANumber, AInvoice, ASpec, ATaxUses) then
     Exit;
-  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, TLandrixEInvoiceString(CheckRows[AIndex].Terms), 0, 0, 0,
-    TLandrixEInvoiceString(CheckRows[AIndex].Message));
-  D.Severity := CheckRows[AIndex].Severity;
-  D.RuleID := TLandrixEInvoiceString(CheckRows[AIndex].ID);
+  Result := False;
+  VatRuleText(AGroup, ANumber, Terms, Message);
+  AddViolation(ADiagnostics, VatRuleID(AGroup, ANumber), Terms, Message, eds_Error);
 end;
 
 { --- public -------------------------------------------------------------------- }
@@ -1589,18 +2425,29 @@ function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLa
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 var
   I: TCheckRuleIndex;
+  G: TVatGroup;
+  N: Integer;
+  TaxUses: TTaxUses;
 begin
   Result := 0;
   for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
     if not CheckRows[I].Legacy and not Run(I, AInvoice, ASpec, ADiagnostics) and
        (CheckRows[I].Severity = eds_Error) then
       Inc(Result);
+  CollectTaxUses(AInvoice, ASpec, TaxUses);
+  for G := Low(TVatGroup) to High(TVatGroup) do
+    for N := 1 to VatGroupLast[G] do
+      if not RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics) then
+        Inc(Result);
 end;
 
 function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
   I: TCheckRuleIndex;
+  G: TVatGroup;
+  N: Integer;
+  TaxUses: TTaxUses;
 begin
   for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
     if TLandrixEInvoiceString(CheckRows[I].ID) = ARuleID then
@@ -1608,6 +2455,14 @@ begin
       Result := Run(I, AInvoice, ASpec, ADiagnostics);
       Exit;
     end;
+  for G := Low(TVatGroup) to High(TVatGroup) do
+    for N := 1 to VatGroupLast[G] do
+      if TLandrixEInvoiceString(VatRuleID(G, N)) = ARuleID then
+      begin
+        CollectTaxUses(AInvoice, ASpec, TaxUses);
+        Result := RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics);
+        Exit;
+      end;
   raise ELandrixEInvoiceError.Create('LandrixEInvoiceCheckRule: unknown rule ' + string(ARuleID));
 end;
 

@@ -19,7 +19,8 @@
   LandrixEInvoiceTestCompatAdapter) and the official rules: a complete
   invoice passes every target, each rule case breaks one business term
   (blank text where the term is text) and the rule must fire for its target
-  and hold for a target it does not apply to. }
+  and hold for a target it does not apply to; the VAT category rules
+  BR-S-nn to BR-AG-nn per group and where the syntaxes differ. }
 
 unit LandrixEInvoiceTestCheck;
 
@@ -281,6 +282,22 @@ begin
     Line.StandardItemIdentifier := 'X-1'
   else if AID = 'BR-65' then
     Line.ItemClassifications.AddItemClassification.ClassCode := 'C-1'
+  else if (AID = 'BR-B-01') or (AID = 'BR-B-02') then
+  begin
+    Line.TaxCategory := idtfcc_None;
+    Line.TaxCategoryOther := 'B';
+  end
+  else if AID = 'BR-CO-03' then
+  begin
+    Invoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
+    Invoice.TaxPointDateCode := '3';
+  end
+  else if AID = 'BR-CO-04' then
+    Line.TaxCategory := idtfcc_None
+  else if AID = 'BR-CO-09' then
+    Seller.VATCompanyID := 'XX123456789'
+  else if AID = 'BR-CO-18' then
+    Invoice.TaxAmountSubtotals.Clear
   else if AID = 'BR-DE-1' then
     Invoice.PaymentTypes.Clear
   else if AID = 'BR-DE-2' then
@@ -398,7 +415,7 @@ type
   end;
 
 const
-  RuleCases: array[0..88] of TRuleCase = (
+  RuleCases: array[0..94] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -439,6 +456,8 @@ const
     (ID: 'BR-63'; Target: tk_Peppol; NotApplicable: tk_FXEN16931),
     (ID: 'BR-64'; Target: tk_XRUBL; NotApplicable: tk_FXBasicWL),
     (ID: 'BR-65'; Target: tk_FXBasic; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-B-01'; Target: tk_XRUBL; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-B-02'; Target: tk_XRCII; NotApplicable: tk_FXBasicWL),
     (ID: 'BR-DE-1'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
     (ID: 'BR-DE-2'; Target: tk_XRCII; NotApplicable: tk_Peppol),
     (ID: 'BR-DE-3'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
@@ -474,6 +493,9 @@ const
     (ID: 'BR-DE-25-a'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
     (ID: 'BR-62'; Target: tk_Peppol; NotApplicable: tk_XRCII),
     (ID: 'BR-29'; Target: tk_Peppol; NotApplicable: tk_None),
+    (ID: 'BR-CO-03'; Target: tk_FXBasicWL; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CO-04'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CO-09'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-CO-10'; Target: tk_XRUBL; NotApplicable: tk_FXBasicWL),
     (ID: 'BR-CO-11'; Target: tk_FXBasicWL; NotApplicable: tk_FXMinimum),
     (ID: 'BR-CO-12'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
@@ -482,6 +504,7 @@ const
     (ID: 'BR-CO-15'; Target: tk_FXBasic; NotApplicable: tk_FXExtended),
     (ID: 'BR-CO-16'; Target: tk_FXEN16931; NotApplicable: tk_FXExtended),
     (ID: 'BR-CO-17'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CO-18'; Target: tk_XRUBL; NotApplicable: tk_FXMinimum),
     (ID: 'BR-FXEXT-CO-10'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'BR-FXEXT-CO-11'; Target: tk_FXExtended; NotApplicable: tk_XRUBL),
     (ID: 'BR-FXEXT-CO-12'; Target: tk_FXExtended; NotApplicable: tk_XRCII),
@@ -1018,6 +1041,367 @@ begin
   end;
 end;
 
+type
+  TVatGroupCase = record
+    Group: string;
+    Category: TLandrixInvoiceDutyTaxFeeCategoryCode;
+    Rate: Integer;
+    Last: Integer;
+    { the rate that breaks BR-xx-05 to 07 }
+    WrongRate: Integer;
+  end;
+
+const
+  VatGroupCases: array[0..8] of TVatGroupCase = (
+    (Group: 'S'; Category: idtfcc_S_StandardRate; Rate: 19; Last: 10; WrongRate: 0),
+    (Group: 'Z'; Category: idtfcc_Z_ZeroRatedGoods; Rate: 0; Last: 10; WrongRate: 5),
+    (Group: 'E'; Category: idtfcc_E_ExemptFromTax; Rate: 0; Last: 10; WrongRate: 5),
+    (Group: 'AE'; Category: idtfcc_AE_VATReverseCharge; Rate: 0; Last: 10; WrongRate: 5),
+    (Group: 'IC'; Category: idtfcc_K_VATExemptForEEAIntracommunitySupplyOfGoodsAndServices; Rate: 0; Last: 12;
+     WrongRate: 5),
+    (Group: 'G'; Category: idtfcc_G_FreeExportItemTaxNotCharged; Rate: 0; Last: 10; WrongRate: 5),
+    (Group: 'O'; Category: idtfcc_O_ServicesOutsideScopeOfTax; Rate: 0; Last: 14; WrongRate: 0),
+    (Group: 'AF'; Category: idtfcc_L_CanaryIslandsGeneralIndirectTax; Rate: 7; Last: 10; WrongRate: -1),
+    (Group: 'AG'; Category: idtfcc_M_TaxForProductionServicesAndImportationInCeutaAndMelilla; Rate: 4; Last: 10;
+     WrongRate: -1));
+
+function VatRuleOf(const ACase: TVatGroupCase; ANumber: Integer): string;
+begin
+  Result := 'BR-' + ACase.Group + '-' + IntToStr(ANumber div 10) + IntToStr(ANumber mod 10);
+end;
+
+function IsExemptGroup(const ACase: TVatGroupCase): Boolean;
+begin
+  Result := (ACase.Group = 'E') or (ACase.Group = 'AE') or (ACase.Group = 'IC') or (ACase.Group = 'G') or
+    (ACase.Group = 'O');
+end;
+
+{ A complete invoice with one line and one VAT breakdown of the group: the
+  identifiers the group needs, an exemption reason where it needs one and
+  the delivery data of an intra-community supply. }
+procedure FillVatGroup(Invoice: TLandrixInvoice; const ACase: TVatGroupCase);
+var
+  Tax: TLandrixInvoiceTaxAmount;
+  Line: TLandrixInvoiceLine;
+begin
+  FillComplete(Invoice);
+  Line := Invoice.InvoiceLines[0];
+  Line.TaxCategory := ACase.Category;
+  Line.TaxPercent := ACase.Rate;
+  Tax := Invoice.TaxAmountSubtotals[0];
+  Tax.TaxCategory := ACase.Category;
+  Tax.TaxPercent := ACase.Rate;
+  Tax.TaxAmount := ACase.Rate;
+  if IsExemptGroup(ACase) then
+    Tax.TaxExemptionReason := 'Reason';
+  Invoice.TaxAmountTotal := ACase.Rate;
+  Invoice.TaxInclusiveAmount := 100 + ACase.Rate;
+  Invoice.PayableAmount := 100 + ACase.Rate;
+  if ACase.Group = 'O' then
+  begin
+    Invoice.AccountingSupplierParty.VATCompanyID := '';
+    Invoice.AccountingSupplierParty.VATCompanyNumber := '12/345/67890';
+  end;
+  if (ACase.Group = 'AE') or (ACase.Group = 'IC') then
+    Invoice.AccountingCustomerParty.VATCompanyID := 'FR12345678901';
+  if ACase.Group = 'IC' then
+  begin
+    Invoice.DeliveryInformation.ActualDeliveryDate := EncodeDate(2026, 10, 19);
+    Invoice.DeliveryInformation.Address.City := 'Paris';
+    Invoice.DeliveryInformation.Address.PostalZone := '75001';
+    Invoice.DeliveryInformation.Address.CountryCode := 'FR';
+  end;
+end;
+
+procedure AddVatAllowanceCharge(Invoice: TLandrixInvoice; ACharge: Boolean;
+  ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; ARate: Integer);
+var
+  Item: TLandrixInvoiceAllowanceCharge;
+begin
+  Item := Invoice.AllowanceCharges.AddAllowanceCharge;
+  Item.ChargeIndicator := ACharge;
+  Item.Amount := 5;
+  Item.Reason := 'Reason';
+  Item.TaxCategory := ACategory;
+  Item.TaxPercent := ARate;
+end;
+
+{ Breaks rule ANumber of the group in an invoice of FillVatGroup. }
+procedure MutateVat(Invoice: TLandrixInvoice; const ACase: TVatGroupCase; ANumber: Integer);
+var
+  Tax: TLandrixInvoiceTaxAmount;
+  Line: TLandrixInvoiceLine;
+begin
+  Tax := Invoice.TaxAmountSubtotals[0];
+  Line := Invoice.InvoiceLines[0];
+  if ANumber in [3, 6] then
+    AddVatAllowanceCharge(Invoice, False, ACase.Category, ACase.Rate)
+  else if ANumber in [4, 7] then
+    AddVatAllowanceCharge(Invoice, True, ACase.Category, ACase.Rate);
+  case ANumber of
+    1:
+      { a second breakdown of the category (S, AF, AG: none) }
+      if (ACase.Group = 'S') or (ACase.Group = 'AF') or (ACase.Group = 'AG') then
+        Invoice.TaxAmountSubtotals.Clear
+      else
+        Invoice.TaxAmountSubtotals.AddTaxAmount.Assign(Tax);
+    2, 3, 4:
+      if ACase.Group = 'O' then
+        Invoice.AccountingCustomerParty.VATCompanyID := 'FR12345678901'
+      else
+      begin
+        Invoice.AccountingSupplierParty.VATCompanyID := '';
+        if (ACase.Group = 'G') or (ACase.Group = 'IC') then
+          Invoice.AccountingSupplierParty.VATCompanyNumber := '12/345/67890';
+      end;
+    5, 6, 7:
+      if ACase.Group = 'O' then
+      begin
+        { the rate is written when the category is no enumeration value }
+        Line.TaxCategory := idtfcc_None;
+        Line.TaxCategoryOther := 'O';
+        if ANumber > 5 then
+        begin
+          Invoice.AllowanceCharges[0].TaxCategory := idtfcc_None;
+          Invoice.AllowanceCharges[0].TaxCategoryOther := 'O';
+        end;
+      end
+      else if ANumber = 5 then
+        Line.TaxPercent := ACase.WrongRate
+      else
+        Invoice.AllowanceCharges[0].TaxPercent := ACase.WrongRate;
+    8:
+      Tax.TaxableAmount := 102;
+    9:
+      Tax.TaxAmount := ACase.Rate + 2;
+    10:
+      if IsExemptGroup(ACase) then
+        Tax.TaxExemptionReason := ' '
+      else
+        Tax.TaxExemptionReasonCode := 'VATEX-EU-79-C';
+    11:
+      if ACase.Group = 'IC' then
+        Invoice.DeliveryInformation.ActualDeliveryDate := 0
+      else
+        with Invoice.TaxAmountSubtotals.AddTaxAmount do
+        begin
+          TaxCategory := idtfcc_S_StandardRate;
+          TaxPercent := 19;
+        end;
+    12:
+      if ACase.Group = 'IC' then
+        Invoice.DeliveryInformation.Address.CountryCode := ' '
+      else
+        with Invoice.InvoiceLines.AddInvoiceLine do
+        begin
+          ID := '2';
+          Name := 'Item';
+          TaxCategory := idtfcc_S_StandardRate;
+          TaxPercent := 19;
+        end;
+    13:
+      AddVatAllowanceCharge(Invoice, False, idtfcc_S_StandardRate, 19);
+    14:
+      AddVatAllowanceCharge(Invoice, True, idtfcc_S_StandardRate, 19);
+  end;
+end;
+
+function HasVatGroupRule(D: TLandrixEInvoiceDiagnostics; const AGroup: string): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := True;
+  for I := 0 to D.Count - 1 do
+    if Pos('BR-' + AGroup + '-', string(D[I].RuleID)) = 1 then
+      Exit;
+  Result := False;
+end;
+
+{ The VAT category rules BR-S-nn to BR-AG-nn: the invoice of each group
+  passes them for every target; each rule breaks for XRechnung UBL and CII
+  (except BR-AF-09 and BR-AG-09, which CII does not test) and does not apply
+  to Factur-X MINIMUM. }
+procedure TestVatCategories;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  G, N: Integer;
+  K: TTargetKind;
+  ID: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    for G := Low(VatGroupCases) to High(VatGroupCases) do
+    begin
+      Invoice := TLandrixInvoice.Create;
+      try
+        FillVatGroup(Invoice, VatGroupCases[G]);
+        for K := tk_XRUBL to High(TTargetKind) do
+        begin
+          D.Clear;
+          LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D);
+          Check(not HasVatGroupRule(D, VatGroupCases[G].Group), VatGroupCases[G].Group + ' passes target ' +
+            IntToStr(Ord(K)) + ': ' + string(D.ToText));
+        end;
+      finally
+        Invoice.Free;
+      end;
+      for N := 1 to VatGroupCases[G].Last do
+      begin
+        ID := VatRuleOf(VatGroupCases[G], N);
+        Invoice := TLandrixInvoice.Create;
+        try
+          FillVatGroup(Invoice, VatGroupCases[G]);
+          MutateVat(Invoice, VatGroupCases[G], N);
+          D.Clear;
+          Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), TLandrixEInvoiceString(ID), D),
+            ID + ' violated in UBL');
+          if D.Count = 1 then
+            CheckEqualsInvoiceStr(TLandrixEInvoiceString(ID), D[0].RuleID, ID + ' rule of the diagnostic');
+          if ((VatGroupCases[G].Group = 'AF') or (VatGroupCases[G].Group = 'AG')) and (N = 9) then
+            Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), TLandrixEInvoiceString(ID), nil),
+              ID + ' not tested in CII')
+          else
+            Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), TLandrixEInvoiceString(ID), nil),
+              ID + ' violated in CII');
+          D.Clear;
+          LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D);
+          Check(HasRule(D, ID), ID + ' reported by LandrixEInvoiceCheckInvoice');
+          Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXMinimum), TLandrixEInvoiceString(ID), nil),
+            ID + ' does not apply to MINIMUM');
+        finally
+          Invoice.Free;
+        end;
+      end;
+    end;
+  finally
+    D.Free;
+  end;
+end;
+
+{ Where the syntaxes differ: BR-xx-08 allows a difference below 1 in UBL
+  for S (by rate) and in CII for the other groups; BR-xx-01 in CII counts
+  two standard rated lines as enough; BR-AF-05 needs a rate above 0 in CII
+  only; BR-O-11 in CII also sees the lines; the profiles of Factur-X. }
+procedure TestVatSyntaxes;
+var
+  Invoice: TLandrixInvoice;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillVatGroup(Invoice, VatGroupCases[0]);
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := CentsValue(10099);
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-08', nil), 'UBL S: 0.99 tolerated');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-S-08', nil), 'CII S: exact');
+    { a breakdown of 0.00 at 7 %: UBL wants a line or allowance of that rate,
+      CII only the sum }
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := 0;
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 0;
+    Invoice.TaxAmountSubtotals[0].TaxPercent := 7;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-08', nil), 'UBL S: no line of the rate');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-S-08', nil), 'CII S: the sum 0 matches');
+    Invoice.TaxAmountSubtotals.Clear;
+    Invoice.InvoiceLines.AddInvoiceLine.Assign(Invoice.InvoiceLines[0]);
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-S-01', nil), 'CII S: two lines count');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-01', nil), 'UBL S: breakdown missing');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillVatGroup(Invoice, VatGroupCases[1]);
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := CentsValue(10099);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-Z-08', nil), 'UBL Z: exact');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-Z-08', nil), 'CII Z: 0.99 tolerated');
+    { 1.00 above the lines: the CEN schematron is strict, Factur-X inclusive
+      below the taxable amount }
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := 101;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-Z-08', nil), 'CEN CII Z: 1.00 above');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXEN16931), 'BR-Z-08', nil), 'Factur-X Z: 1.00 above');
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := 99;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXEN16931), 'BR-Z-08', nil), 'Factur-X Z: 1.00 below');
+    { UBL needs an invoice line for the breakdown }
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := 0;
+    Invoice.InvoiceLines.Clear;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-Z-08', nil), 'UBL Z without lines');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-Z-08', nil), 'CII Z without lines');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillVatGroup(Invoice, VatGroupCases[7]);
+    Invoice.InvoiceLines[0].TaxPercent := 0;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-AF-05', nil), 'UBL AF: rate 0');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-AF-05', nil), 'CII AF: rate 0');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillVatGroup(Invoice, VatGroupCases[6]);
+    MutateVat(Invoice, VatGroupCases[6], 12);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-O-11', nil), 'CII O-11: other line');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-O-11', nil), 'UBL O-11: breakdowns only');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXBasic), 'BR-O-12', nil), 'BASIC has BR-O-12');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXBasicWL), 'BR-O-12', nil), 'BASIC WL has no BR-O-12');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillVatGroup(Invoice, VatGroupCases[0]);
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 21;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXBasicWL), 'BR-S-09', nil), 'BASIC WL has BR-S-09');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-S-09', nil), 'EXTENDED has no BR-S-09');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-S-09', nil), 'Peppol');
+  finally
+    Invoice.Free;
+  end;
+end;
+
+{ BR-CO-09 per syntax: UBL knows SS, CII AN; EL (Greece) is valid in both.
+  BR-CO-18 in CII: the CEN schematron needs lines, Factur-X does not. }
+procedure TestVatIdentifiers;
+var
+  Invoice: TLandrixInvoice;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.AccountingSupplierParty.VATCompanyID := 'SS123';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-09', nil), 'UBL SS');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-09', nil), 'CII SS');
+    Invoice.AccountingSupplierParty.VATCompanyID := 'AN123';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-09', nil), 'UBL AN');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-09', nil), 'CII AN');
+    Invoice.AccountingSupplierParty.VATCompanyID := 'EL123';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-09', nil), 'CII EL');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-09', nil), 'UBL EL');
+    { CII also writes the invoicee and, in EXTENDED, the payee VAT identifier }
+    Invoice.InvoiceeParty.Name := 'Invoicee';
+    Invoice.InvoiceeParty.VATCompanyID := 'XX1';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-CO-09', nil), 'CII invoicee');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CO-09', nil), 'UBL has no invoicee');
+    Invoice.InvoiceeParty.Clear;
+    Invoice.PayeeParty.Name := 'Factor';
+    Invoice.PayeeParty.VATCompanyID := 'XX1';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXExtended), 'BR-CO-09', nil), 'EXTENDED payee');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXEN16931), 'BR-CO-09', nil), 'EN 16931 payee');
+    Invoice.PayeeParty.Clear;
+    Invoice.AccountingCustomerParty.VATCompanyID := 'de123';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXMinimum), 'BR-CO-09', nil), 'buyer lower case');
+    Invoice.AccountingCustomerParty.VATCompanyID := '';
+    Invoice.TaxAmountSubtotals.Clear;
+    Invoice.InvoiceLines.Clear;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-18', nil), 'CEN CII without lines');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-18', nil), 'UBL without lines');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_FXBasicWL), 'BR-CO-18', nil), 'Factur-X without lines');
+  finally
+    Invoice.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -1036,6 +1420,9 @@ begin
   RegisterTest('Check.CheckUBL', TestCheckUBL);
   RegisterTest('Check.TaxTolerance', TestTaxTolerance);
   RegisterTest('Check.Totals', TestTotals);
+  RegisterTest('Check.VatCategories', TestVatCategories);
+  RegisterTest('Check.VatSyntaxes', TestVatSyntaxes);
+  RegisterTest('Check.VatIdentifiers', TestVatIdentifiers);
 end;
 
 end.
