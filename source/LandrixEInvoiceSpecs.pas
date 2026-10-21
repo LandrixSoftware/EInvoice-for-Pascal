@@ -154,14 +154,20 @@ function LandrixEInvoiceFindSpec(const ATarget: TLandrixEInvoiceTarget;
 { Finds the entry for a read document from the local name of its root
   element (Invoice, CreditNote or CrossIndustryInvoice) and its BT-24
   identifier (ASCII case-insensitive, surrounding white space ignored).
+  The ZUGFeRD identifiers urn:zugferd.de:2p0:... that Factur-X accepts in
+  place of urn:factur-x.eu:1p0:... (MINIMUM, BASIC WL, BASIC, EXTENDED) find
+  the same entry; written is always the Factur-X identifier.
   AUsesExtension is True if the identifier is the one of the XRechnung
   extension. Returns False and an empty ASpec for an unknown combination.
   DE: Sucht den Eintrag zu einem gelesenen Dokument anhand des lokalen Namens
   des Wurzelelements (Invoice, CreditNote oder CrossIndustryInvoice) und
   seiner BT-24-Kennung (ASCII, ohne Unterscheidung von Gross- und
-  Kleinschreibung, Leerraum am Rand wird ignoriert). AUsesExtension ist
-  True, wenn es die Kennung der XRechnung-Extension ist. Liefert False und
-  ein leeres ASpec bei unbekannter Kombination. }
+  Kleinschreibung, Leerraum am Rand wird ignoriert). Die ZUGFeRD-Kennungen
+  urn:zugferd.de:2p0:..., die Factur-X anstelle von urn:factur-x.eu:1p0:...
+  annimmt (MINIMUM, BASIC WL, BASIC, EXTENDED), finden denselben Eintrag;
+  geschrieben wird immer die Factur-X-Kennung. AUsesExtension ist True, wenn
+  es die Kennung der XRechnung-Extension ist. Liefert False und ein leeres
+  ASpec bei unbekannter Kombination. }
 function LandrixEInvoiceDetectSpec(const ARootLocalName, ACustomizationID: TLandrixEInvoiceString;
   out ASpec: TLandrixEInvoiceSpec; out AUsesExtension: Boolean): Boolean;
 
@@ -588,6 +594,37 @@ begin
   Result := False;
 end;
 
+{ BT-24: Factur-X 1.09 accepts the ZUGFeRD identifiers next to its own
+  (code list 1 of the Factur-X Schematron of each profile; EN16931 has only
+  urn:cen.eu:en16931:2017).
+  DE: BT-24: Factur-X 1.09 nimmt neben den eigenen Kennungen die
+  ZUGFeRD-Kennungen an (Codeliste 1 des Factur-X-Schematrons je Profil;
+  EN16931 hat nur urn:cen.eu:en16931:2017). }
+function FacturXID(const AID: TLandrixEInvoiceString): TLandrixEInvoiceString;
+const
+  AliasCount = 4;
+  Aliases: array[0..AliasCount - 1] of TLandrixEInvoiceString = (
+    'urn:zugferd.de:2p0:minimum',
+    'urn:zugferd.de:2p0:basicwl',
+    'urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic',
+    'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended');
+  FacturX: array[0..AliasCount - 1] of TLandrixEInvoiceString = (
+    'urn:factur-x.eu:1p0:minimum',
+    'urn:factur-x.eu:1p0:basicwl',
+    'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic',
+    'urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended');
+var
+  I: Integer;
+begin
+  Result := AID;
+  for I := 0 to AliasCount - 1 do
+    if SameAsciiText(Aliases[I], AID) then
+    begin
+      Result := FacturX[I];
+      Exit;
+    end;
+end;
+
 function LandrixEInvoiceDetectSpec(const ARootLocalName, ACustomizationID: TLandrixEInvoiceString;
   out ASpec: TLandrixEInvoiceSpec; out AUsesExtension: Boolean): Boolean;
 var
@@ -598,7 +635,7 @@ begin
   Result := False;
   AUsesExtension := False;
   ASpec := EmptySpec;
-  ID := TrimSpace(ACustomizationID);
+  ID := FacturXID(TrimSpace(ACustomizationID));
   if (ARootLocalName = 'Invoice') or (ARootLocalName = 'CreditNote') then
     Syntax := esy_UBL
   else if ARootLocalName = 'CrossIndustryInvoice' then

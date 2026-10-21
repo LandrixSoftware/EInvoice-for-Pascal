@@ -316,6 +316,9 @@ Supported invoice standards are documented per release.
   (BT-91, UBL `cac:PaymentMandate/cac:PayerFinancialAccount`, CII `ram:PayerPartyDebtorFinancialAccount`)
   and UBL writes the mandate reference (BT-89), which Peppol requires (PEPPOL-EN16931-R061); the UBL
   writer dropped it before. BR-DE-30/31 treat 49 as a direct debit group.
+- The ZUGFeRD identifiers `urn:zugferd.de:2p0:...` (BT-24), which Factur-X 1.09 accepts for
+  MINIMUM, BASIC WL, BASIC and EXTENDED, are recognised when reading; written is always the
+  Factur-X identifier.
 - The CII writer also reports content that the schema leaves optional but the Factur-X profile
   requires below an existing parent, e.g. the invoiced quantity, its unit code, the net price and
   the line total of a line in BASIC (BR-22, BR-23, BR-26, BR-24). The profile pruning treats blank

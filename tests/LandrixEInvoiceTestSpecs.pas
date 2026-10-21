@@ -159,7 +159,20 @@ begin
   Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic',
     Spec, Ext) and (Spec.Target.Profile = epr_Basic), 'Factur-X BASIC');
   Check(not LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:zugferd.de:2p0:basic', Spec, Ext),
-    'ZUGFeRD 2.0 identifier not recognised');
+    'BASIC identifier without the EN 16931 prefix not recognised');
+  Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:zugferd.de:2p0:minimum', Spec, Ext) and
+    (Spec.Target.Standard = est_FacturX) and (Spec.Target.Profile = epr_Minimum), 'ZUGFeRD MINIMUM identifier');
+  Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', ' URN:ZUGFERD.DE:2P0:BASICWL ', Spec, Ext) and
+    (Spec.Target.Profile = epr_BasicWL), 'ZUGFeRD BASIC WL identifier, case and white space');
+  Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice', 'urn:cen.eu:en16931:2017#compliant#urn:zugferd.de:2p0:basic',
+    Spec, Ext) and (Spec.Target.Profile = epr_Basic), 'ZUGFeRD BASIC identifier');
+  Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice',
+    'urn:cen.eu:en16931:2017#conformant#urn:zugferd.de:2p0:extended', Spec, Ext) and
+    (Spec.Target.Profile = epr_Extended) and not Ext, 'ZUGFeRD EXTENDED identifier');
+  CheckEqualsInvoiceStr('urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended', Spec.CustomizationID,
+    'the entry keeps the Factur-X identifier');
+  Check(not LandrixEInvoiceDetectSpec('Invoice', 'urn:zugferd.de:2p0:minimum', Spec, Ext),
+    'ZUGFeRD identifier in UBL');
   Check(LandrixEInvoiceDetectSpec('CrossIndustryInvoice',
     '  urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0 ',
     Spec, Ext), 'XRechnung CII with extension, surrounding white space');
