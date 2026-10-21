@@ -121,23 +121,26 @@ function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandr
 { Checks the required content of a CII syntax model as the CII writer does
   when it writes ACII for ASpec: what the schema requires (if the Factur-X
   profile of ASpec contains it) and what the profile requires below an
-  existing parent (LandrixEInvoiceCIIRequiredBelowParent). Adds the
-  writer's diagnostics (edk_MissingElement and others) to ADiagnostics (nil:
-  discarded) and returns the number with severity eds_Error. Content the
-  profile does not allow is not reported (see LandrixEInvoicePruneCII);
-  a parent that exists only through such content can report its required
-  children. ASpec must not be a UBL specification (ELandrixEInvoiceError).
+  existing parent (LandrixEInvoiceCIIRequiredBelowParent). Content the
+  Factur-X profile does not allow is an error (edk_NotAllowed,
+  LandrixEInvoiceCheckCIIProfile; the model is not changed). Adds these and
+  the writer's diagnostics (edk_MissingElement and others) to ADiagnostics
+  (nil: discarded) and returns the number with severity eds_Error. A
+  parent that exists only through such content can also report its
+  required children. ASpec must not be a UBL specification
+  (ELandrixEInvoiceError).
   DE: Prueft den Pflichtinhalt eines CII-Syntaxmodells so, wie der
   CII-Writer es beim Schreiben von ACII fuer ASpec tut: was das Schema
   verlangt (wenn das Factur-X-Profil von ASpec es enthaelt) und was das
   Profil unter einem vorhandenen Elternelement verlangt
-  (LandrixEInvoiceCIIRequiredBelowParent). Fuegt die Meldungen des Writers
-  (edk_MissingElement und andere) an ADiagnostics an (nil: verworfen) und
-  liefert die Anzahl mit Schwere eds_Error. Inhalt, den das Profil nicht
-  erlaubt, wird nicht gemeldet (siehe LandrixEInvoicePruneCII); ein
-  Elternelement, das nur durch solchen Inhalt existiert, kann seine
-  Pflichtkinder melden. ASpec darf keine UBL-Spezifikation sein
-  (ELandrixEInvoiceError). }
+  (LandrixEInvoiceCIIRequiredBelowParent). Inhalt, den das
+  Factur-X-Profil nicht erlaubt, ist ein Fehler (edk_NotAllowed,
+  LandrixEInvoiceCheckCIIProfile; das Modell wird nicht geaendert). Fuegt
+  diese und die Meldungen des Writers (edk_MissingElement und andere) an
+  ADiagnostics an (nil: verworfen) und liefert die Anzahl mit Schwere
+  eds_Error. Ein Elternelement, das nur durch solchen Inhalt existiert,
+  kann zusaetzlich seine Pflichtkinder melden. ASpec darf keine
+  UBL-Spezifikation sein (ELandrixEInvoiceError). }
 function LandrixEInvoiceCheckCII(ACII: TLandrixCIIInvoice; const ASpec: TLandrixEInvoiceSpec;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 
@@ -165,6 +168,7 @@ uses
   LandrixEInvoiceRules,
   LandrixEInvoiceCalc,
   LandrixEInvoiceCIIWriter,
+  LandrixEInvoiceCIIProfiles,
   LandrixEInvoiceUBLWriter;
 
 type
@@ -1625,7 +1629,10 @@ begin
     Start := D.Count;
     case AKind of
       smk_CII:
-        LandrixEInvoiceWriteCII(TLandrixCIIInvoice(AModel), W, D, ASpec.Target.Profile);
+        begin
+          LandrixEInvoiceCheckCIIProfile(TLandrixCIIInvoice(AModel), ASpec.Target.Profile, D);
+          LandrixEInvoiceWriteCII(TLandrixCIIInvoice(AModel), W, D, ASpec.Target.Profile);
+        end;
       smk_UBLInvoice:
         LandrixEInvoiceWriteUBLInvoice(TLandrixUBLInvoice(AModel), W, D);
       smk_UBLCreditNote:

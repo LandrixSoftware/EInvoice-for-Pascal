@@ -867,6 +867,16 @@ begin
     CII := LandrixEInvoiceInvoiceToCII(Invoice, SpecOf(tk_FXBasic), nil);
     try
       CheckEquals(0, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXBasic), D), 'complete: ' + string(D.ToText));
+      { content set in the model that the profile does not contain is an
+        error; the model is not changed }
+      CII.ExchangedDocument.Name := 'EXTENDED only';
+      D.Clear;
+      CheckEquals(1, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXBasic), D), 'BASIC with document name: ' +
+        string(D.ToText));
+      CheckEquals(1, D.CountOf(edk_NotAllowed), 'name reported');
+      CheckEqualsInvoiceStr('EXTENDED only', CII.ExchangedDocument.Name, 'model unchanged');
+      CheckEquals(0, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXExtended), nil), 'allowed in EXTENDED');
+      CII.ExchangedDocument.Name := '';
       { without quantity the line delivery is empty and not written; BASIC
         requires it below the line }
       Quantity := '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/' +

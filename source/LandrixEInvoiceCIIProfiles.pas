@@ -106,6 +106,20 @@ function LandrixEInvoiceCIIRequiredBelowParent(const APath: TLandrixEInvoiceStri
 function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 
+{ Reports what LandrixEInvoicePruneCII would remove from AInvoice (not nil)
+  without changing it: each path at the highest element the Factur-X
+  profile AProfile does not contain, once with the number of occurrences
+  (edk_NotAllowed, error) in ADiagnostics (nil: discarded). Returns the
+  number of occurrences; 0 for profiles outside MINIMUM .. EN16931.
+  DE: Meldet, was LandrixEInvoicePruneCII aus AInvoice (nicht nil) entfernen
+  wuerde, ohne es zu aendern: jeden Pfad am hoechsten Element, das das
+  Factur-X-Profil AProfile nicht enthaelt, einmal mit der Anzahl der
+  Vorkommen (edk_NotAllowed, Fehler) in ADiagnostics (nil: verworfen).
+  Liefert die Anzahl der Vorkommen; 0 fuer Profile ausserhalb von MINIMUM ..
+  EN16931. }
+function LandrixEInvoiceCheckCIIProfile(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+
 implementation
 
 uses
@@ -3871,6 +3885,7 @@ type
   TCIIPruner = class(TObject)
   private
     FProfile: TLandrixEInvoiceProfile;
+    FRemove: Boolean;
     FPaths: array of TLandrixEInvoiceString;
     FCounts: array of Integer;
     FTotal: Integer;
@@ -4068,7 +4083,7 @@ function PruneAllowanceChargeReasonCodeFields(APruner: TCIIPruner; var R: TLandr
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.ListID <> '') and not APruner.Keep(APath + '/@listID', 1) then
+  if (R.ListID <> '') and not APruner.Keep(APath + '/@listID', 1) and APruner.FRemove then
   begin
     R.ListID := '';
     Result := True;
@@ -4080,7 +4095,7 @@ function PruneAmountFields(APruner: TCIIPruner; var R: TLandrixCIIAmount;
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.CurrencyID <> '') and not APruner.Keep(APath + '/@currencyID', 1) then
+  if (R.CurrencyID <> '') and not APruner.Keep(APath + '/@currencyID', 1) and APruner.FRemove then
   begin
     R.CurrencyID := '';
     Result := True;
@@ -4092,12 +4107,12 @@ function PruneBinaryObjectFields(APruner: TCIIPruner; var R: TLandrixCIIBinaryOb
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.MimeCode <> '') and not APruner.Keep(APath + '/@mimeCode', 1) then
+  if (R.MimeCode <> '') and not APruner.Keep(APath + '/@mimeCode', 1) and APruner.FRemove then
   begin
     R.MimeCode := '';
     Result := True;
   end;
-  if (R.Filename <> '') and not APruner.Keep(APath + '/@filename', 1) then
+  if (R.Filename <> '') and not APruner.Keep(APath + '/@filename', 1) and APruner.FRemove then
   begin
     R.Filename := '';
     Result := True;
@@ -4109,12 +4124,12 @@ function PruneCodeFields(APruner: TCIIPruner; var R: TLandrixCIICode;
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.ListID <> '') and not APruner.Keep(APath + '/@listID', 1) then
+  if (R.ListID <> '') and not APruner.Keep(APath + '/@listID', 1) and APruner.FRemove then
   begin
     R.ListID := '';
     Result := True;
   end;
-  if (R.ListVersionID <> '') and not APruner.Keep(APath + '/@listVersionID', 1) then
+  if (R.ListVersionID <> '') and not APruner.Keep(APath + '/@listVersionID', 1) and APruner.FRemove then
   begin
     R.ListVersionID := '';
     Result := True;
@@ -4126,7 +4141,7 @@ function PruneDateFields(APruner: TCIIPruner; var R: TLandrixCIIDate;
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.Format <> '') and not APruner.Keep(APath + '/udt:DateString/@format', 1) then
+  if (R.Format <> '') and not APruner.Keep(APath + '/udt:DateString/@format', 1) and APruner.FRemove then
   begin
     R.Format := '';
     Result := True;
@@ -4138,7 +4153,7 @@ function PruneDateTimeFields(APruner: TCIIPruner; var R: TLandrixCIIDateTime;
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.Format <> '') and not APruner.Keep(APath + '/udt:DateTimeString/@format', 1) then
+  if (R.Format <> '') and not APruner.Keep(APath + '/udt:DateTimeString/@format', 1) and APruner.FRemove then
   begin
     R.Format := '';
     Result := True;
@@ -4150,7 +4165,7 @@ function PruneFormattedDateTimeFields(APruner: TCIIPruner; var R: TLandrixCIIFor
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.Format <> '') and not APruner.Keep(APath + '/qdt:DateTimeString/@format', 1) then
+  if (R.Format <> '') and not APruner.Keep(APath + '/qdt:DateTimeString/@format', 1) and APruner.FRemove then
   begin
     R.Format := '';
     Result := True;
@@ -4162,7 +4177,7 @@ function PruneIDFields(APruner: TCIIPruner; var R: TLandrixCIIID;
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.SchemeID <> '') and not APruner.Keep(APath + '/@schemeID', 1) then
+  if (R.SchemeID <> '') and not APruner.Keep(APath + '/@schemeID', 1) and APruner.FRemove then
   begin
     R.SchemeID := '';
     Result := True;
@@ -4174,7 +4189,7 @@ function PruneMeasureFields(APruner: TCIIPruner; var R: TLandrixCIIMeasure;
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.UnitCode <> '') and not APruner.Keep(APath + '/@unitCode', 1) then
+  if (R.UnitCode <> '') and not APruner.Keep(APath + '/@unitCode', 1) and APruner.FRemove then
   begin
     R.UnitCode := '';
     Result := True;
@@ -4186,7 +4201,7 @@ function PruneQuantityFields(APruner: TCIIPruner; var R: TLandrixCIIQuantity;
   const APath: TLandrixEInvoiceString): Boolean;
 begin
   Result := False;
-  if (R.UnitCode <> '') and not APruner.Keep(APath + '/@unitCode', 1) then
+  if (R.UnitCode <> '') and not APruner.Keep(APath + '/@unitCode', 1) and APruner.FRemove then
   begin
     R.UnitCode := '';
     Result := True;
@@ -4200,23 +4215,23 @@ begin
   if not CIIAmountIsEmpty(AObject.PaidAmount) then
     if Keep(APath + '/ram:PaidAmount', 1) then
       PruneAmountFields(Self, AObject.PaidAmount, APath + '/ram:PaidAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.PaidAmount);
   if not CIIFormattedDateTimeIsEmpty(AObject.FormattedReceivedDateTime) then
     if Keep(APath + '/ram:FormattedReceivedDateTime', 1) then
       PruneFormattedDateTimeFields(Self, AObject.FormattedReceivedDateTime, APath + '/ram:FormattedReceivedDateTime')
-    else
+    else if FRemove then
       CIIFormattedDateTimeClear(AObject.FormattedReceivedDateTime);
   if AObject.IncludedTradeTax.Count > 0 then
     if Keep(APath + '/ram:IncludedTradeTax', Integer(AObject.IncludedTradeTax.Count)) then
       for I := 0 to AObject.IncludedTradeTax.Count - 1 do
         PruneTradeTax(AObject.IncludedTradeTax[I], APath + '/ram:IncludedTradeTax')
-    else
+    else if FRemove then
       AObject.IncludedTradeTax.Clear;
   if not AObject.InvoiceSpecifiedReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:InvoiceSpecifiedReferencedDocument', 1) then
       PruneReferencedDocument(AObject.InvoiceSpecifiedReferencedDocument, APath + '/ram:InvoiceSpecifiedReferencedDocument')
-    else
+    else if FRemove then
       AObject.InvoiceSpecifiedReferencedDocument.Clear;
 end;
 
@@ -4225,14 +4240,14 @@ begin
   if not CIIIDIsEmpty(AObject.IBANID) then
     if Keep(APath + '/ram:IBANID', 1) then
       PruneIDFields(Self, AObject.IBANID, APath + '/ram:IBANID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.IBANID);
-  if not LandrixEInvoiceIsBlank(AObject.AccountName) and not Keep(APath + '/ram:AccountName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.AccountName) and not Keep(APath + '/ram:AccountName', 1) and FRemove then
     AObject.AccountName := '';
   if not CIIIDIsEmpty(AObject.ProprietaryID) then
     if Keep(APath + '/ram:ProprietaryID', 1) then
       PruneIDFields(Self, AObject.ProprietaryID, APath + '/ram:ProprietaryID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ProprietaryID);
 end;
 
@@ -4241,7 +4256,7 @@ begin
   if not CIIIDIsEmpty(AObject.BICID) then
     if Keep(APath + '/ram:BICID', 1) then
       PruneIDFields(Self, AObject.BICID, APath + '/ram:BICID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.BICID);
 end;
 
@@ -4250,9 +4265,9 @@ begin
   if not CIIIDIsEmpty(AObject.IBANID) then
     if Keep(APath + '/ram:IBANID', 1) then
       PruneIDFields(Self, AObject.IBANID, APath + '/ram:IBANID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.IBANID);
-  if not LandrixEInvoiceIsBlank(AObject.AccountName) and not Keep(APath + '/ram:AccountName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.AccountName) and not Keep(APath + '/ram:AccountName', 1) and FRemove then
     AObject.AccountName := '';
 end;
 
@@ -4261,7 +4276,7 @@ begin
   if not CIIIDIsEmpty(AObject.BICID) then
     if Keep(APath + '/ram:BICID', 1) then
       PruneIDFields(Self, AObject.BICID, APath + '/ram:BICID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.BICID);
 end;
 
@@ -4270,7 +4285,7 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
 end;
 
@@ -4281,25 +4296,25 @@ begin
   if not CIIIDIsEmpty(AObject.LineID) then
     if Keep(APath + '/ram:LineID', 1) then
       PruneIDFields(Self, AObject.LineID, APath + '/ram:LineID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.LineID);
   if not CIIIDIsEmpty(AObject.ParentLineID) then
     if Keep(APath + '/ram:ParentLineID', 1) then
       PruneIDFields(Self, AObject.ParentLineID, APath + '/ram:ParentLineID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ParentLineID);
-  if not LandrixEInvoiceIsBlank(AObject.LineStatusCode) and not Keep(APath + '/ram:LineStatusCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineStatusCode) and not Keep(APath + '/ram:LineStatusCode', 1) and FRemove then
     AObject.LineStatusCode := '';
   if not CIICodeIsEmpty(AObject.LineStatusReasonCode) then
     if Keep(APath + '/ram:LineStatusReasonCode', 1) then
       PruneCodeFields(Self, AObject.LineStatusReasonCode, APath + '/ram:LineStatusReasonCode')
-    else
+    else if FRemove then
       CIICodeClear(AObject.LineStatusReasonCode);
   if AObject.IncludedNote.Count > 0 then
     if Keep(APath + '/ram:IncludedNote', Integer(AObject.IncludedNote.Count)) then
       for I := 0 to AObject.IncludedNote.Count - 1 do
         PruneNote(AObject.IncludedNote[I], APath + '/ram:IncludedNote')
-    else
+    else if FRemove then
       AObject.IncludedNote.Clear;
 end;
 
@@ -4310,61 +4325,61 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
-  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) and FRemove then
     AObject.Name := '';
-  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) and FRemove then
     AObject.TypeCode := '';
   if not CIIDateTimeIsEmpty(AObject.IssueDateTime) then
     if Keep(APath + '/ram:IssueDateTime', 1) then
       PruneDateTimeFields(Self, AObject.IssueDateTime, APath + '/ram:IssueDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.IssueDateTime);
-  if not LandrixEInvoiceIsBlank(AObject.CopyIndicator) and not Keep(APath + '/ram:CopyIndicator', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CopyIndicator) and not Keep(APath + '/ram:CopyIndicator', 1) and FRemove then
     AObject.CopyIndicator := '';
   if not CIIIDIsEmpty(AObject.LanguageID) then
     if Keep(APath + '/ram:LanguageID', 1) then
       PruneIDFields(Self, AObject.LanguageID, APath + '/ram:LanguageID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.LanguageID);
   if AObject.IncludedNote.Count > 0 then
     if Keep(APath + '/ram:IncludedNote', Integer(AObject.IncludedNote.Count)) then
       for I := 0 to AObject.IncludedNote.Count - 1 do
         PruneNote(AObject.IncludedNote[I], APath + '/ram:IncludedNote')
-    else
+    else if FRemove then
       AObject.IncludedNote.Clear;
   if not AObject.EffectiveSpecifiedPeriod.IsEmpty then
     if Keep(APath + '/ram:EffectiveSpecifiedPeriod', 1) then
       PruneSpecifiedPeriod(AObject.EffectiveSpecifiedPeriod, APath + '/ram:EffectiveSpecifiedPeriod')
-    else
+    else if FRemove then
       AObject.EffectiveSpecifiedPeriod.Clear;
 end;
 
 procedure TCIIPruner.PruneExchangedDocumentContext(AObject: TLandrixCIIExchangedDocumentContext; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.TestIndicator) and not Keep(APath + '/ram:TestIndicator', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TestIndicator) and not Keep(APath + '/ram:TestIndicator', 1) and FRemove then
     AObject.TestIndicator := '';
   if not AObject.BusinessProcessSpecifiedDocumentContextParameter.IsEmpty then
     if Keep(APath + '/ram:BusinessProcessSpecifiedDocumentContextParameter', 1) then
       PruneDocumentContextParameter(AObject.BusinessProcessSpecifiedDocumentContextParameter, APath + '/ram:BusinessProcessSpecifiedDocumentContextParameter')
-    else
+    else if FRemove then
       AObject.BusinessProcessSpecifiedDocumentContextParameter.Clear;
   if not AObject.GuidelineSpecifiedDocumentContextParameter.IsEmpty then
     if Keep(APath + '/ram:GuidelineSpecifiedDocumentContextParameter', 1) then
       PruneDocumentContextParameter(AObject.GuidelineSpecifiedDocumentContextParameter, APath + '/ram:GuidelineSpecifiedDocumentContextParameter')
-    else
+    else if FRemove then
       AObject.GuidelineSpecifiedDocumentContextParameter.Clear;
 end;
 
 procedure TCIIPruner.PruneFinancialAdjustment(AObject: TLandrixCIIFinancialAdjustment; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.Reason) and not Keep(APath + '/ram:Reason', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Reason) and not Keep(APath + '/ram:Reason', 1) and FRemove then
     AObject.Reason := '';
   if not CIIAmountIsEmpty(AObject.ActualAmount) then
     if Keep(APath + '/ram:ActualAmount', 1) then
       PruneAmountFields(Self, AObject.ActualAmount, APath + '/ram:ActualAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.ActualAmount);
 end;
 
@@ -4372,84 +4387,84 @@ procedure TCIIPruner.PruneHeaderTradeAgreement(AObject: TLandrixCIIHeaderTradeAg
 var
   I: TLandrixEInvoiceListIndex;
 begin
-  if not LandrixEInvoiceIsBlank(AObject.BuyerReference) and not Keep(APath + '/ram:BuyerReference', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.BuyerReference) and not Keep(APath + '/ram:BuyerReference', 1) and FRemove then
     AObject.BuyerReference := '';
   if not AObject.SellerTradeParty.IsEmpty then
     if Keep(APath + '/ram:SellerTradeParty', 1) then
       PruneTradeParty(AObject.SellerTradeParty, APath + '/ram:SellerTradeParty')
-    else
+    else if FRemove then
       AObject.SellerTradeParty.Clear;
   if not AObject.BuyerTradeParty.IsEmpty then
     if Keep(APath + '/ram:BuyerTradeParty', 1) then
       PruneTradeParty(AObject.BuyerTradeParty, APath + '/ram:BuyerTradeParty')
-    else
+    else if FRemove then
       AObject.BuyerTradeParty.Clear;
   if not AObject.SalesAgentTradeParty.IsEmpty then
     if Keep(APath + '/ram:SalesAgentTradeParty', 1) then
       PruneTradeParty(AObject.SalesAgentTradeParty, APath + '/ram:SalesAgentTradeParty')
-    else
+    else if FRemove then
       AObject.SalesAgentTradeParty.Clear;
   if not AObject.BuyerTaxRepresentativeTradeParty.IsEmpty then
     if Keep(APath + '/ram:BuyerTaxRepresentativeTradeParty', 1) then
       PruneTradeParty(AObject.BuyerTaxRepresentativeTradeParty, APath + '/ram:BuyerTaxRepresentativeTradeParty')
-    else
+    else if FRemove then
       AObject.BuyerTaxRepresentativeTradeParty.Clear;
   if not AObject.SellerTaxRepresentativeTradeParty.IsEmpty then
     if Keep(APath + '/ram:SellerTaxRepresentativeTradeParty', 1) then
       PruneTradeParty(AObject.SellerTaxRepresentativeTradeParty, APath + '/ram:SellerTaxRepresentativeTradeParty')
-    else
+    else if FRemove then
       AObject.SellerTaxRepresentativeTradeParty.Clear;
   if not AObject.ProductEndUserTradeParty.IsEmpty then
     if Keep(APath + '/ram:ProductEndUserTradeParty', 1) then
       PruneTradeParty(AObject.ProductEndUserTradeParty, APath + '/ram:ProductEndUserTradeParty')
-    else
+    else if FRemove then
       AObject.ProductEndUserTradeParty.Clear;
   if not AObject.ApplicableTradeDeliveryTerms.IsEmpty then
     if Keep(APath + '/ram:ApplicableTradeDeliveryTerms', 1) then
       PruneTradeDeliveryTerms(AObject.ApplicableTradeDeliveryTerms, APath + '/ram:ApplicableTradeDeliveryTerms')
-    else
+    else if FRemove then
       AObject.ApplicableTradeDeliveryTerms.Clear;
   if not AObject.SellerOrderReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:SellerOrderReferencedDocument', 1) then
       PruneReferencedDocument(AObject.SellerOrderReferencedDocument, APath + '/ram:SellerOrderReferencedDocument')
-    else
+    else if FRemove then
       AObject.SellerOrderReferencedDocument.Clear;
   if not AObject.BuyerOrderReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:BuyerOrderReferencedDocument', 1) then
       PruneReferencedDocument(AObject.BuyerOrderReferencedDocument, APath + '/ram:BuyerOrderReferencedDocument')
-    else
+    else if FRemove then
       AObject.BuyerOrderReferencedDocument.Clear;
   if not AObject.QuotationReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:QuotationReferencedDocument', 1) then
       PruneReferencedDocument(AObject.QuotationReferencedDocument, APath + '/ram:QuotationReferencedDocument')
-    else
+    else if FRemove then
       AObject.QuotationReferencedDocument.Clear;
   if not AObject.ContractReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:ContractReferencedDocument', 1) then
       PruneReferencedDocument(AObject.ContractReferencedDocument, APath + '/ram:ContractReferencedDocument')
-    else
+    else if FRemove then
       AObject.ContractReferencedDocument.Clear;
   if AObject.AdditionalReferencedDocument.Count > 0 then
     if Keep(APath + '/ram:AdditionalReferencedDocument', Integer(AObject.AdditionalReferencedDocument.Count)) then
       for I := 0 to AObject.AdditionalReferencedDocument.Count - 1 do
         PruneReferencedDocument(AObject.AdditionalReferencedDocument[I], APath + '/ram:AdditionalReferencedDocument')
-    else
+    else if FRemove then
       AObject.AdditionalReferencedDocument.Clear;
   if not AObject.BuyerAgentTradeParty.IsEmpty then
     if Keep(APath + '/ram:BuyerAgentTradeParty', 1) then
       PruneTradeParty(AObject.BuyerAgentTradeParty, APath + '/ram:BuyerAgentTradeParty')
-    else
+    else if FRemove then
       AObject.BuyerAgentTradeParty.Clear;
   if not AObject.SpecifiedProcuringProject.IsEmpty then
     if Keep(APath + '/ram:SpecifiedProcuringProject', 1) then
       PruneProcuringProject(AObject.SpecifiedProcuringProject, APath + '/ram:SpecifiedProcuringProject')
-    else
+    else if FRemove then
       AObject.SpecifiedProcuringProject.Clear;
   if AObject.UltimateCustomerOrderReferencedDocument.Count > 0 then
     if Keep(APath + '/ram:UltimateCustomerOrderReferencedDocument', Integer(AObject.UltimateCustomerOrderReferencedDocument.Count)) then
       for I := 0 to AObject.UltimateCustomerOrderReferencedDocument.Count - 1 do
         PruneReferencedDocument(AObject.UltimateCustomerOrderReferencedDocument[I], APath + '/ram:UltimateCustomerOrderReferencedDocument')
-    else
+    else if FRemove then
       AObject.UltimateCustomerOrderReferencedDocument.Clear;
 end;
 
@@ -4458,42 +4473,42 @@ begin
   if not AObject.RelatedSupplyChainConsignment.IsEmpty then
     if Keep(APath + '/ram:RelatedSupplyChainConsignment', 1) then
       PruneSupplyChainConsignment(AObject.RelatedSupplyChainConsignment, APath + '/ram:RelatedSupplyChainConsignment')
-    else
+    else if FRemove then
       AObject.RelatedSupplyChainConsignment.Clear;
   if not AObject.ShipToTradeParty.IsEmpty then
     if Keep(APath + '/ram:ShipToTradeParty', 1) then
       PruneTradeParty(AObject.ShipToTradeParty, APath + '/ram:ShipToTradeParty')
-    else
+    else if FRemove then
       AObject.ShipToTradeParty.Clear;
   if not AObject.UltimateShipToTradeParty.IsEmpty then
     if Keep(APath + '/ram:UltimateShipToTradeParty', 1) then
       PruneTradeParty(AObject.UltimateShipToTradeParty, APath + '/ram:UltimateShipToTradeParty')
-    else
+    else if FRemove then
       AObject.UltimateShipToTradeParty.Clear;
   if not AObject.ShipFromTradeParty.IsEmpty then
     if Keep(APath + '/ram:ShipFromTradeParty', 1) then
       PruneTradeParty(AObject.ShipFromTradeParty, APath + '/ram:ShipFromTradeParty')
-    else
+    else if FRemove then
       AObject.ShipFromTradeParty.Clear;
   if not AObject.ActualDeliverySupplyChainEvent.IsEmpty then
     if Keep(APath + '/ram:ActualDeliverySupplyChainEvent', 1) then
       PruneSupplyChainEvent(AObject.ActualDeliverySupplyChainEvent, APath + '/ram:ActualDeliverySupplyChainEvent')
-    else
+    else if FRemove then
       AObject.ActualDeliverySupplyChainEvent.Clear;
   if not AObject.DespatchAdviceReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:DespatchAdviceReferencedDocument', 1) then
       PruneReferencedDocument(AObject.DespatchAdviceReferencedDocument, APath + '/ram:DespatchAdviceReferencedDocument')
-    else
+    else if FRemove then
       AObject.DespatchAdviceReferencedDocument.Clear;
   if not AObject.ReceivingAdviceReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:ReceivingAdviceReferencedDocument', 1) then
       PruneReferencedDocument(AObject.ReceivingAdviceReferencedDocument, APath + '/ram:ReceivingAdviceReferencedDocument')
-    else
+    else if FRemove then
       AObject.ReceivingAdviceReferencedDocument.Clear;
   if not AObject.DeliveryNoteReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:DeliveryNoteReferencedDocument', 1) then
       PruneReferencedDocument(AObject.DeliveryNoteReferencedDocument, APath + '/ram:DeliveryNoteReferencedDocument')
-    else
+    else if FRemove then
       AObject.DeliveryNoteReferencedDocument.Clear;
 end;
 
@@ -4504,104 +4519,104 @@ begin
   if not CIIIDIsEmpty(AObject.CreditorReferenceID) then
     if Keep(APath + '/ram:CreditorReferenceID', 1) then
       PruneIDFields(Self, AObject.CreditorReferenceID, APath + '/ram:CreditorReferenceID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.CreditorReferenceID);
-  if not LandrixEInvoiceIsBlank(AObject.PaymentReference) and not Keep(APath + '/ram:PaymentReference', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.PaymentReference) and not Keep(APath + '/ram:PaymentReference', 1) and FRemove then
     AObject.PaymentReference := '';
-  if not LandrixEInvoiceIsBlank(AObject.TaxCurrencyCode) and not Keep(APath + '/ram:TaxCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TaxCurrencyCode) and not Keep(APath + '/ram:TaxCurrencyCode', 1) and FRemove then
     AObject.TaxCurrencyCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.InvoiceCurrencyCode) and not Keep(APath + '/ram:InvoiceCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.InvoiceCurrencyCode) and not Keep(APath + '/ram:InvoiceCurrencyCode', 1) and FRemove then
     AObject.InvoiceCurrencyCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.InvoiceIssuerReference) and not Keep(APath + '/ram:InvoiceIssuerReference', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.InvoiceIssuerReference) and not Keep(APath + '/ram:InvoiceIssuerReference', 1) and FRemove then
     AObject.InvoiceIssuerReference := '';
   if not AObject.InvoicerTradeParty.IsEmpty then
     if Keep(APath + '/ram:InvoicerTradeParty', 1) then
       PruneTradeParty(AObject.InvoicerTradeParty, APath + '/ram:InvoicerTradeParty')
-    else
+    else if FRemove then
       AObject.InvoicerTradeParty.Clear;
   if not AObject.InvoiceeTradeParty.IsEmpty then
     if Keep(APath + '/ram:InvoiceeTradeParty', 1) then
       PruneTradeParty(AObject.InvoiceeTradeParty, APath + '/ram:InvoiceeTradeParty')
-    else
+    else if FRemove then
       AObject.InvoiceeTradeParty.Clear;
   if not AObject.PayeeTradeParty.IsEmpty then
     if Keep(APath + '/ram:PayeeTradeParty', 1) then
       PruneTradeParty(AObject.PayeeTradeParty, APath + '/ram:PayeeTradeParty')
-    else
+    else if FRemove then
       AObject.PayeeTradeParty.Clear;
   if not AObject.PayerTradeParty.IsEmpty then
     if Keep(APath + '/ram:PayerTradeParty', 1) then
       PruneTradeParty(AObject.PayerTradeParty, APath + '/ram:PayerTradeParty')
-    else
+    else if FRemove then
       AObject.PayerTradeParty.Clear;
   if not AObject.TaxApplicableTradeCurrencyExchange.IsEmpty then
     if Keep(APath + '/ram:TaxApplicableTradeCurrencyExchange', 1) then
       PruneTradeCurrencyExchange(AObject.TaxApplicableTradeCurrencyExchange, APath + '/ram:TaxApplicableTradeCurrencyExchange')
-    else
+    else if FRemove then
       AObject.TaxApplicableTradeCurrencyExchange.Clear;
   if AObject.SpecifiedTradeSettlementPaymentMeans.Count > 0 then
     if Keep(APath + '/ram:SpecifiedTradeSettlementPaymentMeans', Integer(AObject.SpecifiedTradeSettlementPaymentMeans.Count)) then
       for I := 0 to AObject.SpecifiedTradeSettlementPaymentMeans.Count - 1 do
         PruneTradeSettlementPaymentMeans(AObject.SpecifiedTradeSettlementPaymentMeans[I], APath + '/ram:SpecifiedTradeSettlementPaymentMeans')
-    else
+    else if FRemove then
       AObject.SpecifiedTradeSettlementPaymentMeans.Clear;
   if AObject.ApplicableTradeTax.Count > 0 then
     if Keep(APath + '/ram:ApplicableTradeTax', Integer(AObject.ApplicableTradeTax.Count)) then
       for I := 0 to AObject.ApplicableTradeTax.Count - 1 do
         PruneTradeTax(AObject.ApplicableTradeTax[I], APath + '/ram:ApplicableTradeTax')
-    else
+    else if FRemove then
       AObject.ApplicableTradeTax.Clear;
   if not AObject.BillingSpecifiedPeriod.IsEmpty then
     if Keep(APath + '/ram:BillingSpecifiedPeriod', 1) then
       PruneSpecifiedPeriod(AObject.BillingSpecifiedPeriod, APath + '/ram:BillingSpecifiedPeriod')
-    else
+    else if FRemove then
       AObject.BillingSpecifiedPeriod.Clear;
   if AObject.SpecifiedTradeAllowanceCharge.Count > 0 then
     if Keep(APath + '/ram:SpecifiedTradeAllowanceCharge', Integer(AObject.SpecifiedTradeAllowanceCharge.Count)) then
       for I := 0 to AObject.SpecifiedTradeAllowanceCharge.Count - 1 do
         PruneTradeAllowanceCharge(AObject.SpecifiedTradeAllowanceCharge[I], APath + '/ram:SpecifiedTradeAllowanceCharge')
-    else
+    else if FRemove then
       AObject.SpecifiedTradeAllowanceCharge.Clear;
   if AObject.SpecifiedLogisticsServiceCharge.Count > 0 then
     if Keep(APath + '/ram:SpecifiedLogisticsServiceCharge', Integer(AObject.SpecifiedLogisticsServiceCharge.Count)) then
       for I := 0 to AObject.SpecifiedLogisticsServiceCharge.Count - 1 do
         PruneLogisticsServiceCharge(AObject.SpecifiedLogisticsServiceCharge[I], APath + '/ram:SpecifiedLogisticsServiceCharge')
-    else
+    else if FRemove then
       AObject.SpecifiedLogisticsServiceCharge.Clear;
   if AObject.SpecifiedTradePaymentTerms.Count > 0 then
     if Keep(APath + '/ram:SpecifiedTradePaymentTerms', Integer(AObject.SpecifiedTradePaymentTerms.Count)) then
       for I := 0 to AObject.SpecifiedTradePaymentTerms.Count - 1 do
         PruneTradePaymentTerms(AObject.SpecifiedTradePaymentTerms[I], APath + '/ram:SpecifiedTradePaymentTerms')
-    else
+    else if FRemove then
       AObject.SpecifiedTradePaymentTerms.Clear;
   if not AObject.SpecifiedTradeSettlementHeaderMonetarySummation.IsEmpty then
     if Keep(APath + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation', 1) then
       PruneTradeSettlementHeaderMonetarySummation(AObject.SpecifiedTradeSettlementHeaderMonetarySummation, APath + '/ram:SpecifiedTradeSettlementHeaderMonetarySummation')
-    else
+    else if FRemove then
       AObject.SpecifiedTradeSettlementHeaderMonetarySummation.Clear;
   if AObject.SpecifiedFinancialAdjustment.Count > 0 then
     if Keep(APath + '/ram:SpecifiedFinancialAdjustment', Integer(AObject.SpecifiedFinancialAdjustment.Count)) then
       for I := 0 to AObject.SpecifiedFinancialAdjustment.Count - 1 do
         PruneFinancialAdjustment(AObject.SpecifiedFinancialAdjustment[I], APath + '/ram:SpecifiedFinancialAdjustment')
-    else
+    else if FRemove then
       AObject.SpecifiedFinancialAdjustment.Clear;
   if AObject.InvoiceReferencedDocument.Count > 0 then
     if Keep(APath + '/ram:InvoiceReferencedDocument', Integer(AObject.InvoiceReferencedDocument.Count)) then
       for I := 0 to AObject.InvoiceReferencedDocument.Count - 1 do
         PruneReferencedDocument(AObject.InvoiceReferencedDocument[I], APath + '/ram:InvoiceReferencedDocument')
-    else
+    else if FRemove then
       AObject.InvoiceReferencedDocument.Clear;
   if AObject.ReceivableSpecifiedTradeAccountingAccount.Count > 0 then
     if Keep(APath + '/ram:ReceivableSpecifiedTradeAccountingAccount', Integer(AObject.ReceivableSpecifiedTradeAccountingAccount.Count)) then
       for I := 0 to AObject.ReceivableSpecifiedTradeAccountingAccount.Count - 1 do
         PruneTradeAccountingAccount(AObject.ReceivableSpecifiedTradeAccountingAccount[I], APath + '/ram:ReceivableSpecifiedTradeAccountingAccount')
-    else
+    else if FRemove then
       AObject.ReceivableSpecifiedTradeAccountingAccount.Clear;
   if AObject.SpecifiedAdvancePayment.Count > 0 then
     if Keep(APath + '/ram:SpecifiedAdvancePayment', Integer(AObject.SpecifiedAdvancePayment.Count)) then
       for I := 0 to AObject.SpecifiedAdvancePayment.Count - 1 do
         PruneAdvancePayment(AObject.SpecifiedAdvancePayment[I], APath + '/ram:SpecifiedAdvancePayment')
-    else
+    else if FRemove then
       AObject.SpecifiedAdvancePayment.Clear;
 end;
 
@@ -4610,17 +4625,17 @@ begin
   if not AObject.ExchangedDocumentContext.IsEmpty then
     if Keep(APath + '/rsm:ExchangedDocumentContext', 1) then
       PruneExchangedDocumentContext(AObject.ExchangedDocumentContext, APath + '/rsm:ExchangedDocumentContext')
-    else
+    else if FRemove then
       AObject.ExchangedDocumentContext.Clear;
   if not AObject.ExchangedDocument.IsEmpty then
     if Keep(APath + '/rsm:ExchangedDocument', 1) then
       PruneExchangedDocument(AObject.ExchangedDocument, APath + '/rsm:ExchangedDocument')
-    else
+    else if FRemove then
       AObject.ExchangedDocument.Clear;
   if not AObject.SupplyChainTradeTransaction.IsEmpty then
     if Keep(APath + '/rsm:SupplyChainTradeTransaction', 1) then
       PruneSupplyChainTradeTransaction(AObject.SupplyChainTradeTransaction, APath + '/rsm:SupplyChainTradeTransaction')
-    else
+    else if FRemove then
       AObject.SupplyChainTradeTransaction.Clear;
 end;
 
@@ -4629,14 +4644,14 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
-  if not LandrixEInvoiceIsBlank(AObject.TradingBusinessName) and not Keep(APath + '/ram:TradingBusinessName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TradingBusinessName) and not Keep(APath + '/ram:TradingBusinessName', 1) and FRemove then
     AObject.TradingBusinessName := '';
   if not AObject.PostalTradeAddress.IsEmpty then
     if Keep(APath + '/ram:PostalTradeAddress', 1) then
       PruneTradeAddress(AObject.PostalTradeAddress, APath + '/ram:PostalTradeAddress')
-    else
+    else if FRemove then
       AObject.PostalTradeAddress.Clear;
 end;
 
@@ -4647,54 +4662,54 @@ begin
   if not AObject.ApplicableTradeDeliveryTerms.IsEmpty then
     if Keep(APath + '/ram:ApplicableTradeDeliveryTerms', 1) then
       PruneTradeDeliveryTerms(AObject.ApplicableTradeDeliveryTerms, APath + '/ram:ApplicableTradeDeliveryTerms')
-    else
+    else if FRemove then
       AObject.ApplicableTradeDeliveryTerms.Clear;
   if not AObject.SellerOrderReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:SellerOrderReferencedDocument', 1) then
       PruneReferencedDocument(AObject.SellerOrderReferencedDocument, APath + '/ram:SellerOrderReferencedDocument')
-    else
+    else if FRemove then
       AObject.SellerOrderReferencedDocument.Clear;
   if not AObject.BuyerOrderReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:BuyerOrderReferencedDocument', 1) then
       PruneReferencedDocument(AObject.BuyerOrderReferencedDocument, APath + '/ram:BuyerOrderReferencedDocument')
-    else
+    else if FRemove then
       AObject.BuyerOrderReferencedDocument.Clear;
   if not AObject.QuotationReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:QuotationReferencedDocument', 1) then
       PruneReferencedDocument(AObject.QuotationReferencedDocument, APath + '/ram:QuotationReferencedDocument')
-    else
+    else if FRemove then
       AObject.QuotationReferencedDocument.Clear;
   if not AObject.ContractReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:ContractReferencedDocument', 1) then
       PruneReferencedDocument(AObject.ContractReferencedDocument, APath + '/ram:ContractReferencedDocument')
-    else
+    else if FRemove then
       AObject.ContractReferencedDocument.Clear;
   if AObject.AdditionalReferencedDocument.Count > 0 then
     if Keep(APath + '/ram:AdditionalReferencedDocument', Integer(AObject.AdditionalReferencedDocument.Count)) then
       for I := 0 to AObject.AdditionalReferencedDocument.Count - 1 do
         PruneReferencedDocument(AObject.AdditionalReferencedDocument[I], APath + '/ram:AdditionalReferencedDocument')
-    else
+    else if FRemove then
       AObject.AdditionalReferencedDocument.Clear;
   if not AObject.GrossPriceProductTradePrice.IsEmpty then
     if Keep(APath + '/ram:GrossPriceProductTradePrice', 1) then
       PruneTradePrice(AObject.GrossPriceProductTradePrice, APath + '/ram:GrossPriceProductTradePrice')
-    else
+    else if FRemove then
       AObject.GrossPriceProductTradePrice.Clear;
   if not AObject.NetPriceProductTradePrice.IsEmpty then
     if Keep(APath + '/ram:NetPriceProductTradePrice', 1) then
       PruneTradePrice(AObject.NetPriceProductTradePrice, APath + '/ram:NetPriceProductTradePrice')
-    else
+    else if FRemove then
       AObject.NetPriceProductTradePrice.Clear;
   if not AObject.ItemSellerTradeParty.IsEmpty then
     if Keep(APath + '/ram:ItemSellerTradeParty', 1) then
       PruneTradeParty(AObject.ItemSellerTradeParty, APath + '/ram:ItemSellerTradeParty')
-    else
+    else if FRemove then
       AObject.ItemSellerTradeParty.Clear;
   if AObject.UltimateCustomerOrderReferencedDocument.Count > 0 then
     if Keep(APath + '/ram:UltimateCustomerOrderReferencedDocument', Integer(AObject.UltimateCustomerOrderReferencedDocument.Count)) then
       for I := 0 to AObject.UltimateCustomerOrderReferencedDocument.Count - 1 do
         PruneReferencedDocument(AObject.UltimateCustomerOrderReferencedDocument[I], APath + '/ram:UltimateCustomerOrderReferencedDocument')
-    else
+    else if FRemove then
       AObject.UltimateCustomerOrderReferencedDocument.Clear;
 end;
 
@@ -4703,52 +4718,52 @@ begin
   if not CIIQuantityIsEmpty(AObject.BilledQuantity) then
     if Keep(APath + '/ram:BilledQuantity', 1) then
       PruneQuantityFields(Self, AObject.BilledQuantity, APath + '/ram:BilledQuantity')
-    else
+    else if FRemove then
       CIIQuantityClear(AObject.BilledQuantity);
   if not CIIQuantityIsEmpty(AObject.ChargeFreeQuantity) then
     if Keep(APath + '/ram:ChargeFreeQuantity', 1) then
       PruneQuantityFields(Self, AObject.ChargeFreeQuantity, APath + '/ram:ChargeFreeQuantity')
-    else
+    else if FRemove then
       CIIQuantityClear(AObject.ChargeFreeQuantity);
   if not CIIQuantityIsEmpty(AObject.PackageQuantity) then
     if Keep(APath + '/ram:PackageQuantity', 1) then
       PruneQuantityFields(Self, AObject.PackageQuantity, APath + '/ram:PackageQuantity')
-    else
+    else if FRemove then
       CIIQuantityClear(AObject.PackageQuantity);
   if not CIIQuantityIsEmpty(AObject.PerPackageUnitQuantity) then
     if Keep(APath + '/ram:PerPackageUnitQuantity', 1) then
       PruneQuantityFields(Self, AObject.PerPackageUnitQuantity, APath + '/ram:PerPackageUnitQuantity')
-    else
+    else if FRemove then
       CIIQuantityClear(AObject.PerPackageUnitQuantity);
   if not AObject.ShipToTradeParty.IsEmpty then
     if Keep(APath + '/ram:ShipToTradeParty', 1) then
       PruneTradeParty(AObject.ShipToTradeParty, APath + '/ram:ShipToTradeParty')
-    else
+    else if FRemove then
       AObject.ShipToTradeParty.Clear;
   if not AObject.UltimateShipToTradeParty.IsEmpty then
     if Keep(APath + '/ram:UltimateShipToTradeParty', 1) then
       PruneTradeParty(AObject.UltimateShipToTradeParty, APath + '/ram:UltimateShipToTradeParty')
-    else
+    else if FRemove then
       AObject.UltimateShipToTradeParty.Clear;
   if not AObject.ActualDeliverySupplyChainEvent.IsEmpty then
     if Keep(APath + '/ram:ActualDeliverySupplyChainEvent', 1) then
       PruneSupplyChainEvent(AObject.ActualDeliverySupplyChainEvent, APath + '/ram:ActualDeliverySupplyChainEvent')
-    else
+    else if FRemove then
       AObject.ActualDeliverySupplyChainEvent.Clear;
   if not AObject.DespatchAdviceReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:DespatchAdviceReferencedDocument', 1) then
       PruneReferencedDocument(AObject.DespatchAdviceReferencedDocument, APath + '/ram:DespatchAdviceReferencedDocument')
-    else
+    else if FRemove then
       AObject.DespatchAdviceReferencedDocument.Clear;
   if not AObject.ReceivingAdviceReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:ReceivingAdviceReferencedDocument', 1) then
       PruneReferencedDocument(AObject.ReceivingAdviceReferencedDocument, APath + '/ram:ReceivingAdviceReferencedDocument')
-    else
+    else if FRemove then
       AObject.ReceivingAdviceReferencedDocument.Clear;
   if not AObject.DeliveryNoteReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:DeliveryNoteReferencedDocument', 1) then
       PruneReferencedDocument(AObject.DeliveryNoteReferencedDocument, APath + '/ram:DeliveryNoteReferencedDocument')
-    else
+    else if FRemove then
       AObject.DeliveryNoteReferencedDocument.Clear;
 end;
 
@@ -4760,40 +4775,40 @@ begin
     if Keep(APath + '/ram:ApplicableTradeTax', Integer(AObject.ApplicableTradeTax.Count)) then
       for I := 0 to AObject.ApplicableTradeTax.Count - 1 do
         PruneTradeTax(AObject.ApplicableTradeTax[I], APath + '/ram:ApplicableTradeTax')
-    else
+    else if FRemove then
       AObject.ApplicableTradeTax.Clear;
   if not AObject.BillingSpecifiedPeriod.IsEmpty then
     if Keep(APath + '/ram:BillingSpecifiedPeriod', 1) then
       PruneSpecifiedPeriod(AObject.BillingSpecifiedPeriod, APath + '/ram:BillingSpecifiedPeriod')
-    else
+    else if FRemove then
       AObject.BillingSpecifiedPeriod.Clear;
   if AObject.SpecifiedTradeAllowanceCharge.Count > 0 then
     if Keep(APath + '/ram:SpecifiedTradeAllowanceCharge', Integer(AObject.SpecifiedTradeAllowanceCharge.Count)) then
       for I := 0 to AObject.SpecifiedTradeAllowanceCharge.Count - 1 do
         PruneTradeAllowanceCharge(AObject.SpecifiedTradeAllowanceCharge[I], APath + '/ram:SpecifiedTradeAllowanceCharge')
-    else
+    else if FRemove then
       AObject.SpecifiedTradeAllowanceCharge.Clear;
   if not AObject.SpecifiedTradeSettlementLineMonetarySummation.IsEmpty then
     if Keep(APath + '/ram:SpecifiedTradeSettlementLineMonetarySummation', 1) then
       PruneTradeSettlementLineMonetarySummation(AObject.SpecifiedTradeSettlementLineMonetarySummation, APath + '/ram:SpecifiedTradeSettlementLineMonetarySummation')
-    else
+    else if FRemove then
       AObject.SpecifiedTradeSettlementLineMonetarySummation.Clear;
   if not AObject.InvoiceReferencedDocument.IsEmpty then
     if Keep(APath + '/ram:InvoiceReferencedDocument', 1) then
       PruneReferencedDocument(AObject.InvoiceReferencedDocument, APath + '/ram:InvoiceReferencedDocument')
-    else
+    else if FRemove then
       AObject.InvoiceReferencedDocument.Clear;
   if AObject.AdditionalReferencedDocument.Count > 0 then
     if Keep(APath + '/ram:AdditionalReferencedDocument', Integer(AObject.AdditionalReferencedDocument.Count)) then
       for I := 0 to AObject.AdditionalReferencedDocument.Count - 1 do
         PruneReferencedDocument(AObject.AdditionalReferencedDocument[I], APath + '/ram:AdditionalReferencedDocument')
-    else
+    else if FRemove then
       AObject.AdditionalReferencedDocument.Clear;
   if AObject.ReceivableSpecifiedTradeAccountingAccount.Count > 0 then
     if Keep(APath + '/ram:ReceivableSpecifiedTradeAccountingAccount', Integer(AObject.ReceivableSpecifiedTradeAccountingAccount.Count)) then
       for I := 0 to AObject.ReceivableSpecifiedTradeAccountingAccount.Count - 1 do
         PruneTradeAccountingAccount(AObject.ReceivableSpecifiedTradeAccountingAccount[I], APath + '/ram:ReceivableSpecifiedTradeAccountingAccount')
-    else
+    else if FRemove then
       AObject.ReceivableSpecifiedTradeAccountingAccount.Clear;
 end;
 
@@ -4801,24 +4816,24 @@ procedure TCIIPruner.PruneLogisticsServiceCharge(AObject: TLandrixCIILogisticsSe
 var
   I: TLandrixEInvoiceListIndex;
 begin
-  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) and FRemove then
     AObject.Description := '';
   if not CIIAmountIsEmpty(AObject.AppliedAmount) then
     if Keep(APath + '/ram:AppliedAmount', 1) then
       PruneAmountFields(Self, AObject.AppliedAmount, APath + '/ram:AppliedAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.AppliedAmount);
   if AObject.AppliedTradeTax.Count > 0 then
     if Keep(APath + '/ram:AppliedTradeTax', Integer(AObject.AppliedTradeTax.Count)) then
       for I := 0 to AObject.AppliedTradeTax.Count - 1 do
         PruneTradeTax(AObject.AppliedTradeTax[I], APath + '/ram:AppliedTradeTax')
-    else
+    else if FRemove then
       AObject.AppliedTradeTax.Clear;
 end;
 
 procedure TCIIPruner.PruneLogisticsTransportMovement(AObject: TLandrixCIILogisticsTransportMovement; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.ModeCode) and not Keep(APath + '/ram:ModeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ModeCode) and not Keep(APath + '/ram:ModeCode', 1) and FRemove then
     AObject.ModeCode := '';
 end;
 
@@ -4827,14 +4842,14 @@ begin
   if not CIICodeIsEmpty(AObject.ContentCode) then
     if Keep(APath + '/ram:ContentCode', 1) then
       PruneCodeFields(Self, AObject.ContentCode, APath + '/ram:ContentCode')
-    else
+    else if FRemove then
       CIICodeClear(AObject.ContentCode);
-  if not LandrixEInvoiceIsBlank(AObject.Content) and not Keep(APath + '/ram:Content', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Content) and not Keep(APath + '/ram:Content', 1) and FRemove then
     AObject.Content := '';
   if not CIICodeIsEmpty(AObject.SubjectCode) then
     if Keep(APath + '/ram:SubjectCode', 1) then
       PruneCodeFields(Self, AObject.SubjectCode, APath + '/ram:SubjectCode')
-    else
+    else if FRemove then
       CIICodeClear(AObject.SubjectCode);
 end;
 
@@ -4843,9 +4858,9 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
-  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) and FRemove then
     AObject.Name := '';
 end;
 
@@ -4854,16 +4869,16 @@ begin
   if not CIICodeIsEmpty(AObject.TypeCode) then
     if Keep(APath + '/ram:TypeCode', 1) then
       PruneCodeFields(Self, AObject.TypeCode, APath + '/ram:TypeCode')
-    else
+    else if FRemove then
       CIICodeClear(AObject.TypeCode);
-  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) and FRemove then
     AObject.Description := '';
   if not CIIMeasureIsEmpty(AObject.ValueMeasure) then
     if Keep(APath + '/ram:ValueMeasure', 1) then
       PruneMeasureFields(Self, AObject.ValueMeasure, APath + '/ram:ValueMeasure')
-    else
+    else if FRemove then
       CIIMeasureClear(AObject.ValueMeasure);
-  if not LandrixEInvoiceIsBlank(AObject.Value) and not Keep(APath + '/ram:Value', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Value) and not Keep(APath + '/ram:Value', 1) and FRemove then
     AObject.Value := '';
 end;
 
@@ -4872,9 +4887,9 @@ begin
   if not CIICodeIsEmpty(AObject.ClassCode) then
     if Keep(APath + '/ram:ClassCode', 1) then
       PruneCodeFields(Self, AObject.ClassCode, APath + '/ram:ClassCode')
-    else
+    else if FRemove then
       CIICodeClear(AObject.ClassCode);
-  if not LandrixEInvoiceIsBlank(AObject.ClassificationName) and not Keep(APath + '/ram:ClassName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ClassificationName) and not Keep(APath + '/ram:ClassName', 1) and FRemove then
     AObject.ClassificationName := '';
 end;
 
@@ -4883,33 +4898,33 @@ begin
   if not CIIIDIsEmpty(AObject.IssuerAssignedID) then
     if Keep(APath + '/ram:IssuerAssignedID', 1) then
       PruneIDFields(Self, AObject.IssuerAssignedID, APath + '/ram:IssuerAssignedID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.IssuerAssignedID);
   if not CIIIDIsEmpty(AObject.URIID) then
     if Keep(APath + '/ram:URIID', 1) then
       PruneIDFields(Self, AObject.URIID, APath + '/ram:URIID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.URIID);
   if not CIIIDIsEmpty(AObject.LineID) then
     if Keep(APath + '/ram:LineID', 1) then
       PruneIDFields(Self, AObject.LineID, APath + '/ram:LineID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.LineID);
-  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) and FRemove then
     AObject.TypeCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) and FRemove then
     AObject.Name := '';
   if not CIIBinaryObjectIsEmpty(AObject.AttachmentBinaryObject) then
     if Keep(APath + '/ram:AttachmentBinaryObject', 1) then
       PruneBinaryObjectFields(Self, AObject.AttachmentBinaryObject, APath + '/ram:AttachmentBinaryObject')
-    else
+    else if FRemove then
       CIIBinaryObjectClear(AObject.AttachmentBinaryObject);
-  if not LandrixEInvoiceIsBlank(AObject.ReferenceTypeCode) and not Keep(APath + '/ram:ReferenceTypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ReferenceTypeCode) and not Keep(APath + '/ram:ReferenceTypeCode', 1) and FRemove then
     AObject.ReferenceTypeCode := '';
   if not CIIFormattedDateTimeIsEmpty(AObject.FormattedIssueDateTime) then
     if Keep(APath + '/ram:FormattedIssueDateTime', 1) then
       PruneFormattedDateTimeFields(Self, AObject.FormattedIssueDateTime, APath + '/ram:FormattedIssueDateTime')
-    else
+    else if FRemove then
       CIIFormattedDateTimeClear(AObject.FormattedIssueDateTime);
 end;
 
@@ -4921,7 +4936,7 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
   if AObject.GlobalID.Count > 0 then
     if Keep(APath + '/ram:GlobalID', Integer(AObject.GlobalID.Count)) then
@@ -4931,52 +4946,52 @@ begin
         if PruneIDFields(Self, RGlobalID, APath + '/ram:GlobalID') then
           AObject.GlobalID[I] := RGlobalID;
       end
-    else
+    else if FRemove then
       AObject.GlobalID.Clear;
   if not CIIIDIsEmpty(AObject.SellerAssignedID) then
     if Keep(APath + '/ram:SellerAssignedID', 1) then
       PruneIDFields(Self, AObject.SellerAssignedID, APath + '/ram:SellerAssignedID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.SellerAssignedID);
   if not CIIIDIsEmpty(AObject.BuyerAssignedID) then
     if Keep(APath + '/ram:BuyerAssignedID', 1) then
       PruneIDFields(Self, AObject.BuyerAssignedID, APath + '/ram:BuyerAssignedID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.BuyerAssignedID);
   if not CIIIDIsEmpty(AObject.IndustryAssignedID) then
     if Keep(APath + '/ram:IndustryAssignedID', 1) then
       PruneIDFields(Self, AObject.IndustryAssignedID, APath + '/ram:IndustryAssignedID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.IndustryAssignedID);
-  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) and FRemove then
     AObject.Name := '';
-  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) and FRemove then
     AObject.Description := '';
   if not CIIQuantityIsEmpty(AObject.UnitQuantity) then
     if Keep(APath + '/ram:UnitQuantity', 1) then
       PruneQuantityFields(Self, AObject.UnitQuantity, APath + '/ram:UnitQuantity')
-    else
+    else if FRemove then
       CIIQuantityClear(AObject.UnitQuantity);
 end;
 
 procedure TCIIPruner.PruneSpecifiedPeriod(AObject: TLandrixCIISpecifiedPeriod; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) and FRemove then
     AObject.Description := '';
   if not CIIDateTimeIsEmpty(AObject.StartDateTime) then
     if Keep(APath + '/ram:StartDateTime', 1) then
       PruneDateTimeFields(Self, AObject.StartDateTime, APath + '/ram:StartDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.StartDateTime);
   if not CIIDateTimeIsEmpty(AObject.EndDateTime) then
     if Keep(APath + '/ram:EndDateTime', 1) then
       PruneDateTimeFields(Self, AObject.EndDateTime, APath + '/ram:EndDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.EndDateTime);
   if not CIIDateTimeIsEmpty(AObject.CompleteDateTime) then
     if Keep(APath + '/ram:CompleteDateTime', 1) then
       PruneDateTimeFields(Self, AObject.CompleteDateTime, APath + '/ram:CompleteDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.CompleteDateTime);
 end;
 
@@ -4988,7 +5003,7 @@ begin
     if Keep(APath + '/ram:SpecifiedLogisticsTransportMovement', Integer(AObject.SpecifiedLogisticsTransportMovement.Count)) then
       for I := 0 to AObject.SpecifiedLogisticsTransportMovement.Count - 1 do
         PruneLogisticsTransportMovement(AObject.SpecifiedLogisticsTransportMovement[I], APath + '/ram:SpecifiedLogisticsTransportMovement')
-    else
+    else if FRemove then
       AObject.SpecifiedLogisticsTransportMovement.Clear;
 end;
 
@@ -4997,7 +5012,7 @@ begin
   if not CIIDateTimeIsEmpty(AObject.OccurrenceDateTime) then
     if Keep(APath + '/ram:OccurrenceDateTime', 1) then
       PruneDateTimeFields(Self, AObject.OccurrenceDateTime, APath + '/ram:OccurrenceDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.OccurrenceDateTime);
 end;
 
@@ -5006,27 +5021,27 @@ begin
   if not AObject.AssociatedDocumentLineDocument.IsEmpty then
     if Keep(APath + '/ram:AssociatedDocumentLineDocument', 1) then
       PruneDocumentLineDocument(AObject.AssociatedDocumentLineDocument, APath + '/ram:AssociatedDocumentLineDocument')
-    else
+    else if FRemove then
       AObject.AssociatedDocumentLineDocument.Clear;
   if not AObject.SpecifiedTradeProduct.IsEmpty then
     if Keep(APath + '/ram:SpecifiedTradeProduct', 1) then
       PruneTradeProduct(AObject.SpecifiedTradeProduct, APath + '/ram:SpecifiedTradeProduct')
-    else
+    else if FRemove then
       AObject.SpecifiedTradeProduct.Clear;
   if not AObject.SpecifiedLineTradeAgreement.IsEmpty then
     if Keep(APath + '/ram:SpecifiedLineTradeAgreement', 1) then
       PruneLineTradeAgreement(AObject.SpecifiedLineTradeAgreement, APath + '/ram:SpecifiedLineTradeAgreement')
-    else
+    else if FRemove then
       AObject.SpecifiedLineTradeAgreement.Clear;
   if not AObject.SpecifiedLineTradeDelivery.IsEmpty then
     if Keep(APath + '/ram:SpecifiedLineTradeDelivery', 1) then
       PruneLineTradeDelivery(AObject.SpecifiedLineTradeDelivery, APath + '/ram:SpecifiedLineTradeDelivery')
-    else
+    else if FRemove then
       AObject.SpecifiedLineTradeDelivery.Clear;
   if not AObject.SpecifiedLineTradeSettlement.IsEmpty then
     if Keep(APath + '/ram:SpecifiedLineTradeSettlement', 1) then
       PruneLineTradeSettlement(AObject.SpecifiedLineTradeSettlement, APath + '/ram:SpecifiedLineTradeSettlement')
-    else
+    else if FRemove then
       AObject.SpecifiedLineTradeSettlement.Clear;
 end;
 
@@ -5038,22 +5053,22 @@ begin
     if Keep(APath + '/ram:IncludedSupplyChainTradeLineItem', Integer(AObject.IncludedSupplyChainTradeLineItem.Count)) then
       for I := 0 to AObject.IncludedSupplyChainTradeLineItem.Count - 1 do
         PruneSupplyChainTradeLineItem(AObject.IncludedSupplyChainTradeLineItem[I], APath + '/ram:IncludedSupplyChainTradeLineItem')
-    else
+    else if FRemove then
       AObject.IncludedSupplyChainTradeLineItem.Clear;
   if not AObject.ApplicableHeaderTradeAgreement.IsEmpty then
     if Keep(APath + '/ram:ApplicableHeaderTradeAgreement', 1) then
       PruneHeaderTradeAgreement(AObject.ApplicableHeaderTradeAgreement, APath + '/ram:ApplicableHeaderTradeAgreement')
-    else
+    else if FRemove then
       AObject.ApplicableHeaderTradeAgreement.Clear;
   if not AObject.ApplicableHeaderTradeDelivery.IsEmpty then
     if Keep(APath + '/ram:ApplicableHeaderTradeDelivery', 1) then
       PruneHeaderTradeDelivery(AObject.ApplicableHeaderTradeDelivery, APath + '/ram:ApplicableHeaderTradeDelivery')
-    else
+    else if FRemove then
       AObject.ApplicableHeaderTradeDelivery.Clear;
   if not AObject.ApplicableHeaderTradeSettlement.IsEmpty then
     if Keep(APath + '/ram:ApplicableHeaderTradeSettlement', 1) then
       PruneHeaderTradeSettlement(AObject.ApplicableHeaderTradeSettlement, APath + '/ram:ApplicableHeaderTradeSettlement')
-    else
+    else if FRemove then
       AObject.ApplicableHeaderTradeSettlement.Clear;
 end;
 
@@ -5062,7 +5077,7 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
 end;
 
@@ -5071,9 +5086,9 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
-  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) and FRemove then
     AObject.TypeCode := '';
 end;
 
@@ -5082,121 +5097,121 @@ begin
   if not CIICodeIsEmpty(AObject.PostcodeCode) then
     if Keep(APath + '/ram:PostcodeCode', 1) then
       PruneCodeFields(Self, AObject.PostcodeCode, APath + '/ram:PostcodeCode')
-    else
+    else if FRemove then
       CIICodeClear(AObject.PostcodeCode);
-  if not LandrixEInvoiceIsBlank(AObject.LineOne) and not Keep(APath + '/ram:LineOne', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineOne) and not Keep(APath + '/ram:LineOne', 1) and FRemove then
     AObject.LineOne := '';
-  if not LandrixEInvoiceIsBlank(AObject.LineTwo) and not Keep(APath + '/ram:LineTwo', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineTwo) and not Keep(APath + '/ram:LineTwo', 1) and FRemove then
     AObject.LineTwo := '';
-  if not LandrixEInvoiceIsBlank(AObject.LineThree) and not Keep(APath + '/ram:LineThree', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.LineThree) and not Keep(APath + '/ram:LineThree', 1) and FRemove then
     AObject.LineThree := '';
-  if not LandrixEInvoiceIsBlank(AObject.CityName) and not Keep(APath + '/ram:CityName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CityName) and not Keep(APath + '/ram:CityName', 1) and FRemove then
     AObject.CityName := '';
-  if not LandrixEInvoiceIsBlank(AObject.CountryID) and not Keep(APath + '/ram:CountryID', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CountryID) and not Keep(APath + '/ram:CountryID', 1) and FRemove then
     AObject.CountryID := '';
-  if not LandrixEInvoiceIsBlank(AObject.CountrySubDivisionName) and not Keep(APath + '/ram:CountrySubDivisionName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CountrySubDivisionName) and not Keep(APath + '/ram:CountrySubDivisionName', 1) and FRemove then
     AObject.CountrySubDivisionName := '';
 end;
 
 procedure TCIIPruner.PruneTradeAllowanceCharge(AObject: TLandrixCIITradeAllowanceCharge; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.ChargeIndicator) and not Keep(APath + '/ram:ChargeIndicator', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ChargeIndicator) and not Keep(APath + '/ram:ChargeIndicator', 1) and FRemove then
     AObject.ChargeIndicator := '';
-  if not LandrixEInvoiceIsBlank(AObject.SequenceNumeric) and not Keep(APath + '/ram:SequenceNumeric', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.SequenceNumeric) and not Keep(APath + '/ram:SequenceNumeric', 1) and FRemove then
     AObject.SequenceNumeric := '';
-  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) and FRemove then
     AObject.CalculationPercent := '';
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
     if Keep(APath + '/ram:BasisAmount', 1) then
       PruneAmountFields(Self, AObject.BasisAmount, APath + '/ram:BasisAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.BasisAmount);
   if not CIIQuantityIsEmpty(AObject.BasisQuantity) then
     if Keep(APath + '/ram:BasisQuantity', 1) then
       PruneQuantityFields(Self, AObject.BasisQuantity, APath + '/ram:BasisQuantity')
-    else
+    else if FRemove then
       CIIQuantityClear(AObject.BasisQuantity);
   if not CIIAmountIsEmpty(AObject.ActualAmount) then
     if Keep(APath + '/ram:ActualAmount', 1) then
       PruneAmountFields(Self, AObject.ActualAmount, APath + '/ram:ActualAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.ActualAmount);
   if not CIIAllowanceChargeReasonCodeIsEmpty(AObject.ReasonCode) then
     if Keep(APath + '/ram:ReasonCode', 1) then
       PruneAllowanceChargeReasonCodeFields(Self, AObject.ReasonCode, APath + '/ram:ReasonCode')
-    else
+    else if FRemove then
       CIIAllowanceChargeReasonCodeClear(AObject.ReasonCode);
-  if not LandrixEInvoiceIsBlank(AObject.Reason) and not Keep(APath + '/ram:Reason', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Reason) and not Keep(APath + '/ram:Reason', 1) and FRemove then
     AObject.Reason := '';
   if not AObject.CategoryTradeTax.IsEmpty then
     if Keep(APath + '/ram:CategoryTradeTax', 1) then
       PruneTradeTax(AObject.CategoryTradeTax, APath + '/ram:CategoryTradeTax')
-    else
+    else if FRemove then
       AObject.CategoryTradeTax.Clear;
 end;
 
 procedure TCIIPruner.PruneTradeContact(AObject: TLandrixCIITradeContact; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.PersonName) and not Keep(APath + '/ram:PersonName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.PersonName) and not Keep(APath + '/ram:PersonName', 1) and FRemove then
     AObject.PersonName := '';
-  if not LandrixEInvoiceIsBlank(AObject.DepartmentName) and not Keep(APath + '/ram:DepartmentName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.DepartmentName) and not Keep(APath + '/ram:DepartmentName', 1) and FRemove then
     AObject.DepartmentName := '';
-  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) and FRemove then
     AObject.TypeCode := '';
   if not AObject.TelephoneUniversalCommunication.IsEmpty then
     if Keep(APath + '/ram:TelephoneUniversalCommunication', 1) then
       PruneUniversalCommunication(AObject.TelephoneUniversalCommunication, APath + '/ram:TelephoneUniversalCommunication')
-    else
+    else if FRemove then
       AObject.TelephoneUniversalCommunication.Clear;
   if not AObject.FaxUniversalCommunication.IsEmpty then
     if Keep(APath + '/ram:FaxUniversalCommunication', 1) then
       PruneUniversalCommunication(AObject.FaxUniversalCommunication, APath + '/ram:FaxUniversalCommunication')
-    else
+    else if FRemove then
       AObject.FaxUniversalCommunication.Clear;
   if not AObject.EmailURIUniversalCommunication.IsEmpty then
     if Keep(APath + '/ram:EmailURIUniversalCommunication', 1) then
       PruneUniversalCommunication(AObject.EmailURIUniversalCommunication, APath + '/ram:EmailURIUniversalCommunication')
-    else
+    else if FRemove then
       AObject.EmailURIUniversalCommunication.Clear;
 end;
 
 procedure TCIIPruner.PruneTradeCountry(AObject: TLandrixCIITradeCountry; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.ID) and not Keep(APath + '/ram:ID', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ID) and not Keep(APath + '/ram:ID', 1) and FRemove then
     AObject.ID := '';
 end;
 
 procedure TCIIPruner.PruneTradeCurrencyExchange(AObject: TLandrixCIITradeCurrencyExchange; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.SourceCurrencyCode) and not Keep(APath + '/ram:SourceCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.SourceCurrencyCode) and not Keep(APath + '/ram:SourceCurrencyCode', 1) and FRemove then
     AObject.SourceCurrencyCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.TargetCurrencyCode) and not Keep(APath + '/ram:TargetCurrencyCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TargetCurrencyCode) and not Keep(APath + '/ram:TargetCurrencyCode', 1) and FRemove then
     AObject.TargetCurrencyCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.ConversionRate) and not Keep(APath + '/ram:ConversionRate', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ConversionRate) and not Keep(APath + '/ram:ConversionRate', 1) and FRemove then
     AObject.ConversionRate := '';
   if not CIIDateTimeIsEmpty(AObject.ConversionRateDateTime) then
     if Keep(APath + '/ram:ConversionRateDateTime', 1) then
       PruneDateTimeFields(Self, AObject.ConversionRateDateTime, APath + '/ram:ConversionRateDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.ConversionRateDateTime);
 end;
 
 procedure TCIIPruner.PruneTradeDeliveryTerms(AObject: TLandrixCIITradeDeliveryTerms; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.DeliveryTypeCode) and not Keep(APath + '/ram:DeliveryTypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.DeliveryTypeCode) and not Keep(APath + '/ram:DeliveryTypeCode', 1) and FRemove then
     AObject.DeliveryTypeCode := '';
   if not AObject.RelevantTradeLocation.IsEmpty then
     if Keep(APath + '/ram:RelevantTradeLocation', 1) then
       PruneTradeLocation(AObject.RelevantTradeLocation, APath + '/ram:RelevantTradeLocation')
-    else
+    else if FRemove then
       AObject.RelevantTradeLocation.Clear;
 end;
 
 procedure TCIIPruner.PruneTradeLocation(AObject: TLandrixCIITradeLocation; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.CountryID) and not Keep(APath + '/ram:CountryID', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CountryID) and not Keep(APath + '/ram:CountryID', 1) and FRemove then
     AObject.CountryID := '';
-  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) and FRemove then
     AObject.Name := '';
 end;
 
@@ -5214,7 +5229,7 @@ begin
         if PruneIDFields(Self, RID, APath + '/ram:ID') then
           AObject.ID[I] := RID;
       end
-    else
+    else if FRemove then
       AObject.ID.Clear;
   if AObject.GlobalID.Count > 0 then
     if Keep(APath + '/ram:GlobalID', Integer(AObject.GlobalID.Count)) then
@@ -5224,40 +5239,40 @@ begin
         if PruneIDFields(Self, RGlobalID, APath + '/ram:GlobalID') then
           AObject.GlobalID[I] := RGlobalID;
       end
-    else
+    else if FRemove then
       AObject.GlobalID.Clear;
-  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) and FRemove then
     AObject.Name := '';
-  if not LandrixEInvoiceIsBlank(AObject.RoleCode) and not Keep(APath + '/ram:RoleCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.RoleCode) and not Keep(APath + '/ram:RoleCode', 1) and FRemove then
     AObject.RoleCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) and FRemove then
     AObject.Description := '';
   if not AObject.SpecifiedLegalOrganization.IsEmpty then
     if Keep(APath + '/ram:SpecifiedLegalOrganization', 1) then
       PruneLegalOrganization(AObject.SpecifiedLegalOrganization, APath + '/ram:SpecifiedLegalOrganization')
-    else
+    else if FRemove then
       AObject.SpecifiedLegalOrganization.Clear;
   if AObject.DefinedTradeContact.Count > 0 then
     if Keep(APath + '/ram:DefinedTradeContact', Integer(AObject.DefinedTradeContact.Count)) then
       for I := 0 to AObject.DefinedTradeContact.Count - 1 do
         PruneTradeContact(AObject.DefinedTradeContact[I], APath + '/ram:DefinedTradeContact')
-    else
+    else if FRemove then
       AObject.DefinedTradeContact.Clear;
   if not AObject.PostalTradeAddress.IsEmpty then
     if Keep(APath + '/ram:PostalTradeAddress', 1) then
       PruneTradeAddress(AObject.PostalTradeAddress, APath + '/ram:PostalTradeAddress')
-    else
+    else if FRemove then
       AObject.PostalTradeAddress.Clear;
   if not AObject.URIUniversalCommunication.IsEmpty then
     if Keep(APath + '/ram:URIUniversalCommunication', 1) then
       PruneUniversalCommunication(AObject.URIUniversalCommunication, APath + '/ram:URIUniversalCommunication')
-    else
+    else if FRemove then
       AObject.URIUniversalCommunication.Clear;
   if AObject.SpecifiedTaxRegistration.Count > 0 then
     if Keep(APath + '/ram:SpecifiedTaxRegistration', Integer(AObject.SpecifiedTaxRegistration.Count)) then
       for I := 0 to AObject.SpecifiedTaxRegistration.Count - 1 do
         PruneTaxRegistration(AObject.SpecifiedTaxRegistration[I], APath + '/ram:SpecifiedTaxRegistration')
-    else
+    else if FRemove then
       AObject.SpecifiedTaxRegistration.Clear;
 end;
 
@@ -5266,24 +5281,24 @@ begin
   if not CIIDateTimeIsEmpty(AObject.BasisDateTime) then
     if Keep(APath + '/ram:BasisDateTime', 1) then
       PruneDateTimeFields(Self, AObject.BasisDateTime, APath + '/ram:BasisDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.BasisDateTime);
   if not CIIMeasureIsEmpty(AObject.BasisPeriodMeasure) then
     if Keep(APath + '/ram:BasisPeriodMeasure', 1) then
       PruneMeasureFields(Self, AObject.BasisPeriodMeasure, APath + '/ram:BasisPeriodMeasure')
-    else
+    else if FRemove then
       CIIMeasureClear(AObject.BasisPeriodMeasure);
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
     if Keep(APath + '/ram:BasisAmount', 1) then
       PruneAmountFields(Self, AObject.BasisAmount, APath + '/ram:BasisAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.BasisAmount);
-  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) and FRemove then
     AObject.CalculationPercent := '';
   if not CIIAmountIsEmpty(AObject.ActualDiscountAmount) then
     if Keep(APath + '/ram:ActualDiscountAmount', 1) then
       PruneAmountFields(Self, AObject.ActualDiscountAmount, APath + '/ram:ActualDiscountAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.ActualDiscountAmount);
 end;
 
@@ -5292,60 +5307,60 @@ begin
   if not CIIDateTimeIsEmpty(AObject.BasisDateTime) then
     if Keep(APath + '/ram:BasisDateTime', 1) then
       PruneDateTimeFields(Self, AObject.BasisDateTime, APath + '/ram:BasisDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.BasisDateTime);
   if not CIIMeasureIsEmpty(AObject.BasisPeriodMeasure) then
     if Keep(APath + '/ram:BasisPeriodMeasure', 1) then
       PruneMeasureFields(Self, AObject.BasisPeriodMeasure, APath + '/ram:BasisPeriodMeasure')
-    else
+    else if FRemove then
       CIIMeasureClear(AObject.BasisPeriodMeasure);
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
     if Keep(APath + '/ram:BasisAmount', 1) then
       PruneAmountFields(Self, AObject.BasisAmount, APath + '/ram:BasisAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.BasisAmount);
-  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CalculationPercent) and not Keep(APath + '/ram:CalculationPercent', 1) and FRemove then
     AObject.CalculationPercent := '';
   if not CIIAmountIsEmpty(AObject.ActualPenaltyAmount) then
     if Keep(APath + '/ram:ActualPenaltyAmount', 1) then
       PruneAmountFields(Self, AObject.ActualPenaltyAmount, APath + '/ram:ActualPenaltyAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.ActualPenaltyAmount);
 end;
 
 procedure TCIIPruner.PruneTradePaymentTerms(AObject: TLandrixCIITradePaymentTerms; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) and FRemove then
     AObject.Description := '';
   if not CIIDateTimeIsEmpty(AObject.DueDateDateTime) then
     if Keep(APath + '/ram:DueDateDateTime', 1) then
       PruneDateTimeFields(Self, AObject.DueDateDateTime, APath + '/ram:DueDateDateTime')
-    else
+    else if FRemove then
       CIIDateTimeClear(AObject.DueDateDateTime);
   if not CIIIDIsEmpty(AObject.DirectDebitMandateID) then
     if Keep(APath + '/ram:DirectDebitMandateID', 1) then
       PruneIDFields(Self, AObject.DirectDebitMandateID, APath + '/ram:DirectDebitMandateID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.DirectDebitMandateID);
   if not CIIAmountIsEmpty(AObject.PartialPaymentAmount) then
     if Keep(APath + '/ram:PartialPaymentAmount', 1) then
       PruneAmountFields(Self, AObject.PartialPaymentAmount, APath + '/ram:PartialPaymentAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.PartialPaymentAmount);
   if not AObject.ApplicableTradePaymentPenaltyTerms.IsEmpty then
     if Keep(APath + '/ram:ApplicableTradePaymentPenaltyTerms', 1) then
       PruneTradePaymentPenaltyTerms(AObject.ApplicableTradePaymentPenaltyTerms, APath + '/ram:ApplicableTradePaymentPenaltyTerms')
-    else
+    else if FRemove then
       AObject.ApplicableTradePaymentPenaltyTerms.Clear;
   if not AObject.ApplicableTradePaymentDiscountTerms.IsEmpty then
     if Keep(APath + '/ram:ApplicableTradePaymentDiscountTerms', 1) then
       PruneTradePaymentDiscountTerms(AObject.ApplicableTradePaymentDiscountTerms, APath + '/ram:ApplicableTradePaymentDiscountTerms')
-    else
+    else if FRemove then
       AObject.ApplicableTradePaymentDiscountTerms.Clear;
   if not AObject.PayeeTradeParty.IsEmpty then
     if Keep(APath + '/ram:PayeeTradeParty', 1) then
       PruneTradeParty(AObject.PayeeTradeParty, APath + '/ram:PayeeTradeParty')
-    else
+    else if FRemove then
       AObject.PayeeTradeParty.Clear;
 end;
 
@@ -5356,23 +5371,23 @@ begin
   if not CIIAmountIsEmpty(AObject.ChargeAmount) then
     if Keep(APath + '/ram:ChargeAmount', 1) then
       PruneAmountFields(Self, AObject.ChargeAmount, APath + '/ram:ChargeAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.ChargeAmount);
   if not CIIQuantityIsEmpty(AObject.BasisQuantity) then
     if Keep(APath + '/ram:BasisQuantity', 1) then
       PruneQuantityFields(Self, AObject.BasisQuantity, APath + '/ram:BasisQuantity')
-    else
+    else if FRemove then
       CIIQuantityClear(AObject.BasisQuantity);
   if AObject.AppliedTradeAllowanceCharge.Count > 0 then
     if Keep(APath + '/ram:AppliedTradeAllowanceCharge', Integer(AObject.AppliedTradeAllowanceCharge.Count)) then
       for I := 0 to AObject.AppliedTradeAllowanceCharge.Count - 1 do
         PruneTradeAllowanceCharge(AObject.AppliedTradeAllowanceCharge[I], APath + '/ram:AppliedTradeAllowanceCharge')
-    else
+    else if FRemove then
       AObject.AppliedTradeAllowanceCharge.Clear;
   if not AObject.IncludedTradeTax.IsEmpty then
     if Keep(APath + '/ram:IncludedTradeTax', 1) then
       PruneTradeTax(AObject.IncludedTradeTax, APath + '/ram:IncludedTradeTax')
-    else
+    else if FRemove then
       AObject.IncludedTradeTax.Clear;
 end;
 
@@ -5384,36 +5399,36 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
   if not CIIIDIsEmpty(AObject.GlobalID) then
     if Keep(APath + '/ram:GlobalID', 1) then
       PruneIDFields(Self, AObject.GlobalID, APath + '/ram:GlobalID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.GlobalID);
   if not CIIIDIsEmpty(AObject.SellerAssignedID) then
     if Keep(APath + '/ram:SellerAssignedID', 1) then
       PruneIDFields(Self, AObject.SellerAssignedID, APath + '/ram:SellerAssignedID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.SellerAssignedID);
   if not CIIIDIsEmpty(AObject.BuyerAssignedID) then
     if Keep(APath + '/ram:BuyerAssignedID', 1) then
       PruneIDFields(Self, AObject.BuyerAssignedID, APath + '/ram:BuyerAssignedID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.BuyerAssignedID);
   if not CIIIDIsEmpty(AObject.IndustryAssignedID) then
     if Keep(APath + '/ram:IndustryAssignedID', 1) then
       PruneIDFields(Self, AObject.IndustryAssignedID, APath + '/ram:IndustryAssignedID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.IndustryAssignedID);
   if not CIIIDIsEmpty(AObject.ModelID) then
     if Keep(APath + '/ram:ModelID', 1) then
       PruneIDFields(Self, AObject.ModelID, APath + '/ram:ModelID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ModelID);
-  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Name) and not Keep(APath + '/ram:Name', 1) and FRemove then
     AObject.Name := '';
-  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Description) and not Keep(APath + '/ram:Description', 1) and FRemove then
     AObject.Description := '';
   if AObject.BatchID.Count > 0 then
     if Keep(APath + '/ram:BatchID', Integer(AObject.BatchID.Count)) then
@@ -5423,45 +5438,45 @@ begin
         if PruneIDFields(Self, RBatchID, APath + '/ram:BatchID') then
           AObject.BatchID[I] := RBatchID;
       end
-    else
+    else if FRemove then
       AObject.BatchID.Clear;
-  if not LandrixEInvoiceIsBlank(AObject.BrandName) and not Keep(APath + '/ram:BrandName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.BrandName) and not Keep(APath + '/ram:BrandName', 1) and FRemove then
     AObject.BrandName := '';
-  if not LandrixEInvoiceIsBlank(AObject.ModelName) and not Keep(APath + '/ram:ModelName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ModelName) and not Keep(APath + '/ram:ModelName', 1) and FRemove then
     AObject.ModelName := '';
   if AObject.ApplicableProductCharacteristic.Count > 0 then
     if Keep(APath + '/ram:ApplicableProductCharacteristic', Integer(AObject.ApplicableProductCharacteristic.Count)) then
       for I := 0 to AObject.ApplicableProductCharacteristic.Count - 1 do
         PruneProductCharacteristic(AObject.ApplicableProductCharacteristic[I], APath + '/ram:ApplicableProductCharacteristic')
-    else
+    else if FRemove then
       AObject.ApplicableProductCharacteristic.Clear;
   if AObject.DesignatedProductClassification.Count > 0 then
     if Keep(APath + '/ram:DesignatedProductClassification', Integer(AObject.DesignatedProductClassification.Count)) then
       for I := 0 to AObject.DesignatedProductClassification.Count - 1 do
         PruneProductClassification(AObject.DesignatedProductClassification[I], APath + '/ram:DesignatedProductClassification')
-    else
+    else if FRemove then
       AObject.DesignatedProductClassification.Clear;
   if AObject.IndividualTradeProductInstance.Count > 0 then
     if Keep(APath + '/ram:IndividualTradeProductInstance', Integer(AObject.IndividualTradeProductInstance.Count)) then
       for I := 0 to AObject.IndividualTradeProductInstance.Count - 1 do
         PruneTradeProductInstance(AObject.IndividualTradeProductInstance[I], APath + '/ram:IndividualTradeProductInstance')
-    else
+    else if FRemove then
       AObject.IndividualTradeProductInstance.Clear;
   if not AObject.OriginTradeCountry.IsEmpty then
     if Keep(APath + '/ram:OriginTradeCountry', 1) then
       PruneTradeCountry(AObject.OriginTradeCountry, APath + '/ram:OriginTradeCountry')
-    else
+    else if FRemove then
       AObject.OriginTradeCountry.Clear;
   if not AObject.ManufacturerTradeParty.IsEmpty then
     if Keep(APath + '/ram:ManufacturerTradeParty', 1) then
       PruneTradeParty(AObject.ManufacturerTradeParty, APath + '/ram:ManufacturerTradeParty')
-    else
+    else if FRemove then
       AObject.ManufacturerTradeParty.Clear;
   if AObject.IncludedReferencedProduct.Count > 0 then
     if Keep(APath + '/ram:IncludedReferencedProduct', Integer(AObject.IncludedReferencedProduct.Count)) then
       for I := 0 to AObject.IncludedReferencedProduct.Count - 1 do
         PruneReferencedProduct(AObject.IncludedReferencedProduct[I], APath + '/ram:IncludedReferencedProduct')
-    else
+    else if FRemove then
       AObject.IncludedReferencedProduct.Clear;
 end;
 
@@ -5470,12 +5485,12 @@ begin
   if not CIIIDIsEmpty(AObject.BatchID) then
     if Keep(APath + '/ram:BatchID', 1) then
       PruneIDFields(Self, AObject.BatchID, APath + '/ram:BatchID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.BatchID);
   if not CIIIDIsEmpty(AObject.SupplierAssignedSerialID) then
     if Keep(APath + '/ram:SupplierAssignedSerialID', 1) then
       PruneIDFields(Self, AObject.SupplierAssignedSerialID, APath + '/ram:SupplierAssignedSerialID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.SupplierAssignedSerialID);
 end;
 
@@ -5484,9 +5499,9 @@ begin
   if not CIIIDIsEmpty(AObject.ID) then
     if Keep(APath + '/ram:ID', 1) then
       PruneIDFields(Self, AObject.ID, APath + '/ram:ID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.ID);
-  if not LandrixEInvoiceIsBlank(AObject.CardholderName) and not Keep(APath + '/ram:CardholderName', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CardholderName) and not Keep(APath + '/ram:CardholderName', 1) and FRemove then
     AObject.CardholderName := '';
 end;
 
@@ -5498,22 +5513,22 @@ begin
   if not CIIAmountIsEmpty(AObject.LineTotalAmount) then
     if Keep(APath + '/ram:LineTotalAmount', 1) then
       PruneAmountFields(Self, AObject.LineTotalAmount, APath + '/ram:LineTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.LineTotalAmount);
   if not CIIAmountIsEmpty(AObject.ChargeTotalAmount) then
     if Keep(APath + '/ram:ChargeTotalAmount', 1) then
       PruneAmountFields(Self, AObject.ChargeTotalAmount, APath + '/ram:ChargeTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.ChargeTotalAmount);
   if not CIIAmountIsEmpty(AObject.AllowanceTotalAmount) then
     if Keep(APath + '/ram:AllowanceTotalAmount', 1) then
       PruneAmountFields(Self, AObject.AllowanceTotalAmount, APath + '/ram:AllowanceTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.AllowanceTotalAmount);
   if not CIIAmountIsEmpty(AObject.TaxBasisTotalAmount) then
     if Keep(APath + '/ram:TaxBasisTotalAmount', 1) then
       PruneAmountFields(Self, AObject.TaxBasisTotalAmount, APath + '/ram:TaxBasisTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.TaxBasisTotalAmount);
   if AObject.TaxTotalAmount.Count > 0 then
     if Keep(APath + '/ram:TaxTotalAmount', Integer(AObject.TaxTotalAmount.Count)) then
@@ -5523,27 +5538,27 @@ begin
         if PruneAmountFields(Self, RTaxTotalAmount, APath + '/ram:TaxTotalAmount') then
           AObject.TaxTotalAmount[I] := RTaxTotalAmount;
       end
-    else
+    else if FRemove then
       AObject.TaxTotalAmount.Clear;
   if not CIIAmountIsEmpty(AObject.RoundingAmount) then
     if Keep(APath + '/ram:RoundingAmount', 1) then
       PruneAmountFields(Self, AObject.RoundingAmount, APath + '/ram:RoundingAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.RoundingAmount);
   if not CIIAmountIsEmpty(AObject.GrandTotalAmount) then
     if Keep(APath + '/ram:GrandTotalAmount', 1) then
       PruneAmountFields(Self, AObject.GrandTotalAmount, APath + '/ram:GrandTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.GrandTotalAmount);
   if not CIIAmountIsEmpty(AObject.TotalPrepaidAmount) then
     if Keep(APath + '/ram:TotalPrepaidAmount', 1) then
       PruneAmountFields(Self, AObject.TotalPrepaidAmount, APath + '/ram:TotalPrepaidAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.TotalPrepaidAmount);
   if not CIIAmountIsEmpty(AObject.DuePayableAmount) then
     if Keep(APath + '/ram:DuePayableAmount', 1) then
       PruneAmountFields(Self, AObject.DuePayableAmount, APath + '/ram:DuePayableAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.DuePayableAmount);
 end;
 
@@ -5555,17 +5570,17 @@ begin
   if not CIIAmountIsEmpty(AObject.LineTotalAmount) then
     if Keep(APath + '/ram:LineTotalAmount', 1) then
       PruneAmountFields(Self, AObject.LineTotalAmount, APath + '/ram:LineTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.LineTotalAmount);
   if not CIIAmountIsEmpty(AObject.ChargeTotalAmount) then
     if Keep(APath + '/ram:ChargeTotalAmount', 1) then
       PruneAmountFields(Self, AObject.ChargeTotalAmount, APath + '/ram:ChargeTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.ChargeTotalAmount);
   if not CIIAmountIsEmpty(AObject.AllowanceTotalAmount) then
     if Keep(APath + '/ram:AllowanceTotalAmount', 1) then
       PruneAmountFields(Self, AObject.AllowanceTotalAmount, APath + '/ram:AllowanceTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.AllowanceTotalAmount);
   if AObject.TaxTotalAmount.Count > 0 then
     if Keep(APath + '/ram:TaxTotalAmount', Integer(AObject.TaxTotalAmount.Count)) then
@@ -5575,50 +5590,50 @@ begin
         if PruneAmountFields(Self, RTaxTotalAmount, APath + '/ram:TaxTotalAmount') then
           AObject.TaxTotalAmount[I] := RTaxTotalAmount;
       end
-    else
+    else if FRemove then
       AObject.TaxTotalAmount.Clear;
   if not CIIAmountIsEmpty(AObject.GrandTotalAmount) then
     if Keep(APath + '/ram:GrandTotalAmount', 1) then
       PruneAmountFields(Self, AObject.GrandTotalAmount, APath + '/ram:GrandTotalAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.GrandTotalAmount);
   if not CIIAmountIsEmpty(AObject.TotalAllowanceChargeAmount) then
     if Keep(APath + '/ram:TotalAllowanceChargeAmount', 1) then
       PruneAmountFields(Self, AObject.TotalAllowanceChargeAmount, APath + '/ram:TotalAllowanceChargeAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.TotalAllowanceChargeAmount);
 end;
 
 procedure TCIIPruner.PruneTradeSettlementPaymentMeans(AObject: TLandrixCIITradeSettlementPaymentMeans; const APath: TLandrixEInvoiceString);
 begin
-  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) and FRemove then
     AObject.TypeCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.Information) and not Keep(APath + '/ram:Information', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.Information) and not Keep(APath + '/ram:Information', 1) and FRemove then
     AObject.Information := '';
   if not AObject.ApplicableTradeSettlementFinancialCard.IsEmpty then
     if Keep(APath + '/ram:ApplicableTradeSettlementFinancialCard', 1) then
       PruneTradeSettlementFinancialCard(AObject.ApplicableTradeSettlementFinancialCard, APath + '/ram:ApplicableTradeSettlementFinancialCard')
-    else
+    else if FRemove then
       AObject.ApplicableTradeSettlementFinancialCard.Clear;
   if not AObject.PayerPartyDebtorFinancialAccount.IsEmpty then
     if Keep(APath + '/ram:PayerPartyDebtorFinancialAccount', 1) then
       PruneDebtorFinancialAccount(AObject.PayerPartyDebtorFinancialAccount, APath + '/ram:PayerPartyDebtorFinancialAccount')
-    else
+    else if FRemove then
       AObject.PayerPartyDebtorFinancialAccount.Clear;
   if not AObject.PayeePartyCreditorFinancialAccount.IsEmpty then
     if Keep(APath + '/ram:PayeePartyCreditorFinancialAccount', 1) then
       PruneCreditorFinancialAccount(AObject.PayeePartyCreditorFinancialAccount, APath + '/ram:PayeePartyCreditorFinancialAccount')
-    else
+    else if FRemove then
       AObject.PayeePartyCreditorFinancialAccount.Clear;
   if not AObject.PayerSpecifiedDebtorFinancialInstitution.IsEmpty then
     if Keep(APath + '/ram:PayerSpecifiedDebtorFinancialInstitution', 1) then
       PruneDebtorFinancialInstitution(AObject.PayerSpecifiedDebtorFinancialInstitution, APath + '/ram:PayerSpecifiedDebtorFinancialInstitution')
-    else
+    else if FRemove then
       AObject.PayerSpecifiedDebtorFinancialInstitution.Clear;
   if not AObject.PayeeSpecifiedCreditorFinancialInstitution.IsEmpty then
     if Keep(APath + '/ram:PayeeSpecifiedCreditorFinancialInstitution', 1) then
       PruneCreditorFinancialInstitution(AObject.PayeeSpecifiedCreditorFinancialInstitution, APath + '/ram:PayeeSpecifiedCreditorFinancialInstitution')
-    else
+    else if FRemove then
       AObject.PayeeSpecifiedCreditorFinancialInstitution.Clear;
 end;
 
@@ -5627,42 +5642,42 @@ begin
   if not CIIAmountIsEmpty(AObject.CalculatedAmount) then
     if Keep(APath + '/ram:CalculatedAmount', 1) then
       PruneAmountFields(Self, AObject.CalculatedAmount, APath + '/ram:CalculatedAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.CalculatedAmount);
-  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.TypeCode) and not Keep(APath + '/ram:TypeCode', 1) and FRemove then
     AObject.TypeCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.ExemptionReason) and not Keep(APath + '/ram:ExemptionReason', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.ExemptionReason) and not Keep(APath + '/ram:ExemptionReason', 1) and FRemove then
     AObject.ExemptionReason := '';
   if not CIIAmountIsEmpty(AObject.BasisAmount) then
     if Keep(APath + '/ram:BasisAmount', 1) then
       PruneAmountFields(Self, AObject.BasisAmount, APath + '/ram:BasisAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.BasisAmount);
   if not CIIAmountIsEmpty(AObject.LineTotalBasisAmount) then
     if Keep(APath + '/ram:LineTotalBasisAmount', 1) then
       PruneAmountFields(Self, AObject.LineTotalBasisAmount, APath + '/ram:LineTotalBasisAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.LineTotalBasisAmount);
   if not CIIAmountIsEmpty(AObject.AllowanceChargeBasisAmount) then
     if Keep(APath + '/ram:AllowanceChargeBasisAmount', 1) then
       PruneAmountFields(Self, AObject.AllowanceChargeBasisAmount, APath + '/ram:AllowanceChargeBasisAmount')
-    else
+    else if FRemove then
       CIIAmountClear(AObject.AllowanceChargeBasisAmount);
-  if not LandrixEInvoiceIsBlank(AObject.CategoryCode) and not Keep(APath + '/ram:CategoryCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CategoryCode) and not Keep(APath + '/ram:CategoryCode', 1) and FRemove then
     AObject.CategoryCode := '';
   if not CIICodeIsEmpty(AObject.ExemptionReasonCode) then
     if Keep(APath + '/ram:ExemptionReasonCode', 1) then
       PruneCodeFields(Self, AObject.ExemptionReasonCode, APath + '/ram:ExemptionReasonCode')
-    else
+    else if FRemove then
       CIICodeClear(AObject.ExemptionReasonCode);
   if not CIIDateIsEmpty(AObject.TaxPointDate) then
     if Keep(APath + '/ram:TaxPointDate', 1) then
       PruneDateFields(Self, AObject.TaxPointDate, APath + '/ram:TaxPointDate')
-    else
+    else if FRemove then
       CIIDateClear(AObject.TaxPointDate);
-  if not LandrixEInvoiceIsBlank(AObject.DueDateTypeCode) and not Keep(APath + '/ram:DueDateTypeCode', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.DueDateTypeCode) and not Keep(APath + '/ram:DueDateTypeCode', 1) and FRemove then
     AObject.DueDateTypeCode := '';
-  if not LandrixEInvoiceIsBlank(AObject.RateApplicablePercent) and not Keep(APath + '/ram:RateApplicablePercent', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.RateApplicablePercent) and not Keep(APath + '/ram:RateApplicablePercent', 1) and FRemove then
     AObject.RateApplicablePercent := '';
 end;
 
@@ -5671,34 +5686,60 @@ begin
   if not CIIIDIsEmpty(AObject.URIID) then
     if Keep(APath + '/ram:URIID', 1) then
       PruneIDFields(Self, AObject.URIID, APath + '/ram:URIID')
-    else
+    else if FRemove then
       CIIIDClear(AObject.URIID);
-  if not LandrixEInvoiceIsBlank(AObject.CompleteNumber) and not Keep(APath + '/ram:CompleteNumber', 1) then
+  if not LandrixEInvoiceIsBlank(AObject.CompleteNumber) and not Keep(APath + '/ram:CompleteNumber', 1) and FRemove then
     AObject.CompleteNumber := '';
 end;
 
-function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
-  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+{ Runs the pruner over AInvoice; ARemove = False only reports.
+  DE: Laesst den Pruner ueber AInvoice laufen; ARemove = False meldet nur. }
+function RunPruner(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; ARemove: Boolean): Integer;
 var
   Pruner: TCIIPruner;
   I: Integer;
+  Suffix: string;
+  Item: TLandrixEInvoiceDiagnostic;
 begin
   Result := 0;
   if not (AProfile in CheckedProfiles) then
     Exit;
+  if ARemove then
+    Suffix := ' occurrence(s) left out: not in Factur-X profile '
+  else
+    Suffix := ' occurrence(s) not in Factur-X profile ';
   Pruner := TCIIPruner.Create;
   try
     Pruner.FProfile := AProfile;
+    Pruner.FRemove := ARemove;
     Pruner.PruneInvoice(AInvoice, '/rsm:CrossIndustryInvoice');
     if ADiagnostics <> nil then
       for I := 0 to Integer(Length(Pruner.FPaths)) - 1 do
-        ADiagnostics.AddDiagnostic(edk_NotAllowed, Pruner.FPaths[I], 0, 0, 0,
-          TLandrixEInvoiceString(IntToStr(Pruner.FCounts[I]) + ' occurrence(s) left out: not in Factur-X profile ' +
-          ProfileName(AProfile))).Severity := eds_Warning;
+      begin
+        Item := ADiagnostics.AddDiagnostic(edk_NotAllowed, Pruner.FPaths[I], 0, 0, 0,
+          TLandrixEInvoiceString(IntToStr(Pruner.FCounts[I]) + Suffix + ProfileName(AProfile)));
+        if ARemove then
+          Item.Severity := eds_Warning
+        else
+          Item.Severity := eds_Error;
+      end;
     Result := Pruner.FTotal;
   finally
     Pruner.Free;
   end;
+end;
+
+function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := RunPruner(AInvoice, AProfile, ADiagnostics, True);
+end;
+
+function LandrixEInvoiceCheckCIIProfile(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := RunPruner(AInvoice, AProfile, ADiagnostics, False);
 end;
 
 end.

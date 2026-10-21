@@ -172,6 +172,38 @@ begin
   end;
 end;
 
+{ The profile check reports what pruning would remove, as errors, and
+  leaves the model unchanged. }
+procedure TestCheckProfile;
+var
+  CII: TLandrixCIIInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  CII := TLandrixCIIInvoice.Create;
+  try
+    FillModel(CII);
+    CheckEquals(6, LandrixEInvoiceCheckCIIProfile(CII, epr_Minimum, D), 'found: scheme, name, 2 notes, 2 lines');
+    CheckEquals(4, Integer(D.Count), 'one report per path: ' + string(D.ToText));
+    CheckEquals(1, CountKind(D, edk_NotAllowed, LineItem), 'lines reported once');
+    Check(D[0].Severity = eds_Error, 'error');
+    Check(Pos('left out', string(D[0].Message)) = 0, 'nothing left out');
+    CheckEquals(2, Integer(CII.SupplyChainTradeTransaction.IncludedSupplyChainTradeLineItem.Count), 'lines kept');
+    CheckEquals(2, Integer(CII.ExchangedDocument.IncludedNote.Count), 'notes kept');
+    Check(CII.ExchangedDocument.Name <> '', 'name kept');
+    Check(CII.ExchangedDocument.ID.SchemeID <> '', 'scheme kept');
+    D.Clear;
+    CheckEquals(2, LandrixEInvoiceCheckCIIProfile(CII, epr_Basic, D), 'BASIC: scheme and name');
+    CheckEquals(0, LandrixEInvoiceCheckCIIProfile(CII, epr_Extended, nil), 'EXTENDED: nothing');
+    { the same model pruned afterwards: the check found exactly that }
+    D.Clear;
+    CheckEquals(6, LandrixEInvoicePruneCII(CII, epr_Minimum, D), 'prune removes what the check found');
+  finally
+    CII.Free;
+    D.Free;
+  end;
+end;
+
 { The writer reports missing required content only if the profile contains
   it: no lines and no line total in MINIMUM. }
 procedure TestWriterMissing;
@@ -449,6 +481,7 @@ procedure Register;
 begin
   RegisterTest('CIIProfiles.Lookup', TestLookup);
   RegisterTest('CIIProfiles.Prune', TestPrune);
+  RegisterTest('CIIProfiles.CheckProfile', TestCheckProfile);
   RegisterTest('CIIProfiles.WriterMissing', TestWriterMissing);
   RegisterTest('CIIProfiles.Mapping', TestMapping);
   RegisterTest('CIIProfiles.LocalFiles', TestLocalFiles);

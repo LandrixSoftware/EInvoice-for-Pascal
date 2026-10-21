@@ -1824,6 +1824,20 @@ function LandrixEInvoiceCIIRequiredBelowParent(const APath: TLandrixEInvoiceStri
 function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 
+{ Reports what LandrixEInvoicePruneCII would remove from AInvoice (not nil)
+  without changing it: each path at the highest element the Factur-X
+  profile AProfile does not contain, once with the number of occurrences
+  (edk_NotAllowed, error) in ADiagnostics (nil: discarded). Returns the
+  number of occurrences; 0 for profiles outside MINIMUM .. EN16931.
+  DE: Meldet, was LandrixEInvoicePruneCII aus AInvoice (nicht nil) entfernen
+  wuerde, ohne es zu aendern: jeden Pfad am hoechsten Element, das das
+  Factur-X-Profil AProfile nicht enthaelt, einmal mit der Anzahl der
+  Vorkommen (edk_NotAllowed, Fehler) in ADiagnostics (nil: verworfen).
+  Liefert die Anzahl der Vorkommen; 0 fuer Profile ausserhalb von MINIMUM ..
+  EN16931. }
+function LandrixEInvoiceCheckCIIProfile(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+
 implementation
 
 uses
@@ -1947,6 +1961,7 @@ type
   TCIIPruner = class(TObject)
   private
     FProfile: TLandrixEInvoiceProfile;
+    FRemove: Boolean;
     FPaths: array of TLandrixEInvoiceString;
     FCounts: array of Integer;
     FTotal: Integer;
@@ -2043,7 +2058,7 @@ end;
         if m.kind[n] == "wrapper":
             inner = "/%s:%s" % (m.wrapped[n][0]["ns"], m.wrapped[n][0]["name"])
         for f, a, _ in fields:
-            w("  if (R.%s <> '') and not APruner.Keep(APath + '%s/@%s', 1) then" % (f, inner, a))
+            w("  if (R.%s <> '') and not APruner.Keep(APath + '%s/@%s', 1) and APruner.FRemove then" % (f, inner, a))
             w("  begin")
             w("    R.%s := '';" % f)
             w("    Result := True;")
@@ -2068,10 +2083,10 @@ end;
             pn = c["pname"]
             cpath = "APath + '/%s'" % m.qname(c)
             if k == "string" and c["max"] != 1:
-                w("  if (AObject.%s.Count > 0) and not Keep(%s, Integer(AObject.%s.Count)) then" % (pn, cpath, pn))
+                w("  if (AObject.%s.Count > 0) and not Keep(%s, Integer(AObject.%s.Count)) and FRemove then" % (pn, cpath, pn))
                 w("    AObject.%s.Clear;" % pn)
             elif k == "string":
-                w("  if not LandrixEInvoiceIsBlank(AObject.%s) and not Keep(%s, 1) then" % (pn, cpath))
+                w("  if not LandrixEInvoiceIsBlank(AObject.%s) and not Keep(%s, 1) and FRemove then" % (pn, cpath))
                 w("    AObject.%s := '';" % pn)
             elif k == "record" and c["max"] == 1:
                 short = m.pascal[c["type"]][len(PREFIX):]
@@ -2080,13 +2095,13 @@ end;
                 if c["type"] in with_fields:
                     w("    if Keep(%s, 1) then" % cpath)
                     w("      Prune%sFields(Self, AObject.%s, %s)" % (short, pn, cpath))
-                    w("    else")
+                    w("    else if FRemove then")
                     w("      %sClear(AObject.%s);" % (rshort, pn))
                 else:
-                    w("    if not Keep(%s, 1) then" % cpath)
+                    w("    if not Keep(%s, 1) and FRemove then" % cpath)
                     w("      %sClear(AObject.%s);" % (rshort, pn))
             elif k == "record" and c["type"] not in with_fields:
-                w("  if (AObject.%s.Count > 0) and not Keep(%s, Integer(AObject.%s.Count)) then" % (pn, cpath, pn))
+                w("  if (AObject.%s.Count > 0) and not Keep(%s, Integer(AObject.%s.Count)) and FRemove then" % (pn, cpath, pn))
                 w("    AObject.%s.Clear;" % pn)
             elif k == "record":
                 short = m.pascal[c["type"]][len(PREFIX):]
@@ -2098,14 +2113,14 @@ end;
                 w("        if Prune%sFields(Self, R%s, %s) then" % (short, pn, cpath))
                 w("          AObject.%s[I] := R%s;" % (pn, pn))
                 w("      end")
-                w("    else")
+                w("    else if FRemove then")
                 w("      AObject.%s.Clear;" % pn)
             elif c["max"] == 1:
                 short = m.pascal[c["type"]][len(PREFIX):]
                 w("  if not AObject.%s.IsEmpty then" % pn)
                 w("    if Keep(%s, 1) then" % cpath)
                 w("      Prune%s(AObject.%s, %s)" % (short, pn, cpath))
-                w("    else")
+                w("    else if FRemove then")
                 w("      AObject.%s.Clear;" % pn)
             else:
                 short = m.pascal[c["type"]][len(PREFIX):]
@@ -2113,34 +2128,60 @@ end;
                 w("    if Keep(%s, Integer(AObject.%s.Count)) then" % (cpath, pn))
                 w("      for I := 0 to AObject.%s.Count - 1 do" % pn)
                 w("        Prune%s(AObject.%s[I], %s)" % (short, pn, cpath))
-                w("    else")
+                w("    else if FRemove then")
                 w("      AObject.%s.Clear;" % pn)
         w("end;")
         w("")
     root = m.roots[0]
     path = "/%s:%s" % (root["ns"], root["name"])
-    w("""function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
-  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+    w("""{ Runs the pruner over AInvoice; ARemove = False only reports.
+  DE: Laesst den Pruner ueber AInvoice laufen; ARemove = False meldet nur. }
+function RunPruner(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; ARemove: Boolean): Integer;
 var
   Pruner: TCIIPruner;
   I: Integer;
+  Suffix: string;
+  Item: TLandrixEInvoiceDiagnostic;
 begin
   Result := 0;
   if not (AProfile in CheckedProfiles) then
     Exit;
+  if ARemove then
+    Suffix := ' occurrence(s) left out: not in Factur-X profile '
+  else
+    Suffix := ' occurrence(s) not in Factur-X profile ';
   Pruner := TCIIPruner.Create;
   try
     Pruner.FProfile := AProfile;
+    Pruner.FRemove := ARemove;
     Pruner.PruneInvoice(AInvoice, '%s');
     if ADiagnostics <> nil then
       for I := 0 to Integer(Length(Pruner.FPaths)) - 1 do
-        ADiagnostics.AddDiagnostic(edk_NotAllowed, Pruner.FPaths[I], 0, 0, 0,
-          TLandrixEInvoiceString(IntToStr(Pruner.FCounts[I]) + ' occurrence(s) left out: not in Factur-X profile ' +
-          ProfileName(AProfile))).Severity := eds_Warning;
+      begin
+        Item := ADiagnostics.AddDiagnostic(edk_NotAllowed, Pruner.FPaths[I], 0, 0, 0,
+          TLandrixEInvoiceString(IntToStr(Pruner.FCounts[I]) + Suffix + ProfileName(AProfile)));
+        if ARemove then
+          Item.Severity := eds_Warning
+        else
+          Item.Severity := eds_Error;
+      end;
     Result := Pruner.FTotal;
   finally
     Pruner.Free;
   end;
+end;
+
+function LandrixEInvoicePruneCII(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := RunPruner(AInvoice, AProfile, ADiagnostics, True);
+end;
+
+function LandrixEInvoiceCheckCIIProfile(AInvoice: TLandrixCIIInvoice; AProfile: TLandrixEInvoiceProfile;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := RunPruner(AInvoice, AProfile, ADiagnostics, False);
 end;
 
 end.""" % path)

@@ -276,8 +276,12 @@ Supported invoice standards are documented per release.
 - `tools/rulecheck/rule-oracle.py` with `RuleCheckProbe`: compares the rule checks with the KoSIT
   validator on the 1,219 Schematron test documents of XRechnung 3.0.0; known differences (content
   the model cannot hold) are listed with reasons in `tools/rulecheck/oracle-exceptions.txt`.
+- `LandrixEInvoiceCheckCIIProfile`: reports what `LandrixEInvoicePruneCII` would remove from a CII
+  model, as errors, without changing the model.
 
 ### Changed
+- `LandrixEInvoiceCheckCII` reports content the Factur-X profile does not contain as an error
+  (`edk_NotAllowed`) instead of ignoring it.
 - Invoice and line periods (BG-14, BG-26) are compared as dates, as BR-29/BR-30 do: a period that
   starts later on the day it ends is written; a period that ends on an earlier date is still left
   out, now with a warning.
