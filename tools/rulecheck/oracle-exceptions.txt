@@ -28,6 +28,14 @@ ubl-*-br-de-25-test-bg-19-with-bg-17-*-identity.xml	missed BR-DE-25-b
 ubl-*-br-de-25-test-bg-19-with-bg-18-*-identity.xml	missed BR-DE-25-b
 ubl-inv-br-de-20-paymentmeans-code59-test-10[57]-identity.xml	missed BR-DE-25-b
 ubl-inv-contact-tests-*.xml	missed BR-DE-23-b
+# The one account then holds the number of the other group, and the output fails the format rule
+# of its payment means: a card number as credit transfer account (BR-DE-19) or as direct debit
+# account (BR-DE-20), an IBAN as card number (BR-51).
+*-br-de-23-test-bg-17-with-bg-18-*-identity.xml	extra BR-DE-19
+ubl-inv-contact-tests-*.xml	extra BR-DE-19
+*-br-de-24-test-bg-18-with-bg-17-*-identity.xml	extra BR-51
+cii-br-de-24-test-bg-18-with-bg-19-bt-91-911-identity.xml	extra BR-51
+ubl-*-br-de-25-test-bg-19-with-bg-18-*-identity.xml	extra BR-DE-20
 
 # Blank text counts as absent (normalize-space, plan Phase 2 step 4): an empty IBAN is no
 # account and is not written; KoSIT accepts the empty element for BR-DE-23-a. An empty VAT

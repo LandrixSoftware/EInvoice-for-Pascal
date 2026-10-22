@@ -315,6 +315,26 @@ begin
     Seller.VATCompanyID := ' '
   else if AID = 'BR-FXEXT-CO-04' then
     Line.TaxCategory := idtfcc_None
+  else if AID = 'BR-DE-17' then
+    Invoice.InvoiceTypeCode := itc_PrepaymentInvoice
+  else if AID = 'BR-DE-19' then
+    Payment.FinancialAccount := 'DE02120300000000202052'
+  else if AID = 'BR-DE-20' then
+  begin
+    Payment.PaymentMeansCode := ipmc_SEPADirectDebit;
+    Invoice.PaymentMandateID := 'M-1';
+    Seller.BankAssignedCreditorIdentifier := 'DE98ZZZ09999999999';
+    Payment.FinancialAccount := 'DE02120300000000202052';
+  end
+  else if AID = 'BR-DE-27' then
+    Seller.ContactTelephone := '+49'
+  else if AID = 'BR-DE-28' then
+    Seller.ContactElectronicMail := 'accounting@seller'
+  else if AID = 'BR-51' then
+  begin
+    Payment.PaymentMeansCode := ipmc_CreditCard;
+    Payment.FinancialAccount := '12345678901';
+  end
   else if AID = 'BR-DE-1' then
     Invoice.PaymentTypes.Clear
   else if AID = 'BR-DE-2' then
@@ -432,7 +452,7 @@ type
   end;
 
 const
-  RuleCases: array[0..101] of TRuleCase = (
+  RuleCases: array[0..108] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -529,6 +549,13 @@ const
     (ID: 'BR-CO-25'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'BR-CO-26'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-FXEXT-CO-04'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-DE-17'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
+    (ID: 'BR-DE-19'; Target: tk_XRCII; NotApplicable: tk_Peppol),
+    (ID: 'BR-DE-20'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
+    (ID: 'BR-DE-27'; Target: tk_XRCII; NotApplicable: tk_Peppol),
+    (ID: 'BR-DE-28'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
+    (ID: 'BR-51'; Target: tk_XRCII; NotApplicable: tk_FXBasic),
+    (ID: 'BR-51'; Target: tk_Peppol; NotApplicable: tk_FXBasic),
     (ID: 'BR-FXEXT-CO-10'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'BR-FXEXT-CO-11'; Target: tk_FXExtended; NotApplicable: tk_XRUBL),
     (ID: 'BR-FXEXT-CO-12'; Target: tk_FXExtended; NotApplicable: tk_XRCII),
@@ -1485,6 +1512,79 @@ begin
   end;
 end;
 
+{ The format rules: IBAN with blanks and check sum, an IBAN shorter than 15
+  characters or with a tab only in UBL (CII writes it as ram:ProprietaryID), the type code
+  as other text, telephone and email patterns, BR-51 as a warning in UBL and
+  an error in CII on the normalized number. }
+procedure TestFormats;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Payment: TLandrixInvoicePaymentType;
+  Seller: TLandrixInvoiceAccountingParty;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Payment := Invoice.PaymentTypes[0];
+    Seller := Invoice.AccountingSupplierParty;
+    Payment.FinancialAccount := ' DE02 1203 0000 0000 2020 51 ';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-DE-19', nil), 'IBAN with blanks');
+    Payment.FinancialAccount := 'DE02' + #9 + '120300000000202051';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-19', nil), 'UBL: IBAN with a tab');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-DE-19', nil), 'CII: tab, written as proprietary');
+    Payment.FinancialAccount := 'GB82WEST12345698765432';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-19', nil), 'IBAN with letters');
+    Payment.FinancialAccount := 'de02120300000000202051';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-19', nil), 'lower case country');
+    Payment.FinancialAccount := 'DE011234567';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-19', nil), 'UBL: short IBAN');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-DE-19', nil), 'CII: short IBAN');
+    Payment.FinancialAccount := ' ';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-19', nil), 'no account');
+    Payment.FinancialAccount := 'DE02120300000000202051';
+    Invoice.InvoiceTypeCode := itc_None;
+    Invoice.InvoiceTypeCodeOther := ' 875 ';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-17', nil), 'other text 875');
+    Invoice.InvoiceTypeCodeOther := '386';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-17', nil), 'other text 386');
+    Invoice.InvoiceTypeCode := itc_CommercialInvoice;
+    Invoice.InvoiceTypeCodeOther := '';
+    Seller.ContactElectronicMail := ' a@b.c.de ';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-28', nil), 'email with blanks around');
+    Seller.ContactElectronicMail := 'a b@c.de';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-28', nil), 'email with a blank');
+    Seller.ContactElectronicMail := 'a@@b.de';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-28', nil), 'two @');
+    Seller.ContactElectronicMail := 'a@.de';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-28', nil), 'empty domain part');
+    Seller.ContactElectronicMail := 'a@b.de.';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-28', nil), 'dot at the end');
+    Seller.ContactElectronicMail := 'accounting@seller.example';
+    Seller.ContactTelephone := '(0) 1-2';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-27', nil), 'three digits');
+    Seller.ContactName := '';
+    Seller.ContactTelephone := '';
+    Seller.ContactElectronicMail := '';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-27', nil), 'no contact');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-28', nil), 'no contact');
+    Payment.PaymentMeansCode := ipmc_CreditCard;
+    Payment.FinancialAccount := ' 1234  5678 ';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-51', nil), 'normalized 9 characters');
+    Payment.FinancialAccount := '12345678901';
+    D.Clear;
+    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D), 'UBL: no error');
+    Check(HasRule(D, 'BR-51'), 'UBL: BR-51 reported');
+    D.Clear;
+    Check(LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_FXEN16931), D) > 0, 'CII: error');
+    Check(HasRule(D, 'BR-51'), 'CII: BR-51 reported');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -1507,6 +1607,7 @@ begin
   RegisterTest('Check.VatSyntaxes', TestVatSyntaxes);
   RegisterTest('Check.VatIdentifiers', TestVatIdentifiers);
   RegisterTest('Check.TermsAndSeller', TestTermsAndSeller);
+  RegisterTest('Check.Formats', TestFormats);
 end;
 
 end.

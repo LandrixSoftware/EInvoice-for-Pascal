@@ -278,6 +278,11 @@ Supported invoice standards are documented per release.
   Factur-X EXTENDED, BR-CO-25 (due date or payment terms), BR-FXEXT-CO-04 and BR-FXEXT-S-01 to
   BR-FXEXT-AG-01. BR-CO-05 to BR-CO-08 always hold in the Schematron, BR-CO-19 and BR-CO-20 in
   the written document.
+- Format rules in `LandrixEInvoiceCheck`, as warnings: BR-DE-17 (supported invoice type codes),
+  BR-DE-19 and BR-DE-20 (IBAN of a SEPA credit transfer or direct debit, with the check sum of
+  KoSIT's `xr:checkIBAN`), BR-DE-27 (at least three digits in the seller telephone) and BR-DE-28
+  (seller email pattern); BR-51 (card number at most 10 characters) as a warning in UBL and an
+  error in CII. `LandrixEInvoiceCheckRule` runs every row of an identifier.
 - `LandrixEInvoiceCheckCII`, `LandrixEInvoiceCheckUBLInvoice` and `LandrixEInvoiceCheckUBLCreditNote`:
   check the required content of a syntax model for a target as the writer reports it, returning
   the number of errors.

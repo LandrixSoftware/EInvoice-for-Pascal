@@ -24,9 +24,10 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
 
 Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dokument melden
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
-Konfiguration bleiben der Maßstab. Noch nicht geprüft werden unter anderem Codelisten- und
-Formatregeln, einige XRechnung-Regeln (BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28) und
-BR-51.
+Konfiguration bleiben der Maßstab. Noch nicht geprüft werden unter anderem die Codelistenregeln
+(BR-CL-...) und die meisten Peppol-Regeln. Die Formatregeln BR-DE-17, BR-DE-19, BR-DE-20
+(IBAN-Prüfsumme), BR-DE-27, BR-DE-28 und BR-51 werden geprüft; bis auf BR-51 in CII sind alle
+Warnungen.
 
 Die Regeln beurteilen die Rechnung so, wie sie geschrieben würde. Ein Steuersatz, den die
 Rechnung nicht setzt, ist 0 und wird als 0 geschrieben; Positionen, Nachlässe und Zuschläge

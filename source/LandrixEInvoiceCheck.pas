@@ -40,8 +40,10 @@
   come from the group and the number, and each follows the schematron of
   its syntax, which differ in context and tolerance; BR-B-01, BR-B-02,
   BR-CO-03, BR-CO-04, BR-CO-09, BR-CO-18, BR-CO-21 to BR-CO-26 and
-  BR-FXEXT-CO-04 have rows. Code list and format rules (BR-DE-17, BR-DE-19, BR-DE-20,
-  BR-DE-27, BR-DE-28, BR-51) are not part of this set yet.
+  BR-FXEXT-CO-04 have rows. The format rules BR-DE-17, BR-DE-19,
+  BR-DE-20, BR-DE-27, BR-DE-28 (warnings) and BR-51 (UBL warning, CII
+  error) follow the KoSIT functions and patterns. Code list rules (BR-CL-...
+  and the like) are not part of this set yet.
 
   The rules LX-CC-01 to LX-CC-12 are the checks of
   TXRechnungInvoiceAdapter.ConsistencyCheck of XRechnung-for-Delphi. They
@@ -79,9 +81,10 @@
   keine Zeilen: ihre Kennungen ergeben sich aus Gruppe und Nummer, und jede
   folgt dem Schematron ihrer Syntax, die sich in Kontext und Toleranz
   unterscheiden; BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09, BR-CO-18,
-  BR-CO-21 bis BR-CO-26 und BR-FXEXT-CO-04 haben Zeilen. Codelisten- und
-  Formatregeln (BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28, BR-51)
-  gehoeren noch nicht dazu.
+  BR-CO-21 bis BR-CO-26 und BR-FXEXT-CO-04 haben Zeilen. Die Formatregeln
+  BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28 (Warnungen) und BR-51
+  (UBL Warnung, CII Fehler) folgen den Funktionen und Mustern der KoSIT.
+  Codelistenregeln (BR-CL-... und aehnliche) gehoeren noch nicht dazu.
 
   Die Regeln LX-CC-01 bis LX-CC-12 sind die Pruefungen von
   TXRechnungInvoiceAdapter.ConsistencyCheck aus XRechnung-for-Delphi. Es
@@ -202,12 +205,12 @@ type
     cr_BR02, cr_BR03, cr_BR04, cr_BR05, cr_BR06, cr_BR07, cr_BR08, cr_BR09,
     cr_BR10, cr_BR11, cr_BR16, cr_BR17, cr_BR18, cr_BR19, cr_BR20, cr_BR21,
     cr_BR23, cr_BR25, cr_BR27, cr_BR28, cr_BR29, cr_BR30, cr_BR32, cr_BR33,
-    cr_BR37, cr_BR38, cr_BR42, cr_BR44, cr_BR47, cr_BR52, cr_BR53, cr_BR54,
+    cr_BR37, cr_BR38, cr_BR42, cr_BR44, cr_BR47, cr_BR51UBL, cr_BR51CII, cr_BR52, cr_BR53, cr_BR54,
     cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65, cr_BRB01, cr_BRB02,
     cr_BRDE01, cr_BRDE02, cr_BRDE03, cr_BRDE04, cr_BRDE05, cr_BRDE06,
     cr_BRDE07, cr_BRDE08, cr_BRDE09, cr_BRDE10, cr_BRDE11, cr_BRDE15,
-    cr_BRDE16, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
-    cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE30, cr_BRDE31,
+    cr_BRDE16, cr_BRDE17, cr_BRDE19, cr_BRDE20, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
+    cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE27, cr_BRDE28, cr_BRDE30, cr_BRDE31,
     cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061,
     cr_BRCO03, cr_BRCO04, cr_BRCO09,
     cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17, cr_BRCO18,
@@ -450,6 +453,19 @@ const
      Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BT-118';
      Message: 'each VAT breakdown (BG-23) shall be defined through a VAT category code (BT-118)';
      Source: EN16931Source),
+    { BR-51 is a warning in UBL and an error in CII: two rows with one
+      identifier. DE: BR-51 ist in UBL eine Warnung und in CII ein Fehler:
+      zwei Zeilen mit einer Kennung. }
+    (ID: 'BR-51'; Standards: EN16931Standards; Syntaxes: [esy_UBL];
+     Profiles: FromEN16931; Severity: eds_Warning; Legacy: False; Terms: 'BT-87';
+     Message: 'the payment card primary account number (BT-87) should have at most 10 characters (only ' +
+       'the last digits)';
+     Source: EN16931Source),
+    (ID: 'BR-51'; Standards: EN16931Standards; Syntaxes: [esy_CII];
+     Profiles: FromEN16931; Severity: eds_Error; Legacy: False; Terms: 'BT-87';
+     Message: 'the payment card primary account number (BT-87) shall have at most 10 characters (only ' +
+       'the last digits)';
+     Source: EN16931Source),
     (ID: 'BR-52'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
      Profiles: FromEN16931; Severity: eds_Error; Legacy: False; Terms: 'BT-122';
      Message: 'each additional supporting document (BG-24) shall contain a supporting document reference ' +
@@ -563,6 +579,20 @@ const
      Message: 'with VAT category S, Z, E, AE, K, G, L or M the seller VAT identifier (BT-31), the seller ' +
        'tax registration identifier (BT-32) or a tax representative (BG-11) shall be provided';
      Source: XRechnungSource),
+    (ID: 'BR-DE-17'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-3';
+     Message: 'the invoice type code (BT-3) should be 326, 380, 384, 389, 381, 875, 876 or 877';
+     Source: XRechnungSource),
+    (ID: 'BR-DE-19'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-84';
+     Message: 'the payment account identifier (BT-84) of a SEPA credit transfer (payment means 58) should ' +
+       'be a valid IBAN';
+     Source: XRechnungSource),
+    (ID: 'BR-DE-20'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-91';
+     Message: 'the debited account identifier (BT-91) of a SEPA direct debit (payment means 59) should be ' +
+       'a valid IBAN';
+     Source: XRechnungSource),
     (ID: 'BR-DE-22'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-125';
      Message: 'the file names of the attached documents (BT-125) shall be unique';
@@ -597,6 +627,15 @@ const
     (ID: 'BR-DE-26'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BG-3';
      Message: 'a corrected invoice (type code 384) should have a preceding invoice reference (BG-3)';
+     Source: XRechnungSource),
+    (ID: 'BR-DE-27'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-42';
+     Message: 'the seller contact telephone number (BT-42) should contain at least three digits';
+     Source: XRechnungSource),
+    (ID: 'BR-DE-28'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-43';
+     Message: 'the seller contact email address (BT-43) should have the form name@domain with a dot in the ' +
+       'domain and no blanks';
      Source: XRechnungSource),
     (ID: 'BR-DE-30'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-90';
@@ -1267,6 +1306,175 @@ begin
     if not Present(TaxCategoryText(AInvoice.TaxAmountSubtotals[I].TaxCategory,
       AInvoice.TaxAmountSubtotals[I].TaxCategoryOther)) then
       Exit;
+  Result := False;
+end;
+
+{ --- format rules ---------------------------------------------------------------- }
+
+function IsXmlBlankChar(C: TLandrixEInvoiceChar): Boolean;
+begin
+  Result := (C = #32) or (C = #9) or (C = #10) or (C = #13);
+end;
+
+{ XPath normalize-space: no blank at either end, one blank between words.
+  DE: XPath normalize-space: kein Leerraum an den Enden, ein Leerzeichen
+  zwischen Woertern. }
+function NormalizedSpace(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+var
+  I: Integer;
+  Pending: Boolean;
+begin
+  Result := '';
+  Pending := False;
+  for I := 1 to Length(AValue) do
+    if IsXmlBlankChar(AValue[I]) then
+      Pending := Result <> ''
+    else
+    begin
+      if Pending then
+        Result := Result + ' ';
+      Pending := False;
+      Result := Result + AValue[I];
+    end;
+end;
+
+{ BR-DE-19, BR-DE-20 (KoSIT xr:checkIBAN): without blanks, two capital
+  letters, two digits and up to 30 letters or digits, and the check sum
+  modulo 97 is 1 (letters as their code point - 55, lower case as well).
+  ACIIPayee: CII writes BT-84 as IBAN only with 15 to 34 characters
+  besides blanks (LooksLikeIBAN of the CII mapper, which skips only
+  spaces), otherwise as ram:ProprietaryID.
+  DE: BR-DE-19, BR-DE-20 (KoSIT xr:checkIBAN): ohne Leerraum zwei
+  Grossbuchstaben, zwei Ziffern und bis zu 30 Buchstaben oder Ziffern, und
+  die Pruefsumme modulo 97 ist 1 (Buchstaben als Codepunkt - 55, auch
+  Kleinbuchstaben). ACIIPayee: CII schreibt BT-84 nur mit 15 bis 34
+  Zeichen ausser Leerzeichen als IBAN (LooksLikeIBAN des CII-Mappers, das
+  nur Leerzeichen ueberspringt), sonst als ram:ProprietaryID. }
+function IBANValid(const AValue: TLandrixEInvoiceString; ACIIPayee: Boolean): Boolean;
+var
+  S, Rearranged: TLandrixEInvoiceString;
+  I, Value, Remainder: Integer;
+  C: TLandrixEInvoiceChar;
+begin
+  Result := False;
+  S := '';
+  for I := 1 to Length(AValue) do
+    if not IsXmlBlankChar(AValue[I]) then
+      S := S + AValue[I]
+    else if ACIIPayee and (AValue[I] <> ' ') then
+      Exit;
+  if (Length(S) < 4) or (ACIIPayee and (Length(S) < 15)) or (Length(S) > 34) then
+    Exit;
+  for I := 1 to Length(S) do
+  begin
+    C := S[I];
+    if I <= 2 then
+    begin
+      if (C < 'A') or (C > 'Z') then
+        Exit;
+    end
+    else if I <= 4 then
+    begin
+      if (C < '0') or (C > '9') then
+        Exit;
+    end
+    else if not (((C >= '0') and (C <= '9')) or ((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z'))) then
+      Exit;
+  end;
+  Rearranged := Copy(S, 5, Length(S) - 4) + Copy(S, 1, 4);
+  Remainder := 0;
+  for I := 1 to Length(Rearranged) do
+  begin
+    Value := Ord(Rearranged[I]);
+    if Value > 64 then
+      Remainder := (Remainder * 100 + Value - 55) mod 97
+    else
+      Remainder := (Remainder * 10 + Value - 48) mod 97;
+  end;
+  Result := Remainder = 1;
+end;
+
+{ BR-DE-27: at least three digits. DE: BR-DE-27: mindestens drei Ziffern. }
+function TelephoneValid(const AValue: TLandrixEInvoiceString): Boolean;
+var
+  I, Digits: Integer;
+begin
+  Digits := 0;
+  for I := 1 to Length(AValue) do
+    if (AValue[I] >= '0') and (AValue[I] <= '9') then
+      Inc(Digits);
+  Result := Digits >= 3;
+end;
+
+{ BR-DE-28 (^[^@\s]+@([^@.\s]+\.)+[^@.\s]+$ on the normalized text): one @
+  after at least one character, no blank, a domain of at least two
+  non-empty parts separated by dots.
+  DE: BR-DE-28 (^[^@\s]+@([^@.\s]+\.)+[^@.\s]+$ auf dem normalisierten
+  Text): ein @ nach mindestens einem Zeichen, kein Leerraum, eine Domain
+  aus mindestens zwei nicht leeren, durch Punkte getrennten Teilen. }
+function EmailValid(const AValue: TLandrixEInvoiceString): Boolean;
+var
+  S, Domain: TLandrixEInvoiceString;
+  I, At: Integer;
+begin
+  Result := False;
+  S := NormalizedSpace(AValue);
+  for I := 1 to Length(S) do
+    if IsXmlBlankChar(S[I]) then
+      Exit;
+  At := Pos('@', S);
+  if At <= 1 then
+    Exit;
+  Domain := Copy(S, At + 1, Length(S) - At);
+  if (Pos('@', Domain) > 0) or (Pos('.', Domain) = 0) or (Pos('..', Domain) > 0) or (Domain[1] = '.') or
+     (Domain[Length(Domain)] = '.') then
+    Exit;
+  Result := True;
+end;
+
+{ BR-DE-17: the written type code (the enumeration, otherwise the other
+  text). DE: BR-DE-17: der geschriebene Typcode (die Aufzaehlung, sonst der
+  andere Text). }
+function TypeCodeSupported(AInvoice: TLandrixInvoice): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+begin
+  if AInvoice.InvoiceTypeCode <> itc_None then
+    Code := LandrixEInvoiceTypeCodeToStr(AInvoice.InvoiceTypeCode)
+  else
+    Code := NormalizedSpace(AInvoice.InvoiceTypeCodeOther);
+  Result := (Code = '326') or (Code = '380') or (Code = '384') or (Code = '389') or (Code = '381') or
+    (Code = '875') or (Code = '876') or (Code = '877');
+end;
+
+{ BR-DE-19 (credit transfer 58, the payee account BT-84), BR-DE-20 (direct
+  debit 59, the debited account BT-91), BR-51 (card payment, BT-87 longer
+  than 10 characters), per payment means as written.
+  DE: BR-DE-19 (Ueberweisung 58, das Konto BT-84), BR-DE-20 (Lastschrift
+  59, das belastete Konto BT-91), BR-51 (Kartenzahlung, BT-87 laenger als
+  10 Zeichen), je Zahlungsart, wie sie geschrieben wird. }
+function PaymentFormatViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  P: TLandrixInvoicePaymentType;
+begin
+  Result := True;
+  for I := 0 to AInvoice.PaymentTypes.Count - 1 do
+  begin
+    P := AInvoice.PaymentTypes[I];
+    case AIndex of
+      cr_BRDE19:
+        if (P.PaymentMeansCode = ipmc_SEPACreditTransfer) and not IBANValid(P.FinancialAccount, ASpec.Target.Syntax = esy_CII) then
+          Exit;
+      cr_BRDE20:
+        if (P.PaymentMeansCode = ipmc_SEPADirectDebit) and not IBANValid(P.FinancialAccount, False) then
+          Exit;
+    else
+      if IsCard(P) and (Length(NormalizedSpace(P.FinancialAccount)) > 10) then
+        Exit;
+    end;
+  end;
   Result := False;
 end;
 
@@ -2412,6 +2620,8 @@ begin
       Result := AllowanceChargeViolated(AIndex, AInvoice, True);
     cr_BR47:
       Result := TaxCategoryMissing(AInvoice);
+    cr_BR51UBL, cr_BR51CII, cr_BRDE19, cr_BRDE20:
+      Result := PaymentFormatViolated(AIndex, AInvoice, ASpec);
     cr_BR52:
       Result := BG24IDMissing(AInvoice);
     cr_BR53:
@@ -2490,6 +2700,8 @@ begin
     cr_BRDE16:
       Result := UsesRegisteredCategory(AInvoice) and not Present(Seller.VATCompanyID) and
         not Present(Seller.VATCompanyNumber) and not PartySet(TaxRepresentative);
+    cr_BRDE17:
+      Result := not TypeCodeSupported(AInvoice);
     cr_BRDE22:
       Result := DuplicateFilename(AInvoice);
     cr_BRDE23b:
@@ -2507,6 +2719,10 @@ begin
       Result := HasPayment(AInvoice, pk_SEPADirectDebitWithBIC);
     cr_BRDE26:
       Result := (AInvoice.InvoiceTypeCode = itc_CorrectedInvoice) and not HasPrecedingID(AInvoice);
+    cr_BRDE27:
+      Result := ContactSet(Seller) and not TelephoneValid(Seller.ContactTelephone);
+    cr_BRDE28:
+      Result := ContactSet(Seller) and not EmailValid(Seller.ContactElectronicMail);
     cr_BRDE30, cr_BRDE31:
       Result := DirectDebitViolated(AIndex, AInvoice, ASpec);
     { the UBL mapper writes a sales order alone with the order 'NA' (BT-13)
@@ -2600,13 +2816,20 @@ var
   G: TVatGroup;
   N: Integer;
   TaxUses: TTaxUses;
+  Found: Boolean;
 begin
+  Result := True;
+  Found := False;
+  { an identifier can have one row per syntax (BR-51) }
   for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
     if TLandrixEInvoiceString(CheckRows[I].ID) = ARuleID then
     begin
-      Result := Run(I, AInvoice, ASpec, ADiagnostics);
-      Exit;
+      Found := True;
+      if not Run(I, AInvoice, ASpec, ADiagnostics) then
+        Result := False;
     end;
+  if Found then
+    Exit;
   for G := Low(TVatGroup) to High(TVatGroup) do
     for N := 0 to VatGroupLast[G] do
       if TLandrixEInvoiceString(VatRuleID(G, N)) = ARuleID then
