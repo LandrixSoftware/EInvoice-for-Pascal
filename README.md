@@ -23,7 +23,7 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
   - `TLandrixCII...` and `TLandrixUBL...`: complete syntax models, generated from the
     schemas, for everything the semantic model does not cover.
 - No dependency on MSXML or other XML libraries: XML is handled by
-  [LandrixXML for Pascal](https://github.com/LandrixSoftware/LandrixXML-for-Pascal),
+  [LandrixXML for Pascal](https://github.com/landrix/LandrixXML-for-Pascal),
   included as a Git submodule.
 
 ## Quick start
