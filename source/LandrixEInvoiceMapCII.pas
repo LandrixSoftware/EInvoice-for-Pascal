@@ -462,30 +462,37 @@ begin
     Context.GuidelineSpecifiedDocumentContextParameter.ID.Value := FSpec.CustomizationID;
 end;
 
-{ XRechnung extension codes XR01 to XR03 as identifier schemes.
-  DE: Extension-Codes XR01 bis XR03 als Kennungsschema. }
+{ XRechnung extension codes XR01 to XR03 as identifier schemes, exactly as
+  KoSIT lists them (BR-DEX-04 to 08 compare case sensitively; 'xr01' is no
+  extension code and is written as an unknown scheme).
+  DE: Extension-Codes XR01 bis XR03 als Kennungsschema, genau so, wie KoSIT
+  sie fuehrt (BR-DEX-04 bis 08 unterscheiden Gross- und Kleinschreibung;
+  'xr01' ist kein Extension-Code und wird als unbekanntes Schema
+  geschrieben). }
 function IsExtensionScheme(const AValue, AScheme: TLandrixEInvoiceString): Boolean;
 begin
-  Result := Present(AValue) and (SameAscii(AScheme, 'XR01') or SameAscii(AScheme, 'XR02') or
-    SameAscii(AScheme, 'XR03'));
+  Result := Present(AValue) and ((AScheme = 'XR01') or (AScheme = 'XR02') or (AScheme = 'XR03'));
 end;
 
 { The XRechnung extension is declared only when the invoice has content the
   extension allows in CII: embedded XML attachments (BR-DEX-01) or the
-  extension codes XR01 to XR03 as scheme of BT-34, BT-49, BT-29, BT-46 or
-  BT-71 (BR-DEX-04 to 08). Sub lines (BR-DEX-15) and third-party payments
-  exist in the extension of UBL only. Unlike UBL a credit note may use it:
-  KoSIT selects the CII extension scenario by the identifier alone.
+  extension codes XR01 to XR03 as scheme of BT-34, BT-49, BT-29, BT-46,
+  BT-71, BT-30, BT-47, BT-60, BT-61 or BT-157 (BR-DEX-04 to 08). Sub lines
+  (BR-DEX-15) and third-party payments exist in the extension of UBL only.
+  Unlike UBL a credit note may use it: KoSIT selects the CII extension
+  scenario by the identifier alone.
   DE: Die XRechnung-Extension wird nur deklariert, wenn die Rechnung Inhalt
   hat, den die Extension in CII erlaubt: eingebettete XML-Anhaenge
   (BR-DEX-01) oder die Extension-Codes XR01 bis XR03 als Schema von BT-34,
-  BT-49, BT-29, BT-46 oder BT-71 (BR-DEX-04 bis 08). Unterpositionen
-  (BR-DEX-15) und Zahlungen Dritter gibt es nur in der Extension von UBL.
-  Anders als in UBL darf auch eine Gutschrift sie verwenden: KoSIT waehlt
-  das CII-Extension-Szenario allein nach der Kennung. }
+  BT-49, BT-29, BT-46, BT-71, BT-30, BT-47, BT-60, BT-61 oder BT-157
+  (BR-DEX-04 bis 08). Unterpositionen (BR-DEX-15) und Zahlungen Dritter
+  gibt es nur in der Extension von UBL. Anders als in UBL darf auch eine
+  Gutschrift sie verwenden: KoSIT waehlt das CII-Extension-Szenario allein
+  nach der Kennung. }
 function TCIIWriteMapper.UsesExtension: Boolean;
 var
   I: TLandrixEInvoiceListIndex;
+  Value, Scheme, Conflict: TLandrixEInvoiceString;
 begin
   Result := False;
   if Blank(FSpec.ExtensionCustomizationID) then
@@ -504,8 +511,18 @@ begin
      IsExtensionScheme(FInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyer,
        FInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyerSchemeID) or
      IsExtensionScheme(FInvoice.DeliveryInformation.LocationIdentifier,
-       FInvoice.DeliveryInformation.LocationIdentifierSchemeID) then
+       FInvoice.DeliveryInformation.LocationIdentifierSchemeID) or
+     IsExtensionScheme(FInvoice.AccountingSupplierParty.CompanyID,
+       FInvoice.AccountingSupplierParty.CompanyIDSchemeID) or
+     IsExtensionScheme(FInvoice.AccountingCustomerParty.CompanyID,
+       FInvoice.AccountingCustomerParty.CompanyIDSchemeID) or
+     IsExtensionScheme(FInvoice.PayeeParty.Identifier, FInvoice.PayeeParty.IdentifierSchemeID) or
+     IsExtensionScheme(FInvoice.PayeeParty.CompanyID, FInvoice.PayeeParty.CompanyIDSchemeID) then
     Exit;
+  for I := 0 to FInvoice.InvoiceLines.Count - 1 do
+    if LandrixEInvoiceStandardItemIdentifierOf(FInvoice.InvoiceLines[I], Value, Scheme, Conflict) and
+       IsExtensionScheme(Value, Scheme) then
+      Exit;
   Result := False;
 end;
 

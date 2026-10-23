@@ -15,7 +15,8 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
   BR-CO-17), the VAT category rules (BR-S-..., BR-Z-..., BR-E-..., BR-AE-..., BR-IC-...,
   BR-G-..., BR-O-..., BR-AF-..., BR-AG-..., BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09,
   BR-CO-18), the other BR-CO rules (reasons, seller identifier, payment terms), XRechnung
-  (BR-DE-...), Peppol (PEPPOL-EN16931-...) and the rules of Factur-X EXTENDED (BR-FXEXT-...). Each violation is an entry of kind
+  (BR-DE-...), Peppol (PEPPOL-EN16931-...), the code list rules of XRechnung and Peppol (BR-CL-...)
+  and the rules of Factur-X EXTENDED (BR-FXEXT-...). Each violation is an entry of kind
   `edk_RuleViolation` with its rule identifier in `RuleID`.
 - Everything the mapping reports: content the target or its Factur-X profile cannot hold
   (`edk_NotAllowed`), required content that is missing (`edk_MissingElement`), values that
@@ -23,9 +24,22 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
 
 The rule check predicts what the KoSIT validator would report for the written document. It
 does not replace the validator: schema and Schematron checks of the official configuration
-remain the reference. Not checked yet, among others: the code list rules (BR-CL-...) and most
-Peppol rules. The format rules BR-DE-17, BR-DE-19, BR-DE-20 (IBAN check sum), BR-DE-27, BR-DE-28
-and BR-51 are checked; all of them are warnings except BR-51 in CII.
+remain the reference. Not checked yet, among others: most Peppol rules and the code checks of
+the Factur-X Schematron (FX-SCH-A-...). The format rules BR-DE-17, BR-DE-19, BR-DE-20 (IBAN
+check sum), BR-DE-27, BR-DE-28 and BR-51 are checked; all of them are warnings except BR-51 in
+CII.
+
+The code list rules BR-CL-01 to BR-CL-26 use the lists of the validators (XRechnung 3.0.2,
+Peppol BIS 3.0.21). They are slightly older than the code lists of the library: the currency
+STD is accepted and STN is not, CII accepts the country AN and not SS, the VAT category B is
+accepted, the EAS codes 0219 and 0220 are accepted, and in UBL the 18 newest note subject codes
+are not. Codes are compared case sensitively after removing blanks around them, the VAT
+exemption reason code (BR-CL-22) after upper-casing it and the MIME code (BR-CL-24) exactly as
+written. XRechnung reports
+BR-CL-21 and BR-CL-23 as warnings, and when the invoice is written with the XRechnung extension
+it does not report BR-CL-10, 11, 21, 24, 25 and 26. UBL writes the invoice type code 381 as
+`ubl:CreditNote` and every other code as `ubl:Invoice`, so a code of the credit note list such as
+261 violates BR-CL-01 in UBL.
 
 The rules judge the invoice as it would be written. A VAT rate the invoice does not set is 0
 and is written as 0; lines, allowances and charges of category O are written without rate.

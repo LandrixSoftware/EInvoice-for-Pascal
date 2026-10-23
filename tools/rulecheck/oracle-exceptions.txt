@@ -40,9 +40,10 @@ ubl-*-br-de-25-test-bg-19-with-bg-18-*-identity.xml	extra BR-DE-20
 # Blank text counts as absent (normalize-space, plan Phase 2 step 4): an empty IBAN is no
 # account and is not written; KoSIT accepts the empty element for BR-DE-23-a. An empty VAT
 # category code of a line is no category and is not written; KoSIT accepts the empty element for
-# BR-CO-04.
+# BR-CO-04 and reports BR-CL-18 for it.
 cii-br-de-19-iban-tests-895-empty.xml	extra BR-DE-23-a
 cii-peppol-en16931-r008-1027-empty.xml	extra BR-CO-04
+cii-peppol-en16931-r008-1027-empty.xml	missed BR-CL-18
 
 # An empty electronic address container (ram:URIUniversalCommunication without ram:URIID) is
 # no address and is not written; KoSIT reports BR-62/BR-63 for the empty container, both sides
@@ -86,3 +87,29 @@ ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra BR-53
 ubl-*-br-de-16-*-code-L.xml	missed BR-AF-05
 *-br-de-16-*-code-M.xml	missed BR-AG-05
 *-br-de-14-test-*-remove.xml	extra BR-S-08
+
+# UBL chooses the root by the type code (LandrixEInvoiceUBLRootFor): 381 is written as
+# ubl:CreditNote, every other code as ubl:Invoice, so a code from the list of the other root
+# (BR-CL-01) cannot fail in the output.
+ubl-cn-br-de-16-test-code-O-*.xml	missed BR-CL-01
+ubl-cn-br-de-17-test-*.xml	missed BR-CL-01
+ubl-cn-br-de-26-test-*.xml	missed BR-CL-01
+ubl-inv-br-de-17-test-69-code-381.xml	missed BR-CL-01
+ubl-inv-paymentmeans-test-337-code-381.xml	missed BR-CL-01
+
+# Extension documents without extension content (their schemes are invalid, e.g. 0321 or XR11, not
+# XR01 to XR03): the mappers declare the XRechnung extension only for content that needs it
+# (UsesExtension), so the output is a standard XRechnung, where BR-CL-10, 11, 24, 25 and 26 are
+# errors and BR-CL-21 a warning; KoSIT validates the input in the extension scenario, where they
+# are information.
+cii-br-dex-04-schemeid-test-[34]-*-identity.xml	extra BR-CL-10
+cii-br-dex-04-schemeid-test-[34]-*-identity.xml	extra BR-CL-21
+cii-br-dex-06-schemeid-test-[34]-*-identity.xml	extra BR-CL-21
+cii-br-dex-07-schemeid-test-[34]-*-identity.xml	extra BR-CL-25
+cii-br-dex-08-schemeid-test-[34]-*-identity.xml	extra BR-CL-26
+ubl-inv-br-dex-01-extension_mime_code_test-205-code-application_nonsense.xml	extra BR-CL-24
+ubl-inv-br-dex-04-schemeid-test-[34]-*-identity.xml	extra BR-CL-10
+ubl-inv-br-dex-05-schemeid-test-24[34]-*.xml	extra BR-CL-11
+ubl-inv-br-dex-06-schemeid-test-[34]-*-identity.xml	extra BR-CL-21
+ubl-inv-br-dex-07-schemeid-test-[34]-*-identity.xml	extra BR-CL-25
+ubl-inv-br-dex-08-schemeid-test-[34]-*-identity.xml	extra BR-CL-26

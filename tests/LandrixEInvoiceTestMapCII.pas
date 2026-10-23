@@ -887,7 +887,8 @@ begin
 end;
 
 { XRechnung CII declares the extension (BT-24) only with extension content:
-  an XR01 to XR03 scheme or an embedded XML attachment; Factur-X never. }
+  an XR01 to XR03 scheme (also of a legal registration, the payee or an
+  item standard identifier) or an embedded XML attachment; Factur-X never. }
 procedure TestExtensionIdentifier;
 const
   Extension = '#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0';
@@ -914,6 +915,28 @@ begin
     CheckEquals(1, Occurrences(Extension, Xml), 'XR02 scheme declares the extension');
     CheckEqualsInvoiceStr('XR02', Back.DeliveryInformation.LocationIdentifierSchemeID, 'scheme read back');
     Invoice.DeliveryInformation.LocationIdentifierSchemeID := '0088';
+    Invoice.AccountingSupplierParty.CompanyID := 'HRB 1';
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := 'XR01';
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(1, Occurrences(Extension, Xml), 'XR01 as legal registration scheme (BR-DEX-05)');
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := '0002';
+    Invoice.PayeeParty.Name := 'Payee';
+    Invoice.PayeeParty.Identifier := 'P-1';
+    Invoice.PayeeParty.IdentifierSchemeID := 'XR03';
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(1, Occurrences(Extension, Xml), 'XR03 as payee identifier scheme (BR-DEX-04)');
+    Invoice.PayeeParty.IdentifierSchemeID := '0088';
+    with Invoice.InvoiceLines.AddInvoiceLine do
+    begin
+      ID := '1';
+      StandardItemIdentifier := '4711';
+      StandardItemIdentifierSchemeID := 'XR01';
+    end;
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(1, Occurrences(Extension, Xml), 'XR01 as item standard identifier scheme (BR-DEX-06)');
+    Invoice.InvoiceLines[0].StandardItemIdentifierSchemeID := '0160';
+    Xml := MapToCIIXml(Invoice, Target, D, nil);
+    CheckEquals(0, Occurrences(Extension, Xml), 'no extension with ICD schemes');
     Attachment := Invoice.Attachments.AddAttachment(iat_application_xml);
     Attachment.ID := 'A-1';
     Attachment.Filename := 'a.xml';

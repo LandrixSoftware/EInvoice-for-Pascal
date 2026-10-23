@@ -438,6 +438,102 @@ begin
       InstructionID := 'Fee paid by a third party';
       PaidAmount := 10;
     end
+  else if AID = 'BR-CL-01' then
+  begin
+    Invoice.InvoiceTypeCode := itc_None;
+    Invoice.InvoiceTypeCodeOther := '999';
+  end
+  else if AID = 'BR-CL-03' then
+    Invoice.InvoiceCurrencyCode := 'EURO'
+  else if AID = 'BR-CL-04' then
+    Invoice.InvoiceCurrencyCode := 'eur'
+  else if AID = 'BR-CL-05' then
+    Invoice.TaxCurrencyCode := 'STN'
+  else if AID = 'BR-CL-06' then
+    Invoice.TaxPointDateCode := '5'
+  else if AID = 'BR-CL-07' then
+  begin
+    Line.ObjectIdentifier := 'O-1';
+    Line.ObjectIdentifierSchemeID := 'XX';
+  end
+  else if AID = 'BR-CL-08' then
+    with Invoice.Notes.AddNote do
+    begin
+      Content := 'Note';
+      SubjectCodeOther := 'X1X';
+    end
+  else if AID = 'BR-CL-10' then
+  begin
+    Buyer.GlobalIdentifierSellerBuyer := '4000001000005';
+    Buyer.GlobalIdentifierSellerBuyerSchemeID := 'SEPA';
+  end
+  else if AID = 'BR-CL-11' then
+  begin
+    Seller.CompanyID := 'HRB 1';
+    Seller.CompanyIDSchemeID := 'XX';
+  end
+  else if AID = 'BR-CL-13' then
+    with Line.ItemClassifications.AddItemClassification do
+    begin
+      ClassCode := '123';
+      ListID := 'XX';
+    end
+  else if AID = 'BR-CL-14' then
+    Buyer.Address.CountryCode := 'XX'
+  else if AID = 'BR-CL-15' then
+    Line.OriginTradeCountry := 'XX'
+  else if AID = 'BR-CL-16' then
+  begin
+    Payment.PaymentMeansCode := ipmc_NotImplemented;
+    Payment.PaymentMeansCodeOther := '99';
+  end
+  else if AID = 'BR-CL-17' then
+  begin
+    AddAllowanceCharge(Invoice, False, False, True);
+    Invoice.AllowanceCharges[0].TaxCategoryOther := 'X';
+  end
+  else if AID = 'BR-CL-18' then
+  begin
+    Line.TaxCategory := idtfcc_None;
+    Line.TaxCategoryOther := 'X';
+  end
+  else if AID = 'BR-CL-19' then
+  begin
+    AddAllowanceCharge(Invoice, False, True, True);
+    Invoice.AllowanceCharges[0].ReasonCodeAllowanceOther := '1';
+  end
+  else if AID = 'BR-CL-20' then
+    with Line.AllowanceCharges.AddAllowanceCharge do
+    begin
+      ChargeIndicator := True;
+      Amount := 1;
+      ReasonCodeChargeOther := 'XX1';
+    end
+  else if AID = 'BR-CL-21' then
+  begin
+    Line.StandardItemIdentifier := '123';
+    Line.StandardItemIdentifierSchemeID := '9999';
+  end
+  else if AID = 'BR-CL-22' then
+    Invoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := 'VATEX-XX'
+  else if AID = 'BR-CL-23' then
+  begin
+    Line.BaseQuantity := 1;
+    Line.BaseQuantityUnitCodeOther := 'ZZZZ';
+  end
+  else if AID = 'BR-CL-24' then
+  begin
+    AddPdf(Invoice, 'A-1', 'a.pdf');
+    Invoice.Attachments[0].AttachmentType := iat_application_None;
+    Invoice.Attachments[0].AttachmentTypeOther := 'application/zip';
+  end
+  else if AID = 'BR-CL-25' then
+    Seller.ElectronicAddressSellerBuyerSchemeID := 'XX'
+  else if AID = 'BR-CL-26' then
+  begin
+    Invoice.DeliveryInformation.LocationIdentifier := 'L-1';
+    Invoice.DeliveryInformation.LocationIdentifierSchemeID := 'XX';
+  end
   else
     Fail('no mutation for ' + AID);
 end;
@@ -452,7 +548,7 @@ type
   end;
 
 const
-  RuleCases: array[0..108] of TRuleCase = (
+  RuleCases: array[0..133] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -562,7 +658,32 @@ const
     (ID: 'BR-FXEXT-CO-13'; Target: tk_FXExtended; NotApplicable: tk_Peppol),
     (ID: 'BR-FXEXT-CO-15'; Target: tk_FXExtended; NotApplicable: tk_FXBasic),
     (ID: 'BR-FXEXT-CO-16'; Target: tk_FXExtended; NotApplicable: tk_FXBasicWL),
-    (ID: 'BR-DEX-09'; Target: tk_XRUBL; NotApplicable: tk_XRCII));
+    (ID: 'BR-DEX-09'; Target: tk_XRUBL; NotApplicable: tk_XRCII),
+    (ID: 'BR-CL-01'; Target: tk_XRCII; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-03'; Target: tk_XRUBL; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CL-04'; Target: tk_Peppol; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CL-05'; Target: tk_XRCII; NotApplicable: tk_FXBasic),
+    (ID: 'BR-CL-06'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-07'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CL-08'; Target: tk_XRCII; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-CL-10'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-11'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CL-13'; Target: tk_Peppol; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-14'; Target: tk_XRUBL; NotApplicable: tk_FXMinimum),
+    (ID: 'BR-CL-15'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CL-16'; Target: tk_Peppol; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-CL-17'; Target: tk_XRCII; NotApplicable: tk_FXBasic),
+    (ID: 'BR-CL-18'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-19'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CL-20'; Target: tk_XRCII; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-21'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-21'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CL-22'; Target: tk_XRCII; NotApplicable: tk_FXBasicWL),
+    (ID: 'BR-CL-23'; Target: tk_XRCII; NotApplicable: tk_FXBasic),
+    (ID: 'BR-CL-23'; Target: tk_Peppol; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-24'; Target: tk_XRUBL; NotApplicable: tk_FXExtended),
+    (ID: 'BR-CL-25'; Target: tk_XRCII; NotApplicable: tk_FXEN16931),
+    (ID: 'BR-CL-26'; Target: tk_Peppol; NotApplicable: tk_FXExtended));
 
 function HasRule(D: TLandrixEInvoiceDiagnostics; const AID: string): Boolean;
 var
@@ -1585,6 +1706,184 @@ begin
   end;
 end;
 
+{ The lists of the validators: STD instead of STN, AN instead of SS (CII
+  only), B as VAT category, the EAS codes 0219 and 0220, the UBL note
+  subjects without the newest codes. Codes are normalized and compared
+  case sensitively; BR-CL-24 compares without normalizing. }
+procedure TestCodeListDeltas;
+var
+  Invoice: TLandrixInvoice;
+  Subject: TLandrixInvoiceNoteSubjectCode;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceCurrencyCode := ' EUR ';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-04', nil), 'blanks around');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-03', nil), 'blanks around @currencyID');
+    Invoice.InvoiceCurrencyCode := 'E UR';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-04', nil), 'blank inside');
+    Invoice.InvoiceCurrencyCode := 'STD';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-04', nil), 'STD of the validators');
+    Invoice.InvoiceCurrencyCode := 'STN';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-04', nil), 'STN of EC version 17');
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    { BT-6 is written only when it differs, in @currencyID only with BT-111 }
+    Invoice.TaxCurrencyCode := 'EURO';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-05', nil), 'BT-6');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-03', nil), 'no BT-111');
+    Invoice.TaxAmountTotalInTaxCurrency.SetValue(19);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-03', nil), 'BT-111 in BT-6');
+    Invoice.TaxCurrencyCode := '';
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'AN';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-14', nil), 'CII: AN');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-14', nil), 'UBL: AN');
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'SS';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-14', nil), 'CII: SS');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-14', nil), 'UBL: SS');
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'de';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-14', nil), 'lower case');
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'DE';
+    Invoice.InvoiceLines[0].TaxCategory := idtfcc_None;
+    Invoice.InvoiceLines[0].TaxCategoryOther := 'B';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-18', nil), 'B');
+    Invoice.InvoiceLines[0].TaxCategory := idtfcc_S_StandardRate;
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := '0219';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-25', nil), 'EAS 0219');
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'EM';
+    Check(LandrixEInvoiceNoteSubjectCodeFromStr('BAT', Subject), 'BAT is a member');
+    with Invoice.Notes.AddNote do
+    begin
+      Content := 'Note';
+      SubjectCode := Subject;
+    end;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-08', nil), 'UBL: BAT');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-08', nil), 'CII: BAT');
+    Invoice.Notes[0].SubjectCode := insc_None;
+    Invoice.Notes[0].Content := '#ABCD# four characters';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-08', nil), 'UBL: no code of three');
+    Invoice.Notes[0].Content := 'Item #12#';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-08', nil), 'UBL: two characters');
+    Invoice.Notes[0].Content := 'Item #123#';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-08', nil), 'UBL: #123# in the text');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-08', nil), 'CII: no subject code');
+    Invoice.Notes.Clear;
+    AddPdf(Invoice, 'A-1', 'a.pdf');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-24', nil), 'PDF');
+    Invoice.Attachments[0].AttachmentType := iat_application_None;
+    Invoice.Attachments[0].AttachmentTypeOther := ' application/pdf';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-24', nil), 'not normalized');
+  finally
+    Invoice.Free;
+  end;
+end;
+
+{ What the mappers write: UBL writes 381 as ubl:CreditNote and every other
+  code as ubl:Invoice; BT-8 is converted for CII and written there only with
+  a VAT breakdown; a global identifier without scheme gets 0088, UBL
+  accepts SEPA for the seller; an electronic address without scheme gets
+  EM where allowed. The XRechnung extension (here: an XML attachment or an
+  extension scheme) leaves out BR-CL-10, 11, 21, 24, 25 and 26; a credit
+  note never uses it in UBL. BR-CL-21 and BR-CL-23 are warnings in
+  XRechnung, errors in Peppol. }
+procedure TestCodeListsAsWritten;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  TypeCode: TLandrixInvoiceTypeCode;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceTypeCode := itc_CreditNote;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-01', nil), 'UBL: 381');
+    Invoice.InvoiceTypeCode := itc_None;
+    Invoice.InvoiceTypeCodeOther := '381';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-01', nil), 'UBL: 381 as other text');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-01', nil), 'CII: 381 as other text');
+    Invoice.InvoiceTypeCodeOther := '';
+    Check(LandrixEInvoiceTypeCodeFromStr('261', TypeCode), '261 is a member');
+    Invoice.InvoiceTypeCode := TypeCode;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-01', nil), 'UBL: 261 in ubl:Invoice');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-01', nil), 'CII: 261');
+    Invoice.InvoiceTypeCode := itc_CommercialInvoice;
+    Invoice.TaxPointDateCode := '3';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-06', nil), 'UBL: 3');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-06', nil), 'CII: 3 written as 5');
+    Invoice.TaxPointDateCode := '5';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-06', nil), 'CII: 5 written unchanged');
+    Invoice.TaxPointDateCode := '4';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-06', nil), 'CII: 4');
+    Invoice.TaxAmountSubtotals.Clear;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-06', nil), 'CII: no VAT breakdown');
+    Invoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-06', nil), 'UBL: left out next to BT-7');
+    Invoice.Free;
+    Invoice := TLandrixInvoice.Create;
+    FillComplete(Invoice);
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '4000001000005';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-10', nil), 'default 0088');
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := 'SEPA';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-10', nil), 'UBL: SEPA of the seller');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-10', nil), 'CII: SEPA');
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := '';
+    Invoice.PayeeParty.Name := 'Payee';
+    Invoice.PayeeParty.Identifier := 'P-1';
+    Invoice.PayeeParty.IdentifierSchemeID := ' ';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-10', nil), 'UBL: blank payee scheme');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-10', nil), 'CII: payee identifier as ram:ID');
+    Invoice.PayeeParty.IdentifierSchemeID := 'SEPA';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-10', nil), 'UBL: SEPA of the payee');
+    Invoice.PayeeParty.IdentifierSchemeID := '0088';
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := '';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-25', nil), 'without scheme');
+    { the extension: an XML attachment }
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := 'XX';
+    Invoice.Attachments.AddAttachment(iat_application_xml).EmbedDataFromText(TLandrixEInvoiceString('<a/>'));
+    Invoice.Attachments[0].ID := 'A-1';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-25', nil), 'UBL: extension');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-24', nil), 'CII: extension');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-24', nil), 'Peppol: XML');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-25', nil), 'Peppol: no extension');
+    Invoice.InvoiceTypeCode := itc_CreditNote;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-25', nil), 'UBL: credit note');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-25', nil), 'CII: credit note');
+    { the extension: an extension scheme }
+    Invoice.Attachments.Clear;
+    Invoice.InvoiceTypeCode := itc_CommercialInvoice;
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'xr01';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-25', nil), 'CII: xr01 is no extension code');
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'XR01';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-25', nil), 'CII: extension scheme');
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'EM';
+    Invoice.AccountingSupplierParty.CompanyID := 'HRB 1';
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := 'XR01';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-11', nil), 'UBL: XR01 of BT-30 (extension)');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-25', nil), 'UBL: extension by BT-30');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-11', nil), 'Peppol: XR01 of BT-30');
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := '0002';
+    Invoice.InvoiceLines[0].StandardItemIdentifier := '4711';
+    Invoice.InvoiceLines[0].StandardItemIdentifierSchemeID := 'XR02';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-21', nil), 'CII: XR02 of BT-157 (extension)');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-21', nil), 'Peppol: XR02 of BT-157');
+    Invoice.InvoiceLines[0].StandardItemIdentifierSchemeID := '0160';
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'EM';
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := 'EM';
+    Invoice.InvoiceLines[0].UnitCode := iuc_None;
+    Invoice.InvoiceLines[0].UnitCodeOther := 'ZZZZ';
+    D.Clear;
+    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D), 'XRechnung: ' + string(D.ToText));
+    Check(HasRule(D, 'BR-CL-23'), 'XRechnung: BR-CL-23 reported');
+    D.Clear;
+    Check(LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D) > 0, 'Peppol: error');
+    Check(HasRule(D, 'BR-CL-23'), 'Peppol: BR-CL-23 reported');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -1608,6 +1907,8 @@ begin
   RegisterTest('Check.VatIdentifiers', TestVatIdentifiers);
   RegisterTest('Check.TermsAndSeller', TestTermsAndSeller);
   RegisterTest('Check.Formats', TestFormats);
+  RegisterTest('Check.CodeListDeltas', TestCodeListDeltas);
+  RegisterTest('Check.CodeListsAsWritten', TestCodeListsAsWritten);
 end;
 
 end.

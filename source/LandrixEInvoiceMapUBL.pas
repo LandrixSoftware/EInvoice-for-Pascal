@@ -528,12 +528,16 @@ begin
   end;
 end;
 
-{ XRechnung extension codes XR01 to XR03 as identifier schemes.
-  DE: Extension-Codes XR01 bis XR03 als Kennungsschema. }
+{ XRechnung extension codes XR01 to XR03 as identifier schemes, exactly as
+  KoSIT lists them (BR-DEX-04 to 08 compare case sensitively; 'xr01' is no
+  extension code and is written as an unknown scheme).
+  DE: Extension-Codes XR01 bis XR03 als Kennungsschema, genau so, wie KoSIT
+  sie fuehrt (BR-DEX-04 bis 08 unterscheiden Gross- und Kleinschreibung;
+  'xr01' ist kein Extension-Code und wird als unbekanntes Schema
+  geschrieben). }
 function IsExtensionScheme(const AValue, AScheme: TLandrixEInvoiceString): Boolean;
 begin
-  Result := Present(AValue) and (SameAscii(AScheme, 'XR01') or SameAscii(AScheme, 'XR02') or
-    SameAscii(AScheme, 'XR03'));
+  Result := Present(AValue) and ((AScheme = 'XR01') or (AScheme = 'XR02') or (AScheme = 'XR03'));
 end;
 
 { --- TUBLWriteMapper ---------------------------------------------------------- }
@@ -660,21 +664,24 @@ end;
 { The XRechnung extension is declared only when the invoice has extension
   content: sub lines (BG-DEX-01), embedded XML attachments (BR-DEX-01),
   third-party payments (BG-DEX-09) or the extension codes XR01 to XR03 as
-  scheme of BT-34, BT-49, BT-29, BT-46 or BT-71. Many receivers reject the
-  extension. A credit note never uses it: KoSIT has no extension scenario
-  for ubl:CreditNote. As in XRechnung-for-Delphi an XML attachment counts
-  even when it is left out later (BT-18 without identifier).
+  scheme of BT-34, BT-49, BT-29, BT-46, BT-71, BT-30, BT-47, BT-60, BT-61
+  or BT-157 (BR-DEX-04 to 08). Many receivers reject the extension. A
+  credit note never uses it: KoSIT has no extension scenario for
+  ubl:CreditNote. As in XRechnung-for-Delphi an XML attachment counts even
+  when it is left out later (BT-18 without identifier).
   DE: Die XRechnung-Extension wird nur deklariert, wenn die Rechnung
   Extension-Inhalt hat: Unterpositionen (BG-DEX-01), eingebettete
   XML-Anhaenge (BR-DEX-01), Zahlungen Dritter (BG-DEX-09) oder die
-  Extension-Codes XR01 bis XR03 als Schema von BT-34, BT-49, BT-29, BT-46
-  oder BT-71. Viele Empfaenger lehnen die Extension ab. Eine Gutschrift
-  verwendet sie nie: KoSIT kennt kein Extension-Szenario fuer
-  ubl:CreditNote. Wie in XRechnung-for-Delphi zaehlt ein XML-Anhang auch
-  dann, wenn er spaeter weggelassen wird (BT-18 ohne Kennung). }
+  Extension-Codes XR01 bis XR03 als Schema von BT-34, BT-49, BT-29, BT-46,
+  BT-71, BT-30, BT-47, BT-60, BT-61 oder BT-157 (BR-DEX-04 bis 08). Viele
+  Empfaenger lehnen die Extension ab. Eine Gutschrift verwendet sie nie:
+  KoSIT kennt kein Extension-Szenario fuer ubl:CreditNote. Wie in
+  XRechnung-for-Delphi zaehlt ein XML-Anhang auch dann, wenn er spaeter
+  weggelassen wird (BT-18 ohne Kennung). }
 function TUBLWriteMapper.UsesExtension: Boolean;
 var
   I: TLandrixEInvoiceListIndex;
+  Value, Scheme, Conflict: TLandrixEInvoiceString;
 begin
   Result := False;
   if Blank(FSpec.ExtensionCustomizationID) or (FDoc.Invoice = nil) then
@@ -698,8 +705,18 @@ begin
      IsExtensionScheme(FInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyer,
        FInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyerSchemeID) or
      IsExtensionScheme(FInvoice.DeliveryInformation.LocationIdentifier,
-       FInvoice.DeliveryInformation.LocationIdentifierSchemeID) then
+       FInvoice.DeliveryInformation.LocationIdentifierSchemeID) or
+     IsExtensionScheme(FInvoice.AccountingSupplierParty.CompanyID,
+       FInvoice.AccountingSupplierParty.CompanyIDSchemeID) or
+     IsExtensionScheme(FInvoice.AccountingCustomerParty.CompanyID,
+       FInvoice.AccountingCustomerParty.CompanyIDSchemeID) or
+     IsExtensionScheme(FInvoice.PayeeParty.Identifier, FInvoice.PayeeParty.IdentifierSchemeID) or
+     IsExtensionScheme(FInvoice.PayeeParty.CompanyID, FInvoice.PayeeParty.CompanyIDSchemeID) then
     Exit;
+  for I := 0 to FInvoice.InvoiceLines.Count - 1 do
+    if LandrixEInvoiceStandardItemIdentifierOf(FInvoice.InvoiceLines[I], Value, Scheme, Conflict) and
+       IsExtensionScheme(Value, Scheme) then
+      Exit;
   Result := False;
 end;
 

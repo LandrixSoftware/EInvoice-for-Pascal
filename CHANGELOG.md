@@ -283,6 +283,17 @@ Supported invoice standards are documented per release.
   KoSIT's `xr:checkIBAN`), BR-DE-27 (at least three digits in the seller telephone) and BR-DE-28
   (seller email pattern); BR-51 (card number at most 10 characters) as a warning in UBL and an
   error in CII. `LandrixEInvoiceCheckRule` runs every row of an identifier.
+- Code list rules in `LandrixEInvoiceCheck` for XRechnung and Peppol: BR-CL-01 to BR-CL-26
+  against the lists of the validators (XRechnung 3.0.2, Peppol BIS 3.0.21), which differ slightly
+  from the library's code lists (STD, AN in CII, B, EAS 0219/0220, fewer note subjects in UBL),
+  on the codes as the mappers write them; BR-CL-21 and BR-CL-23 are warnings in XRechnung, and
+  the XRechnung extension leaves out BR-CL-10, 11, 21, 24, 25 and 26 as its scenario does.
+- XRechnung extension: the mappers also declare it for XR01 to XR03 as scheme of a legal
+  registration (BT-30, BT-47, BT-61), the payee identifier (BT-60) or the item standard identifier
+  (BT-157), which KoSIT allows in the extension only (BR-DEX-04 to BR-DEX-06); before, such an
+  invoice was written as standard XRechnung, where BR-CL-10 and BR-CL-11 fail and BR-CL-21 warns.
+  The extension codes are now recognized only in upper case, as KoSIT compares them: `xr01`
+  declared the extension and then failed BR-DEX-04 to BR-DEX-08.
 - `LandrixEInvoiceCheckCII`, `LandrixEInvoiceCheckUBLInvoice` and `LandrixEInvoiceCheckUBLCreditNote`:
   check the required content of a syntax model for a target as the writer reports it, returning
   the number of errors.

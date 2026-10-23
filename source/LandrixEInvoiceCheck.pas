@@ -42,8 +42,14 @@
   BR-CO-03, BR-CO-04, BR-CO-09, BR-CO-18, BR-CO-21 to BR-CO-26 and
   BR-FXEXT-CO-04 have rows. The format rules BR-DE-17, BR-DE-19,
   BR-DE-20, BR-DE-27, BR-DE-28 (warnings) and BR-51 (UBL warning, CII
-  error) follow the KoSIT functions and patterns. Code list rules (BR-CL-...
-  and the like) are not part of this set yet.
+  error) follow the KoSIT functions and patterns. The code list rules
+  BR-CL-01 to BR-CL-26 apply to XRechnung and Peppol (the Factur-X
+  schematron checks codes with rules of its own, FX-SCH-A-..., which are
+  not part of this set yet); they use the lists of the validators, which
+  differ slightly from the code lists of the library (see CodeListed), and
+  the levels of the XRechnung configuration: BR-CL-21 and BR-CL-23 are
+  warnings there, and its extension scenario leaves out BR-CL-10, 11, 21,
+  24, 25 and 26.
 
   The rules LX-CC-01 to LX-CC-12 are the checks of
   TXRechnungInvoiceAdapter.ConsistencyCheck of XRechnung-for-Delphi. They
@@ -84,7 +90,13 @@
   BR-CO-21 bis BR-CO-26 und BR-FXEXT-CO-04 haben Zeilen. Die Formatregeln
   BR-DE-17, BR-DE-19, BR-DE-20, BR-DE-27, BR-DE-28 (Warnungen) und BR-51
   (UBL Warnung, CII Fehler) folgen den Funktionen und Mustern der KoSIT.
-  Codelistenregeln (BR-CL-... und aehnliche) gehoeren noch nicht dazu.
+  Die Codelistenregeln BR-CL-01 bis BR-CL-26 gelten fuer XRechnung und
+  Peppol (das Factur-X-Schematron prueft Codes mit eigenen Regeln,
+  FX-SCH-A-..., die noch nicht dazugehoeren); sie verwenden die Listen der
+  Validatoren, die geringfuegig von den Codelisten der Bibliothek abweichen
+  (siehe CodeListed), und die Stufen der XRechnung-Konfiguration: BR-CL-21
+  und BR-CL-23 sind dort Warnungen, und ihr Extension-Szenario laesst
+  BR-CL-10, 11, 21, 24, 25 und 26 aus.
 
   Die Regeln LX-CC-01 bis LX-CC-12 sind die Pruefungen von
   TXRechnungInvoiceAdapter.ConsistencyCheck aus XRechnung-for-Delphi. Es
@@ -216,7 +228,10 @@ type
     cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17, cr_BRCO18,
     cr_BRCO21, cr_BRCO22, cr_BRCO23, cr_BRCO24, cr_BRCO25, cr_BRCO26, cr_BRFXEXTCO04,
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
-    cr_BRDEX09);
+    cr_BRDEX09,
+    cr_BRCL01, cr_BRCL03, cr_BRCL04, cr_BRCL05, cr_BRCL06, cr_BRCL07, cr_BRCL08, cr_BRCL10, cr_BRCL11,
+    cr_BRCL13, cr_BRCL14, cr_BRCL15, cr_BRCL16, cr_BRCL17, cr_BRCL18, cr_BRCL19, cr_BRCL20,
+    cr_BRCL21XR, cr_BRCL21BIS, cr_BRCL22, cr_BRCL23XR, cr_BRCL23BIS, cr_BRCL24, cr_BRCL25, cr_BRCL26);
 
   { One check row: identifier, the specifications it applies to, severity,
     business terms (used as diagnostic path), message and origin. Legacy
@@ -272,6 +287,16 @@ const
   FromBasic = FromBasicWL - [epr_BasicWL];
   FromBasicNoExtended = FromBasic - [epr_Extended];
   FromEN16931 = FromBasic - [epr_Basic];
+
+  { The BR-CL rules belong to the CEN schematron of XRechnung and Peppol;
+    Factur-X checks codes with rules of its own (FX-SCH-A-...).
+    DE: Die BR-CL-Regeln gehoeren zum CEN-Schematron von XRechnung und
+    Peppol; Factur-X prueft Codes mit eigenen Regeln (FX-SCH-A-...). }
+  CodeListStandards = [est_XRechnung, est_PeppolBIS];
+  { XRechnung lowers BR-CL-21 and BR-CL-23 to warnings (scenarios.xml).
+    DE: XRechnung stuft BR-CL-21 und BR-CL-23 zu Warnungen herab
+    (scenarios.xml). }
+  XRechnungLevelSource = 'EN 16931 (CEN/TS 16931-3 schematron), level of the XRechnung 3.0 configuration';
 
   { LX-CC-nn: the checks of XRechnung-for-Delphi in their old order, nn is
     the old cc... code. They apply to every target, including the empty
@@ -776,7 +801,112 @@ const
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-115, BT-DEX-002';
      Message: 'amount due for payment (BT-115) = BT-112 - BT-113 + BT-114 + sum of third-party payment ' +
        'amounts (BT-DEX-002)';
-     Source: XRechnungSource));
+     Source: XRechnungSource),
+    (ID: 'BR-CL-01'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-3';
+     Message: 'the invoice type code (BT-3) shall be coded with UNTDID 1001 (UBL: the codes of ubl:Invoice; ' +
+       'ubl:CreditNote is written for 381 only)';
+     Source: EN16931Source),
+    (ID: 'BR-CL-03'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-5, BT-6';
+     Message: 'the currency of the amounts (@currencyID: BT-5, BT-6) shall be coded with ISO 4217';
+     Source: EN16931Source),
+    (ID: 'BR-CL-04'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-5';
+     Message: 'the invoice currency code (BT-5) shall be coded with ISO 4217';
+     Source: EN16931Source),
+    (ID: 'BR-CL-05'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-6';
+     Message: 'the VAT accounting currency code (BT-6) shall be coded with ISO 4217';
+     Source: EN16931Source),
+    (ID: 'BR-CL-06'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-8';
+     Message: 'the VAT point date code (BT-8) shall be coded with UNTDID 2005 (UBL: 3, 35, 432; CII: 5, 29, 72)';
+     Source: EN16931Source),
+    (ID: 'BR-CL-07'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-18, BT-128';
+     Message: 'the scheme of an object identifier (BT-18, BT-128) shall be coded with UNTDID 1153';
+     Source: EN16931Source),
+    (ID: 'BR-CL-08'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-21';
+     Message: 'the invoice note subject code (BT-21) shall be coded with UNTDID 4451';
+     Source: EN16931Source),
+    (ID: 'BR-CL-10'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-29, BT-46, BT-60';
+     Message: 'the scheme of a party identifier (BT-29, BT-46, BT-60) shall be coded with ISO 6523 ICD (UBL: SEPA ' +
+       'as well for the seller and the payee)';
+     Source: EN16931Source),
+    (ID: 'BR-CL-11'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-30, BT-47, BT-61';
+     Message: 'the scheme of a legal registration identifier (BT-30, BT-47, BT-61) shall be coded with ISO 6523 ICD';
+     Source: EN16931Source),
+    (ID: 'BR-CL-13'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-158';
+     Message: 'the scheme of an item classification identifier (BT-158) shall be coded with UNTDID 7143';
+     Source: EN16931Source),
+    (ID: 'BR-CL-14'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-40, BT-55, BT-69, BT-80';
+     Message: 'country codes (BT-40, BT-55, BT-69, BT-80) shall be coded with ISO 3166-1';
+     Source: EN16931Source),
+    (ID: 'BR-CL-15'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-159';
+     Message: 'the item country of origin (BT-159) shall be coded with ISO 3166-1';
+     Source: EN16931Source),
+    (ID: 'BR-CL-16'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-81';
+     Message: 'the payment means type code (BT-81) shall be coded with UNTDID 4461';
+     Source: EN16931Source),
+    (ID: 'BR-CL-17'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-95, BT-102, BT-118';
+     Message: 'the VAT category code of a document level allowance or charge (BT-95, BT-102; UBL: also of the VAT ' +
+       'breakdown, BT-118) shall be coded with UNTDID 5305';
+     Source: EN16931Source),
+    (ID: 'BR-CL-18'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-151, BT-118';
+     Message: 'the invoiced item VAT category code (BT-151; CII: also of the VAT breakdown, BT-118) shall be coded ' +
+       'with UNTDID 5305';
+     Source: EN16931Source),
+    (ID: 'BR-CL-19'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-98, BT-140';
+     Message: 'an allowance reason code (BT-98, BT-140) shall be coded with UNTDID 5189';
+     Source: EN16931Source),
+    (ID: 'BR-CL-20'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-105, BT-145';
+     Message: 'a charge reason code (BT-105, BT-145) shall be coded with UNTDID 7161';
+     Source: EN16931Source),
+    (ID: 'BR-CL-21'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-157';
+     Message: 'the scheme of the item standard identifier (BT-157) shall be coded with ISO 6523 ICD';
+     Source: XRechnungLevelSource),
+    (ID: 'BR-CL-21'; Standards: [est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-157';
+     Message: 'the scheme of the item standard identifier (BT-157) shall be coded with ISO 6523 ICD';
+     Source: EN16931Source),
+    (ID: 'BR-CL-22'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-121';
+     Message: 'the VAT exemption reason code (BT-121) shall be coded with the VATEX list';
+     Source: EN16931Source),
+    (ID: 'BR-CL-23'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-130, BT-150';
+     Message: 'a unit of measure (BT-130, BT-150) shall be coded with UN/ECE Recommendation 20 or 21';
+     Source: XRechnungLevelSource),
+    (ID: 'BR-CL-23'; Standards: [est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-130, BT-150';
+     Message: 'a unit of measure (BT-130, BT-150) shall be coded with UN/ECE Recommendation 20 or 21';
+     Source: EN16931Source),
+    (ID: 'BR-CL-24'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-125';
+     Message: 'the MIME code of an attached document (BT-125) shall be application/pdf, image/png, image/jpeg, ' +
+       'text/csv, an xlsx or an ods spreadsheet';
+     Source: EN16931Source),
+    (ID: 'BR-CL-25'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-34, BT-49';
+     Message: 'the scheme of an electronic address (BT-34, BT-49) shall be coded with the EAS list';
+     Source: EN16931Source),
+    (ID: 'BR-CL-26'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-71';
+     Message: 'the scheme of the deliver to location identifier (BT-71) shall be coded with ISO 6523 ICD';
+     Source: EN16931Source));
 
 function Applies(const ARow: TCheckRow; const ASpec: TLandrixEInvoiceSpec): Boolean;
 begin
@@ -2522,6 +2652,563 @@ begin
     (AInvoice.InvoiceLines.Count > 0) or (ASpec.Target.Standard = est_FacturX));
 end;
 
+{ --- code list rules ------------------------------------------------------------- }
+
+type
+  { The code lists of the BR-CL rules. DE: Die Codelisten der BR-CL-Regeln. }
+  TCodeList = (cl_TypeCode, cl_Currency, cl_Reference, cl_Text, cl_ICD, cl_Item, cl_Country, cl_Payment,
+    cl_Category, cl_Allowance, cl_Charge, cl_VATEX, cl_Unit, cl_EAS);
+
+const
+  { The CEN schematron of the validators (XRechnung 3.0.2, Peppol BIS
+    3.0.21) carries older lists than the code lists of the library (EC
+    version 17): ISO 4217 has STD instead of STN, ISO 3166-1 in CII has AN
+    instead of SS, UNTDID 5305 has B as well, the EAS list has 0219 and
+    0220 as well, and UNTDID 4451 in UBL lacks the codes below. UBL splits
+    UNTDID 1001 into the codes of ubl:Invoice and of ubl:CreditNote.
+    DE: Das CEN-Schematron der Validatoren (XRechnung 3.0.2, Peppol BIS
+    3.0.21) enthaelt aeltere Listen als die Codelisten der Bibliothek (EC
+    Version 17): ISO 4217 hat STD statt STN, ISO 3166-1 in CII hat AN statt
+    SS, UNTDID 5305 hat zusaetzlich B, die EAS-Liste zusaetzlich 0219 und
+    0220, und UNTDID 4451 fehlen in UBL die Codes unten. UBL teilt
+    UNTDID 1001 in die Codes von ubl:Invoice und von ubl:CreditNote. }
+  UBLInvoiceTypeCodes = '71 80 81 82 84 102 130 202 203 204 211 218 219 295 325 326 331 380 382 383 384 385 ' +
+    '386 387 388 389 390 393 394 395 456 457 471 472 473 500 501 527 553 575 623 633 751 780 817 870 875 876 ' +
+    '877 935';
+  UBLMissingNoteSubjectCodes = 'BAT BAU BAV BAW BAX BAY BAZ BBA BBB BMF BMG BMH CCJ CCK CCL CCM CCN CCO';
+  ValidatorEASCodes = '0219 0220';
+  UBLTaxPointCodes = '3 35 432';
+  CIITaxPointCodes = '5 29 72';
+  { BR-CL-24 compares the attribute as it is, without normalize-space.
+    DE: BR-CL-24 vergleicht das Attribut unveraendert, ohne
+    normalize-space. }
+  AttachmentMimeCodes = 'application/pdf image/png image/jpeg text/csv ' +
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet ' +
+    'application/vnd.oasis.opendocument.spreadsheet';
+
+{ XPath contains(' list ', concat(' ', AValue, ' ')) for a value without
+  blank. DE: XPath contains(' Liste ', concat(' ', AValue, ' ')) fuer einen
+  Wert ohne Leerzeichen. }
+function InList(const AValue, AList: TLandrixEInvoiceString): Boolean;
+begin
+  Result := (AValue <> '') and (Pos(' ', AValue) = 0) and (Pos(' ' + AValue + ' ', ' ' + AList + ' ') > 0);
+end;
+
+{ True if AValue, normalized (normalize-space, one word), is in list AList
+  of the validator (ACII: its CII variant). A member of a code list of the
+  library counts with its exact code only (the schematron compares case
+  sensitively), VATEX after upper-case.
+  DE: True, wenn AValue normalisiert (normalize-space, ein Wort) in der
+  Liste AList des Validators steht (ACII: deren CII-Variante). Ein Wert
+  einer Codeliste der Bibliothek zaehlt nur mit seinem genauen Code (das
+  Schematron unterscheidet Gross- und Kleinschreibung), VATEX nach
+  upper-case. }
+function CodeListed(AList: TCodeList; const AValue: TLandrixEInvoiceString; ACII: Boolean): Boolean;
+var
+  Token: TLandrixEInvoiceString;
+  TypeCode: TLandrixInvoiceTypeCode;
+  Currency: TLandrixInvoiceCurrencyCode;
+  Reference: TLandrixInvoiceReferenceCodeQualifier;
+  Subject: TLandrixInvoiceNoteSubjectCode;
+  ICD: TLandrixInvoiceIdentifierScheme;
+  Item: TLandrixInvoiceItemClassificationScheme;
+  Country: TLandrixInvoiceCountryCode;
+  Payment: TLandrixInvoicePaymentMeansCode;
+  Category: TLandrixInvoiceDutyTaxFeeCategoryCode;
+  Allowance: TLandrixInvoiceAllowanceOrChargeIdentCode;
+  Charge: TLandrixInvoiceSpecialServiceDescriptionCode;
+  Exemption: TLandrixInvoiceVATExemptionReasonCode;
+  UnitCode: TLandrixInvoiceUnitCode;
+  EAS: TLandrixInvoiceElectronicAddressScheme;
+begin
+  Result := False;
+  Token := NormalizedSpace(AValue);
+  if (Token = '') or (Pos(' ', Token) > 0) then
+    Exit;
+  case AList of
+    cl_TypeCode:
+      Result := LandrixEInvoiceTypeCodeFromStr(Token, TypeCode) and (LandrixEInvoiceTypeCodeToStr(TypeCode) = Token);
+    cl_Currency:
+      Result := (Token = 'STD') or ((Token <> 'STN') and LandrixEInvoiceCurrencyCodeFromStr(Token, Currency) and
+        (LandrixEInvoiceCurrencyCodeToStr(Currency) = Token));
+    cl_Reference:
+      Result := LandrixEInvoiceReferenceCodeQualifierFromStr(Token, Reference) and
+        (LandrixEInvoiceReferenceCodeQualifierToStr(Reference) = Token);
+    cl_Text:
+      Result := LandrixEInvoiceNoteSubjectCodeFromStr(Token, Subject) and
+        (LandrixEInvoiceNoteSubjectCodeToStr(Subject) = Token) and
+        (ACII or not InList(Token, UBLMissingNoteSubjectCodes));
+    cl_ICD:
+      Result := LandrixEInvoiceIdentifierSchemeFromStr(Token, ICD) and (LandrixEInvoiceIdentifierSchemeToStr(ICD) = Token);
+    cl_Item:
+      Result := LandrixEInvoiceItemClassificationSchemeFromStr(Token, Item) and
+        (LandrixEInvoiceItemClassificationSchemeToStr(Item) = Token);
+    cl_Country:
+      if ACII and ((Token = 'AN') or (Token = 'SS')) then
+        Result := Token = 'AN'
+      else
+        Result := LandrixEInvoiceCountryCodeFromStr(Token, Country) and
+          (LandrixEInvoiceCountryCodeToStr(Country) = Token);
+    cl_Payment:
+      Result := LandrixEInvoicePaymentMeansCodeFromStr(Token, Payment) and
+        (LandrixEInvoicePaymentMeansCodeToStr(Payment) = Token);
+    cl_Category:
+      Result := (Token = 'B') or (LandrixEInvoiceDutyTaxFeeCategoryCodeFromStr(Token, Category) and
+        (LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(Category) = Token));
+    cl_Allowance:
+      Result := LandrixEInvoiceAllowanceOrChargeIdentCodeFromStr(Token, Allowance) and
+        (LandrixEInvoiceAllowanceOrChargeIdentCodeToStr(Allowance) = Token);
+    cl_Charge:
+      Result := LandrixEInvoiceSpecialServiceDescriptionCodeFromStr(Token, Charge) and
+        (LandrixEInvoiceSpecialServiceDescriptionCodeToStr(Charge) = Token);
+    cl_VATEX:
+      { the codes are upper case; FromStr ignores the case as upper-case(.) does }
+      Result := LandrixEInvoiceVATExemptionReasonCodeFromStr(Token, Exemption);
+    cl_Unit:
+      Result := LandrixEInvoiceUnitCodeFromStr(Token, UnitCode) and (LandrixEInvoiceUnitCodeToStr(UnitCode) = Token);
+  else
+    Result := InList(Token, ValidatorEASCodes) or (LandrixEInvoiceElectronicAddressSchemeFromStr(Token, EAS) and
+      (LandrixEInvoiceElectronicAddressSchemeToStr(EAS) = Token));
+  end;
+end;
+
+{ A code as the mappers write it: the enumeration, otherwise the other text.
+  DE: Ein Code, wie die Mapper ihn schreiben: die Aufzaehlung, sonst der
+  andere Text. }
+function WrittenCode(const AEnumText, AOther: TLandrixEInvoiceString): TLandrixEInvoiceString;
+begin
+  if Present(AEnumText) then
+    Result := AEnumText
+  else
+    Result := AOther;
+end;
+
+{ An element is written with text, an attribute when it is not empty.
+  DE: Ein Element wird mit Text geschrieben, ein Attribut, wenn es nicht
+  leer ist. }
+function BadCode(AList: TCodeList; const AValue: TLandrixEInvoiceString; ACII: Boolean): Boolean;
+begin
+  Result := Present(AValue) and not CodeListed(AList, AValue, ACII);
+end;
+
+function BadAttribute(AList: TCodeList; const AValue: TLandrixEInvoiceString; ACII: Boolean): Boolean;
+begin
+  Result := (AValue <> '') and not CodeListed(AList, AValue, ACII);
+end;
+
+{ The extension codes XR01 to XR03 as identifier scheme, exactly (as in
+  the mappers and the KoSIT lists). DE: Die Extension-Codes XR01 bis XR03
+  als Kennungsschema, genau so geschrieben (wie in den Mappern und den
+  KoSIT-Listen). }
+function IsExtensionScheme(const AValue, AScheme: TLandrixEInvoiceString): Boolean;
+begin
+  Result := Present(AValue) and ((AScheme = 'XR01') or (AScheme = 'XR02') or (AScheme = 'XR03'));
+end;
+
+{ The XRechnung extension as the mappers declare it (UsesExtension): UBL
+  (ubl:Invoice only) with sub lines or third-party payments, both syntaxes
+  with an embedded XML attachment or an extension scheme of BT-34, BT-49,
+  BT-29, BT-46, BT-71, BT-30, BT-47, BT-60, BT-61 or BT-157.
+  DE: Die XRechnung-Extension, wie die Mapper sie deklarieren
+  (UsesExtension): UBL (nur ubl:Invoice) mit Unterpositionen oder Zahlungen
+  Dritter, beide Syntaxen mit eingebettetem XML-Anhang oder einem
+  Extension-Schema von BT-34, BT-49, BT-29, BT-46, BT-71, BT-30, BT-47,
+  BT-60, BT-61 oder BT-157. }
+function ExtensionWritten(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  Seller, Buyer: TLandrixInvoiceAccountingParty;
+  Value, Scheme, Conflict: TLandrixEInvoiceString;
+begin
+  Result := False;
+  if not Present(ASpec.ExtensionCustomizationID) or
+     ((ASpec.Target.Syntax = esy_UBL) and (AInvoice.InvoiceTypeCode = itc_CreditNote)) then
+    Exit;
+  Result := True;
+  if ASpec.Target.Syntax = esy_UBL then
+  begin
+    if AInvoice.PrepaidPayments.Count > 0 then
+      Exit;
+    for I := 0 to AInvoice.InvoiceLines.Count - 1 do
+      if AInvoice.InvoiceLines[I].SubInvoiceLines.Count > 0 then
+        Exit;
+  end;
+  for I := 0 to AInvoice.Attachments.Count - 1 do
+    if AInvoice.Attachments[I].ContainsBinaryObject and
+       (AInvoice.Attachments[I].AttachmentType = iat_application_xml) then
+      Exit;
+  Seller := AInvoice.AccountingSupplierParty;
+  Buyer := AInvoice.AccountingCustomerParty;
+  if IsExtensionScheme(Seller.ElectronicAddressSellerBuyer, Seller.ElectronicAddressSellerBuyerSchemeID) or
+     IsExtensionScheme(Buyer.ElectronicAddressSellerBuyer, Buyer.ElectronicAddressSellerBuyerSchemeID) or
+     IsExtensionScheme(Seller.GlobalIdentifierSellerBuyer, Seller.GlobalIdentifierSellerBuyerSchemeID) or
+     IsExtensionScheme(Buyer.GlobalIdentifierSellerBuyer, Buyer.GlobalIdentifierSellerBuyerSchemeID) or
+     IsExtensionScheme(AInvoice.DeliveryInformation.LocationIdentifier,
+       AInvoice.DeliveryInformation.LocationIdentifierSchemeID) or
+     IsExtensionScheme(Seller.CompanyID, Seller.CompanyIDSchemeID) or
+     IsExtensionScheme(Buyer.CompanyID, Buyer.CompanyIDSchemeID) or
+     IsExtensionScheme(AInvoice.PayeeParty.Identifier, AInvoice.PayeeParty.IdentifierSchemeID) or
+     IsExtensionScheme(AInvoice.PayeeParty.CompanyID, AInvoice.PayeeParty.CompanyIDSchemeID) then
+    Exit;
+  for I := 0 to AInvoice.InvoiceLines.Count - 1 do
+    if LandrixEInvoiceStandardItemIdentifierOf(AInvoice.InvoiceLines[I], Value, Scheme, Conflict) and
+       IsExtensionScheme(Value, Scheme) then
+      Exit;
+  Result := False;
+end;
+
+{ BR-CL-08 in UBL: the subject code is written as '#code#' before the note
+  text; the schematron tests the text between the first two '#' when it
+  has three characters. A text with a blank there counts as unlisted (the
+  schematron finds it in its list when it spans two codes).
+  DE: BR-CL-08 in UBL: der Betreffcode wird als '#Code#' vor den Text der
+  Bemerkung geschrieben; das Schematron prueft den Text zwischen den
+  ersten beiden '#', wenn er drei Zeichen hat. Ein Text mit Leerzeichen
+  dort gilt als nicht gelistet (das Schematron findet ihn in seiner Liste,
+  wenn er zwei Codes ueberspannt). }
+function UBLNoteSubjectWrong(const AText: TLandrixEInvoiceString): Boolean;
+var
+  Rest: TLandrixEInvoiceString;
+  P: Integer;
+begin
+  Result := False;
+  P := Pos('#', AText);
+  if P = 0 then
+    Exit;
+  Rest := Copy(AText, P + 1, Length(AText) - P);
+  P := Pos('#', Rest);
+  if P <> 4 then
+    Exit;
+  Result := not CodeListed(cl_Text, Copy(Rest, 1, 3), False);
+end;
+
+{ BR-CL-19 (allowances) and BR-CL-20 (charges): the reason code as written.
+  DE: BR-CL-19 (Nachlaesse) und BR-CL-20 (Zuschlaege): der Grundcode, wie
+  er geschrieben wird. }
+function ReasonCodeWrong(AIndex: TCheckRuleIndex; AItem: TLandrixInvoiceAllowanceCharge; ACII: Boolean): Boolean;
+begin
+  if AIndex = cr_BRCL19 then
+    Result := not AItem.ChargeIndicator and BadCode(cl_Allowance,
+      WrittenCode(LandrixEInvoiceAllowanceOrChargeIdentCodeToStr(AItem.ReasonCodeAllowance),
+      AItem.ReasonCodeAllowanceOther), ACII)
+  else
+    Result := AItem.ChargeIndicator and BadCode(cl_Charge,
+      WrittenCode(LandrixEInvoiceSpecialServiceDescriptionCodeToStr(AItem.ReasonCodeCharge),
+      AItem.ReasonCodeChargeOther), ACII);
+end;
+
+{ The code list rules on the lines as written, sub lines included where
+  ASubLines: BR-CL-07 (BT-128), 13, 15, 18, 19, 20, 21 and 23.
+  DE: Die Codelistenregeln auf den Positionen, wie sie geschrieben werden,
+  Unterpositionen eingeschlossen, wo ASubLines: BR-CL-07 (BT-128), 13, 15,
+  18, 19, 20, 21 und 23. }
+function LineCodeViolated(AIndex: TCheckRuleIndex; ALines: TLandrixInvoiceLines; ACII, ASubLines: Boolean): Boolean;
+var
+  I, J: TLandrixEInvoiceListIndex;
+  Line: TLandrixInvoiceLine;
+  Value, Scheme, Conflict: TLandrixEInvoiceString;
+begin
+  Result := True;
+  for I := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[I];
+    case AIndex of
+      { CII writes the scheme as element, UBL as attribute }
+      cr_BRCL07:
+        if Present(Line.ObjectIdentifier) and
+           ((ACII and BadCode(cl_Reference, Line.ObjectIdentifierSchemeID, ACII)) or
+           (not ACII and BadAttribute(cl_Reference, Line.ObjectIdentifierSchemeID, ACII))) then
+          Exit;
+      { a classification without scheme is left out (BR-65) }
+      cr_BRCL13:
+        for J := 0 to Line.ItemClassifications.Count - 1 do
+          if Present(Line.ItemClassifications[J].ClassCode) and Present(Line.ItemClassifications[J].ListID) and
+             not CodeListed(cl_Item, Line.ItemClassifications[J].ListID, ACII) then
+            Exit;
+      cr_BRCL15:
+        if BadCode(cl_Country, Line.OriginTradeCountry, ACII) then
+          Exit;
+      cr_BRCL18:
+        if BadCode(cl_Category, TaxCategoryText(Line.TaxCategory, Line.TaxCategoryOther), ACII) then
+          Exit;
+      cr_BRCL19, cr_BRCL20:
+        for J := 0 to Line.AllowanceCharges.Count - 1 do
+          if ReasonCodeWrong(AIndex, Line.AllowanceCharges[J], ACII) then
+            Exit;
+      cr_BRCL21XR, cr_BRCL21BIS:
+        if LandrixEInvoiceStandardItemIdentifierOf(Line, Value, Scheme, Conflict) and
+           BadAttribute(cl_ICD, Scheme, ACII) then
+          Exit;
+      cr_BRCL23XR, cr_BRCL23BIS:
+        if BadAttribute(cl_Unit, WrittenCode(LandrixEInvoiceUnitCodeToStr(Line.UnitCode), Line.UnitCodeOther),
+             ACII) or
+           ((Line.BaseQuantity <> 0) and BadAttribute(cl_Unit,
+             WrittenCode(LandrixEInvoiceUnitCodeToStr(Line.BaseQuantityUnitCode), Line.BaseQuantityUnitCodeOther),
+             ACII)) then
+          Exit;
+    end;
+    if ASubLines and LineCodeViolated(AIndex, Line.SubInvoiceLines, ACII, True) then
+      Exit;
+  end;
+  Result := False;
+end;
+
+{ BR-CL-10: a global identifier without scheme gets 0088 (ADefault), CII
+  writes another identifier without scheme as ram:ID; UBL accepts SEPA for
+  the seller and the payee (ASEPA).
+  DE: BR-CL-10: eine globale Kennung ohne Schema bekommt 0088 (ADefault),
+  CII schreibt eine andere Kennung ohne Schema als ram:ID; UBL nimmt SEPA
+  fuer Verkaeufer und Zahlungsempfaenger an (ASEPA). }
+function PartySchemeWrong(const AValue, AScheme: TLandrixEInvoiceString; ADefault, ASEPA, ACII: Boolean): Boolean;
+begin
+  Result := Present(AValue) and not ((ADefault or ACII) and not Present(AScheme)) and
+    BadAttribute(cl_ICD, AScheme, ACII) and not (ASEPA and (NormalizedSpace(AScheme) = 'SEPA'));
+end;
+
+{ True if code list rule AIndex is violated by the codes as the mappers
+  write them. The rules on schemes, attachments and electronic addresses
+  are information only in the XRechnung extension scenario.
+  DE: True, wenn die Codes, wie die Mapper sie schreiben, die
+  Codelistenregel AIndex verletzen. Die Regeln zu Schemata, Anhaengen und
+  elektronischen Adressen sind im XRechnung-Extension-Szenario nur
+  Information. }
+function CodeListViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  CII, SubLines, Written, TenderWritten, ObjectWritten: Boolean;
+  Seller, Buyer: TLandrixInvoiceAccountingParty;
+  Payee, TaxRepresentative, Invoicee: TLandrixInvoiceParty;
+  Item: TLandrixInvoiceAllowanceCharge;
+  Attachment: TLandrixInvoiceAttachment;
+  Code, Scheme: TLandrixEInvoiceString;
+begin
+  Result := False;
+  if (AIndex in [cr_BRCL10, cr_BRCL11, cr_BRCL21XR, cr_BRCL24, cr_BRCL25, cr_BRCL26]) and
+     ExtensionWritten(AInvoice, ASpec) then
+    Exit;
+  CII := ASpec.Target.Syntax = esy_CII;
+  { ubl:CreditNote has no sub lines }
+  SubLines := not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines) and
+    (CII or (AInvoice.InvoiceTypeCode <> itc_CreditNote));
+  Seller := AInvoice.AccountingSupplierParty;
+  Buyer := AInvoice.AccountingCustomerParty;
+  Payee := AInvoice.PayeeParty;
+  TaxRepresentative := AInvoice.TaxRepresentativeParty;
+  Invoicee := AInvoice.InvoiceeParty;
+  Result := True;
+  case AIndex of
+    cr_BRCL01:
+      begin
+        Code := WrittenCode(LandrixEInvoiceTypeCodeToStr(AInvoice.InvoiceTypeCode), AInvoice.InvoiceTypeCodeOther);
+        { UBL writes 381 as ubl:CreditNote, everything else as ubl:Invoice }
+        if CII then
+          Result := BadCode(cl_TypeCode, Code, True)
+        else
+          Result := Present(Code) and (AInvoice.InvoiceTypeCode <> itc_CreditNote) and
+            not InList(NormalizedSpace(Code), UBLInvoiceTypeCodes);
+      end;
+    { UBL: every amount carries @currencyID, CII: the VAT total }
+    cr_BRCL03:
+      Result := BadAttribute(cl_Currency, AInvoice.InvoiceCurrencyCode, CII) or
+        (Present(AInvoice.TaxCurrencyCode) and (AInvoice.TaxCurrencyCode <> AInvoice.InvoiceCurrencyCode) and
+        AInvoice.TaxAmountTotalInTaxCurrency.HasValue and BadAttribute(cl_Currency, AInvoice.TaxCurrencyCode, CII));
+    cr_BRCL04:
+      Result := BadCode(cl_Currency, AInvoice.InvoiceCurrencyCode, CII);
+    cr_BRCL05:
+      Result := (AInvoice.TaxCurrencyCode <> AInvoice.InvoiceCurrencyCode) and
+        BadCode(cl_Currency, AInvoice.TaxCurrencyCode, CII);
+    { BT-8 is left out next to BT-7 (BR-CO-03); CII writes it in the first VAT
+      breakdown, converted to UNTDID 2475 }
+    cr_BRCL06:
+      if not Present(AInvoice.TaxPointDateCode) or AInvoice.TaxPointDate.HasValue then
+        Result := False
+      else if not CII then
+        Result := not InList(NormalizedSpace(AInvoice.TaxPointDateCode), UBLTaxPointCodes)
+      else if AInvoice.TaxAmountSubtotals.Count = 0 then
+        Result := False
+      else
+      begin
+        LandrixEInvoiceTaxPointDateCodeToCII(AInvoice.TaxPointDateCode, Code);
+        Result := not InList(NormalizedSpace(Code), CIITaxPointCodes);
+      end;
+    { BT-18: UBL writes the first object identifier with an identifier, CII
+      further ones where the rule table allows them }
+    cr_BRCL07:
+      begin
+        ObjectWritten := False;
+        for I := 0 to AInvoice.Attachments.Count - 1 do
+        begin
+          Attachment := AInvoice.Attachments[I];
+          if (Attachment.TypeCode <> iatc_130) or not Present(Attachment.ID) or
+             (ObjectWritten and (not CII or Forbidden(ASpec, LandrixEInvoiceRuleFurtherObjectIdentifier))) then
+            Continue;
+          ObjectWritten := True;
+          if (CII and BadCode(cl_Reference, Attachment.SchemeID, CII)) or
+             (not CII and BadAttribute(cl_Reference, Attachment.SchemeID, CII)) then
+            Exit;
+        end;
+        Result := LineCodeViolated(AIndex, AInvoice.InvoiceLines, CII, SubLines);
+      end;
+    cr_BRCL08:
+      begin
+        for I := 0 to AInvoice.Notes.Count - 1 do
+        begin
+          if not Present(AInvoice.Notes[I].Content) then
+            Continue;
+          Code := WrittenCode(LandrixEInvoiceNoteSubjectCodeToStr(AInvoice.Notes[I].SubjectCode),
+            AInvoice.Notes[I].SubjectCodeOther);
+          if CII then
+          begin
+            if BadCode(cl_Text, Code, CII) then
+              Exit;
+          end
+          else if Present(Code) then
+          begin
+            if UBLNoteSubjectWrong('#' + Code + '#' + AInvoice.Notes[I].Content) then
+              Exit;
+          end
+          else if UBLNoteSubjectWrong(AInvoice.Notes[I].Content) then
+            Exit;
+        end;
+        Result := False;
+      end;
+    { UBL: the payee identifier keeps its scheme and the creditor identifier
+      has SEPA; CII: an identifier with scheme is a global identifier, the
+      tax representative has one in EXTENDED only }
+    cr_BRCL10:
+      Result := PartySchemeWrong(Seller.GlobalIdentifierSellerBuyer, Seller.GlobalIdentifierSellerBuyerSchemeID,
+        True, not CII, CII) or
+        PartySchemeWrong(Buyer.GlobalIdentifierSellerBuyer, Buyer.GlobalIdentifierSellerBuyerSchemeID, True, False,
+        CII) or
+        (PartySet(Payee) and PartySchemeWrong(Payee.Identifier, Payee.IdentifierSchemeID, False, not CII, CII)) or
+        (CII and PartySet(TaxRepresentative) and not Forbidden(ASpec, LandrixEInvoiceRuleTaxRepresentativeExtended) and
+        PartySchemeWrong(TaxRepresentative.Identifier, TaxRepresentative.IdentifierSchemeID, False, False, CII)) or
+        (CIIInvoiceeWritten(AInvoice, ASpec) and
+        PartySchemeWrong(Invoicee.Identifier, Invoicee.IdentifierSchemeID, False, False, CII));
+    cr_BRCL11:
+      Result := (Present(Seller.CompanyID) and BadAttribute(cl_ICD, Seller.CompanyIDSchemeID, CII)) or
+        (Present(Buyer.CompanyID) and BadAttribute(cl_ICD, Buyer.CompanyIDSchemeID, CII)) or
+        (Present(Payee.CompanyID) and BadAttribute(cl_ICD, Payee.CompanyIDSchemeID, CII)) or
+        (CII and Present(TaxRepresentative.CompanyID) and
+        not Forbidden(ASpec, LandrixEInvoiceRuleTaxRepresentativeExtended) and
+        BadAttribute(cl_ICD, TaxRepresentative.CompanyIDSchemeID, CII)) or
+        (CIIInvoiceeWritten(AInvoice, ASpec) and Present(Invoicee.CompanyID) and
+        BadAttribute(cl_ICD, Invoicee.CompanyIDSchemeID, CII));
+    { the payee address in CII EXTENDED only }
+    cr_BRCL14:
+      Result := BadCode(cl_Country, Seller.Address.CountryCode, CII) or
+        BadCode(cl_Country, Buyer.Address.CountryCode, CII) or
+        (PartySet(TaxRepresentative) and AddressSet(TaxRepresentative.Address) and
+        BadCode(cl_Country, TaxRepresentative.Address.CountryCode, CII)) or
+        (AddressSet(AInvoice.DeliveryInformation.Address) and
+        BadCode(cl_Country, AInvoice.DeliveryInformation.Address.CountryCode, CII)) or
+        (CIIPayeeFull(AInvoice, ASpec) and AddressSet(Payee.Address) and
+        BadCode(cl_Country, Payee.Address.CountryCode, CII)) or
+        (CIIInvoiceeWritten(AInvoice, ASpec) and AddressSet(Invoicee.Address) and
+        BadCode(cl_Country, Invoicee.Address.CountryCode, CII));
+    cr_BRCL16:
+      begin
+        for I := 0 to AInvoice.PaymentTypes.Count - 1 do
+          if PaymentWritten(AInvoice.PaymentTypes[I]) and BadCode(cl_Payment,
+             WrittenCode(LandrixEInvoicePaymentMeansCodeToStr(AInvoice.PaymentTypes[I].PaymentMeansCode),
+             AInvoice.PaymentTypes[I].PaymentMeansCodeOther), CII) then
+            Exit;
+        Result := False;
+      end;
+    { cac:TaxCategory (UBL) is also the category of the VAT breakdown,
+      ram:ApplicableTradeTax (CII) also of the line }
+    cr_BRCL17, cr_BRCL18:
+      begin
+        if AIndex = cr_BRCL17 then
+          for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
+          begin
+            Item := AInvoice.AllowanceCharges[I];
+            if BadCode(cl_Category, TaxCategoryText(Item.TaxCategory, Item.TaxCategoryOther), CII) then
+              Exit;
+          end
+        else if LineCodeViolated(AIndex, AInvoice.InvoiceLines, CII, SubLines) then
+          Exit;
+        if (AIndex = cr_BRCL17) <> CII then
+          for I := 0 to AInvoice.TaxAmountSubtotals.Count - 1 do
+            if BadCode(cl_Category, TaxCategoryText(AInvoice.TaxAmountSubtotals[I].TaxCategory,
+               AInvoice.TaxAmountSubtotals[I].TaxCategoryOther), CII) then
+              Exit;
+        Result := False;
+      end;
+    cr_BRCL19, cr_BRCL20:
+      begin
+        for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
+          if ReasonCodeWrong(AIndex, AInvoice.AllowanceCharges[I], CII) then
+            Exit;
+        Result := LineCodeViolated(AIndex, AInvoice.InvoiceLines, CII, SubLines);
+      end;
+    cr_BRCL13, cr_BRCL15, cr_BRCL21XR, cr_BRCL21BIS, cr_BRCL23XR, cr_BRCL23BIS:
+      Result := LineCodeViolated(AIndex, AInvoice.InvoiceLines, CII, SubLines);
+    cr_BRCL22:
+      begin
+        for I := 0 to AInvoice.TaxAmountSubtotals.Count - 1 do
+          if BadCode(cl_VATEX, AInvoice.TaxAmountSubtotals[I].TaxExemptionReasonCode, CII) then
+            Exit;
+        Result := False;
+      end;
+    { the attachments as written: UBL writes BT-17 (type 50) without
+      attachment, CII the first one with an identifier; BT-18 (type 130) as
+      in BR-CL-07 }
+    cr_BRCL24:
+      begin
+        TenderWritten := False;
+        ObjectWritten := False;
+        for I := 0 to AInvoice.Attachments.Count - 1 do
+        begin
+          Attachment := AInvoice.Attachments[I];
+          Written := True;
+          if Attachment.TypeCode = iatc_50 then
+          begin
+            Written := CII and not TenderWritten and Present(Attachment.ID);
+            TenderWritten := TenderWritten or Written;
+          end
+          else if Attachment.TypeCode = iatc_130 then
+          begin
+            Written := Present(Attachment.ID) and
+              not (ObjectWritten and (not CII or Forbidden(ASpec, LandrixEInvoiceRuleFurtherObjectIdentifier)));
+            ObjectWritten := ObjectWritten or Written;
+          end;
+          if Written and Attachment.ContainsBinaryObject then
+          begin
+            Code := WrittenCode(LandrixEInvoiceAttachmentTypeToStr(Attachment.AttachmentType),
+              Attachment.AttachmentTypeOther);
+            if (Code <> '') and not InList(Code, AttachmentMimeCodes) then
+              Exit;
+          end;
+        end;
+        Result := False;
+      end;
+    { without scheme the default EM where the specification allows it }
+    cr_BRCL25:
+      begin
+        Scheme := Seller.ElectronicAddressSellerBuyerSchemeID;
+        if not Present(Scheme) and not Forbidden(ASpec, LandrixEInvoiceRuleElectronicAddressDefaultEM) then
+          Scheme := 'EM';
+        if Present(Seller.ElectronicAddressSellerBuyer) and BadAttribute(cl_EAS, Scheme, CII) then
+          Exit;
+        Scheme := Buyer.ElectronicAddressSellerBuyerSchemeID;
+        if not Present(Scheme) and not Forbidden(ASpec, LandrixEInvoiceRuleElectronicAddressDefaultEM) then
+          Scheme := 'EM';
+        Result := Present(Buyer.ElectronicAddressSellerBuyer) and BadAttribute(cl_EAS, Scheme, CII);
+      end;
+    { CII writes a location without scheme as ram:ID }
+    cr_BRCL26:
+      begin
+        Scheme := AInvoice.DeliveryInformation.LocationIdentifierSchemeID;
+        Result := Present(AInvoice.DeliveryInformation.LocationIdentifier) and (not CII or Present(Scheme)) and
+          BadAttribute(cl_ICD, Scheme, CII);
+      end;
+  else
+    Result := False;
+  end;
+end;
+
+
 { --- rules --------------------------------------------------------------------- }
 
 { True if rule AIndex is violated by AInvoice for ASpec. The LX-CC rules keep
@@ -2741,6 +3428,8 @@ begin
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
     cr_BRDEX09:
       Result := CalculationViolated(AIndex, AInvoice, ASpec);
+    cr_BRCL01..cr_BRCL26:
+      Result := CodeListViolated(AIndex, AInvoice, ASpec);
   end;
 end;
 
@@ -2820,7 +3509,7 @@ var
 begin
   Result := True;
   Found := False;
-  { an identifier can have one row per syntax (BR-51) }
+  { an identifier can have one row per syntax or standard (BR-51, BR-CL-21) }
   for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
     if TLandrixEInvoiceString(CheckRows[I].ID) = ARuleID then
     begin
