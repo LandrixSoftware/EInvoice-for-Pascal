@@ -2946,6 +2946,9 @@ begin
              WrittenCode(LandrixEInvoiceUnitCodeToStr(Line.BaseQuantityUnitCode), Line.BaseQuantityUnitCodeOther),
              ACII)) then
           Exit;
+    else
+      { no rule on the lines }
+      Break;
     end;
     if ASubLines and LineCodeViolated(AIndex, Line.SubInvoiceLines, ACII, True) then
       Exit;
