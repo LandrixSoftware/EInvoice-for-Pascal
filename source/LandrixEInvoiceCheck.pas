@@ -3373,7 +3373,7 @@ begin
     Carry := 0;
     for J := 0 to Integer(Length(Y)) - 1 do
     begin
-      D := Result[I + J] + X[I] * Y[J] + Carry;
+      D := Integer(Result[I + J]) + Integer(X[I]) * Integer(Y[J]) + Carry;
       Result[I + J] := Byte(D mod 10);
       Carry := D div 10;
     end;
