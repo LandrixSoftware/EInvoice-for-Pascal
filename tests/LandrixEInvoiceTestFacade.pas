@@ -380,7 +380,7 @@ begin
 end;
 
 { A syntax model with content its profile does not contain is refused; its
-  BT-24 must belong to the target. }
+  BT-24 must belong to the target (also by the code asserts of Factur-X). }
 procedure TestSyntaxModel;
 var
   Invoice: TLandrixInvoice;
@@ -408,9 +408,11 @@ begin
       CII.ExchangedDocument.Name := '';
       Check(TLandrixEInvoice.SaveToUtf8(CII, Basic) <> '', 'written without the name');
       D.Clear;
-      CheckEquals(1, TLandrixEInvoice.Check(CII, TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), [], D),
+      CheckEquals(2, TLandrixEInvoice.Check(CII, TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), [], D),
         'BT-24 of BASIC for EN16931: ' + string(D.ToText));
       CheckEquals(1, D.CountOf(edk_InvalidValue), 'BT-24 reported');
+      { the code list of EN16931 knows only its own BT-24 }
+      CheckEquals(1, D.CountOf(edk_RuleViolation), 'FX-SCH-A-000556 reported');
     finally
       CII.Free;
     end;

@@ -44,6 +44,17 @@ that contains it and the profiles in which it is required. They are derived by
 same release (file `1_FACTUR-X 1.09.2 - EN FR.xlsx`; SHA-256 in `tools/fieldmap/manifest.json`).
 The table itself is not part of this repository.
 
+`tools/syntaxmodel/cii-codes.json` and the unit generated from it
+(`source/LandrixEInvoiceCIICodeRules.pas`) contain the code checks of the Factur-X 1.09.2
+schematron of the five profiles (assert identifiers FX-SCH-A-..., their context paths and the
+code lists of the code data bases `FACTUR-X_<profile>_codedb.xml`). They are extracted by
+`tools/syntaxmodel/extract-xsd.py` from the same release package validation-configuration-zugferd
+2.5.2, which is licensed under the Apache License 2.0; the Factur-X 1.09.2 specification
+(`0_FACTUR-X 1.09.2 DE.pdf`, disclaimer on page 13) places the document under the same licence.
+See [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt). The schematron and
+code data base files themselves are not part of this repository; their checksums are in
+`tools/syntaxmodel/manifest.json`.
+
 ## OASIS UBL 2.1 schema and EN 16931 UBL rules
 
 `tools/syntaxmodel/ubl.json` and the units generated from it (`source/LandrixEInvoiceUBL.pas`,

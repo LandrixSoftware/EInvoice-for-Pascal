@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Downloads the Factur-X EXTENDED schema and the UBL 2.1 schema (not part
 of the repository), verifies the checksums of manifest.json and writes the
-reduced structure descriptions cii.json and ubl.json: namespaces, the root
+reduced descriptions cii.json, cii-codes.json and ubl.json: namespaces, the root
 element(s) and, per schema type, either its element children (name,
 namespace, type, minOccurs, maxOccurs) or its simple content (lexical base
 and attributes).
@@ -10,6 +10,13 @@ CII: only the XSD subset used by the Factur-X schema is supported
 (sequence, choice with one branch, element with type or anonymous
 complexType, simpleContent extension with attributes, simpleType
 restriction); anything else stops the extraction.
+
+CII codes: the code checks of the Factur-X schematron of the five profiles
+(asserts "string-length($v)=0 or document('..._codedb.xml')/codedb/cl[@id=N]
+/enumeration[@value=$v]") with their context path, the checked value and the
+code list, written to cii-codes.json. Only the context predicates listed in
+CODE_CONDITIONS are supported, and an assert that uses the codedb in any other
+form stops the extraction.
 
 UBL: only the children named in the positive list ubl-positive.json are
 kept (type -> child elements); order, cardinality and types come from the
@@ -435,6 +442,148 @@ class UblSchema(object):
         return missing, extra
 
 
+CII_ROOT = "/rsm:CrossIndustryInvoice"
+HEADER_SETTLEMENT = "/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/"
+# context predicate -> condition name (gen-syntaxmodel.py knows the same names)
+CODE_CONDITIONS = {
+    '[ram:ChargeIndicator/udt:Indicator="false"]': "Allowance",
+    '[ram:ChargeIndicator/udt:Indicator="true"]': "Charge",
+    '[ram:TypeCode="130"]': "Document130",
+    '[ram:TypeCode="50"]': "Document50",
+    '[ram:TypeCode="916"]': "Document916",
+    '[not (@listID)]': "NoListID",
+    '[@listID="5153"]': "ListID5153",
+    '[@currencyID=../../ram:InvoiceCurrencyCode]': "InvoiceCurrency",
+    '[@currencyID=../../ram:TaxCurrencyCode]': "TaxCurrency",
+    '[@currencyID=' + HEADER_SETTLEMENT + 'ram:InvoiceCurrencyCode]': "InvoiceCurrency",
+    '[@currencyID=' + HEADER_SETTLEMENT + 'ram:TaxCurrencyCode]': "TaxCurrency",
+}
+# predicates of other rules that can precede a code rule in its pattern
+OTHER_CONDITIONS = {
+    '[ not(@currencyID=../../ram:InvoiceCurrencyCode) and  not(@currencyID=../../ram:TaxCurrencyCode)]':
+        "OtherCurrency",
+    '[ not(@currencyID=' + HEADER_SETTLEMENT + 'ram:InvoiceCurrencyCode) and  not(@currencyID=' +
+    HEADER_SETTLEMENT + 'ram:TaxCurrencyCode)]': "OtherCurrency",
+    '[ not(not (@listID)) and  not(@listID="5153")]': "OtherListID",
+    '[ not(@listID="5153") and  not(not (@listID))]': "OtherListID",
+}
+# conditions on the same element that exclude each other
+EXCLUSIVE = [{"Allowance", "Charge"}, {"Document130", "Document50", "Document916"},
+             {"NoListID", "ListID5153", "OtherListID"}, {"OtherCurrency", "InvoiceCurrency"},
+             {"OtherCurrency", "TaxCurrency"}]
+SCH = "{http://purl.oclc.org/dsdl/schematron}"
+
+
+def parse_context(context, known):
+    """(path without predicates, [[condition, element path]]) of a rule
+    context; the condition is None for a predicate outside known."""
+    conditions = []
+    path = ""
+    rest = context
+    while rest:
+        mp = re.match(r"([^\[]*)(\[[^\]]*\])?", rest)
+        if mp.end() == 0:
+            fail("unsupported context %s" % context)
+        path += mp.group(1)
+        if mp.group(2):
+            conditions.append([known.get(mp.group(2)), path])
+        rest = rest[mp.end():]
+    return path, conditions
+
+
+def exclusive(a, b):
+    """True if no node meets both condition lists."""
+    for na, pa in a:
+        for nb, pb in b:
+            if pa == pb and na != nb and any(na in g and nb in g for g in EXCLUSIVE):
+                return True
+    return False
+
+
+def extract_codes(files, entry):
+    """{profiles, lists, rules}: rules [profile, assert id, key, [[condition,
+    element path]], list index] sorted by key, profile and id; the key is the
+    CII path of the value without predicates and list index ('.../@attr' for
+    an attribute), the element path that of the element carrying the
+    predicate; lists de-duplicated by content, codes sorted.
+    Schematron fires only the first rule of a pattern that matches a node:
+    an earlier rule with the same path must exclude the code rule by its
+    conditions; the only shadowing supported is the VAT total in the invoice
+    currency before the one in the VAT accounting currency, which adds the
+    condition NotInvoiceCurrency."""
+    lists = []
+    list_index = {}
+    rules = []
+    test_re = re.compile(r"string-length\(\$(\w+)\)=0 or document\('([^']+)'\)/codedb/cl\[@id=(\d+)\]"
+                         r"/enumeration\[@value=\$(\w+)\]")
+    known = dict(CODE_CONDITIONS)
+    known.update(OTHER_CONDITIONS)
+    for profile, stem in entry["profiles"].items():
+        sch = ET.fromstring(files[stem + ".sch"])
+        db = ET.fromstring(files[stem + "_codedb.xml"])
+        codedb = {}
+        for cl in db:
+            values = [e.get("value") for e in cl]
+            if cl.tag != "cl" or any(e.tag != "enumeration" for e in cl) or any(v is None for v in values):
+                fail("%s_codedb.xml: unexpected structure" % stem)
+            codedb[cl.get("id")] = sorted(set(values))
+        for pattern in sch.iter(SCH + "pattern"):
+            earlier = []
+            for rule in pattern.findall(SCH + "rule"):
+                context = rule.get("context")
+                path, conditions = parse_context(context, known)
+                lets = dict((l.get("name"), l.get("value")) for l in rule.findall(SCH + "let"))
+                for a in rule.findall(SCH + "assert"):
+                    test = a.get("test")
+                    if "codedb" not in test:
+                        continue
+                    mm = test_re.fullmatch(test)
+                    if not mm or mm.group(1) != mm.group(4) or mm.group(1) not in lets:
+                        fail("%s: unsupported code assert %s" % (stem, a.get("id")))
+                    if not mm.group(2).endswith(stem.split("/")[1] + "_codedb.xml"):
+                        fail("%s: assert %s uses another codedb" % (stem, a.get("id")))
+                    if a.get("flag") not in (None, "fatal"):
+                        fail("%s: code assert %s has flag %s" % (stem, a.get("id"), a.get("flag")))
+                    value = lets[mm.group(1)]
+                    if value != "." and not re.fullmatch(r"@\w+", value):
+                        fail("%s: assert %s checks %s" % (stem, a.get("id"), value))
+                    if not path.startswith(CII_ROOT + "/") or re.search(r"[^\w:/.-]", path):
+                        fail("%s: unsupported context %s" % (stem, context))
+                    if any(c[0] not in CODE_CONDITIONS.values() for c in conditions):
+                        fail("%s: unsupported predicate in %s" % (stem, context))
+                    checked = [list(c) for c in conditions]
+                    for e_path, e_conditions in earlier:
+                        # a relative or '//' context can select the same node
+                        if not e_path.startswith(CII_ROOT + "/") and \
+                                ("/" + path).endswith("/" + e_path.lstrip("/")):
+                            fail("%s: assert %s may be shadowed by the rule %s" % (stem, a.get("id"), e_path))
+                        if e_path != path or exclusive(e_conditions, conditions):
+                            continue
+                        names = [c[0] for c in e_conditions]
+                        if names == ["InvoiceCurrency"] and [c[0] for c in conditions] == ["TaxCurrency"]:
+                            checked.append(["NotInvoiceCurrency", e_conditions[0][1]])
+                            continue
+                        fail("%s: assert %s is shadowed by the rule %s" % (stem, a.get("id"), e_path))
+                    key = path if value == "." else path + "/" + value
+                    codes = codedb.get(mm.group(3))
+                    if codes is None:
+                        fail("%s: assert %s uses unknown list %s" % (stem, a.get("id"), mm.group(3)))
+                    if any(not c or any(ord(ch) > 126 or ord(ch) < 33 for ch in c) for c in codes):
+                        fail("%s: list %s has a code outside printable ASCII" % (stem, mm.group(3)))
+                    t = tuple(codes)
+                    if t not in list_index:
+                        list_index[t] = len(lists)
+                        lists.append(codes)
+                    rules.append([profile, a.get("id"), key, sorted(checked), list_index[t]])
+                earlier.append((path, conditions))
+    order = list(entry["profiles"])
+    rules.sort(key=lambda r: (r[2], order.index(r[0]), r[1]))
+    ids = [r[1] for r in rules]
+    if len(ids) != len(set(ids)):
+        fail("an assert id occurs twice")
+    return {"source": entry["title"], "profiles": order, "lists": lists, "rules": rules}
+
+
 def load_positive(entry):
     return json.load(io.open(os.path.join(HERE, entry["positive_list"]), encoding="utf-8"))
 
@@ -450,7 +599,10 @@ def write_or_check(entry, data, check):
         print("extract-xsd: %s up to date" % entry["output"])
         return 0
     io.open(out, "w", encoding="utf-8", newline="\n").write(text)
-    print("extract-xsd: wrote %s (%d types)" % (out, len(data["types"])))
+    if "types" in data:
+        print("extract-xsd: wrote %s (%d types)" % (out, len(data["types"])))
+    else:
+        print("extract-xsd: wrote %s (%d rules, %d lists)" % (out, len(data["rules"]), len(data["lists"])))
     return 0
 
 
@@ -475,6 +627,8 @@ def main(argv):
         return 0
     cii_entry = manifest["cii"]
     result = write_or_check(cii_entry, Schema(load_files(cii_entry), cii_entry["main"]).describe(), check)
+    codes_entry = manifest["cii-codes"]
+    result = write_or_check(codes_entry, extract_codes(load_files(codes_entry), codes_entry), check) or result
     return write_or_check(ubl_entry, ubl.describe(), check) or result
 
 

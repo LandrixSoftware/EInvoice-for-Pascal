@@ -1075,7 +1075,12 @@ begin
         string(D.ToText));
       CheckEquals(1, D.CountOf(edk_NotAllowed), 'name reported');
       CheckEqualsInvoiceStr('EXTENDED only', CII.ExchangedDocument.Name, 'model unchanged');
-      CheckEquals(0, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXExtended), nil), 'allowed in EXTENDED');
+      { the name is allowed in EXTENDED; the code list of EXTENDED rejects the
+        BT-24 of BASIC }
+      D.Clear;
+      CheckEquals(1, LandrixEInvoiceCheckCII(CII, SpecOf(tk_FXExtended), D), 'EXTENDED: ' + string(D.ToText));
+      CheckEquals(0, D.CountOf(edk_NotAllowed), 'name allowed in EXTENDED');
+      Check(HasRule(D, 'FX-SCH-A-000636'), 'BT-24 of BASIC in EXTENDED');
       CII.ExchangedDocument.Name := '';
       { without quantity the line delivery is empty and not written; BASIC
         requires it below the line }

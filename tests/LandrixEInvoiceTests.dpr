@@ -38,6 +38,7 @@ uses
   LandrixEInvoiceTestCheck,
   LandrixEInvoiceTestCII,
   LandrixEInvoiceTestCIIProfiles,
+  LandrixEInvoiceTestCIICodeRules,
   LandrixEInvoiceTestUBL,
   LandrixEInvoiceTestScenarioRun,
   LandrixEInvoiceTestMapCII,
@@ -71,6 +72,7 @@ begin
   LandrixEInvoiceTestCheck.Register;
   LandrixEInvoiceTestCII.Register;
   LandrixEInvoiceTestCIIProfiles.Register;
+  LandrixEInvoiceTestCIICodeRules.Register;
   LandrixEInvoiceTestUBL.Register;
   LandrixEInvoiceTestScenarioRun.Register;
   LandrixEInvoiceTestMapCII.Register;

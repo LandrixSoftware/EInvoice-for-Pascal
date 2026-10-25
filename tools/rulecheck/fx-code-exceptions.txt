@@ -1,0 +1,3 @@
+# Known differences of tools/rulecheck/fx-code-oracle.py: 'file<TAB>missed ID' or
+# 'file<TAB>extra ID', each with a reason in a comment above it; '*' in the file name stands for
+# any text. An unused line is an error. None at present.

@@ -288,6 +288,14 @@ Supported invoice standards are documented per release.
   from the library's code lists (STD, AN in CII, B, EAS 0219/0220, fewer note subjects in UBL),
   on the codes as the mappers write them; BR-CL-21 and BR-CL-23 are warnings in XRechnung, and
   the XRechnung extension leaves out BR-CL-10, 11, 21, 24, 25 and 26 as its scenario does.
+- Factur-X code checks: the generated unit `LandrixEInvoiceCIICodeRules` checks a CII syntax
+  model against the 366 code asserts of the Factur-X 1.09.2 schematron (FX-SCH-A-..., one
+  identifier per profile, with the contexts allowance or charge, document type code, @listID and
+  VAT total currency) and reports them as `edk_RuleViolation`; `LandrixEInvoiceCheckCII` and the
+  facade (`Check`, `SaveTo*`, also for a CII model passed directly; not with `eio_NoRuleCheck`)
+  run it. `tools/syntaxmodel/extract-xsd.py` extracts the asserts and code lists to
+  `tools/syntaxmodel/cii-codes.json`; `tools/rulecheck/fx-code-oracle.py` compares the check
+  with the KoSIT validator on the local CII examples and mutants of them.
 - XRechnung extension: the mappers also declare it for XR01 to XR03 as scheme of a legal
   registration (BT-30, BT-47, BT-61), the payee identifier (BT-60) or the item standard identifier
   (BT-157), which KoSIT allows in the extension only (BR-DEX-04 to BR-DEX-06); before, such an

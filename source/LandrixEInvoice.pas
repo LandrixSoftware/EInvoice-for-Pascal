@@ -407,6 +407,7 @@ uses
   LandrixEInvoiceCalc,
   LandrixEInvoiceCheck,
   LandrixEInvoiceCIIProfiles,
+  LandrixEInvoiceCIICodeRules,
   LandrixEInvoiceCIIReader,
   LandrixEInvoiceCIIWriter,
   LandrixEInvoiceUBLReader,
@@ -585,6 +586,9 @@ begin
           begin
             CII := LandrixEInvoiceInvoiceToCII(Invoice, ASpec, ADiagnostics);
             Owned := CII;
+            { the Factur-X code asserts judge the mapped CII model }
+            if not (eio_NoRuleCheck in AOptions) then
+              LandrixEInvoiceCheckCIICodes(CII, ASpec.Target.Profile, ADiagnostics);
             LandrixEInvoiceWriteCII(CII, W, ADiagnostics, ASpec.Target.Profile);
           end
           else if LandrixEInvoiceUBLRootFor(Invoice, ASpec) = eur_CreditNote then
@@ -607,6 +611,8 @@ begin
             CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value,
             CIICustomizationPath, ASpec, ADiagnostics);
           LandrixEInvoiceCheckCIIProfile(CII, ASpec.Target.Profile, ADiagnostics);
+          if not (eio_NoRuleCheck in AOptions) then
+            LandrixEInvoiceCheckCIICodes(CII, ASpec.Target.Profile, ADiagnostics);
           LandrixEInvoiceWriteCII(CII, W, ADiagnostics, ASpec.Target.Profile);
         end;
       mk_UBLInvoice:

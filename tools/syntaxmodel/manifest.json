@@ -14,6 +14,32 @@
     },
     "output": "cii.json"
   },
+  "cii-codes": {
+    "title": "Factur-X 1.09.2 schematron code checks (FX-SCH-A-... against the codedb) of the five profiles, from validator-configuration-zugferd 2.5.2 (Apache-2.0)",
+    "url": "https://github.com/LandrixSoftware/validator-configuration-zugferd/releases/download/validation-configuration-zugferd-2.5.2/validation-configuration-zugferd-2.5.2-2026-10-15.zip",
+    "zip_sha256": "43487e76edad8b7276da8266f0b1473b597be23554d1ab7fb1c828a03036eafa",
+    "folder": "Schema/factur-x-1.09.2/",
+    "profiles": {
+      "MINIMUM": "0_Factur-X_1.09.2_MINIMUM/FACTUR-X_MINIMUM",
+      "BASIC WL": "1_Factur-X_1.09.2_BASICWL/FACTUR-X_BASIC-WL",
+      "BASIC": "2_Factur-X_1.09.2_BASIC/FACTUR-X_BASIC",
+      "EN16931": "3_Factur-X_1.09.2_EN16931/FACTUR-X_EN16931",
+      "EXTENDED": "4_Factur-X_1.09.2_EXTENDED/FACTUR-X_EXTENDED"
+    },
+    "files": {
+      "0_Factur-X_1.09.2_MINIMUM/FACTUR-X_MINIMUM.sch": "c570a628498e0b633a3dd66dd745653a8a2bc66fc6ee346b1971b9dc2d5f6778",
+      "0_Factur-X_1.09.2_MINIMUM/FACTUR-X_MINIMUM_codedb.xml": "5c575cf37533a12a758f08b6b9691841c1691f2af214f21e040a07ec892e1f20",
+      "1_Factur-X_1.09.2_BASICWL/FACTUR-X_BASIC-WL.sch": "c32dd6eb4ef9c3e88772726ff86aca796476b719152edd6d95aa96ddb17a63f0",
+      "1_Factur-X_1.09.2_BASICWL/FACTUR-X_BASIC-WL_codedb.xml": "a34cd66dda00a9260368fa02dad97e966ded1c1ad100787a5318074328d20abb",
+      "2_Factur-X_1.09.2_BASIC/FACTUR-X_BASIC.sch": "b2a84cee0e497733bf595c435db18ba720a9f2e16f6741a972667a2f277f6bed",
+      "2_Factur-X_1.09.2_BASIC/FACTUR-X_BASIC_codedb.xml": "a150b48359a72e1c1629edddb147d5133aabd03adb6ce8b3d287d0c2a6936d21",
+      "3_Factur-X_1.09.2_EN16931/FACTUR-X_EN16931.sch": "ef8c8380b499d1267b2dcf1fa709b45631a77d6d5f220c6cc2ade2fdade59473",
+      "3_Factur-X_1.09.2_EN16931/FACTUR-X_EN16931_codedb.xml": "70339a41d71b02bb97683f8eea04acbd764e077a88a446b32860d89c3351b62f",
+      "4_Factur-X_1.09.2_EXTENDED/FACTUR-X_EXTENDED.sch": "5b9039e31f86e90f1a34925e84d3fad206efa3ca5639bb98a0cefd3661d3e36a",
+      "4_Factur-X_1.09.2_EXTENDED/FACTUR-X_EXTENDED_codedb.xml": "6e23aedbba0e3b32b3b1211d145186193215f56f755201555306c42327e75fbc"
+    },
+    "output": "cii-codes.json"
+  },
   "ubl": {
     "title": "UBL 2.1 Invoice and CreditNote schema, from the KoSIT validator configuration XRechnung 3.0.2",
     "url": "https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v2026-08-31/xrechnung-3.0.2-validator-configuration-2026-08-31.zip",

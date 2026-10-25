@@ -44,8 +44,9 @@
   BR-DE-20, BR-DE-27, BR-DE-28 (warnings) and BR-51 (UBL warning, CII
   error) follow the KoSIT functions and patterns. The code list rules
   BR-CL-01 to BR-CL-26 apply to XRechnung and Peppol (the Factur-X
-  schematron checks codes with rules of its own, FX-SCH-A-..., which are
-  not part of this set yet); they use the lists of the validators, which
+  schematron checks codes with rules of its own, FX-SCH-A-..., which
+  LandrixEInvoiceCIICodeRules checks on the CII syntax model, see
+  LandrixEInvoiceCheckCII); they use the lists of the validators, which
   differ slightly from the code lists of the library (see CodeListed), and
   the levels of the XRechnung configuration: BR-CL-21 and BR-CL-23 are
   warnings there, and its extension scenario leaves out BR-CL-10, 11, 21,
@@ -92,7 +93,8 @@
   (UBL Warnung, CII Fehler) folgen den Funktionen und Mustern der KoSIT.
   Die Codelistenregeln BR-CL-01 bis BR-CL-26 gelten fuer XRechnung und
   Peppol (das Factur-X-Schematron prueft Codes mit eigenen Regeln,
-  FX-SCH-A-..., die noch nicht dazugehoeren); sie verwenden die Listen der
+  FX-SCH-A-..., die LandrixEInvoiceCIICodeRules auf dem CII-Syntaxmodell
+  prueft, siehe LandrixEInvoiceCheckCII); sie verwenden die Listen der
   Validatoren, die geringfuegig von den Codelisten der Bibliothek abweichen
   (siehe CodeListed), und die Stufen der XRechnung-Konfiguration: BR-CL-21
   und BR-CL-23 sind dort Warnungen, und ihr Extension-Szenario laesst
@@ -157,11 +159,13 @@ function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandr
   profile of ASpec contains it) and what the profile requires below an
   existing parent (LandrixEInvoiceCIIRequiredBelowParent). Content the
   Factur-X profile does not allow is an error (edk_NotAllowed,
-  LandrixEInvoiceCheckCIIProfile; the model is not changed). Adds these and
-  the writer's diagnostics (edk_MissingElement and others) to ADiagnostics
-  (nil: discarded) and returns the number with severity eds_Error. A
-  parent that exists only through such content can also report its
-  required children. ASpec must not be a UBL specification
+  LandrixEInvoiceCheckCIIProfile; the model is not changed), and so is a
+  code the code asserts of the Factur-X profile reject (edk_RuleViolation
+  with the FX-SCH-A identifier, LandrixEInvoiceCheckCIICodes). Adds these
+  and the writer's diagnostics (edk_MissingElement and others) to
+  ADiagnostics (nil: discarded) and returns the number with severity
+  eds_Error. A parent that exists only through such content can also
+  report its required children. ASpec must not be a UBL specification
   (ELandrixEInvoiceError).
   DE: Prueft den Pflichtinhalt eines CII-Syntaxmodells so, wie der
   CII-Writer es beim Schreiben von ACII fuer ASpec tut: was das Schema
@@ -169,9 +173,12 @@ function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandr
   Profil unter einem vorhandenen Elternelement verlangt
   (LandrixEInvoiceCIIRequiredBelowParent). Inhalt, den das
   Factur-X-Profil nicht erlaubt, ist ein Fehler (edk_NotAllowed,
-  LandrixEInvoiceCheckCIIProfile; das Modell wird nicht geaendert). Fuegt
-  diese und die Meldungen des Writers (edk_MissingElement und andere) an
-  ADiagnostics an (nil: verworfen) und liefert die Anzahl mit Schwere
+  LandrixEInvoiceCheckCIIProfile; das Modell wird nicht geaendert), ebenso
+  ein Code, den die Code-Asserts des Factur-X-Profils ablehnen
+  (edk_RuleViolation mit der FX-SCH-A-Kennung,
+  LandrixEInvoiceCheckCIICodes). Fuegt diese und die Meldungen des
+  Writers (edk_MissingElement und andere) an ADiagnostics an (nil:
+  verworfen) und liefert die Anzahl mit Schwere
   eds_Error. Ein Elternelement, das nur durch solchen Inhalt existiert,
   kann zusaetzlich seine Pflichtkinder melden. ASpec darf keine
   UBL-Spezifikation sein (ELandrixEInvoiceError). }
@@ -203,6 +210,7 @@ uses
   LandrixEInvoiceCalc,
   LandrixEInvoiceCIIWriter,
   LandrixEInvoiceCIIProfiles,
+  LandrixEInvoiceCIICodeRules,
   LandrixEInvoiceUBLWriter;
 
 type
@@ -3564,6 +3572,7 @@ begin
       smk_CII:
         begin
           LandrixEInvoiceCheckCIIProfile(TLandrixCIIInvoice(AModel), ASpec.Target.Profile, D);
+          LandrixEInvoiceCheckCIICodes(TLandrixCIIInvoice(AModel), ASpec.Target.Profile, D);
           LandrixEInvoiceWriteCII(TLandrixCIIInvoice(AModel), W, D, ASpec.Target.Profile);
         end;
       smk_UBLInvoice:

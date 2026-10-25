@@ -19,6 +19,9 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
   Codelistenregeln von XRechnung und Peppol (BR-CL-...) und die Regeln von Factur-X EXTENDED
   (BR-FXEXT-...). Jeder Verstoß ist ein Eintrag der Art
   `edk_RuleViolation` mit der Regelkennung in `RuleID`.
+- Für Factur-X die Codeprüfungen des Factur-X-Schematrons (FX-SCH-A-...) auf dem
+  CII-Syntaxmodell, wie es geschrieben wird, auch für ein CII-Modell, das Sie `Check` oder
+  `SaveTo*` direkt übergeben.
 - Alles, was die Abbildung meldet: Inhalt, den das Ziel oder sein Factur-X-Profil nicht
   aufnehmen kann (`edk_NotAllowed`), fehlender Pflichtinhalt (`edk_MissingElement`), Werte,
   die sich nicht umwandeln lassen.
@@ -26,7 +29,8 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
 Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dokument melden
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
 Konfiguration bleiben der Maßstab. Noch nicht geprüft werden unter anderem die meisten
-Peppol-Regeln und die Codeprüfungen des Factur-X-Schematrons (FX-SCH-A-...). Die Formatregeln
+Peppol-Regeln und die übrigen FX-SCH-A-Regeln des Factur-X-Schematrons (Kardinalität,
+Pflichtattribute). Die Formatregeln
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN-Prüfsumme), BR-DE-27, BR-DE-28 und BR-51 werden geprüft; bis
 auf BR-51 in CII sind alle Warnungen.
 
@@ -40,6 +44,17 @@ MIME-Code (BR-CL-24) genau so, wie er geschrieben wird. XRechnung meldet BR-CL-2
 Rechnung mit der XRechnung-Extension geschrieben wird, BR-CL-10, 11, 21, 24, 25 und 26 nicht.
 UBL schreibt die Rechnungsart 381 als `ubl:CreditNote` und jeden anderen Code als
 `ubl:Invoice`; ein Code der Gutschriftenliste wie 261 verletzt deshalb in UBL BR-CL-01.
+
+Die Factur-X-Codeprüfungen haben je Profil eine eigene Kennung (für die Rechnungsart
+FX-SCH-A-000555 in EN 16931, FX-SCH-A-000635 in EXTENDED). Jede vergleicht den Wert, wie er
+geschrieben wird, unverändert und mit Unterscheidung von Groß- und Kleinschreibung mit der
+Codeliste ihres Profils; ein leeres Element wird nicht geschrieben und nicht geprüft. Wie im
+Schematron gelten manche nur in einem Zusammenhang: der Grundcode eines Nachlasses oder
+Zuschlags (Kennzeichen `false` oder `true`), das Schema, der MIME-Code, die Art oder das
+Datumsformat eines Referenzdokuments mit Art 130, 50 oder 916, die Währung eines Steuerbetrags,
+die der Rechnungs- oder Steuerwährung entspricht (eine Währung, die beides ist, zählt nur für die
+Rechnungswährung, weil das Schematron die erste passende Regel anwendet).
+`LandrixEInvoiceCheckCIICodeRule` prüft eine einzelne Kennung.
 
 Die Regeln beurteilen die Rechnung so, wie sie geschrieben würde. Ein Steuersatz, den die
 Rechnung nicht setzt, ist 0 und wird als 0 geschrieben; Positionen, Nachlässe und Zuschläge
