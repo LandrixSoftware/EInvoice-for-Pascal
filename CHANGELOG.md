@@ -288,6 +288,15 @@ Supported invoice standards are documented per release.
   from the library's code lists (STD, AN in CII, B, EAS 0219/0220, fewer note subjects in UBL),
   on the codes as the mappers write them; BR-CL-21 and BR-CL-23 are warnings in XRechnung, and
   the XRechnung extension leaves out BR-CL-10, 11, 21, 24, 25 and 26 as its scenario does.
+- The rules that only the Peppol BIS 3.0.21 schematron contains, in the internal unit
+  `LandrixEInvoiceCheckPeppol` (run by `LandrixEInvoiceCheckInvoice` and `LandrixEInvoiceCheckRule`
+  for Peppol): the other PEPPOL-EN16931 rules (R002, R007, P0100, P0104 to P0112, CL001 to CL008),
+  PEPPOL-COMMON-R040 to R057 and the national rules of Germany, Denmark, Greece, Iceland, Italy,
+  the Netherlands, Norway and Sweden. The internal unit `LandrixEInvoiceIdentifiers` holds the
+  identifier formats and check digits (GLN, modulus 11, Belgian, Italian, Swedish, Australian and
+  Greek numbers, the KoSIT IBAN check) and the telephone and email patterns of BR-DE-27/28.
+  `tools/rulecheck/peppol-oracle.py` compares the rules with the OpenPEPPOL unit tests of the
+  release; `RuleCheckProbe` takes `-peppol`.
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

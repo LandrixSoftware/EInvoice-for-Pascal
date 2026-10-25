@@ -114,15 +114,17 @@ begin
   Party.ContactTelephone := '+49 30 123456';
   Party.ContactElectronicMail := 'accounting@seller.example';
   Party.VATCompanyID := 'DE123456789';
-  Party.ElectronicAddressSellerBuyer := 'invoice@seller.example';
-  Party.ElectronicAddressSellerBuyerSchemeID := 'EM';
+  { 9930 (German VAT identifier) is in the EAS lists of XRechnung and Peppol;
+    Peppol has no EM }
+  Party.ElectronicAddressSellerBuyer := 'DE123456789';
+  Party.ElectronicAddressSellerBuyerSchemeID := '9930';
   Party := Invoice.AccountingCustomerParty;
   Party.RegistrationName := 'Buyer AG';
   Party.Address.City := 'Hamburg';
   Party.Address.PostalZone := '20095';
   Party.Address.CountryCode := 'DE';
-  Party.ElectronicAddressSellerBuyer := 'invoice@buyer.example';
-  Party.ElectronicAddressSellerBuyerSchemeID := 'EM';
+  Party.ElectronicAddressSellerBuyer := 'DE987654321';
+  Party.ElectronicAddressSellerBuyerSchemeID := '9930';
   Payment := Invoice.PaymentTypes.AddPaymentType;
   Payment.PaymentMeansCode := ipmc_SEPACreditTransfer;
   Payment.FinancialAccount := 'DE02120300000000202051';
@@ -906,6 +908,7 @@ var
   Invoice: TLandrixInvoice;
   D: TLandrixEInvoiceDiagnostics;
   K: TTargetKind;
+  Errors: Integer;
 begin
   D := TLandrixEInvoiceDiagnostics.Create;
   Invoice := TLandrixInvoice.Create;
@@ -914,7 +917,8 @@ begin
     for K := tk_XRUBL to High(TTargetKind) do
     begin
       D.Clear;
-      CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D), 'errors for target ' + IntToStr(Ord(K)));
+      Errors := LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D);
+      CheckEquals(0, Errors, 'errors for target ' + IntToStr(Ord(K)) + ': ' + string(D.ToText));
       CheckEqualsStr('', string(D.ToText), 'diagnostics for target ' + IntToStr(Ord(K)));
     end;
   finally
@@ -969,6 +973,7 @@ end;
   department as contact point hold; BR-DE-26 is a warning and no error. }
 procedure TestBoundaries;
 var
+  N: Integer;
   Invoice: TLandrixInvoice;
   D: TLandrixEInvoiceDiagnostics;
 begin
@@ -989,8 +994,12 @@ begin
     Invoice.SellerOrderReference := 'SO-1';
     { the net price of 0 breaks PEPPOL-EN16931-R120, an error in Peppol }
     Invoice.InvoiceLines[0].NetPriceAmount := 100;
+    { between German parties DE-R-015 requires BT-10 }
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'AT';
     D.Clear;
-    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D), 'Peppol: ' + string(D.ToText));
+    N := LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D);
+    CheckEquals(0, N, 'Peppol: ' + string(D.ToText));
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'DE';
     Invoice.InvoiceTypeCode := itc_CorrectedInvoice;
     Invoice.BuyerReference := 'LW-1';
     D.Clear;
@@ -1704,6 +1713,7 @@ end;
   an error in CII on the normalized number. }
 procedure TestFormats;
 var
+  N: Integer;
   Invoice: TLandrixInvoice;
   D: TLandrixEInvoiceDiagnostics;
   Payment: TLandrixInvoicePaymentType;
@@ -1759,8 +1769,12 @@ begin
     Payment.FinancialAccount := ' 1234  5678 ';
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-51', nil), 'normalized 9 characters');
     Payment.FinancialAccount := '12345678901';
+    { between German parties DE-R-002 requires the seller contact }
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'AT';
     D.Clear;
-    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D), 'UBL: no error');
+    N := LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D);
+    CheckEquals(0, N, 'UBL: no error: ' + string(D.ToText));
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'DE';
     Check(HasRule(D, 'BR-51'), 'UBL: BR-51 reported');
     D.Clear;
     Check(LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_FXEN16931), D) > 0, 'CII: error');

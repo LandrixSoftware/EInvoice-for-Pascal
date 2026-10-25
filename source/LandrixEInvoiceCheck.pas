@@ -223,6 +223,8 @@ uses
   LandrixEInvoiceCIIWriter,
   LandrixEInvoiceCIIProfiles,
   LandrixEInvoiceCIICodeRules,
+  LandrixEInvoiceIdentifiers,
+  LandrixEInvoiceCheckPeppol,
   LandrixEInvoiceUBLWriter;
 
 type
@@ -1533,22 +1535,8 @@ end;
   DE: XPath normalize-space: kein Leerraum an den Enden, ein Leerzeichen
   zwischen Woertern. }
 function NormalizedSpace(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
-var
-  I: Integer;
-  Pending: Boolean;
 begin
-  Result := '';
-  Pending := False;
-  for I := 1 to Length(AValue) do
-    if IsXmlBlankChar(AValue[I]) then
-      Pending := Result <> ''
-    else
-    begin
-      if Pending then
-        Result := Result + ' ';
-      Pending := False;
-      Result := Result + AValue[I];
-    end;
+  Result := LandrixEInvoiceNormalizeSpace(AValue);
 end;
 
 { BR-DE-19, BR-DE-20 (KoSIT xr:checkIBAN): without blanks, two capital
@@ -1565,9 +1553,8 @@ end;
   nur Leerzeichen ueberspringt), sonst als ram:ProprietaryID. }
 function IBANValid(const AValue: TLandrixEInvoiceString; ACIIPayee: Boolean): Boolean;
 var
-  S, Rearranged: TLandrixEInvoiceString;
-  I, Value, Remainder: Integer;
-  C: TLandrixEInvoiceChar;
+  S: TLandrixEInvoiceString;
+  I: Integer;
 begin
   Result := False;
   S := '';
@@ -1576,73 +1563,9 @@ begin
       S := S + AValue[I]
     else if ACIIPayee and (AValue[I] <> ' ') then
       Exit;
-  if (Length(S) < 4) or (ACIIPayee and (Length(S) < 15)) or (Length(S) > 34) then
+  if ACIIPayee and (Length(S) < 15) then
     Exit;
-  for I := 1 to Length(S) do
-  begin
-    C := S[I];
-    if I <= 2 then
-    begin
-      if (C < 'A') or (C > 'Z') then
-        Exit;
-    end
-    else if I <= 4 then
-    begin
-      if (C < '0') or (C > '9') then
-        Exit;
-    end
-    else if not (((C >= '0') and (C <= '9')) or ((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z'))) then
-      Exit;
-  end;
-  Rearranged := Copy(S, 5, Length(S) - 4) + Copy(S, 1, 4);
-  Remainder := 0;
-  for I := 1 to Length(Rearranged) do
-  begin
-    Value := Ord(Rearranged[I]);
-    if Value > 64 then
-      Remainder := (Remainder * 100 + Value - 55) mod 97
-    else
-      Remainder := (Remainder * 10 + Value - 48) mod 97;
-  end;
-  Result := Remainder = 1;
-end;
-
-{ BR-DE-27: at least three digits. DE: BR-DE-27: mindestens drei Ziffern. }
-function TelephoneValid(const AValue: TLandrixEInvoiceString): Boolean;
-var
-  I, Digits: Integer;
-begin
-  Digits := 0;
-  for I := 1 to Length(AValue) do
-    if (AValue[I] >= '0') and (AValue[I] <= '9') then
-      Inc(Digits);
-  Result := Digits >= 3;
-end;
-
-{ BR-DE-28 (^[^@\s]+@([^@.\s]+\.)+[^@.\s]+$ on the normalized text): one @
-  after at least one character, no blank, a domain of at least two
-  non-empty parts separated by dots.
-  DE: BR-DE-28 (^[^@\s]+@([^@.\s]+\.)+[^@.\s]+$ auf dem normalisierten
-  Text): ein @ nach mindestens einem Zeichen, kein Leerraum, eine Domain
-  aus mindestens zwei nicht leeren, durch Punkte getrennten Teilen. }
-function EmailValid(const AValue: TLandrixEInvoiceString): Boolean;
-var
-  S, Domain: TLandrixEInvoiceString;
-  I, At: Integer;
-begin
-  Result := False;
-  S := NormalizedSpace(AValue);
-  for I := 1 to Length(S) do
-    if IsXmlBlankChar(S[I]) then
-      Exit;
-  At := Pos('@', S);
-  if At <= 1 then
-    Exit;
-  Domain := Copy(S, At + 1, Length(S) - At);
-  if (Pos('@', Domain) > 0) or (Pos('.', Domain) = 0) or (Pos('..', Domain) > 0) or (Domain[1] = '.') or
-     (Domain[Length(Domain)] = '.') then
-    Exit;
-  Result := True;
+  Result := LandrixEInvoiceIBANValid(S);
 end;
 
 { BR-DE-17: the written type code (the enumeration, otherwise the other
@@ -3326,7 +3249,7 @@ function Trimmed(const ADigits: TDigits): TDigits;
 var
   N: Integer;
 begin
-  N := Length(ADigits);
+  N := Integer(Length(ADigits));
   while (N > 0) and (ADigits[N - 1] = 0) do
     Dec(N);
   Result := Copy(ADigits, 0, N);
@@ -3340,9 +3263,9 @@ var
 begin
   Result.Negative := False;
   Result.Scale := 0;
-  SetLength(Result.Digits, Length(AText));
+  SetLength(Result.Digits, Integer(Length(AText)));
   N := 0;
-  for I := Length(AText) downto 1 do
+  for I := Integer(Length(AText)) downto 1 do
   begin
     C := AText[I];
     if (C >= '0') and (C <= '9') then
@@ -3357,7 +3280,7 @@ begin
   end;
   SetLength(Result.Digits, N);
   Result.Digits := Trimmed(Result.Digits);
-  if Length(Result.Digits) = 0 then
+  if Integer(Length(Result.Digits)) = 0 then
     Result.Negative := False;
 end;
 
@@ -3368,10 +3291,10 @@ var
 begin
   Shift := AScale - A.Scale;
   Result := nil;
-  SetLength(Result, Length(A.Digits) + Shift);
+  SetLength(Result, Integer(Length(A.Digits)) + Shift);
   for I := 0 to Shift - 1 do
     Result[I] := 0;
-  for I := 0 to Length(A.Digits) - 1 do
+  for I := 0 to Integer(Length(A.Digits)) - 1 do
     Result[I + Shift] := A.Digits[I];
   Result := Trimmed(Result);
 end;
@@ -3380,8 +3303,8 @@ function MagCompare(const X, Y: TDigits): Integer;
 var
   I: Integer;
 begin
-  Result := Length(X) - Length(Y);
-  I := Length(X) - 1;
+  Result := Integer(Length(X)) - Integer(Length(Y));
+  I := Integer(Length(X)) - 1;
   while (Result = 0) and (I >= 0) do
   begin
     Result := Integer(X[I]) - Integer(Y[I]);
@@ -3393,18 +3316,18 @@ function MagAdd(const X, Y: TDigits): TDigits;
 var
   I, N, D, Carry: Integer;
 begin
-  N := Length(X);
-  if Length(Y) > N then
-    N := Length(Y);
+  N := Integer(Length(X));
+  if Integer(Length(Y)) > N then
+    N := Integer(Length(Y));
   Result := nil;
   SetLength(Result, N + 1);
   Carry := 0;
   for I := 0 to N do
   begin
     D := Carry;
-    if I < Length(X) then
+    if I < Integer(Length(X)) then
       Inc(D, X[I]);
-    if I < Length(Y) then
+    if I < Integer(Length(Y)) then
       Inc(D, Y[I]);
     Result[I] := Byte(D mod 10);
     Carry := D div 10;
@@ -3418,12 +3341,12 @@ var
   I, D, Borrow: Integer;
 begin
   Result := nil;
-  SetLength(Result, Length(X));
+  SetLength(Result, Integer(Length(X)));
   Borrow := 0;
-  for I := 0 to Length(X) - 1 do
+  for I := 0 to Integer(Length(X)) - 1 do
   begin
     D := Integer(X[I]) - Borrow;
-    if I < Length(Y) then
+    if I < Integer(Length(Y)) then
       Dec(D, Y[I]);
     if D < 0 then
     begin
@@ -3442,19 +3365,19 @@ var
   I, J, D, Carry: Integer;
 begin
   Result := nil;
-  SetLength(Result, Length(X) + Length(Y) + 1);
-  for I := 0 to Length(Result) - 1 do
+  SetLength(Result, Integer(Length(X)) + Integer(Length(Y)) + 1);
+  for I := 0 to Integer(Length(Result)) - 1 do
     Result[I] := 0;
-  for I := 0 to Length(X) - 1 do
+  for I := 0 to Integer(Length(X)) - 1 do
   begin
     Carry := 0;
-    for J := 0 to Length(Y) - 1 do
+    for J := 0 to Integer(Length(Y)) - 1 do
     begin
       D := Result[I + J] + X[I] * Y[J] + Carry;
       Result[I + J] := Byte(D mod 10);
       Carry := D div 10;
     end;
-    J := I + Length(Y);
+    J := I + Integer(Length(Y));
     while Carry > 0 do
     begin
       D := Result[J] + Carry;
@@ -3473,14 +3396,14 @@ var
   R, T: TDigits;
 begin
   Result := nil;
-  SetLength(Result, Length(X));
+  SetLength(Result, Integer(Length(X)));
   R := nil;
   T := nil;
-  for I := Length(X) - 1 downto 0 do
+  for I := Integer(Length(X)) - 1 downto 0 do
   begin
-    SetLength(T, Length(R) + 1);
+    SetLength(T, Integer(Length(R)) + 1);
     T[0] := X[I];
-    for J := 0 to Length(R) - 1 do
+    for J := 0 to Integer(Length(R)) - 1 do
       T[J + 1] := R[J];
     R := Trimmed(T);
     Q := 0;
@@ -3519,14 +3442,14 @@ begin
     Result.Digits := MagSub(Y, X);
     Result.Negative := B.Negative;
   end;
-  if Length(Result.Digits) = 0 then
+  if Integer(Length(Result.Digits)) = 0 then
     Result.Negative := False;
 end;
 
 function ExactNegated(const A: TExact): TExact;
 begin
   Result := A;
-  Result.Negative := not A.Negative and (Length(A.Digits) > 0);
+  Result.Negative := not A.Negative and (Integer(Length(A.Digits)) > 0);
 end;
 
 function ExactSub(const A, B: TExact): TExact;
@@ -3538,7 +3461,7 @@ function ExactMul(const A, B: TExact): TExact;
 begin
   Result.Digits := MagMul(A.Digits, B.Digits);
   Result.Scale := A.Scale + B.Scale;
-  Result.Negative := (A.Negative <> B.Negative) and (Length(Result.Digits) > 0);
+  Result.Negative := (A.Negative <> B.Negative) and (Integer(Length(Result.Digits)) > 0);
 end;
 
 { A without trailing zeros, also of the integer part (the scale may become
@@ -3550,12 +3473,12 @@ begin
   Result.Negative := A.Negative;
   Result.Scale := A.Scale;
   N := 0;
-  while (N < Length(A.Digits)) and (A.Digits[N] = 0) do
+  while (N < Integer(Length(A.Digits))) and (A.Digits[N] = 0) do
   begin
     Inc(N);
     Dec(Result.Scale);
   end;
-  Result.Digits := Copy(A.Digits, N, Length(A.Digits) - N);
+  Result.Digits := Copy(A.Digits, N, Integer(Length(A.Digits)) - N);
 end;
 
 { A div B as Saxon computes it (XPathDivideScale); B must not be 0. }
@@ -3578,7 +3501,7 @@ begin
     One[0] := 1;
     Result.Digits := MagAdd(Result.Digits, One);
   end;
-  Result.Negative := (A.Negative <> B.Negative) and (Length(Result.Digits) > 0);
+  Result.Negative := (A.Negative <> B.Negative) and (Integer(Length(Result.Digits)) > 0);
 end;
 
 function ExactCompare(const A, B: TExact): Integer;
@@ -3586,7 +3509,7 @@ var
   D: TExact;
 begin
   D := ExactSub(A, B);
-  if Length(D.Digits) = 0 then
+  if Integer(Length(D.Digits)) = 0 then
     Result := 0
   else if D.Negative then
     Result := -1
@@ -4074,9 +3997,9 @@ begin
     cr_BRDE26:
       Result := (AInvoice.InvoiceTypeCode = itc_CorrectedInvoice) and not HasPrecedingID(AInvoice);
     cr_BRDE27:
-      Result := ContactSet(Seller) and not TelephoneValid(Seller.ContactTelephone);
+      Result := ContactSet(Seller) and not LandrixEInvoiceTelephoneValid(Seller.ContactTelephone);
     cr_BRDE28:
-      Result := ContactSet(Seller) and not EmailValid(Seller.ContactElectronicMail);
+      Result := ContactSet(Seller) and not LandrixEInvoiceEmailValid(Seller.ContactElectronicMail);
     cr_BRDE30, cr_BRDE31:
       Result := DirectDebitViolated(AIndex, AInvoice, ASpec);
     { the UBL mapper writes a sales order alone with the order 'NA' (BT-13)
@@ -4172,6 +4095,7 @@ begin
     for N := 0 to VatGroupLast[G] do
       if not RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics) then
         Inc(Result);
+  Inc(Result, LandrixEInvoiceCheckPeppolInvoice(AInvoice, ASpec, ADiagnostics));
 end;
 
 function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
@@ -4203,6 +4127,9 @@ begin
         Result := RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics);
         Exit;
       end;
+  Result := LandrixEInvoiceCheckPeppolRule(AInvoice, ASpec, ARuleID, ADiagnostics, Found);
+  if Found then
+    Exit;
   raise ELandrixEInvoiceError.Create('LandrixEInvoiceCheckRule: unknown rule ' + string(ARuleID));
 end;
 

@@ -26,10 +26,8 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
 
 The rule check predicts what the KoSIT validator would report for the written document. It
 does not replace the validator: schema and Schematron checks of the official configuration
-remain the reference. Not checked yet, among others: the Peppol rules that only the Peppol
-Schematron contains (PEPPOL-EN16931-R002, R004, R007, R051, R080, R100, F001, the P and CL rules,
-PEPPOL-COMMON-... and the national rules) and the other FX-SCH-A rules of the Factur-X Schematron
-(cardinality, required attributes). The format rules
+remain the reference. Not checked yet, among others: the other FX-SCH-A rules of the Factur-X
+Schematron (cardinality, required attributes). The format rules
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN check sum), BR-DE-27, BR-DE-28 and BR-51 are checked; all of
 them are warnings except BR-51 in CII.
 
@@ -41,6 +39,16 @@ and its division of the price by the base quantity (18 decimals, rounded half do
 Saxon processor of the validator computes it). R120 (line net amount) is a warning in XRechnung and an
 error in Peppol. Not every rule can fail on what the library writes: a percentage, base amount,
 gross price or base quantity of 0 is not written, and the model holds one VAT total per currency.
+
+For Peppol, the rules that only the Peppol Schematron 3.0.21 contains are checked as well: the
+other PEPPOL-EN16931 rules (notes, profile, type codes, exemption reason codes, the Peppol code
+lists), PEPPOL-COMMON-R040 to R057 (formats and check digits of identifiers by scheme, e.g. GLN,
+Norwegian, Danish, Belgian, Italian, Swedish and Australian numbers) and the national rules of
+Germany (DE-R-...), Denmark, Greece, Iceland, Italy, the Netherlands, Norway and Sweden. A national
+rule applies when the Schematron's country condition holds for the written document (the VAT
+identifier prefix or the postal country of seller and buyer). Rules the UBL writer always meets
+(for example the date format or the specification identifier) need no check. The OpenPEPPOL unit
+tests of the release are the reference (`tools/rulecheck/peppol-oracle.py`).
 
 The code list rules BR-CL-01 to BR-CL-26 use the lists of the validators (XRechnung 3.0.2,
 Peppol BIS 3.0.21). They are slightly older than the code lists of the library: the currency

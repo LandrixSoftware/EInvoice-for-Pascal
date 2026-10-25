@@ -38,6 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 TOOLS = os.path.join(REPO, "addons", "java-tools")
 CHECK_UNIT = os.path.join(REPO, "source", "LandrixEInvoiceCheck.pas")
+PEPPOL_UNIT = os.path.join(REPO, "source", "LandrixEInvoiceCheckPeppol.pas")
 EXCEPTIONS = os.path.join(HERE, "oracle-exceptions.txt")
 DOCS = os.path.join(os.path.dirname(REPO), "landrix-einvoice-docs", "XRechnung 3.0.0",
                     "xrechnung-3.0.0-schematron-2.0.0", "generated")
@@ -58,7 +59,8 @@ def find_java(explicit):
 
 
 def implemented_rules():
-    """Identifiers of the non-legacy rows of the check table."""
+    """Identifiers of the non-legacy rows of the check tables
+    (LandrixEInvoiceCheck and LandrixEInvoiceCheckPeppol)."""
     text = open(CHECK_UNIT, encoding="utf-8").read()
     rows = re.findall(r"\(ID: '([^']+)';[^()]*?Legacy: (True|False);", text)
     rules = set(i for i, legacy in rows if legacy == "False")
@@ -77,6 +79,14 @@ def implemented_rules():
     for group, count in zip(ids, lasts):
         rules.update("BR-%s-%02d" % (group, n) for n in range(1, count + 1))
         rules.add("BR-FXEXT-%s-01" % group)
+    # the rules only the Peppol schematron has (own enum and rows)
+    peppol = open(PEPPOL_UNIT, encoding="utf-8").read()
+    rows = re.findall(r"\(ID: '([^']+)'; Severity: ", peppol)
+    enum = re.search(r"TPeppolRuleIndex = \(([^)]*)\)", peppol)
+    count = len(enum.group(1).split(",")) if enum else -1
+    if len(rows) != count:
+        sys.exit("%d Peppol rows found, TPeppolRuleIndex has %d: adjust implemented_rules" % (len(rows), count))
+    rules.update(rows)
     return rules
 
 
@@ -137,7 +147,11 @@ def kosit_verdicts(docs, out):
 
 
 def probe_verdicts(probe, docs):
-    res = subprocess.run([probe, docs], stdout=subprocess.PIPE, check=True)
+    return probe_verdicts_args(probe, [docs])
+
+
+def probe_verdicts_args(probe, args):
+    res = subprocess.run([probe] + args, stdout=subprocess.PIPE, check=True)
     result = {}
     unread = []
     for line in res.stdout.decode("utf-8", "replace").splitlines():
@@ -151,15 +165,15 @@ def probe_verdicts(probe, docs):
     return result, unread
 
 
-def load_exceptions():
+def load_exceptions(path=EXCEPTIONS):
     items = []
-    if os.path.isfile(EXCEPTIONS):
-        for line in open(EXCEPTIONS, encoding="utf-8"):
+    if os.path.isfile(path):
+        for line in open(path, encoding="utf-8"):
             line = line.rstrip("\n")
             if not line.strip() or line.startswith("#"):
                 continue
             if "\t" not in line:
-                sys.exit("%s: no tab in line: %s" % (EXCEPTIONS, line))
+                sys.exit("%s: no tab in line: %s" % (path, line))
             name, finding = line.split("\t", 1)
             items.append([name, finding, False])
     return items

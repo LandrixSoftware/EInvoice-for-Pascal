@@ -28,10 +28,8 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
 
 Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dokument melden
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
-Konfiguration bleiben der Maßstab. Noch nicht geprüft werden unter anderem die Peppol-Regeln,
-die nur das Peppol-Schematron enthält (PEPPOL-EN16931-R002, R004, R007, R051, R080, R100, F001,
-die P- und CL-Regeln, PEPPOL-COMMON-... und die nationalen Regeln), und die übrigen FX-SCH-A-Regeln
-des Factur-X-Schematrons (Kardinalität, Pflichtattribute). Die Formatregeln
+Konfiguration bleiben der Maßstab. Noch nicht geprüft werden unter anderem die übrigen
+FX-SCH-A-Regeln des Factur-X-Schematrons (Kardinalität, Pflichtattribute). Die Formatregeln
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN-Prüfsumme), BR-DE-27, BR-DE-28 und BR-51 werden geprüft; bis
 auf BR-51 in CII sind alle Warnungen.
 
@@ -44,6 +42,17 @@ halb abwärts gerundet, wie der Saxon-Prozessor des Validators rechnet). R120 (P
 XRechnung eine Warnung und in Peppol ein Fehler. Nicht jede Regel kann an dem scheitern, was die
 Bibliothek schreibt: ein Prozentsatz, Grundbetrag, Bruttopreis oder eine Basismenge von 0 wird
 nicht geschrieben, und das Modell hält eine Steuersumme je Währung.
+
+Für Peppol werden auch die Regeln geprüft, die nur das Peppol-Schematron 3.0.21 enthält: die
+übrigen PEPPOL-EN16931-Regeln (Bemerkungen, Profil, Typcodes, Befreiungsgrund-Codes, die
+Peppol-Codelisten), PEPPOL-COMMON-R040 bis R057 (Formate und Prüfziffern von Kennungen je Schema,
+z. B. GLN sowie norwegische, dänische, belgische, italienische, schwedische und australische
+Nummern) und die nationalen Regeln von Deutschland (DE-R-...), Dänemark, Griechenland, Island,
+Italien, den Niederlanden, Norwegen und Schweden. Eine nationale Regel gilt, wenn die
+Länderbedingung des Schematrons für das geschriebene Dokument zutrifft (das Präfix der USt-IdNr.
+oder das Land der Anschrift von Verkäufer und Käufer). Regeln, die der UBL-Writer immer erfüllt
+(etwa das Datumsformat oder die Spezifikationskennung), brauchen keine Prüfung. Maßstab sind die
+OpenPEPPOL-Unit-Tests des Release (`tools/rulecheck/peppol-oracle.py`).
 
 Die Codelistenregeln BR-CL-01 bis BR-CL-26 verwenden die Listen der Validatoren (XRechnung
 3.0.2, Peppol BIS 3.0.21). Sie sind etwas älter als die Codelisten der Bibliothek: die Währung

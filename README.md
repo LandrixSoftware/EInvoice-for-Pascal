@@ -47,6 +47,21 @@ end;
 Writing checks the business rules of the target and refuses an invalid invoice
 (`ELandrixEInvoiceWriteError`, nothing written).
 
+## What is checked
+
+The rule check predicts what the official validator reports for the document the library
+would write. Each family is compared with an official reference:
+
+| Target | Rules | Compared with |
+|---|---|---|
+| all EN 16931 targets | BR-01 to BR-65, BR-CO-..., the VAT category rules BR-S-... to BR-AG-... | KoSIT XRechnung test suite |
+| XRechnung 3.0 | BR-DE-..., BR-DEX-09, the code lists BR-CL-01 to BR-CL-26, the PEPPOL-EN16931 rules of its schematron | KoSIT XRechnung test suite |
+| ZUGFeRD / Factur-X 1.09 | the EN 16931 rules per profile, BR-FXEXT-... (EXTENDED), the 366 code asserts FX-SCH-A-... | KoSIT validator on the ZUGFeRD examples and mutants |
+| Peppol BIS 3.0.21 | the whole Peppol schematron: PEPPOL-EN16931-..., PEPPOL-COMMON-... (identifier check digits), the national rules of DE, DK, GR, IS, IT, NL, NO and SE | OpenPEPPOL unit tests |
+
+In all about 380 rule identifiers and the 366 Factur-X code asserts. The check does not replace
+schema validation; see [Checking](docs/checking.md) for the details and the known limits.
+
 ## Documentation
 
 - [Getting started](docs/getting-started.md) ([Deutsch](docs/de/getting-started.md)): setup,
@@ -69,8 +84,9 @@ its level in a comment before its `unit` line (`API: stable` or `API: internal`)
   `LandrixEInvoicePdf`, `LandrixEInvoiceCompatXRechnung`, `LandrixEInvoiceCompatXRechnungAdapter`,
   `LandrixEInvoiceCompatXRechnungPdf`.
 - **Internal** (may change in any release): `LandrixEInvoiceMapCII`, `LandrixEInvoiceMapUBL`,
-  `LandrixEInvoiceCheck`, `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceLexical`,
-  `LandrixEInvoiceFiles`, `LandrixEInvoiceCIIProfiles`, `LandrixEInvoiceCIICodeRules`, and the
+  `LandrixEInvoiceCheck`, `LandrixEInvoiceCheckPeppol`, `LandrixEInvoiceIdentifiers`,
+  `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceLexical`, `LandrixEInvoiceFiles`,
+  `LandrixEInvoiceCIIProfiles`, `LandrixEInvoiceCIICodeRules`, and the
   readers and writers `LandrixEInvoiceCIIReader`, `LandrixEInvoiceCIIWriter`,
   `LandrixEInvoiceUBLReader`, `LandrixEInvoiceUBLWriter`. What they offer is reachable through the facade.
 

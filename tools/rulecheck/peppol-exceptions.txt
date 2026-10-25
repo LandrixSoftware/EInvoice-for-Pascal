@@ -1,0 +1,95 @@
+# Known differences of tools/rulecheck/peppol-oracle.py: file<TAB>missed RULE or extra RULE.
+# Every line needs a reason in the comment above it; '*' in the file name stands for any text;
+# an unused line fails the run. The checks judge the invoice as the mappers would write it.
+
+# The test expects an empty element to count as present (the schematron tests only its
+# existence; PEPPOL-EN16931-R008 forbids empty elements anyway); the model holds blank text as
+# absent and the writers leave it out.
+PEPPOL-EN16931-R003-0[123].xml	extra PEPPOL-EN16931-R003
+PEPPOL-EN16931-R010-01.xml	extra PEPPOL-EN16931-R010
+PEPPOL-EN16931-R020-01.xml	extra PEPPOL-EN16931-R020
+PEPPOL-EN16931-R061-01.xml	extra PEPPOL-EN16931-R061
+
+# The mappers write BT-6 only when it differs from BT-5.
+PEPPOL-EN16931-R005-0[34].xml	missed PEPPOL-EN16931-R005
+
+# A percentage without base amount on line level: the mappers write the base amount with every
+# percentage (as 0), so R041 holds for the output.
+PEPPOL-EN16931-R041-0[48].xml	missed PEPPOL-EN16931-R041
+
+# The model holds one VAT total per currency; a fragment without BT-5 makes the reader take
+# the currency of its only VAT total as BT-6.
+PEPPOL-EN16931-R053-03.xml	missed PEPPOL-EN16931-R053
+PEPPOL-EN16931-R054-02.xml	missed PEPPOL-EN16931-R054
+
+# A missing quantity counts as 1 in the schematron; the model holds it as 0 and the mappers
+# write 0, so the written line amount 0 meets R120.
+PEPPOL-EN16931-R120-11.xml	missed PEPPOL-EN16931-R120
+
+# A base quantity of 0 is absent in the model and not written.
+PEPPOL-EN16931-R121-03.xml	missed PEPPOL-EN16931-R121
+
+# The test puts cbc:CompanyID directly into cac:Party (no business term; the UBL mapper writes
+# it in cac:PartyLegalEntity or cac:PartyTaxScheme) or uses a party element UBL does not have
+# (cac:AccountingSellerParty); the reader does not take such content.
+PEPPOL-COMMON-R054-09.xml	missed PEPPOL-COMMON-R054
+PEPPOL-COMMON-R054-12.xml	missed PEPPOL-COMMON-R054
+PEPPOL-COMMON-R054-15.xml	missed PEPPOL-COMMON-R054
+PEPPOL-COMMON-R054-18.xml	missed PEPPOL-COMMON-R054
+PEPPOL-COMMON-R054-21.xml	missed PEPPOL-COMMON-R054
+PEPPOL-COMMON-R054-24.xml	missed PEPPOL-COMMON-R054
+PEPPOL-COMMON-R055-09.xml	missed PEPPOL-COMMON-R055
+PEPPOL-COMMON-R055-12.xml	missed PEPPOL-COMMON-R055
+PEPPOL-COMMON-R055-15.xml	missed PEPPOL-COMMON-R055
+PEPPOL-COMMON-R055-18.xml	missed PEPPOL-COMMON-R055
+PEPPOL-COMMON-R055-21.xml	missed PEPPOL-COMMON-R055
+PEPPOL-COMMON-R055-24.xml	missed PEPPOL-COMMON-R055
+PEPPOL-COMMON-R056-1-10.xml	missed PEPPOL-COMMON-R056-1
+PEPPOL-COMMON-R056-1-13.xml	missed PEPPOL-COMMON-R056-1
+PEPPOL-COMMON-R056-1-16.xml	missed PEPPOL-COMMON-R056-1
+PEPPOL-COMMON-R056-1-19.xml	missed PEPPOL-COMMON-R056-1
+PEPPOL-COMMON-R056-1-22.xml	missed PEPPOL-COMMON-R056-1
+PEPPOL-COMMON-R056-1-25.xml	missed PEPPOL-COMMON-R056-1
+PEPPOL-COMMON-R057-09.xml	missed PEPPOL-COMMON-R057
+PEPPOL-COMMON-R057-12.xml	missed PEPPOL-COMMON-R057
+PEPPOL-COMMON-R057-15.xml	missed PEPPOL-COMMON-R057
+PEPPOL-COMMON-R057-18.xml	missed PEPPOL-COMMON-R057
+PEPPOL-COMMON-R057-21.xml	missed PEPPOL-COMMON-R057
+PEPPOL-COMMON-R057-24.xml	missed PEPPOL-COMMON-R057
+PEPPOL-COMMON-EAS-02.xml	missed PEPPOL-EN16931-CL008
+
+# An embedded binary object outside an attachment (cac:AdditionalDocumentReference/cac:Attachment)
+# is no attached document of the model.
+PEPPOL-EN16931-CL001-02.xml	missed PEPPOL-EN16931-CL001
+
+# An electronic address with a scheme but without value is blank and not written.
+PEPPOL-EN16931-CL008-0[24].xml	missed PEPPOL-EN16931-CL008
+
+# Type code 381 is a credit note: the UBL mapper writes it as ubl:CreditNote, where P0100 does
+# not apply.
+PEPPOL-EN16931-P0100-0[56].xml	missed PEPPOL-EN16931-P0100
+
+# Empty notes are blank and not written.
+PEPPOL-EN16931-R002-03.xml	missed PEPPOL-EN16931-R002
+
+# A second party identifier without scheme next to one with scheme: the UBL mapper writes it as
+# the identifier next to the global one, which the rule table does not allow for Peppol.
+DK_Validation_DKR013-1[2356].xml	missed DK-R-013
+
+# A credit note without type code: the reader leaves BT-3 empty and the mapper writes
+# ubl:Invoice, where DK-R-016 does not apply.
+DK_Validation_DKR016-04.xml	missed DK-R-016
+
+# The model holds the tax registration (BT-32) with scheme FC only; the mapper never writes the
+# scheme TAX with Foretaksregisteret.
+NO-R-002-0[123].xml	extra NO-R-002
+
+# A payment means holds one account in the model and the mapper writes only the group of its code
+# (as in tools/rulecheck/oracle-exceptions.txt); a card is always written with the network NA.
+UBL-IN_DE-R-024-02.xml	missed DE-R-024-1
+UBL-IN_DE-R-024-03.xml	missed DE-R-024-2
+UBL-IN_DE-R-025-03.xml	missed DE-R-025-2
+
+# The last cash discount line has no line feed after it; the mapper writes every cash discount
+# line with one (LandrixEInvoicePaymentTermsText), so DE-R-018 holds for the output.
+UBL-IN_DE-R-018-02.xml	missed DE-R-018

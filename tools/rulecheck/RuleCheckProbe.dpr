@@ -5,8 +5,11 @@ program RuleCheckProbe;
   LandrixEInvoiceCheckInvoice. Prints one line per file:
   "file<TAB>status<TAB>rule rule ..." with the status ok, detect (no
   specification found) or exception, and the RuleID of every
-  edk_RuleViolation. Arguments are files or folders (every *.xml in it).
-  Used by tools/rulecheck/rule-oracle.py. }
+  edk_RuleViolation. Arguments are files or folders (every *.xml in it);
+  -peppol checks every file against Peppol BIS Billing 3.0 instead of the
+  detected specification (the OpenPEPPOL unit tests are fragments without
+  cbc:CustomizationID). Used by tools/rulecheck/rule-oracle.py and
+  tools/rulecheck/peppol-oracle.py. }
 
 {$I LandrixEInvoice.inc}
 {$IFDEF MSWINDOWS}
@@ -111,6 +114,9 @@ begin
   end;
 end;
 
+var
+  ForcePeppol: Boolean;
+
 procedure Probe(const AFileName: string);
 var
   Xml: TLandrixXmlUtf8;
@@ -129,7 +135,12 @@ begin
       Xml := LoadFile(AFileName);
       Root := RootLocalName(Xml);
       CustomizationID := ReadModel(Xml, Root, Invoice, D);
-      if not LandrixEInvoiceDetectSpec(TLandrixEInvoiceString(Root), CustomizationID, Spec, Ext) then
+      if ForcePeppol then
+      begin
+        if not LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.PeppolBIS('3.0'), Spec) then
+          raise Exception.Create('no Peppol BIS 3.0 specification');
+      end
+      else if not LandrixEInvoiceDetectSpec(TLandrixEInvoiceString(Root), CustomizationID, Spec, Ext) then
       begin
         WriteLn(ExtractFileName(AFileName), #9'detect'#9);
         Exit;
@@ -156,8 +167,11 @@ var
   SR: TSearchRec;
   Dir: string;
 begin
+  ForcePeppol := False;
   for I := 1 to ParamCount do
-    if DirectoryExists(ParamStr(I)) then
+    if ParamStr(I) = '-peppol' then
+      ForcePeppol := True
+    else if DirectoryExists(ParamStr(I)) then
     begin
       Dir := IncludeTrailingPathDelimiter(ParamStr(I));
       if FindFirst(Dir + '*.xml', faAnyFile, SR) = 0 then
