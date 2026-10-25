@@ -415,6 +415,49 @@ begin
     Seller.ElectronicAddressSellerBuyer := ' '
   else if AID = 'PEPPOL-EN16931-R061' then
     Payment.PaymentMeansCode := ipmc_DirectDebit
+  else if AID = 'PEPPOL-EN16931-R005' then
+    Invoice.TaxCurrencyCode := ' EUR'
+  else if (AID = 'PEPPOL-EN16931-R040') or (AID = 'PEPPOL-EN16931-R041') or (AID = 'PEPPOL-EN16931-R042') then
+  begin
+    AddAllowanceCharge(Invoice, False, True, True);
+    if AID <> 'PEPPOL-EN16931-R041' then
+      Invoice.AllowanceCharges[0].BaseAmount := 100;
+    if AID <> 'PEPPOL-EN16931-R042' then
+      Invoice.AllowanceCharges[0].MultiplierFactorNumeric := 10;
+  end
+  else if AID = 'PEPPOL-EN16931-R046' then
+  begin
+    Line.GrossPriceAmount := 110;
+    Line.DiscountOnTheGrossPrice := 5;
+  end
+  else if AID = 'PEPPOL-EN16931-R053' then
+    Invoice.TaxAmountSubtotals.Clear
+  else if AID = 'PEPPOL-EN16931-R054' then
+    Invoice.TaxCurrencyCode := 'USD'
+  else if AID = 'PEPPOL-EN16931-R055' then
+  begin
+    Invoice.TaxCurrencyCode := 'USD';
+    Invoice.TaxAmountTotalInTaxCurrency.SetValue(-20);
+  end
+  else if AID = 'PEPPOL-EN16931-R110' then
+  begin
+    Invoice.InvoicePeriodStartDate := EncodeDate(2026, 10, 5);
+    Line.InvoiceLinePeriodStartDate := EncodeDate(2026, 10, 1);
+  end
+  else if AID = 'PEPPOL-EN16931-R111' then
+  begin
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 10, 10);
+    Line.InvoiceLinePeriodEndDate := EncodeDate(2026, 10, 11);
+  end
+  else if AID = 'PEPPOL-EN16931-R120' then
+    Line.LineAmount := 99
+  else if AID = 'PEPPOL-EN16931-R121' then
+    Line.BaseQuantity := -1
+  else if AID = 'PEPPOL-EN16931-R130' then
+  begin
+    Line.BaseQuantity := 1;
+    Line.BaseQuantityUnitCodeOther := 'KGM';
+  end
   else if (AID = 'BR-CO-10') or (AID = 'BR-FXEXT-CO-10') then
     Invoice.LineAmount := 99
   else if (AID = 'BR-CO-11') or (AID = 'BR-FXEXT-CO-11') then
@@ -548,7 +591,7 @@ type
   end;
 
 const
-  RuleCases: array[0..133] of TRuleCase = (
+  RuleCases: array[0..147] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -683,7 +726,21 @@ const
     (ID: 'BR-CL-23'; Target: tk_Peppol; NotApplicable: tk_FXEN16931),
     (ID: 'BR-CL-24'; Target: tk_XRUBL; NotApplicable: tk_FXExtended),
     (ID: 'BR-CL-25'; Target: tk_XRCII; NotApplicable: tk_FXEN16931),
-    (ID: 'BR-CL-26'; Target: tk_Peppol; NotApplicable: tk_FXExtended));
+    (ID: 'BR-CL-26'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
+    (ID: 'PEPPOL-EN16931-R005'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'PEPPOL-EN16931-R040'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'PEPPOL-EN16931-R041'; Target: tk_Peppol; NotApplicable: tk_FXBasic),
+    (ID: 'PEPPOL-EN16931-R042'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'PEPPOL-EN16931-R046'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'PEPPOL-EN16931-R053'; Target: tk_Peppol; NotApplicable: tk_XRCII),
+    (ID: 'PEPPOL-EN16931-R054'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'PEPPOL-EN16931-R055'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'PEPPOL-EN16931-R110'; Target: tk_Peppol; NotApplicable: tk_FXBasic),
+    (ID: 'PEPPOL-EN16931-R111'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'PEPPOL-EN16931-R120'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
+    (ID: 'PEPPOL-EN16931-R120'; Target: tk_XRCII; NotApplicable: tk_FXBasic),
+    (ID: 'PEPPOL-EN16931-R121'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
+    (ID: 'PEPPOL-EN16931-R130'; Target: tk_XRCII; NotApplicable: tk_FXExtended));
 
 function HasRule(D: TLandrixEInvoiceDiagnostics; const AID: string): Boolean;
 var
@@ -930,6 +987,9 @@ begin
     CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D), 'XRechnung: ' + string(D.ToText));
     Invoice.BuyerReference := '';
     Invoice.SellerOrderReference := 'SO-1';
+    { the net price of 0 breaks PEPPOL-EN16931-R120, an error in Peppol }
+    Invoice.InvoiceLines[0].NetPriceAmount := 100;
+    D.Clear;
     CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D), 'Peppol: ' + string(D.ToText));
     Invoice.InvoiceTypeCode := itc_CorrectedInvoice;
     Invoice.BuyerReference := 'LW-1';
@@ -1889,6 +1949,224 @@ begin
   end;
 end;
 
+{ A Double from thousandths, computed at run time (no float literal). }
+function Thousandths(AValue: Integer): Double;
+begin
+  Result := AValue / 1000;
+end;
+
+function RuleHolds(Invoice: TLandrixInvoice; AKind: TTargetKind; const AID: string): Boolean;
+begin
+  Result := LandrixEInvoiceCheckRule(Invoice, SpecOf(AKind), TLandrixEInvoiceString(AID), nil);
+end;
+
+{ PEPPOL-EN16931-R040 and R120 compare exactly within 0.02 (XRechnung: 0.5
+  for HUF) on the values as written: the percentage with 4 decimals, on UBL
+  line level with 2; R120 divides the price by the base quantity as Saxon
+  does (18 decimals, rounded half down) and is a warning in XRechnung, an
+  error in Peppol. R055 counts 0 for both signs in UBL and as positive in CII; R054
+  in UBL also counts a VAT total without breakdown. UBL checks R120 on
+  cac:InvoiceLine only and R130 on every price, CII every line; sub lines
+  only where they are written. }
+procedure TestPeppolRules;
+var
+  Invoice: TLandrixInvoice;
+  Line, Sub: TLandrixInvoiceLine;
+  Item: TLandrixInvoiceAllowanceCharge;
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Line := Invoice.InvoiceLines[0];
+    Item := Invoice.AllowanceCharges.AddAllowanceCharge;
+    Item.TaxCategory := idtfcc_S_StandardRate;
+    Item.TaxPercent := 19;
+    Item.BaseAmount := 100;
+    Item.MultiplierFactorNumeric := 10;
+    Item.Amount := CentsValue(1002);
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: 10.02 within 0.02');
+    Item.Amount := CentsValue(998);
+    Check(RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R040'), 'R040: 9.98 within 0.02');
+    Item.Amount := CentsValue(1003);
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R040'), 'R040: 10.03');
+    Invoice.InvoiceCurrencyCode := 'HUF';
+    Item.Amount := CentsValue(1050);
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: HUF within 0.5 in XRechnung');
+    Check(not RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R040'), 'R040: Peppol allows 0.02 for HUF');
+    Item.Amount := CentsValue(1051);
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: HUF 10.51');
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.AllowanceCharges.Clear;
+
+    { line level: the base amount is written with every percentage }
+    Item := Line.AllowanceCharges.AddAllowanceCharge;
+    Item.MultiplierFactorNumeric := Thousandths(10004);
+    Item.BaseAmount := 1000;
+    Item.Amount := 100;
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: UBL writes the line percentage as 10.00');
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R040'), 'R040: CII writes 10.0040');
+    Item.Amount := CentsValue(10004);
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: UBL 100.04');
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R040'), 'R040: CII 100.04');
+    Item.BaseAmount := 0;
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R041'), 'R041: line base amount written as 0');
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: line base amount 0');
+    Item.MultiplierFactorNumeric := 0;
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R042'), 'R042: no base amount, no percentage');
+    Item.BaseAmount := 1000;
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R042'), 'R042: line base amount alone');
+    Line.AllowanceCharges.Clear;
+
+    { R120: quantity x (price div base quantity) + charges - allowances }
+    Line.Quantity := 3;
+    Line.NetPriceAmount := 10;
+    Line.BaseQuantity := 3;
+    Line.BaseQuantityUnitCode := iuc_piece;
+    Line.LineAmount := 10;
+    Check(RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'), 'R120: 10.00');
+    Line.LineAmount := CentsValue(1001);
+    Check(RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'), 'R120: 10.01');
+    Line.LineAmount := CentsValue(1002);
+    Check(not RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'),
+      'R120: 10 div 3 rounds down to 18 decimals, x 3 below 10.00 by 10^-18');
+    Line.LineAmount := CentsValue(998);
+    Check(RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'), 'R120: 9.98');
+    Line.LineAmount := CentsValue(997);
+    D.Clear;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'PEPPOL-EN16931-R120', D), 'R120: 9.97');
+    CheckEquals(1, Integer(D.Count), 'R120: one Peppol row');
+    if D.Count = 1 then
+      Check(D[0].Severity = eds_Error, 'R120: error in Peppol');
+    D.Clear;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'PEPPOL-EN16931-R120', D), 'R120: XRechnung');
+    CheckEquals(1, Integer(D.Count), 'R120: one XRechnung row');
+    if D.Count = 1 then
+      Check(D[0].Severity = eds_Warning, 'R120: warning in XRechnung');
+    Line.NetPriceAmount := 20;
+    Line.LineAmount := CentsValue(1998);
+    Check(not RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'),
+      'R120: 20 div 3 rounds up to 18 decimals, x 3 above 20.00 by 10^-18');
+    Line.LineAmount := CentsValue(2002);
+    Check(RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'), 'R120: 20.02');
+    Line.Quantity := 70;
+    Line.NetPriceAmount := 1;
+    Line.BaseQuantity := 70;
+    Line.LineAmount := CentsValue(102);
+    Check(not RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'),
+      'R120: 1 div 70 has 19 decimals (70 counts with scale -1), x 70 below 1.00');
+    Line.LineAmount := CentsValue(98);
+    Check(RuleHolds(Invoice, tk_Peppol, 'PEPPOL-EN16931-R120'), 'R120: 0.98');
+    Line.Quantity := 1;
+    Line.NetPriceAmount := 100;
+    Line.BaseQuantity := 0;
+    with Line.AllowanceCharges.AddAllowanceCharge do
+    begin
+      ChargeIndicator := False;
+      Amount := 1;
+    end;
+    with Line.AllowanceCharges.AddAllowanceCharge do
+    begin
+      ChargeIndicator := True;
+      Amount := CentsValue(50);
+    end;
+    Line.LineAmount := CentsValue(9950);
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R120'), 'R120: with allowance and charge');
+    Line.LineAmount := 100;
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R120'), 'R120: allowance and charge ignored');
+    Line.AllowanceCharges.Clear;
+
+    { sub lines: R130 also in UBL (context cac:Price), R120 not; XRechnung
+      CII and UBL credit notes do not write sub lines }
+    Sub := Line.SubInvoiceLines.AddInvoiceLine;
+    Sub.ID := '1.1';
+    Sub.Name := 'Sub item';
+    Sub.Quantity := 1;
+    Sub.UnitCode := iuc_piece;
+    Sub.NetPriceAmount := 100;
+    Sub.LineAmount := 90;
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R120'), 'R120: UBL sub line not checked');
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R120'), 'R120: XRechnung CII writes no sub lines');
+    Sub.LineAmount := 100;
+    Sub.BaseQuantity := 1;
+    Sub.BaseQuantityUnitCodeOther := 'KGM';
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R130'), 'R130: UBL sub line');
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R130'), 'R130: XRechnung CII writes no sub lines');
+    Invoice.InvoiceTypeCode := itc_CreditNote;
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R130'), 'R130: a UBL credit note has no sub lines');
+    Invoice.InvoiceTypeCode := itc_CommercialInvoice;
+    Sub.BaseQuantityUnitCode := iuc_piece;
+    Sub.BaseQuantityUnitCodeOther := '';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R130'), 'R130: same unit');
+    Sub.BaseQuantity := 0;
+    Sub.BaseQuantityUnitCodeOther := 'KGM';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R130'), 'R130: no base quantity written');
+    Line.SubInvoiceLines.Clear;
+
+    { R121 on the base quantity as written; R046 exactly }
+    Line.BaseQuantity := Thousandths(1) / 10000;
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R121'), 'R121: written as 0.00');
+    Line.BaseQuantity := Thousandths(1);
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R121'), 'R121: 0.001');
+    Line.BaseQuantity := 0;
+    Line.GrossPriceAmount := Thousandths(10500);
+    Line.DiscountOnTheGrossPrice := Thousandths(250);
+    Line.NetPriceAmount := Thousandths(10250);
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R046'), 'R046: 10.50 - 0.25');
+    Line.NetPriceAmount := Thousandths(10251);
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R046'), 'R046: 10.251');
+    Line.GrossPriceAmount := 0;
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R046'), 'R046: no gross price');
+    Line.NetPriceAmount := 100;
+    Line.DiscountOnTheGrossPrice := 0;
+
+    { R110, R111: a reversed invoice period is not written }
+    Invoice.InvoicePeriodStartDate := EncodeDate(2026, 10, 1);
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 10, 31);
+    Line.InvoiceLinePeriodStartDate := EncodeDate(2026, 10, 1) + 0.75;
+    Line.InvoiceLinePeriodEndDate := EncodeDate(2026, 10, 31);
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R110'), 'R110: same day');
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R111'), 'R111: same day');
+    Line.InvoiceLinePeriodStartDate := EncodeDate(2026, 9, 30);
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R110'), 'R110: day before');
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 9, 1);
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R110'), 'R110: reversed invoice period');
+    Invoice.InvoicePeriodStartDate := 0;
+    Invoice.InvoicePeriodEndDate := 0;
+    Line.InvoiceLinePeriodStartDate := 0;
+    Line.InvoiceLinePeriodEndDate := 0;
+
+    { R053 to R055 on the VAT totals }
+    Invoice.TaxCurrencyCode := 'USD';
+    Invoice.TaxAmountTotalInTaxCurrency.SetValue(20);
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R054'), 'R054: BT-111 next to BT-6');
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R055'), 'R055: both positive');
+    Invoice.TaxAmountTotal := 0;
+    Invoice.TaxAmountTotalInTaxCurrency.SetValue(-1);
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R055'), 'R055: UBL 0 and negative');
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R055'), 'R055: CII 0 counts as positive');
+    Invoice.TaxAmountTotal := -19;
+    Invoice.TaxAmountTotalInTaxCurrency.SetValue(0);
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R055'), 'R055: UBL negative and 0');
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R055'), 'R055: CII negative and 0');
+    Invoice.TaxAmountTotalInTaxCurrency.Clear;
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R055'), 'R055: BT-111 missing');
+    Invoice.TaxCurrencyCode := 'EUR';
+    Invoice.TaxAmountTotal := 19;
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R005'), 'R005: BT-6 = BT-5 is not written');
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R054'), 'R054: no BT-6, no BT-111');
+    Invoice.TaxCurrencyCode := '';
+    Invoice.TaxAmountSubtotals.Clear;
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R054'), 'R054: UBL VAT total without breakdown');
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R054'), 'R054: CII');
+    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R053'), 'R053: UBL only');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -1914,6 +2192,7 @@ begin
   RegisterTest('Check.Formats', TestFormats);
   RegisterTest('Check.CodeListDeltas', TestCodeListDeltas);
   RegisterTest('Check.CodeListsAsWritten', TestCodeListsAsWritten);
+  RegisterTest('Check.PeppolRules', TestPeppolRules);
 end;
 
 end.

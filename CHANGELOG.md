@@ -288,6 +288,12 @@ Supported invoice standards are documented per release.
   from the library's code lists (STD, AN in CII, B, EAS 0219/0220, fewer note subjects in UBL),
   on the codes as the mappers write them; BR-CL-21 and BR-CL-23 are warnings in XRechnung, and
   the XRechnung extension leaves out BR-CL-10, 11, 21, 24, 25 and 26 as its scenario does.
+- Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
+  schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
+  percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111
+  (line period), R120 (line net amount; a warning in XRechnung, an error in Peppol), R121 and
+  R130 (base quantity). Amounts, prices and quantities are compared exactly as written, with the
+  tolerance of the schematron and the price division as the validator's Saxon computes it.
 - Factur-X code checks: the generated unit `LandrixEInvoiceCIICodeRules` checks a CII syntax
   model against the 366 code asserts of the Factur-X 1.09.2 schematron (FX-SCH-A-..., one
   identifier per profile, with the contexts allowance or charge, document type code, @listID and

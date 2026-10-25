@@ -113,3 +113,52 @@ ubl-inv-br-dex-05-schemeid-test-24[34]-*.xml	extra BR-CL-11
 ubl-inv-br-dex-06-schemeid-test-[34]-*-identity.xml	extra BR-CL-21
 ubl-inv-br-dex-07-schemeid-test-[34]-*-identity.xml	extra BR-CL-25
 ubl-inv-br-dex-08-schemeid-test-[34]-*-identity.xml	extra BR-CL-26
+
+# PEPPOL-EN16931-R005: the mappers write BT-6 only when it differs from BT-5.
+*-peppol-en16931-r005-*-code-EUR.xml	missed PEPPOL-EN16931-R005
+
+# PEPPOL-EN16931-R040 to R042: a percentage or base amount of 0 is absent in the model and not
+# written (on line level the base amount is written with every percentage, as 0 when it is
+# missing), so the output breaks the neighbouring rule instead.
+cii-peppol-en16931-r040-*-code-0.xml	missed PEPPOL-EN16931-R040
+cii-peppol-en16931-r040-*-code-0.xml	extra PEPPOL-EN16931-R042
+cii-peppol-en16931-r040-1087-code-0.00.xml	missed PEPPOL-EN16931-R040
+cii-peppol-en16931-r040-1087-code-0.00.xml	extra PEPPOL-EN16931-R041
+cii-peppol-en16931-r040-1106-code-0.00.xml	missed PEPPOL-EN16931-R040
+cii-peppol-en16931-r040-1106-code-0.00.xml	extra PEPPOL-EN16931-R041
+cii-peppol-en16931-r040-1046-remove.xml	missed PEPPOL-EN16931-R041
+cii-peppol-en16931-r040-1046-remove.xml	extra PEPPOL-EN16931-R040
+cii-peppol-en16931-r040-1065-remove.xml	missed PEPPOL-EN16931-R041
+cii-peppol-en16931-r040-1065-remove.xml	extra PEPPOL-EN16931-R040
+cii-peppol-en16931-r041-1115-remove.xml	missed PEPPOL-EN16931-R041
+cii-peppol-en16931-r041-1115-remove.xml	extra PEPPOL-EN16931-R040
+cii-peppol-en16931-r041-1117-remove.xml	missed PEPPOL-EN16931-R041
+cii-peppol-en16931-r041-1117-remove.xml	extra PEPPOL-EN16931-R040
+ubl-cn-peppol-en16931-r040-718-remove.xml	missed PEPPOL-EN16931-R041
+ubl-cn-peppol-en16931-r041-72[24]-remove.xml	missed PEPPOL-EN16931-R041
+ubl-inv-peppol-en16931-r041-39[57]-remove.xml	missed PEPPOL-EN16931-R041
+ubl-*-peppol-en16931-r042-*-remove.xml	missed PEPPOL-EN16931-R042
+ubl-cn-peppol-en16931-r040-719-code-0.02.xml	extra PEPPOL-EN16931-R042
+
+# PEPPOL-EN16931-R046: a gross price of 0 is absent in the model and not written; a charge on
+# the gross price (R043, R044 tests) is not read, so the written discount is 0.
+ubl-*-peppol-en16931-r046-*-code-0.xml	missed PEPPOL-EN16931-R046
+cii-peppol-en16931-r043-113[15]-code-*.xml	extra PEPPOL-EN16931-R046
+cii-peppol-en16931-r044-116[12]-code-*.xml	extra PEPPOL-EN16931-R046
+
+# PEPPOL-EN16931-R053 to R055: the model holds one VAT total per currency, and the writers
+# always write BT-110 (in UBL with the breakdown); a second total in the same currency is lost.
+# Without BT-6 the readers take the currency of a VAT total that differs from BT-5 as BT-6
+# (BR-DEX-14 tests, the CII test without BT-110), so the output lacks BT-111.
+*-peppol-en16931-r053-2-*-identity.xml	missed PEPPOL-EN16931-R053
+*-peppol-en16931-r054-2-*-identity.xml	missed PEPPOL-EN16931-R054
+ubl-*-peppol-en16931-r053-2-*-remove.xml	missed PEPPOL-EN16931-R054
+ubl-cn-peppol-en16931-r053-1-750-remove.xml	extra PEPPOL-EN16931-R054
+ubl-inv-peppol-en16931-r053-1-423-remove.xml	extra PEPPOL-EN16931-R054
+cii-peppol-en16931-r053-1-1177-remove.xml	extra PEPPOL-EN16931-R054
+cii-peppol-en16931-r053-1-1177-remove.xml	extra PEPPOL-EN16931-R055
+ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra PEPPOL-EN16931-R054
+ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra PEPPOL-EN16931-R055
+
+# PEPPOL-EN16931-R121: a base quantity of 0 is absent in the model and not written.
+*-peppol-en16931-r121-*-code-0.xml	missed PEPPOL-EN16931-R121

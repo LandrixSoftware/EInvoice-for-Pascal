@@ -26,8 +26,14 @@
   BR-31, BR-36, BR-41, BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-CO-05
   to BR-CO-08 (their schematron test is true), BR-CO-19, BR-CO-20 (an empty
   period is not written), BR-DE-14, BR-DE-18, BR-DE-21,
-  PEPPOL-EN16931-R001), and where the syntaxes differ
+  PEPPOL-EN16931-R001, R008 (no empty elements), R043, R044 (the charge
+  indicator), R053 in CII, R101 (a line document reference has type 130)),
+  and where the syntaxes differ
   the row follows the validator of each syntax (e.g. BR-DE-23-b, BR-DE-30).
+  The PEPPOL-EN16931 rules of the XRechnung schematron apply to XRechnung
+  and Peppol; they compare amounts, prices and quantities exactly as
+  written (xs:decimal, divisions as Saxon computes them: 18 decimals,
+  rounded half down).
   The Factur-X profiles get the rules their schematron contains. BR-29,
   BR-30, BR-65 and BR-CO-03 are checked on the model: the mappers leave a reversed
   period or a classification without scheme out instead of writing it
@@ -73,9 +79,15 @@
   (BR-01, BR-12 bis BR-15, BR-22, BR-24, BR-26, BR-31, BR-36, BR-41,
   BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-CO-05 bis BR-CO-08 (ihr
   Schematron-Test ist true), BR-CO-19, BR-CO-20 (ein leerer Zeitraum wird
-  nicht geschrieben), BR-DE-14, BR-DE-18, BR-DE-21, PEPPOL-EN16931-R001),
+  nicht geschrieben), BR-DE-14, BR-DE-18, BR-DE-21, PEPPOL-EN16931-R001,
+  R008 (keine leeren Elemente), R043, R044 (das Zuschlagskennzeichen), R053
+  in CII, R101 (ein Dokumentverweis der Position hat die Art 130)),
   und wo die Syntaxen sich unterscheiden, folgt die
   Zeile dem Validator der jeweiligen Syntax (z. B. BR-DE-23-b, BR-DE-30).
+  Die PEPPOL-EN16931-Regeln des XRechnung-Schematrons gelten fuer
+  XRechnung und Peppol; sie vergleichen Betraege, Preise und Mengen exakt
+  so, wie sie geschrieben werden (xs:decimal, Divisionen wie Saxon sie
+  rechnet: 18 Nachkommastellen, halb abwaerts gerundet).
   Die Factur-X-Profile bekommen die Regeln, die ihr Schematron enthaelt.
   BR-29, BR-30, BR-65 und BR-CO-03 werden am Modell geprueft: die Mapper lassen einen
   umgekehrten Zeitraum oder eine Klassifizierung ohne Schema weg, statt sie
@@ -232,6 +244,8 @@ type
     cr_BRDE16, cr_BRDE17, cr_BRDE19, cr_BRDE20, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
     cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE27, cr_BRDE28, cr_BRDE30, cr_BRDE31,
     cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061,
+    cr_PeppolR005, cr_PeppolR040, cr_PeppolR041, cr_PeppolR042, cr_PeppolR046, cr_PeppolR053, cr_PeppolR054,
+    cr_PeppolR055, cr_PeppolR110, cr_PeppolR111, cr_PeppolR120XR, cr_PeppolR120BIS, cr_PeppolR121, cr_PeppolR130,
     cr_BRCO03, cr_BRCO04, cr_BRCO09,
     cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17, cr_BRCO18,
     cr_BRCO21, cr_BRCO22, cr_BRCO23, cr_BRCO24, cr_BRCO25, cr_BRCO26, cr_BRFXEXTCO04,
@@ -272,9 +286,10 @@ const
   EN16931Source = 'EN 16931 (CEN/TS 16931-3 schematron)';
   XRechnungSource = 'XRechnung 3.0 (KoSIT schematron 2.5.0)';
   PeppolSource = 'Peppol BIS Billing 3.0';
-  { PEPPOL-EN16931-R010, R020 and R061 are part of the XRechnung schematron
-    as well. DE: PEPPOL-EN16931-R010, R020 und R061 gehoeren auch zum
-    XRechnung-Schematron. }
+  { The PEPPOL-EN16931 rules with this source are part of the XRechnung
+    schematron as well; R120 is a warning there.
+    DE: Die PEPPOL-EN16931-Regeln mit dieser Herkunft gehoeren auch zum
+    XRechnung-Schematron; R120 ist dort eine Warnung. }
   PeppolXRechnungSource = 'Peppol BIS Billing 3.0, XRechnung 3.0';
   FacturXExtendedSource = 'Factur-X 1.09 EXTENDED schematron';
 
@@ -693,6 +708,66 @@ const
     (ID: 'PEPPOL-EN16931-R061'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-89';
      Message: 'a direct debit (payment means 49 or 59) shall have a mandate reference (BT-89)';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R005'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-6';
+     Message: 'the VAT accounting currency code (BT-6) shall differ from the invoice currency code (BT-5)';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R040'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BG-20, BG-21, BG-27, BG-28';
+     Message: 'an allowance or charge amount shall equal base amount x percentage / 100 when both are provided';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R041'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-93, BT-100';
+     Message: 'an allowance or charge base amount shall be provided when the percentage is provided';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R042'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-94, BT-101, BT-138, BT-143';
+     Message: 'an allowance or charge percentage shall be provided when the base amount is provided';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R046'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-146, BT-147, BT-148';
+     Message: 'the item net price (BT-146) shall equal the gross price (BT-148) minus the price discount (BT-147)';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R053'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BG-23';
+     Message: 'exactly one VAT total with VAT breakdown (BG-23) shall be provided';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R054'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-111';
+     Message: 'one VAT total without VAT breakdown (BT-111) shall be provided when the VAT accounting currency ' +
+       '(BT-6) is provided, none otherwise';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R055'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-110, BT-111';
+     Message: 'the invoice total VAT amount (BT-110) and the total VAT amount in the accounting currency (BT-111) ' +
+       'shall have the same sign';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R110'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-134, BT-73';
+     Message: 'the start date of a line period (BT-134) shall not be before the invoice period start date (BT-73)';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R111'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-135, BT-74';
+     Message: 'the end date of a line period (BT-135) shall not be after the invoice period end date (BT-74)';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R120'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-131';
+     Message: 'the line net amount (BT-131) should equal quantity x (net price / base quantity) + charges - ' +
+       'allowances';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R120'; Standards: [est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-131';
+     Message: 'the line net amount (BT-131) shall equal quantity x (net price / base quantity) + charges - ' +
+       'allowances';
+     Source: PeppolSource),
+    (ID: 'PEPPOL-EN16931-R121'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-149';
+     Message: 'the item price base quantity (BT-149) shall be above zero';
+     Source: PeppolXRechnungSource),
+    (ID: 'PEPPOL-EN16931-R130'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-150, BT-130';
+     Message: 'the unit of the item price base quantity (BT-150) shall be that of the invoiced quantity (BT-130)';
      Source: PeppolXRechnungSource),
     (ID: 'BR-CO-03'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
      Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BT-7, BT-8';
@@ -3229,6 +3304,587 @@ end;
   LX-CC-Regeln behalten die Bedingungen von XRechnung-for-Delphi: ein Ziel,
   das nicht geschrieben werden kann (leerer Eintrag), scheitert an
   Zahlungen Dritter und Lieferdaten je Position. }
+{ --- exact decimals ------------------------------------------------------------- }
+
+type
+  { A decimal number as XPath computes with it (xs:decimal): the digits,
+    least significant first, times 10^-Scale. }
+  TDigits = array of Byte;
+  TExact = record
+    Negative: Boolean;
+    Scale: Integer;
+    Digits: TDigits;
+  end;
+
+const
+  { Saxon divides xs:decimal values without trailing zeros (integer part
+    included) to 18 decimals plus the excess of the dividend's scale over
+    the divisor's, rounded half down. }
+  XPathDivideScale = 18;
+
+function Trimmed(const ADigits: TDigits): TDigits;
+var
+  N: Integer;
+begin
+  N := Length(ADigits);
+  while (N > 0) and (ADigits[N - 1] = 0) do
+    Dec(N);
+  Result := Copy(ADigits, 0, N);
+end;
+
+{ A lexical decimal as the mappers write it ('-12.3400'). }
+function ExactOf(const AText: TLandrixEInvoiceString): TExact;
+var
+  I, N: Integer;
+  C: TLandrixEInvoiceChar;
+begin
+  Result.Negative := False;
+  Result.Scale := 0;
+  SetLength(Result.Digits, Length(AText));
+  N := 0;
+  for I := Length(AText) downto 1 do
+  begin
+    C := AText[I];
+    if (C >= '0') and (C <= '9') then
+    begin
+      Result.Digits[N] := Byte(Ord(C) - Ord('0'));
+      Inc(N);
+    end
+    else if C = '.' then
+      Result.Scale := N
+    else if C = '-' then
+      Result.Negative := True;
+  end;
+  SetLength(Result.Digits, N);
+  Result.Digits := Trimmed(Result.Digits);
+  if Length(Result.Digits) = 0 then
+    Result.Negative := False;
+end;
+
+{ The magnitude of A times 10^(AScale - A.Scale); AScale >= A.Scale. }
+function Shifted(const A: TExact; AScale: Integer): TDigits;
+var
+  I, Shift: Integer;
+begin
+  Shift := AScale - A.Scale;
+  Result := nil;
+  SetLength(Result, Length(A.Digits) + Shift);
+  for I := 0 to Shift - 1 do
+    Result[I] := 0;
+  for I := 0 to Length(A.Digits) - 1 do
+    Result[I + Shift] := A.Digits[I];
+  Result := Trimmed(Result);
+end;
+
+function MagCompare(const X, Y: TDigits): Integer;
+var
+  I: Integer;
+begin
+  Result := Length(X) - Length(Y);
+  I := Length(X) - 1;
+  while (Result = 0) and (I >= 0) do
+  begin
+    Result := Integer(X[I]) - Integer(Y[I]);
+    Dec(I);
+  end;
+end;
+
+function MagAdd(const X, Y: TDigits): TDigits;
+var
+  I, N, D, Carry: Integer;
+begin
+  N := Length(X);
+  if Length(Y) > N then
+    N := Length(Y);
+  Result := nil;
+  SetLength(Result, N + 1);
+  Carry := 0;
+  for I := 0 to N do
+  begin
+    D := Carry;
+    if I < Length(X) then
+      Inc(D, X[I]);
+    if I < Length(Y) then
+      Inc(D, Y[I]);
+    Result[I] := Byte(D mod 10);
+    Carry := D div 10;
+  end;
+  Result := Trimmed(Result);
+end;
+
+{ X - Y for X >= Y. }
+function MagSub(const X, Y: TDigits): TDigits;
+var
+  I, D, Borrow: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(X));
+  Borrow := 0;
+  for I := 0 to Length(X) - 1 do
+  begin
+    D := Integer(X[I]) - Borrow;
+    if I < Length(Y) then
+      Dec(D, Y[I]);
+    if D < 0 then
+    begin
+      Inc(D, 10);
+      Borrow := 1;
+    end
+    else
+      Borrow := 0;
+    Result[I] := Byte(D);
+  end;
+  Result := Trimmed(Result);
+end;
+
+function MagMul(const X, Y: TDigits): TDigits;
+var
+  I, J, D, Carry: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(X) + Length(Y) + 1);
+  for I := 0 to Length(Result) - 1 do
+    Result[I] := 0;
+  for I := 0 to Length(X) - 1 do
+  begin
+    Carry := 0;
+    for J := 0 to Length(Y) - 1 do
+    begin
+      D := Result[I + J] + X[I] * Y[J] + Carry;
+      Result[I + J] := Byte(D mod 10);
+      Carry := D div 10;
+    end;
+    J := I + Length(Y);
+    while Carry > 0 do
+    begin
+      D := Result[J] + Carry;
+      Result[J] := Byte(D mod 10);
+      Carry := D div 10;
+      Inc(J);
+    end;
+  end;
+  Result := Trimmed(Result);
+end;
+
+{ X div Y for Y > 0, by long division; ARemainder is X mod Y. }
+function MagDiv(const X, Y: TDigits; out ARemainder: TDigits): TDigits;
+var
+  I, J, Q: Integer;
+  R, T: TDigits;
+begin
+  Result := nil;
+  SetLength(Result, Length(X));
+  R := nil;
+  T := nil;
+  for I := Length(X) - 1 downto 0 do
+  begin
+    SetLength(T, Length(R) + 1);
+    T[0] := X[I];
+    for J := 0 to Length(R) - 1 do
+      T[J + 1] := R[J];
+    R := Trimmed(T);
+    Q := 0;
+    while MagCompare(R, Y) >= 0 do
+    begin
+      R := MagSub(R, Y);
+      Inc(Q);
+    end;
+    Result[I] := Byte(Q);
+  end;
+  ARemainder := R;
+  Result := Trimmed(Result);
+end;
+
+function ExactAdd(const A, B: TExact): TExact;
+var
+  X, Y: TDigits;
+begin
+  Result.Scale := A.Scale;
+  if B.Scale > Result.Scale then
+    Result.Scale := B.Scale;
+  X := Shifted(A, Result.Scale);
+  Y := Shifted(B, Result.Scale);
+  if A.Negative = B.Negative then
+  begin
+    Result.Digits := MagAdd(X, Y);
+    Result.Negative := A.Negative;
+  end
+  else if MagCompare(X, Y) >= 0 then
+  begin
+    Result.Digits := MagSub(X, Y);
+    Result.Negative := A.Negative;
+  end
+  else
+  begin
+    Result.Digits := MagSub(Y, X);
+    Result.Negative := B.Negative;
+  end;
+  if Length(Result.Digits) = 0 then
+    Result.Negative := False;
+end;
+
+function ExactNegated(const A: TExact): TExact;
+begin
+  Result := A;
+  Result.Negative := not A.Negative and (Length(A.Digits) > 0);
+end;
+
+function ExactSub(const A, B: TExact): TExact;
+begin
+  Result := ExactAdd(A, ExactNegated(B));
+end;
+
+function ExactMul(const A, B: TExact): TExact;
+begin
+  Result.Digits := MagMul(A.Digits, B.Digits);
+  Result.Scale := A.Scale + B.Scale;
+  Result.Negative := (A.Negative <> B.Negative) and (Length(Result.Digits) > 0);
+end;
+
+{ A without trailing zeros, also of the integer part (the scale may become
+  negative), as BigDecimal.stripTrailingZeros. }
+function Stripped(const A: TExact): TExact;
+var
+  N: Integer;
+begin
+  Result.Negative := A.Negative;
+  Result.Scale := A.Scale;
+  N := 0;
+  while (N < Length(A.Digits)) and (A.Digits[N] = 0) do
+  begin
+    Inc(N);
+    Dec(Result.Scale);
+  end;
+  Result.Digits := Copy(A.Digits, N, Length(A.Digits) - N);
+end;
+
+{ A div B as Saxon computes it (XPathDivideScale); B must not be 0. }
+function ExactDiv(const A, B: TExact): TExact;
+var
+  X, Y: TExact;
+  Remainder, One: TDigits;
+begin
+  X := Stripped(A);
+  Y := Stripped(B);
+  Result.Scale := XPathDivideScale;
+  if X.Scale > Y.Scale then
+    Inc(Result.Scale, X.Scale - Y.Scale);
+  Result.Digits := MagDiv(Shifted(X, Result.Scale + Y.Scale), Y.Digits, Remainder);
+  { half down: up only when the remainder is more than half the divisor }
+  if MagCompare(MagAdd(Remainder, Remainder), Y.Digits) > 0 then
+  begin
+    One := nil;
+    SetLength(One, 1);
+    One[0] := 1;
+    Result.Digits := MagAdd(Result.Digits, One);
+  end;
+  Result.Negative := (A.Negative <> B.Negative) and (Length(Result.Digits) > 0);
+end;
+
+function ExactCompare(const A, B: TExact): Integer;
+var
+  D: TExact;
+begin
+  D := ExactSub(A, B);
+  if Length(D.Digits) = 0 then
+    Result := 0
+  else if D.Negative then
+    Result := -1
+  else
+    Result := 1;
+end;
+
+function AmountExact(AValue: Currency): TExact;
+begin
+  Result := ExactOf(LandrixEInvoiceAmountToLexical(AValue));
+end;
+
+function PriceExact(AValue: Double): TExact;
+begin
+  Result := ExactOf(LandrixEInvoicePriceToLexical(AValue));
+end;
+
+{ --- Peppol rules ---------------------------------------------------------------- }
+
+{ u:slack of the schematron: AExp - ASlack <= AVal <= AExp + ASlack.
+  DE: u:slack des Schematrons: AExp - ASlack <= AVal <= AExp + ASlack. }
+function WithinSlack(const AExp, AVal, ASlack: TExact): Boolean;
+begin
+  Result := (ExactCompare(ExactAdd(AExp, ASlack), AVal) >= 0) and
+    (ExactCompare(ExactSub(AExp, ASlack), AVal) <= 0);
+end;
+
+{ $slackValue: XRechnung allows 0.5 for the invoice currency HUF, Peppol
+  always 0.02.
+  DE: $slackValue: XRechnung erlaubt 0,5 fuer die Rechnungswaehrung HUF,
+  Peppol immer 0,02. }
+function PeppolSlack(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): TExact;
+begin
+  if (ASpec.Target.Standard = est_XRechnung) and (AInvoice.InvoiceCurrencyCode = 'HUF') then
+    Result := ExactOf('0.5')
+  else
+    Result := ExactOf('0.02');
+end;
+
+{ PEPPOL-EN16931-R040 to R042 for one allowance or charge, as written: the
+  percentage with 4 decimals (UBL line level: 2); the base amount on
+  document level when it is not 0, on line level also as 0 next to a
+  percentage. R040: amount = base amount x percentage / 100 within the
+  slack.
+  DE: PEPPOL-EN16931-R040 bis R042 fuer einen Nachlass oder Zuschlag, wie
+  geschrieben: der Prozentsatz mit 4 Nachkommastellen (UBL-Positionsebene:
+  2); der Grundbetrag auf Dokumentebene, wenn er nicht 0 ist, auf
+  Positionsebene neben einem Prozentsatz auch als 0. R040: Betrag =
+  Grundbetrag x Prozentsatz / 100 innerhalb der Toleranz. }
+function PeppolAllowanceViolated(AIndex: TCheckRuleIndex; AItem: TLandrixInvoiceAllowanceCharge;
+  AOnLine: Boolean; APercentDecimals: Integer; const ASlack: TExact): Boolean;
+var
+  HasPercent, HasBase: Boolean;
+  Expected: TExact;
+begin
+  HasPercent := AItem.MultiplierFactorNumeric <> 0;
+  HasBase := (AItem.BaseAmount <> 0) or (AOnLine and HasPercent);
+  Result := False;
+  case AIndex of
+    cr_PeppolR040:
+      if HasPercent and HasBase then
+      begin
+        Expected := ExactDiv(ExactMul(AmountExact(AItem.BaseAmount),
+          ExactOf(LandrixEInvoiceDecimalToLexical(AItem.MultiplierFactorNumeric, APercentDecimals))), ExactOf('100'));
+        Result := not WithinSlack(AmountExact(AItem.Amount), Expected, ASlack);
+      end;
+    cr_PeppolR041:
+      Result := HasPercent and not HasBase;
+    cr_PeppolR042:
+      Result := HasBase and not HasPercent;
+  else
+    { the other rules are no allowance rules }
+    ;
+  end;
+end;
+
+function PeppolLineAllowancesViolated(AIndex: TCheckRuleIndex; ALines: TLandrixInvoiceLines; ASubLines: Boolean;
+  APercentDecimals: Integer; const ASlack: TExact): Boolean;
+var
+  I, J: TLandrixEInvoiceListIndex;
+begin
+  Result := True;
+  for I := 0 to ALines.Count - 1 do
+  begin
+    for J := 0 to ALines[I].AllowanceCharges.Count - 1 do
+      if PeppolAllowanceViolated(AIndex, ALines[I].AllowanceCharges[J], True, APercentDecimals, ASlack) then
+        Exit;
+    if ASubLines and PeppolLineAllowancesViolated(AIndex, ALines[I].SubInvoiceLines, True, APercentDecimals,
+       ASlack) then
+      Exit;
+  end;
+  Result := False;
+end;
+
+{ Sub lines are written where the target allows them, in UBL not in a
+  credit note (ubl:CreditNote has no sub lines).
+  DE: Unterpositionen werden geschrieben, wo das Ziel sie erlaubt, in UBL
+  nicht in einer Gutschrift (ubl:CreditNote hat keine Unterpositionen). }
+function SubLinesWritten(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  Result := not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines) and
+    ((ASpec.Target.Syntax = esy_CII) or (AInvoice.InvoiceTypeCode <> itc_CreditNote));
+end;
+
+{ Document level and line level; UBL checks the allowances and charges of
+  cac:InvoiceLine only, CII those of every written line.
+  DE: Dokument- und Positionsebene; UBL prueft nur die Nachlaesse und
+  Zuschlaege von cac:InvoiceLine, CII die jeder geschriebenen Position. }
+function PeppolAllowancesViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  Slack: TExact;
+  IsCII: Boolean;
+  Decimals: Integer;
+begin
+  Result := True;
+  Slack := PeppolSlack(AInvoice, ASpec);
+  for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
+    if PeppolAllowanceViolated(AIndex, AInvoice.AllowanceCharges[I], False, 4, Slack) then
+      Exit;
+  IsCII := ASpec.Target.Syntax = esy_CII;
+  if IsCII then
+    Decimals := 4
+  else
+    Decimals := 2;
+  Result := PeppolLineAllowancesViolated(AIndex, AInvoice.InvoiceLines, IsCII and SubLinesWritten(AInvoice, ASpec),
+    Decimals, Slack);
+end;
+
+{ The VAT accounting currency (BT-6) is written when it differs from the
+  invoice currency.
+  DE: Die Steuerwaehrung (BT-6) wird geschrieben, wenn sie von der
+  Rechnungswaehrung abweicht. }
+function TaxCurrencyWritten(AInvoice: TLandrixInvoice): Boolean;
+begin
+  Result := Present(AInvoice.TaxCurrencyCode) and (AInvoice.TaxCurrencyCode <> AInvoice.InvoiceCurrencyCode);
+end;
+
+{ PEPPOL-EN16931-R053 to R055 on the VAT totals as written. UBL: the VAT
+  total in the invoice currency carries the breakdown, a second one without
+  breakdown BT-111 (R053, R054: exactly one with breakdown, one without only
+  next to BT-6); R055 requires equal signs, 0 counts for both in UBL and as
+  positive in CII. A missing BT-111 next to BT-6 violates R054 and R055 (and
+  BR-53).
+  DE: PEPPOL-EN16931-R053 bis R055 auf den geschriebenen Steuersummen. UBL:
+  die Steuersumme in der Rechnungswaehrung traegt die Aufschluesselung, eine
+  zweite ohne Aufschluesselung BT-111 (R053, R054: genau eine mit
+  Aufschluesselung, eine ohne nur neben BT-6); R055 verlangt gleiche
+  Vorzeichen, 0 zaehlt in UBL fuer beide und in CII als positiv. Ein
+  fehlendes BT-111 neben BT-6 verletzt R054 und R055 (und BR-53). }
+function PeppolTaxTotalViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  Written, Accounting, IsUBL: Boolean;
+  Without: Integer;
+  T, D: Int64;
+begin
+  Result := False;
+  Written := TaxCurrencyWritten(AInvoice);
+  Accounting := Written and AInvoice.TaxAmountTotalInTaxCurrency.HasValue;
+  IsUBL := ASpec.Target.Syntax = esy_UBL;
+  case AIndex of
+    cr_PeppolR053:
+      Result := AInvoice.TaxAmountSubtotals.Count = 0;
+    cr_PeppolR054:
+      if IsUBL then
+      begin
+        Without := Ord(Accounting);
+        if AInvoice.TaxAmountSubtotals.Count = 0 then
+          Inc(Without);
+        Result := Without <> Ord(Written);
+      end
+      else
+        Result := Written and not Accounting;
+    cr_PeppolR055:
+      if Written and not Accounting then
+        Result := True
+      else if Accounting then
+      begin
+        T := Cents(AInvoice.TaxAmountTotalInTaxCurrency.Value);
+        D := Cents(AInvoice.TaxAmountTotal);
+        if IsUBL then
+          Result := not (((T <= 0) and (D <= 0)) or ((T >= 0) and (D >= 0)))
+        else
+          Result := not (((T < 0) and (D < 0)) or ((T >= 0) and (D >= 0)));
+      end;
+  else
+    { the other rules are no VAT total rules }
+    ;
+  end;
+end;
+
+function PeriodWritten(AStart, AEnd: TDateTime): Boolean;
+begin
+  Result := (PeriodDateSet(AStart) or PeriodDateSet(AEnd)) and not PeriodReversed(AStart, AEnd);
+end;
+
+{ The Peppol line rules for one line, on the values as written: R046 net
+  price = gross price - discount (exact, when the gross price is written);
+  R110, R111 the line period within the invoice period (dates as written:
+  a reversed period is left out); R120 line net amount = quantity x (net
+  price div base quantity) + charges - allowances within the slack (a
+  missing or zero base quantity counts as 1); R121 base quantity above 0;
+  R130 the unit of the base quantity is that of the invoiced quantity.
+  DE: Die Peppol-Positionsregeln fuer eine Position, auf den geschriebenen
+  Werten: R046 Nettopreis = Bruttopreis - Rabatt (exakt, wenn der
+  Bruttopreis geschrieben wird); R110, R111 der Positionszeitraum innerhalb
+  des Rechnungszeitraums (Daten wie geschrieben: ein umgekehrter Zeitraum
+  entfaellt); R120 Positionsnettobetrag = Menge x (Nettopreis div
+  Basismenge) + Zuschlaege - Nachlaesse innerhalb der Toleranz (eine
+  fehlende oder 0-Basismenge zaehlt als 1); R121 Basismenge ueber 0; R130
+  die Einheit der Basismenge ist die der Menge. }
+function PeppolLineViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; ALine: TLandrixInvoiceLine;
+  const ASlack: TExact): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  Base, Allowances, Charges, Value: TExact;
+  HeaderWritten, LineWritten: Boolean;
+  BaseUnit: TLandrixEInvoiceString;
+begin
+  Result := False;
+  HeaderWritten := PeriodWritten(AInvoice.InvoicePeriodStartDate, AInvoice.InvoicePeriodEndDate);
+  LineWritten := PeriodWritten(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate);
+  case AIndex of
+    cr_PeppolR046:
+      Result := (ALine.GrossPriceAmount <> 0) and (ExactCompare(PriceExact(ALine.NetPriceAmount),
+        ExactSub(PriceExact(ALine.GrossPriceAmount), PriceExact(ALine.DiscountOnTheGrossPrice))) <> 0);
+    cr_PeppolR110:
+      Result := HeaderWritten and PeriodDateSet(AInvoice.InvoicePeriodStartDate) and LineWritten and
+        PeriodDateSet(ALine.InvoiceLinePeriodStartDate) and
+        (Trunc(ALine.InvoiceLinePeriodStartDate) < Trunc(AInvoice.InvoicePeriodStartDate));
+    cr_PeppolR111:
+      Result := HeaderWritten and PeriodDateSet(AInvoice.InvoicePeriodEndDate) and LineWritten and
+        PeriodDateSet(ALine.InvoiceLinePeriodEndDate) and
+        (Trunc(ALine.InvoiceLinePeriodEndDate) > Trunc(AInvoice.InvoicePeriodEndDate));
+    cr_PeppolR120XR, cr_PeppolR120BIS:
+      begin
+        Base := ExactOf('1');
+        if ALine.BaseQuantity <> 0 then
+        begin
+          Value := ExactOf(LandrixEInvoiceBaseQuantityToLexical(ALine.BaseQuantity));
+          if Length(Value.Digits) > 0 then
+            Base := Value;
+        end;
+        Allowances := ExactOf('0');
+        Charges := Allowances;
+        for I := 0 to ALine.AllowanceCharges.Count - 1 do
+          if ALine.AllowanceCharges[I].ChargeIndicator then
+            Charges := ExactAdd(Charges, AmountExact(ALine.AllowanceCharges[I].Amount))
+          else
+            Allowances := ExactAdd(Allowances, AmountExact(ALine.AllowanceCharges[I].Amount));
+        Value := ExactSub(ExactAdd(ExactMul(ExactOf(LandrixEInvoiceQuantityToLexical(ALine.Quantity)),
+          ExactDiv(PriceExact(ALine.NetPriceAmount), Base)), Charges), Allowances);
+        Result := not WithinSlack(AmountExact(ALine.LineAmount), Value, ASlack);
+      end;
+    cr_PeppolR121:
+      Result := (ALine.BaseQuantity <> 0) and
+        (ExactCompare(ExactOf(LandrixEInvoiceBaseQuantityToLexical(ALine.BaseQuantity)), ExactOf('0')) <= 0);
+    cr_PeppolR130:
+      begin
+        BaseUnit := WrittenCode(LandrixEInvoiceUnitCodeToStr(ALine.BaseQuantityUnitCode),
+          ALine.BaseQuantityUnitCodeOther);
+        Result := (ALine.BaseQuantity <> 0) and (BaseUnit <> '') and
+          (BaseUnit <> WrittenCode(LandrixEInvoiceUnitCodeToStr(ALine.UnitCode), ALine.UnitCodeOther));
+      end;
+  else
+    { the other rules are no Peppol line rules }
+    ;
+  end;
+end;
+
+function AnyPeppolLineViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; ALines: TLandrixInvoiceLines;
+  ASubLines: Boolean; const ASlack: TExact): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := True;
+  for I := 0 to ALines.Count - 1 do
+    if PeppolLineViolated(AIndex, AInvoice, ALines[I], ASlack) or
+       (ASubLines and AnyPeppolLineViolated(AIndex, AInvoice, ALines[I].SubInvoiceLines, True, ASlack)) then
+      Exit;
+  Result := False;
+end;
+
+{ UBL checks R110, R111, R120 and R121 on cac:InvoiceLine only, R046 and
+  R130 (context cac:Price) also on cac:SubInvoiceLine; CII checks every
+  line. Sub lines count only where they are written.
+  DE: UBL prueft R110, R111, R120 und R121 nur an cac:InvoiceLine, R046
+  und R130 (Kontext cac:Price) auch an cac:SubInvoiceLine; CII prueft jede
+  Position. Unterpositionen zaehlen nur, wo sie geschrieben werden. }
+function PeppolLinesViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  Result := AnyPeppolLineViolated(AIndex, AInvoice, AInvoice.InvoiceLines, SubLinesWritten(AInvoice, ASpec) and
+    ((ASpec.Target.Syntax = esy_CII) or (AIndex in [cr_PeppolR046, cr_PeppolR130])), PeppolSlack(AInvoice, ASpec));
+end;
+
 function Violated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
 var
   NoDefaultEM, IsPeppol: Boolean;
@@ -3435,6 +4091,15 @@ begin
       Result := not Present(Seller.ElectronicAddressSellerBuyer);
     cr_PeppolR061:
       Result := HasPayment(AInvoice, pk_DirectDebit) and not Present(AInvoice.PaymentMandateID);
+    cr_PeppolR005:
+      Result := TaxCurrencyWritten(AInvoice) and
+        (NormalizedSpace(AInvoice.TaxCurrencyCode) = NormalizedSpace(AInvoice.InvoiceCurrencyCode));
+    cr_PeppolR040, cr_PeppolR041, cr_PeppolR042:
+      Result := PeppolAllowancesViolated(AIndex, AInvoice, ASpec);
+    cr_PeppolR053, cr_PeppolR054, cr_PeppolR055:
+      Result := PeppolTaxTotalViolated(AIndex, AInvoice, ASpec);
+    cr_PeppolR046, cr_PeppolR110, cr_PeppolR111, cr_PeppolR120XR, cr_PeppolR120BIS, cr_PeppolR121, cr_PeppolR130:
+      Result := PeppolLinesViolated(AIndex, AInvoice, ASpec);
     cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17,
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
     cr_BRDEX09:
