@@ -1,0 +1,397 @@
+## extension_04.01a-INVOICE_ubl.xml
+scenario EN16931 XRechnung Extension (UBL Invoice) (matches 1)
+xsd valid
+msg sch1 UBL-CR-646 warning information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## extension_04.02a-INVOICE_ubl.xml
+scenario EN16931 XRechnung Extension (UBL Invoice) (matches 1)
+xsd valid
+msg sch1 UBL-CR-646 warning information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## extension_04.03a-INVOICE_ubl.xml
+scenario EN16931 XRechnung Extension (UBL Invoice) (matches 1)
+xsd valid
+msg sch1 UBL-CR-646 warning information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## extension_04.04a-INVOICE_ubl.xml
+scenario EN16931 XRechnung Extension (UBL Invoice) (matches 1)
+xsd valid
+msg sch1 UBL-CR-646 warning information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## extension_04.05a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung Extension (CII) (matches 1)
+xsd valid
+msg sch1 BR-CL-21 error information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}IncludedSupplyChainTradeLineItem[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SpecifiedTradeProduct[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}GlobalID[1]
+msg sch1 BR-CL-10 error information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeAgreement[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SellerTradeParty[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}GlobalID[1]
+msg sch1 BR-CL-10 error information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeAgreement[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}BuyerTradeParty[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}GlobalID[1]
+msg sch1 BR-CL-10 error information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeSettlement[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}PayeeTradeParty[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}GlobalID[1]
+accepted
+## extension_05.01a-INVOICE_ubl.xml
+scenario EN16931 XRechnung Extension (UBL Invoice) (matches 1)
+xsd valid
+msg sch1 BR-CO-16 error information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]/Q{urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2}LegalMonetaryTotal[1]
+msg sch1 UBL-CR-470 warning information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.01a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.01a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.02a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.02a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.03a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.03a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.04a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.04a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.05a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.05a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.06a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.06a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.07a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.07a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.08a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.08a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.09a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.09a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.10a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.10a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.11a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.11a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.12a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.12a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.13a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.13a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.14a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.14a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.15a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.15a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.17a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_01.17a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_01.18a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.18a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.19a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.19a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.20a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.20a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_01.21a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_01.21a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_02.01a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_02.01a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_02.02a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_02.02a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_02.03a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_02.03a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_02.04a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_02.04a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_02.05a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_02.05a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_02.06a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_02.06a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_03.01a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_03.01a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_03.02a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_03.02a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_03.03a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## standard_03.03a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch1 CII-SR-475 warning information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeAgreement[1]
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## standard_03.04a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_03.04a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_03.05a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_03.05a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_03.06a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_03.06a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## standard_03.07a-INVOICE_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## standard_03.07a-INVOICE_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch1 CII-SR-475 warning information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeAgreement[1]
+msg sch1 CII-SR-476 warning information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeAgreement[1]
+accepted
+## technical-cases_cius_01.01_comprehensive_test_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## technical-cases_cius_01.01_comprehensive_test_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch1 CII-SR-475 warning information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeAgreement[1]
+msg sch1 CII-SR-476 warning information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ApplicableHeaderTradeAgreement[1]
+accepted
+## technical-cases_cius_01.02_comprehensive_test_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## technical-cases_cius_01.02_comprehensive_test_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## technical-cases_cius_01.03_comprehensive_test_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## technical-cases_cius_01.03_comprehensive_test_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## technical-cases_cius_01.04_comprehensive_test_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+accepted
+## technical-cases_cius_01.04_comprehensive_test_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+accepted
+## technical-cases_cius_01.05_minimal_test_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## technical-cases_cius_01.05_minimal_test_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## technical-cases_cius_01.06_minimal_test_ubl.xml
+scenario EN16931 XRechnung (UBL Invoice) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]
+accepted
+## technical-cases_cius_01.06_minimal_test_uncefact.xml
+scenario EN16931 XRechnung (CII) (matches 1)
+xsd valid
+msg sch2 BR-DE-TMP-32 information information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]
+accepted
+## technical-cases_cvd_02.01a-cvd_INVOICE_ubl.xml
+scenario EN16931 XRechnung CVD (UBL Invoice) (matches 1)
+xsd valid
+msg sch1 BR-CL-13 error information 0:0 /Q{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice[1]/Q{urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2}InvoiceLine[1]/Q{urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2}Item[1]/Q{urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2}CommodityClassification[1]/Q{urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2}ItemClassificationCode[1]
+accepted
+## technical-cases_cvd_02.01a-cvd_INVOICE_uncefact.xml
+scenario EN16931 XRechnung CVD (CII) (matches 1)
+xsd valid
+msg sch1 BR-CL-13 error information 0:0 /Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice[1]/Q{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}SupplyChainTradeTransaction[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}IncludedSupplyChainTradeLineItem[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}SpecifiedTradeProduct[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}DesignatedProductClassification[1]/Q{urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100}ClassCode[1]
+accepted

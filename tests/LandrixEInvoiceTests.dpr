@@ -38,6 +38,7 @@ uses
   LandrixEInvoiceTestCheck,
   LandrixEInvoiceTestCheckPeppol,
   LandrixEInvoiceTestIdentifiers,
+  LandrixEInvoiceTestValidator,
   LandrixEInvoiceTestCII,
   LandrixEInvoiceTestCIIProfiles,
   LandrixEInvoiceTestCIICodeRules,
@@ -74,6 +75,7 @@ begin
   LandrixEInvoiceTestCheck.Register;
   LandrixEInvoiceTestCheckPeppol.Register;
   LandrixEInvoiceTestIdentifiers.Register;
+  LandrixEInvoiceTestValidator.Register;
   LandrixEInvoiceTestCII.Register;
   LandrixEInvoiceTestCIIProfiles.Register;
   LandrixEInvoiceTestCIICodeRules.Register;

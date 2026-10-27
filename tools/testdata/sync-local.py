@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Copies the official test material for the semantic sweep (plan, Phase 2
-step 3) from the documentation folder into tests/data/local/sweep/<corpus>/
-(git-ignored; the material is never committed).
+step 3) and the KoSIT end-to-end run (plan, phase 6) from the documentation
+folder into tests/data/local/ (git-ignored; the material is never committed).
 
 The committed manifest corpora.json names every file with its SHA-256, so a
 run checks that the local copy is complete and unchanged; each corpus folder
@@ -15,6 +15,14 @@ Corpora:
                 instances: standard, extension, technical-cases
   zugferd252    ZUGFeRD 2.5.2 / Factur-X 1.09.2 examples of every profile
   peppol        Peppol BIS Billing 3.0 examples (May 2026), invoices only
+  kosit-suite   KoSIT XRechnung 3.0.2 testsuite 2026-08-31, the release that
+                matches validator configuration 2026-08-31 in
+                addons/java-tools/tools.json (tests/data/local/kosit/instances)
+  kosit-rules   the Schematron rule files and their .sch sources from the
+                LandrixXML submodule (external/landrix-xml/tests/data/
+                schematron, checked there against the configuration's XSLT),
+                with their NOTICE.md (tests/data/local/kosit/rules); the
+                paths below that folder are kept
 
 Usage:
   python tools/testdata/sync-local.py [--docs <folder>]            copy and verify
@@ -34,7 +42,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 MANIFEST = os.path.join(HERE, "corpora.json")
-TARGET = os.path.join(REPO, "tests", "data", "local", "sweep")
+LOCAL = os.path.join(REPO, "tests", "data", "local")
 
 SOURCES = {
     "kosit-xr302": {
@@ -51,6 +59,20 @@ SOURCES = {
         "root": "Peppol BIS Billing 3.0 - May 2026 Release/BIS-Billing3-Examples/rules/examples",
         "flatten": False,
         "exclude": ["sales-order-example.xml"],
+    },
+    "kosit-suite": {
+        "root": "XRechnung 3.0.2/xrechnung-3.0.2-testsuite-2026-08-31/instances",
+        "flatten": True,
+        "exclude": [],
+        "target": "kosit/instances",
+    },
+    "kosit-rules": {
+        "root": "external/landrix-xml/tests/data/schematron",
+        "base": "repo",
+        "keep_paths": True,
+        "include": ["NOTICE.md", "rules/*.xml", "sources/*.sch"],
+        "exclude": [],
+        "target": "kosit/rules",
     },
 }
 
@@ -71,17 +93,27 @@ def ascii_name(name):
 
 
 def collect(docs, spec):
-    """{target name: source path} for every XML below the corpus root."""
-    root = os.path.join(docs, spec["root"])
+    """{target name: source path} for every XML below the corpus root (or the
+    files matching "include", relative paths with '*' also matching '/')."""
+    base = REPO if spec.get("base") == "repo" else docs
+    root = os.path.join(base, spec["root"])
     if not os.path.isdir(root):
         sys.exit("missing: %s" % root)
     out = {}
     for dirpath, _, files in os.walk(root):
         for name in files:
-            if not name.lower().endswith(".xml") or any(fnmatch.fnmatch(name, x) for x in spec["exclude"]):
-                continue
             rel = os.path.relpath(os.path.join(dirpath, name), root).replace(os.sep, "/")
-            target = ascii_name(rel.replace("/", "_") if spec["flatten"] else name)
+            if "include" in spec:
+                if not any(fnmatch.fnmatch(rel, x) for x in spec["include"]):
+                    continue
+            elif not name.lower().endswith(".xml"):
+                continue
+            if any(fnmatch.fnmatch(name, x) for x in spec["exclude"]):
+                continue
+            if spec.get("keep_paths"):
+                target = ascii_name(rel)
+            else:
+                target = ascii_name(rel.replace("/", "_") if spec["flatten"] else name)
             if target in out:
                 sys.exit("duplicate target name %s" % target)
             out[target] = os.path.join(dirpath, name)
@@ -110,7 +142,7 @@ def main():
     failed = 0
     for corpus, entry in sorted(manifest.items()):
         files = collect(args.docs, SOURCES[corpus])
-        dest = os.path.join(TARGET, corpus)
+        dest = os.path.join(LOCAL, *SOURCES[corpus].get("target", "sweep/" + corpus).split("/"))
         if os.path.isdir(dest):
             shutil.rmtree(dest)
         os.makedirs(dest)
@@ -125,7 +157,9 @@ def main():
                 print("checksum differs: %s/%s" % (corpus, name))
                 failed += 1
                 continue
-            shutil.copyfile(src, os.path.join(dest, name))
+            out = os.path.join(dest, *name.split("/"))
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            shutil.copyfile(src, out)
             lines.append("%s  %s\n" % (digest, name))
         extra = sorted(set(files) - set(entry["files"]))
         for name in extra:

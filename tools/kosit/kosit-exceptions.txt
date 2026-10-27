@@ -1,0 +1,3 @@
+# Known differences of tools/kosit/kosit-oracle.py: file<TAB>difference line ('- ...' KoSIT only,
+# '+ ...' probe only, as the script prints them). Every line needs a reason in the comment above it;
+# '*' in the file name stands for any text; an unused line fails the run. None so far.
