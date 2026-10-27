@@ -16,18 +16,21 @@
   the XPath functions of the Peppol BIS schematron (u:gln, u:mod11,
   u:mod97-0208, u:checkCodiceIPA, u:checkCF, u:checkPIVAseIT,
   u:checkSEOrgnr, u:abn, u:TinVerification) and the IBAN check of KoSIT
-  (xr:checkIBAN). The functions take the value as the schematron passes it
-  (most rules normalize it first, see LandrixEInvoiceNormalizeSpace) and
-  know nothing about invoices or targets.
+  (xr:checkIBAN), and the patterns of telephone, email and the cash
+  discount lines of KoSIT and Peppol. The functions take the value as the
+  schematron passes it (most rules normalize it first, see
+  LandrixEInvoiceNormalizeSpace) and know nothing about invoices or
+  targets.
 
   DE: Formate und Pruefziffern von Kennungen, wie die Validatoren sie
   pruefen: die XPath-Funktionen des Peppol-BIS-Schematrons (u:gln, u:mod11,
   u:mod97-0208, u:checkCodiceIPA, u:checkCF, u:checkPIVAseIT,
   u:checkSEOrgnr, u:abn, u:TinVerification) und die IBAN-Pruefung der KoSIT
-  (xr:checkIBAN). Die Funktionen nehmen den Wert so, wie das Schematron ihn
-  uebergibt (die meisten Regeln normalisieren ihn vorher, siehe
-  LandrixEInvoiceNormalizeSpace), und wissen nichts von Rechnungen oder
-  Zielen. }
+  (xr:checkIBAN), sowie die Muster fuer Telefon, E-Mail und die
+  Skontozeilen von KoSIT und Peppol. Die Funktionen nehmen den Wert so, wie
+  das Schematron ihn uebergibt (die meisten Regeln normalisieren ihn
+  vorher, siehe LandrixEInvoiceNormalizeSpace), und wissen nichts von
+  Rechnungen oder Zielen. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -149,6 +152,20 @@ function LandrixEInvoiceTelephoneValid(const AValue: TLandrixEInvoiceString): Bo
   eine Domain aus mindestens zwei nicht leeren, durch Punkte getrennten
   Teilen. }
 function LandrixEInvoiceEmailValid(const AValue: TLandrixEInvoiceString): Boolean;
+
+{ BR-DE-18 and DE-R-018: every line of the payment terms text (BT-20) that
+  starts with # after normalize-space has the form
+  #SKONTO#TAGE=n#PROZENT=p.pp# with an optional BASISBETRAG=b.bb# (b may be
+  negative; $XR-SKONTO-REGEX, here anchored at the start of the line,
+  which the schematron is not: the writers only produce lines in this
+  form). True for a text without such lines.
+  DE: BR-DE-18 und DE-R-018: jede Zeile des Texts der Zahlungsbedingungen
+  (BT-20), die nach normalize-space mit # beginnt, hat die Form
+  #SKONTO#TAGE=n#PROZENT=p.pp# mit optionalem BASISBETRAG=b.bb# (b darf
+  negativ sein; $XR-SKONTO-REGEX, hier am Zeilenanfang verankert, was
+  das Schematron nicht ist: die Writer erzeugen nur Zeilen dieser Form).
+  True fuer einen Text ohne solche Zeilen. }
+function LandrixEInvoiceCashDiscountTextValid(const AText: TLandrixEInvoiceString): Boolean;
 
 implementation
 
@@ -441,6 +458,70 @@ begin
      (Domain[Length(Domain)] = '.') then
     Exit;
   Result := True;
+end;
+
+function CashDiscountLineValid(const ALine: TLandrixEInvoiceString): Boolean;
+var
+  P: Integer;
+
+  function Expect(const AText: TLandrixEInvoiceString): Boolean;
+  begin
+    Result := Copy(ALine, P, Length(AText)) = AText;
+    if Result then
+      Inc(P, Length(AText));
+  end;
+
+  function Digits(AMin: Integer; AExact: Boolean): Boolean;
+  var
+    N: Integer;
+  begin
+    N := 0;
+    while (P <= Length(ALine)) and IsDigit(ALine[P]) and (not AExact or (N < AMin)) do
+    begin
+      Inc(P);
+      Inc(N);
+    end;
+    Result := N >= AMin;
+  end;
+
+  function Decimal: Boolean;
+  begin
+    Result := Digits(1, False) and Expect('.') and Digits(2, True);
+  end;
+
+begin
+  P := 1;
+  Result := Expect('#SKONTO#TAGE=') and Digits(1, False) and Expect('#PROZENT=') and Decimal;
+  if not Result then
+    Exit;
+  if Copy(ALine, P, 13) = '#BASISBETRAG=' then
+  begin
+    Inc(P, 13);
+    if Copy(ALine, P, 1) = '-' then
+      Inc(P);
+    Result := Decimal;
+  end;
+  Result := Result and Expect('#') and (P = Length(ALine) + 1);
+end;
+
+function LandrixEInvoiceCashDiscountTextValid(const AText: TLandrixEInvoiceString): Boolean;
+var
+  Line: TLandrixEInvoiceString;
+  I, Start: Integer;
+begin
+  Result := True;
+  Start := 1;
+  for I := 1 to Length(AText) + 1 do
+    if (I > Length(AText)) or (AText[I] = #10) then
+    begin
+      Line := LandrixEInvoiceNormalizeSpace(Copy(AText, Start, I - Start));
+      if (Copy(Line, 1, 1) = '#') and not CashDiscountLineValid(Line) then
+      begin
+        Result := False;
+        Exit;
+      end;
+      Start := I + 1;
+    end;
 end;
 
 end.

@@ -97,11 +97,27 @@ begin
   Check(not LandrixEInvoiceEmailValid('a@b..de'), 'email with empty part');
 end;
 
+procedure TestCashDiscountText;
+begin
+  Check(LandrixEInvoiceCashDiscountTextValid(''), 'empty');
+  Check(LandrixEInvoiceCashDiscountTextValid('Net 30 days'), 'no cash discount line');
+  Check(LandrixEInvoiceCashDiscountTextValid('#SKONTO#TAGE=7#PROZENT=2.00#' + #10 +
+    ' #SKONTO#TAGE=14#PROZENT=1.50#BASISBETRAG=-12.30# ' + #13#10 + 'Net 30'), 'two lines and text');
+  Check(not LandrixEInvoiceCashDiscountTextValid('#SKONTO#TAGE=-1#PROZENT=2.00#' + #10), 'negative days');
+  Check(not LandrixEInvoiceCashDiscountTextValid('#SKONTO#TAGE=7#PROZENT=-2.00#' + #10), 'negative percent');
+  Check(not LandrixEInvoiceCashDiscountTextValid('#SKONTO#TAGE=7#PROZENT=2.0#'), 'one decimal');
+  Check(not LandrixEInvoiceCashDiscountTextValid('#SKONTO#TAGE=7#PROZENT=2.00'), 'no closing #');
+  Check(not LandrixEInvoiceCashDiscountTextValid('#skonto#TAGE=7#PROZENT=2.00#'), 'lower case');
+  Check(not LandrixEInvoiceCashDiscountTextValid('Net' + #10 + '# note'), 'other line with #');
+  Check(LandrixEInvoiceCashDiscountTextValid('Net # note'), '# inside a line');
+end;
+
 procedure Register;
 begin
   RegisterTest('Identifiers.NormalizeSpace', TestNormalizeSpace);
   RegisterTest('Identifiers.CheckDigits', TestCheckDigits);
   RegisterTest('Identifiers.ContactFormats', TestContactFormats);
+  RegisterTest('Identifiers.CashDiscountText', TestCashDiscountText);
 end;
 
 end.

@@ -1751,81 +1751,6 @@ begin
     (Copy(Rest, 10, 3) = 'MVA') and LandrixEInvoiceMod11Valid(Copy(Rest, 1, 9)));
 end;
 
-{ DE-R-018: a line of the payment terms that starts with # (after
-  normalize-space) has the form #SKONTO#TAGE=n#PROZENT=p.pp# with an
-  optional BASISBETRAG=b.bb# (b may be negative).
-  DE: DE-R-018: eine Zeile der Zahlungsbedingungen, die (nach
-  normalize-space) mit # beginnt, hat die Form #SKONTO#TAGE=n#PROZENT=p.pp#
-  mit optionalem BASISBETRAG=b.bb# (b darf negativ sein). }
-function CashDiscountLineValid(const ALine: TLandrixEInvoiceString): Boolean;
-var
-  P: Integer;
-
-  function Expect(const AText: TLandrixEInvoiceString): Boolean;
-  begin
-    Result := Copy(ALine, P, Length(AText)) = AText;
-    if Result then
-      Inc(P, Length(AText));
-  end;
-
-  function Digits(AMin: Integer; AExact: Boolean): Boolean;
-  var
-    N: Integer;
-  begin
-    N := 0;
-    while (P <= Length(ALine)) and (ALine[P] >= '0') and (ALine[P] <= '9') and (not AExact or (N < AMin)) do
-    begin
-      Inc(P);
-      Inc(N);
-    end;
-    Result := N >= AMin;
-  end;
-
-  function Decimal: Boolean;
-  begin
-    Result := Digits(1, False) and Expect('.') and Digits(2, True);
-  end;
-
-begin
-  P := 1;
-  Result := Expect('#SKONTO#TAGE=') and Digits(1, False) and Expect('#PROZENT=') and Decimal;
-  if not Result then
-    Exit;
-  if Copy(ALine, P, 13) = '#BASISBETRAG=' then
-  begin
-    Inc(P, 13);
-    if Copy(ALine, P, 1) = '-' then
-      Inc(P);
-    Result := Decimal;
-  end;
-  Result := Result and Expect('#') and (P = Length(ALine) + 1);
-end;
-
-{ DE-R-018 on the payment terms text as written (BT-20). DE: DE-R-018 auf
-  dem Text der Zahlungsbedingungen, wie er geschrieben wird (BT-20). }
-function CashDiscountTextWrong(AInvoice: TLandrixInvoice): Boolean;
-var
-  Text, Line: TLandrixEInvoiceString;
-  I, Start: Integer;
-begin
-  Result := False;
-  Text := LandrixEInvoicePaymentTermsText(AInvoice);
-  if not Present(Text) then
-    Exit;
-  Start := 1;
-  for I := 1 to Length(Text) + 1 do
-    if (I > Length(Text)) or (Text[I] = #10) then
-    begin
-      Line := LandrixEInvoiceNormalizeSpace(Copy(Text, Start, I - Start));
-      if (Copy(Line, 1, 1) = '#') and not CashDiscountLineValid(Line) then
-      begin
-        Result := True;
-        Exit;
-      end;
-      Start := I + 1;
-    end;
-end;
-
 { The national rules. DE: Die nationalen Regeln. }
 function NationalViolated(AIndex: TPeppolRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec):
   Boolean;
@@ -2110,7 +2035,7 @@ begin
     pr_DER017:
       Result := BothDE and not InList(TypeCode, '326 380 384 389 381 875 876 877');
     pr_DER018:
-      Result := BothDE and CashDiscountTextWrong(AInvoice);
+      Result := BothDE and not LandrixEInvoiceCashDiscountTextValid(LandrixEInvoicePaymentTermsText(AInvoice));
     pr_DER019, pr_DER020, pr_DER0231..pr_DER0252:
       Result := BothDE and AnyPaymentViolated(AIndex, AInvoice);
     pr_DER022:

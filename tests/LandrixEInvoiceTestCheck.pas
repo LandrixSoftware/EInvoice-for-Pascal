@@ -319,6 +319,14 @@ begin
     Line.TaxCategory := idtfcc_None
   else if AID = 'BR-DE-17' then
     Invoice.InvoiceTypeCode := itc_PrepaymentInvoice
+  else if AID = 'BR-DE-18' then
+  begin
+    Invoice.PaymentTermsType := iptt_CashDiscount2;
+    Invoice.PaymentTermCashDiscount1Days := 10;
+    Invoice.PaymentTermCashDiscount1Percent := 2;
+    Invoice.PaymentTermCashDiscount2Days := 14;
+    Invoice.PaymentTermCashDiscount2Percent := -1;
+  end
   else if AID = 'BR-DE-19' then
     Payment.FinancialAccount := 'DE02120300000000202052'
   else if AID = 'BR-DE-20' then
@@ -593,7 +601,7 @@ type
   end;
 
 const
-  RuleCases: array[0..147] of TRuleCase = (
+  RuleCases: array[0..148] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -691,6 +699,7 @@ const
     (ID: 'BR-CO-26'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-FXEXT-CO-04'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'BR-DE-17'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
+    (ID: 'BR-DE-18'; Target: tk_XRCII; NotApplicable: tk_Peppol),
     (ID: 'BR-DE-19'; Target: tk_XRCII; NotApplicable: tk_Peppol),
     (ID: 'BR-DE-20'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
     (ID: 'BR-DE-27'; Target: tk_XRCII; NotApplicable: tk_Peppol),

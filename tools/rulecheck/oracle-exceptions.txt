@@ -162,3 +162,10 @@ ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra PEPPOL-EN16931-R055
 
 # PEPPOL-EN16931-R121: a base quantity of 0 is absent in the model and not written.
 *-peppol-en16931-r121-*-code-0.xml	missed PEPPOL-EN16931-R121
+
+# BR-DE-18: the model holds cash discounts as days, percent and base; the reader takes every
+# #SKONTO# line into them (unreadable numbers stay 0, a fourth line becomes text) and keeps any
+# other line as free text, where the writers replace '#' by a blank. The output of these documents
+# has no wrong cash discount line; the rule fires only for negative days or percent in the model
+# (tests: Check.RuleCases, Identifiers.CashDiscountText).
+*-br-de-18-*-identity.xml	missed BR-DE-18

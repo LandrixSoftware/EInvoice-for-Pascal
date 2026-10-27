@@ -25,7 +25,7 @@
   always meet has no row (BR-01, BR-12 to BR-15, BR-22, BR-24, BR-26,
   BR-31, BR-36, BR-41, BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-CO-05
   to BR-CO-08 (their schematron test is true), BR-CO-19, BR-CO-20 (an empty
-  period is not written), BR-DE-14, BR-DE-18, BR-DE-21,
+  period is not written), BR-DE-14, BR-DE-21,
   PEPPOL-EN16931-R001, R008 (no empty elements), R043, R044 (the charge
   indicator), R053 in CII, R101 (a line document reference has type 130)),
   and where the syntaxes differ
@@ -79,7 +79,7 @@
   (BR-01, BR-12 bis BR-15, BR-22, BR-24, BR-26, BR-31, BR-36, BR-41,
   BR-43, BR-45, BR-46, BR-48, BR-49, BR-50, BR-CO-05 bis BR-CO-08 (ihr
   Schematron-Test ist true), BR-CO-19, BR-CO-20 (ein leerer Zeitraum wird
-  nicht geschrieben), BR-DE-14, BR-DE-18, BR-DE-21, PEPPOL-EN16931-R001,
+  nicht geschrieben), BR-DE-14, BR-DE-21, PEPPOL-EN16931-R001,
   R008 (keine leeren Elemente), R043, R044 (das Zuschlagskennzeichen), R053
   in CII, R101 (ein Dokumentverweis der Position hat die Art 130)),
   und wo die Syntaxen sich unterscheiden, folgt die
@@ -243,7 +243,7 @@ type
     cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65, cr_BRB01, cr_BRB02,
     cr_BRDE01, cr_BRDE02, cr_BRDE03, cr_BRDE04, cr_BRDE05, cr_BRDE06,
     cr_BRDE07, cr_BRDE08, cr_BRDE09, cr_BRDE10, cr_BRDE11, cr_BRDE15,
-    cr_BRDE16, cr_BRDE17, cr_BRDE19, cr_BRDE20, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
+    cr_BRDE16, cr_BRDE17, cr_BRDE18, cr_BRDE19, cr_BRDE20, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
     cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE27, cr_BRDE28, cr_BRDE30, cr_BRDE31,
     cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061,
     cr_PeppolR005, cr_PeppolR040, cr_PeppolR041, cr_PeppolR042, cr_PeppolR046, cr_PeppolR053, cr_PeppolR054,
@@ -632,6 +632,11 @@ const
     (ID: 'BR-DE-17'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-3';
      Message: 'the invoice type code (BT-3) should be 326, 380, 384, 389, 381, 875, 876 or 877';
+     Source: XRechnungSource),
+    (ID: 'BR-DE-18'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-20';
+     Message: 'cash discount lines in the payment terms (BT-20) shall have the form ' +
+       '#SKONTO#TAGE=n#PROZENT=p#[BASISBETRAG=b#]';
      Source: XRechnungSource),
     (ID: 'BR-DE-19'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Warning; Legacy: False; Terms: 'BT-84';
@@ -3979,6 +3984,15 @@ begin
         not Present(Seller.VATCompanyNumber) and not PartySet(TaxRepresentative);
     cr_BRDE17:
       Result := not TypeCodeSupported(AInvoice);
+    { BR-DE-18: the lines as written; the second part of the test (a line
+      break after the last cash discount line) always holds, as the text
+      ends every line with LF and replaces # in the free text.
+      DE: BR-DE-18: die Zeilen, wie sie geschrieben werden; der zweite Teil
+      des Tests (ein Zeilenumbruch nach der letzten Skontozeile) gilt immer,
+      da der Text jede Zeile mit LF abschliesst und # im freien Text
+      ersetzt. }
+    cr_BRDE18:
+      Result := not LandrixEInvoiceCashDiscountTextValid(LandrixEInvoicePaymentTermsText(AInvoice));
     cr_BRDE22:
       Result := DuplicateFilename(AInvoice);
     cr_BRDE23b:
