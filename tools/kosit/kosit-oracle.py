@@ -42,6 +42,18 @@ well-formed, an XML schema error, a fatal and a warning-only Schematron
 message). Its scenarios have no acceptMatch; KoSIT then accepts a
 schema-valid document without any failed assert (the report's valid
 attribute), not by the report's assessment, so that is the verdict there.
+--corpus zugferd runs the ZUGFeRD 2.5.2 / Factur-X 1.09.2 configuration of
+addons/java-tools (validator-configuration-zugferd): the ZUGFeRD examples
+(corpus zugferd252 of sync-local.py), the CII examples in tests/data/local/cii
+and cii-invalid, the ZUGFeRD files of a test run (*-cii*-25.xml of
+build/<toolchain>/cross, cases and sweep) and mutants of E05_01_Einfach.xml
+(build/kosit-oracle/zugferd-mutants/: no scenario, not well-formed, an XML
+schema error, a fatal Schematron message, the generic EN16931 scenario).
+The configuration ships its own Schematron sources: each Factur-X-*.xslt of
+its Schema folder imports the XSLT of one profile, and the .sch next to that
+XSLT's folder is mapped to it and compiled. The configuration writes
+locations in the readable form /rsm:CrossIndustryInvoice/ram:x[1]; the
+oracle writes them as SchXslt does.
 --corpus all runs every corpus; --update then needs all of them to be clean.
 
 Known differences are listed in tools/kosit/kosit-exceptions.txt
@@ -55,7 +67,7 @@ probe:
   ./tools/build.ps1 fpc322-win64 -Program tools/kosit/ValidatorProbe.dpr -NoRun
 
 Usage:
-  python tools/kosit/kosit-oracle.py [--corpus suite|generated|outputs|peppol|all] [--toolchain <tc>]
+  python tools/kosit/kosit-oracle.py [--corpus suite|generated|outputs|peppol|zugferd|all] [--toolchain <tc>]
       [--probe <exe>] [--java <java>] [--keep] [--update]
 The KoSIT reports are kept in build/kosit-oracle/ (--keep reuses them).
 --update rewrites tests/data/kosit-expected.txt, the reference of the test
@@ -81,11 +93,14 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 TOOLS = os.path.join(REPO, "addons", "java-tools")
 CONFIG = os.path.join(TOOLS, "validator-configuration-xrechnung")
 CONFIG_BIS = os.path.join(TOOLS, "validator-configuration-bis")
+CONFIG_ZF = os.path.join(TOOLS, "validator-configuration-zugferd")
 LOCAL = os.path.join(REPO, "tests", "data", "local", "kosit")
 INSTANCES = os.path.join(LOCAL, "instances")
 RULES = os.path.join(LOCAL, "rules", "rules")
 PEPPOL_RULES = os.path.join(LOCAL, "peppol", "PEPPOL-EN16931-UBL.sch")
 PEPPOL_EXAMPLES = os.path.join(REPO, "tests", "data", "local", "sweep", "peppol")
+ZF_EXAMPLES = os.path.join(REPO, "tests", "data", "local", "sweep", "zugferd252")
+CII_EXAMPLES = [os.path.join(REPO, "tests", "data", "local", d) for d in ("cii", "cii-invalid")]
 EXCEPTIONS = os.path.join(HERE, "kosit-exceptions.txt")
 EXPECTED = os.path.join(REPO, "tests", "data", "kosit-expected.txt")
 GENERATED = os.path.join(os.path.dirname(REPO), "landrix-einvoice-docs", "XRechnung 3.0.0",
@@ -124,6 +139,29 @@ MUTANTS = [
 
 PEPPOL_ID = b"urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
 UBL_CBC = b"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+ZF_ID = b"<ram:ID>urn:cen.eu:en16931:2017</ram:ID>"
+
+# the same for the ZUGFeRD configuration, from ZF_EXAMPLES (profile EN16931)
+ZF_MUTANTS = [
+    ("m-noscenario-zf.xml", "E05_01_Einfach.xml", [(ZF_ID, b"<ram:ID>urn:example:no-scenario</ram:ID>")]),
+    ("m-notwellformed-zf.xml", "E05_01_Einfach.xml",
+     [(b"</rsm:CrossIndustryInvoice>", b"</rsm:CrossIndustryInvoic>")]),
+    ("m-xsd-zf.xml", "E05_01_Einfach.xml",
+     [(b"<rsm:ExchangedDocument>", b"<rsm:ExchangedDocument><ram:Unknown>x</ram:Unknown>")]),
+    ("m-fatal-zf.xml", "E05_01_Einfach.xml",
+     [(b"<ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>",
+       b"<ram:InvoiceCurrencyCode>XXX</ram:InvoiceCurrencyCode>")]),
+    # an EN16931 specialisation of no known profile: the generic scenario
+    ("m-generic-zf.xml", "E05_01_Einfach.xml",
+     [(ZF_ID, b"<ram:ID>urn:cen.eu:en16931:2017#compliant#urn:example:cius</ram:ID>")]),
+]
+
+# a step of the readable location (ISO skeleton, get-full-path-3): the name
+# with the prefix of the document (none for the default namespace); the root
+# step has no position
+NAME_STEP = re.compile(r"/(?:([A-Za-z_][\w.-]*):)?([A-Za-z_][\w.-]*)(\[\d+\])?")
+
+
 # the start tag of the root element after the XML declaration
 ROOT_TAG = re.compile(rb"<[A-Za-z][^>]*>")
 
@@ -185,8 +223,32 @@ def run_kosit(java, config, files, out):
                            stderr=subprocess.DEVNULL)
 
 
-def kosit_result(report):
-    """The comparable lines of a KoSIT report."""
+def document_namespaces(document):
+    """{prefix: namespace} of the document ('' for the default namespace)."""
+    spaces = {}
+    try:
+        for _, (prefix, uri) in ET.iterparse(document, events=("start-ns",)):
+            spaces.setdefault(prefix, uri)
+    except ET.ParseError:
+        pass
+    return spaces
+
+
+def readable_location(location, spaces):
+    """A readable location written as SchXslt does; others unchanged."""
+    if not location.startswith("/") or location.startswith("/Q{") or "*:" in location:
+        return location
+    steps = NAME_STEP.findall(location)
+    joined = "".join("/%s%s%s" % (p + ":" if p else "", n, i) for p, n, i in steps)
+    if joined != location or any(p not in spaces for p, _, _ in steps if p):
+        return location
+    return "".join("/Q{%s}%s%s" % (spaces.get(p, ""), n, i or "[1]") for p, n, i in steps)
+
+
+def kosit_result(report, document=None):
+    """The comparable lines of a KoSIT report (document: the validated file,
+    for the prefixes of readable locations)."""
+    spaces = document_namespaces(document) if document else {}
     root = ET.parse(report).getroot()
     lines = []
     name = root.find(REP + "scenarioMatched/" + SCN + "scenario/" + SCN + "name")
@@ -201,6 +263,7 @@ def kosit_result(report):
             for m in messages:
                 location = ISO_STEP.sub(lambda s: "Q{%s}%s[%s]" % (s.group(2), s.group(1), s.group(3)),
                                       m.get("xpathLocation", ""))
+                location = readable_location(location, spaces)
                 lines.append("sch%s %s %s %s" % (sid[8:], m.get("code"), m.get("level"), location))
         elif messages:
             lines.append("wf %d" % len(messages))
@@ -221,8 +284,35 @@ def kosit_result(report):
     return [lines[0]] + sorted(lines[1:-1]) + [lines[-1]]
 
 
+def zugferd_maps():
+    """<xslt>=<sch> arguments of the probe for the ZUGFeRD configuration: each
+    Factur-X-*.xslt imports a profile's XSLT in <profile>/_XSLT_*/, the
+    Schematron source lies in <profile>/."""
+    maps = []
+    for wrapper in sorted(glob.glob(os.path.join(CONFIG_ZF, "Schema", "Factur-X-*.xslt"))):
+        try:
+            imp = ET.parse(wrapper).getroot().find("{http://www.w3.org/1999/XSL/Transform}import")
+        except ET.ParseError as e:
+            sys.exit("%s: %s" % (wrapper, e))
+        if imp is None:
+            sys.exit("no xsl:import in " + wrapper)
+        xslt = os.path.join(os.path.dirname(wrapper), *imp.get("href").split("/"))
+        name = os.path.splitext(os.path.basename(xslt))[0] + ".sch"
+        sch = os.path.join(os.path.dirname(os.path.dirname(xslt)), name)
+        if not os.path.isfile(sch):
+            sys.exit("no Schematron source for %s: %s" % (wrapper, sch))
+        maps.append(os.path.basename(wrapper) + "=" + sch)
+    if not maps:
+        sys.exit("no Factur-X-*.xslt in " + CONFIG_ZF)
+    return maps
+
+
+def probe_args(config):
+    return zugferd_maps() if config == CONFIG_ZF else []
+
+
 def probe_output(probe, config, folders):
-    out = subprocess.run([probe, os.path.join(config, "scenarios.xml"), LOCAL] + folders,
+    out = subprocess.run([probe, os.path.join(config, "scenarios.xml"), LOCAL] + probe_args(config) + folders,
                          capture_output=True, text=True, encoding="ascii", errors="replace")
     if out.returncode != 0:
         sys.exit("probe failed: " + out.stdout + out.stderr)
@@ -283,8 +373,10 @@ def main():
     ap.add_argument("--java")
     ap.add_argument("--keep", action="store_true", help="reuse the KoSIT reports in build/kosit-oracle")
     ap.add_argument("--update", action="store_true", help="rewrite tests/data/kosit-expected.txt")
-    ap.add_argument("--corpus", choices=("suite", "generated", "outputs", "peppol", "all"), default="suite")
-    ap.add_argument("--toolchain", default="fpc322-linux", help="whose outputs --corpus outputs takes")
+    ap.add_argument("--corpus", choices=("suite", "generated", "outputs", "peppol", "zugferd", "all"),
+                    default="suite")
+    ap.add_argument("--toolchain", default="fpc322-linux",
+                    help="whose outputs the corpora outputs, peppol and zugferd take")
     args = ap.parse_args()
     if not os.path.isfile(os.path.join(INSTANCES, "MANIFEST.txt")) or not os.path.isdir(RULES):
         sys.exit("missing tests/data/local/kosit: run tools/testdata/sync-local.py")
@@ -350,6 +442,21 @@ def main():
                 for f in glob.glob(os.path.join(REPO, "build", args.toolchain, folder, "*-peppol.xml")):
                     shutil.copyfile(f, os.path.join(copy, folder + "_" + os.path.basename(f)))
         runs.append(("rep-peppol", CONFIG_BIS, [PEPPOL_EXAMPLES, mutants, unit, copy]))
+    if args.corpus in ("zugferd", "all"):
+        if not os.path.isdir(ZF_EXAMPLES):
+            sys.exit("missing ZUGFeRD examples: run tools/testdata/sync-local.py")
+        mutants = os.path.join(OUT, "zugferd-mutants")
+        make_mutants(mutants, ZF_MUTANTS, ZF_EXAMPLES)
+        copy = os.path.join(OUT, "zugferd-out")
+        if not args.keep or not os.path.isdir(copy):
+            if os.path.isdir(copy):
+                shutil.rmtree(copy)
+            os.makedirs(copy)
+            for folder in ("cross", "cases", "sweep"):
+                for f in glob.glob(os.path.join(REPO, "build", args.toolchain, folder, "*-cii*-25.xml")):
+                    shutil.copyfile(f, os.path.join(copy, folder + "_" + os.path.basename(f)))
+        runs.append(("rep-zugferd", CONFIG_ZF, [ZF_EXAMPLES, mutants, copy] +
+                     [d for d in CII_EXAMPLES if os.path.isdir(d)]))
     pairs = []
     ours = {}
     for sub, config, folders in runs:
@@ -376,7 +483,7 @@ def main():
             print("  no KoSIT report: " + name)
             unexpected += 1
             continue
-        theirs = kosit_result(report)
+        theirs = kosit_result(report, f)
         mine = ours.get(name, ["missing in the probe output"])
         compared += 1
         if theirs == mine:

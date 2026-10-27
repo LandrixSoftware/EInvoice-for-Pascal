@@ -324,6 +324,11 @@ Supported invoice standards are documented per release.
   and the Peppol outputs of a test run (1,294 documents, no difference). Tests
   `Validator.WithoutAcceptMatch` and `Validator.PeppolOutputs` (every `*-peppol.xml` output of the run).
   `tools/validate.ps1` still judges Peppol files by the report's assessment (error-level messages only).
+  ZUGFeRD 2.5.2 / Factur-X 1.09.2 (`--corpus zugferd`): the configuration ships the Schematron source of each
+  profile next to its XSLT; the validator compiles it. Compared with KoSIT on the ZUGFeRD examples, the CII
+  examples of `tests/data/local/cii` and `cii-invalid`, five mutants and the ZUGFeRD outputs of a test run
+  (677 documents, no difference; the configuration's readable locations are compared in the SchXslt form).
+  Test `Validator.ZugferdOutputs` (every `*-cii*-25.xml` output of the run, about one minute per toolchain).
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

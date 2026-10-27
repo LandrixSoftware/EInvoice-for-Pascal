@@ -28,7 +28,11 @@
   accepted. Validator.PeppolOutputs, registered last too, does the same for
   the Peppol BIS files (*-peppol.xml) with the Peppol BIS configuration of
   addons/java-tools and the Peppol schematron of tests/data/local/kosit/peppol;
-  the files of PeppolKnown must be rejected instead (each with its reason). }
+  the files of PeppolKnown must be rejected instead (each with its reason).
+  Validator.ZugferdOutputs, registered last as well, checks the ZUGFeRD
+  files (*-cii*-25.xml) with the ZUGFeRD 2.5.2 configuration of
+  addons/java-tools, whose Schematron sources are compiled (ZugferdRuleMap,
+  paths below its Schema/factur-x-1.09.2 folder); skipped without that configuration. }
 
 unit LandrixEInvoiceTestValidator;
 
@@ -471,6 +475,56 @@ const
     rejects. }
   PeppolKnown: array[0..0] of string = ('cross/TitelPositionsgruppen-ubl-peppol.xml');
 
+const
+  { the Schematron step of each profile (a wrapper XSLT of the configuration
+    importing the profile's XSLT) and the source of that XSLT }
+  ZugferdRuleMap: array[0..4, 0..1] of string = (
+    ('Factur-X-1.09.2_MINIMUM.xslt', '0_Factur-X_1.09.2_MINIMUM/FACTUR-X_MINIMUM.sch'),
+    ('Factur-X-1.09.2_BASICWL.xslt', '1_Factur-X_1.09.2_BASICWL/FACTUR-X_BASIC-WL.sch'),
+    ('Factur-X-1.09.2_BASIC.xslt', '2_Factur-X_1.09.2_BASIC/FACTUR-X_BASIC.sch'),
+    ('Factur-X-1.09.2_EN16931.xslt', '3_Factur-X_1.09.2_EN16931/FACTUR-X_EN16931.sch'),
+    ('Factur-X-1.09.2_EXTENDED.xslt', '4_Factur-X_1.09.2_EXTENDED/FACTUR-X_EXTENDED.sch'));
+
+{ the ZUGFeRD configuration with its own Schematron sources; nil if the
+  configuration or a source is missing (e.g. another version installed) }
+function NewZugferdValidator: TLandrixEInvoiceValidator;
+var
+  Dir, Schema: string;
+  I: Integer;
+begin
+  Result := nil;
+  Dir := RepositoryRoot + 'addons' + PathDelim + 'java-tools' + PathDelim + 'validator-configuration-zugferd' +
+    PathDelim;
+  Schema := Dir + 'Schema' + PathDelim + 'factur-x-1.09.2' + PathDelim;
+  if not FileExists(Dir + 'scenarios.xml') then
+    Exit;
+  for I := Low(ZugferdRuleMap) to High(ZugferdRuleMap) do
+    if not FileExists(Schema + StringReplace(ZugferdRuleMap[I, 1], '/', PathDelim, [rfReplaceAll])) then
+      Exit;
+  Result := TLandrixEInvoiceValidator.Create;
+  try
+    Result.LoadConfiguration(Dir + 'scenarios.xml');
+    for I := Low(ZugferdRuleMap) to High(ZugferdRuleMap) do
+      Result.RuleFiles.Values[ZugferdRuleMap[I, 0]] := Schema +
+        StringReplace(ZugferdRuleMap[I, 1], '/', PathDelim, [rfReplaceAll]);
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+procedure TestZugferdOutputs;
+var
+  V: TLandrixEInvoiceValidator;
+begin
+  V := NewZugferdValidator;
+  if V = nil then
+    Skip('no ZUGFeRD 2.5.2 configuration (addons/java-tools)')
+  else
+    { no known rejection ('' names no file) }
+    CheckOutputs(V, ['*-cii*-25.xml'], [''], 'ZUGFeRD');
+end;
+
 procedure TestPeppolOutputs;
 var
   V: TLandrixEInvoiceValidator;
@@ -494,6 +548,7 @@ procedure RegisterLast;
 begin
   RegisterTest('Validator.Outputs', TestOutputs);
   RegisterTest('Validator.PeppolOutputs', TestPeppolOutputs);
+  RegisterTest('Validator.ZugferdOutputs', TestZugferdOutputs);
 end;
 
 end.
