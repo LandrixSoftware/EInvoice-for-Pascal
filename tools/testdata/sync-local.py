@@ -23,6 +23,10 @@ Corpora:
                 schematron, checked there against the configuration's XSLT),
                 with their NOTICE.md (tests/data/local/kosit/rules); the
                 paths below that folder are kept
+  kosit-peppol  the Peppol BIS Billing 3.0.21 schematron PEPPOL-EN16931-UBL.sch
+                (May 2026 release), which the validator compiles when it
+                loads (tests/data/local/kosit/peppol); its EN16931 rules are
+                the en16931-ubl of kosit-rules
 
 Usage:
   python tools/testdata/sync-local.py [--docs <folder>]            copy and verify
@@ -73,6 +77,13 @@ SOURCES = {
         "include": ["NOTICE.md", "rules/*.xml", "sources/*.sch"],
         "exclude": [],
         "target": "kosit/rules",
+    },
+    "kosit-peppol": {
+        "root": "Peppol BIS Billing 3.0 - May 2026 Release",
+        "include": ["PEPPOL-EN16931-UBL.sch"],
+        "flatten": False,
+        "exclude": [],
+        "target": "kosit/peppol",
     },
 }
 

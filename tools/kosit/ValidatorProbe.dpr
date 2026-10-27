@@ -3,10 +3,15 @@ program ValidatorProbe;
 { Validates XML files with LandrixEInvoiceValidator and a KoSIT validator
   configuration; used by tools/kosit/kosit-oracle.py, which compares the
   output with the reports of the KoSIT validator.
-  Usage: ValidatorProbe <scenarios.xml> <rule-folder> <file or folder>...
-  The rule folder holds the LandrixXML rule files (en16931-ubl.xml,
-  en16931-cii.xml, xrechnung-ubl.xml, xrechnung-cii.xml, as copied by
-  tools/testdata/sync-local.py to tests/data/local/kosit/rules/rules).
+  Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... <file or folder>...
+  The rule folder is tests/data/local/kosit as tools/testdata/sync-local.py
+  fills it: the LandrixXML rule files in rules/rules (en16931-ubl.xml,
+  en16931-cii.xml, xrechnung-ubl.xml, xrechnung-cii.xml) for the XRechnung
+  configuration, and for Peppol BIS en16931-ubl.xml (the configuration's
+  CEN-EN16931-UBL is the same source) and peppol/PEPPOL-EN16931-UBL.sch,
+  compiled when loaded. An argument <xslt>=<rule file> maps an XSLT file
+  name (replacing a built-in mapping; a .sch rule file is compiled); it
+  applies to the files after it.
   Output per file (codes, levels and positions only, ASCII):
     ## <file name>
     scenario <name> | scenario none     (matches <n>)
@@ -29,11 +34,13 @@ uses
   LandrixEInvoiceValidator;
 
 const
-  RuleMap: array[0..3, 0..1] of string = (
-    ('EN16931-UBL-validation.xsl', 'en16931-ubl.xml'),
-    ('EN16931-CII-validation.xsl', 'en16931-cii.xml'),
-    ('XRechnung-UBL-validation.xsl', 'xrechnung-ubl.xml'),
-    ('XRechnung-CII-validation.xsl', 'xrechnung-cii.xml'));
+  RuleMap: array[0..5, 0..1] of string = (
+    ('EN16931-UBL-validation.xsl', 'rules/rules/en16931-ubl.xml'),
+    ('EN16931-CII-validation.xsl', 'rules/rules/en16931-cii.xml'),
+    ('XRechnung-UBL-validation.xsl', 'rules/rules/xrechnung-ubl.xml'),
+    ('XRechnung-CII-validation.xsl', 'rules/rules/xrechnung-cii.xml'),
+    ('CEN-EN16931-UBL.xslt', 'rules/rules/en16931-ubl.xml'),
+    ('PEPPOL-EN16931-UBL.xslt', 'peppol/PEPPOL-EN16931-UBL.sch'));
   StepNames: array[TLandrixEInvoiceValidationStep] of string = ('wf', 'xsd', 'sch');
 
 function Ascii(const S: TLandrixEInvoiceString): string;
@@ -128,12 +135,12 @@ end;
 
 var
   V: TLandrixEInvoiceValidator;
-  RuleDir: string;
-  I: Integer;
+  RuleDir, Arg: string;
+  I, Paths: Integer;
 begin
   if ParamCount < 3 then
   begin
-    WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> <file or folder>...');
+    WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... <file or folder>...');
     ExitCode := 2;
     Exit;
   end;
@@ -151,9 +158,25 @@ begin
     end;
     RuleDir := IncludeTrailingPathDelimiter(ParamStr(2));
     for I := Low(RuleMap) to High(RuleMap) do
-      V.RuleFiles.Values[RuleMap[I, 0]] := RuleDir + RuleMap[I, 1];
+      V.RuleFiles.Values[RuleMap[I, 0]] := RuleDir + StringReplace(RuleMap[I, 1], '/', PathDelim, [rfReplaceAll]);
+    Paths := 0;
     for I := 3 to ParamCount do
-      ProbeAll(V, ParamStr(I));
+    begin
+      Arg := ParamStr(I);
+      { a mapping replaces the built-in one of the same name }
+      if Pos('=', Arg) > 0 then
+        V.RuleFiles.Values[Copy(Arg, 1, Pos('=', Arg) - 1)] := Copy(Arg, Pos('=', Arg) + 1, MaxInt)
+      else
+      begin
+        ProbeAll(V, Arg);
+        Inc(Paths);
+      end;
+    end;
+    if Paths = 0 then
+    begin
+      WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... <file or folder>...');
+      ExitCode := 2;
+    end;
   finally
     V.Free;
   end;

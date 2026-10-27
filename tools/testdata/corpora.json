@@ -1,4 +1,10 @@
 {
+ "kosit-peppol": {
+  "files": {
+   "PEPPOL-EN16931-UBL.sch": "62e5b67892f12755352d78b06f63229a02cc2eccc748677c56efbc8dbcb336e3"
+  },
+  "root": "Peppol BIS Billing 3.0 - May 2026 Release"
+ },
  "kosit-rules": {
   "files": {
    "NOTICE.md": "44103ad8fd0c595f382c9c1df3287c2f29c9f74f0cbcea8927498ec81d570d17",

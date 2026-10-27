@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scenarios xmlns="http://www.xoev.de/de/validator/framework/1/scenarios" frameworkVersion="1.0.0">
+  <name>Test configuration without acceptMatch</name>
+  <scenario>
+    <name>Test N</name>
+    <namespace prefix="t">urn:landrix:test:validator</namespace>
+    <match>exists(/t:doc[@kind = 'a'])</match>
+    <validateWithXmlSchema>
+      <resource><name>schema</name><location>test.xsd</location></resource>
+    </validateWithXmlSchema>
+    <validateWithSchematron>
+      <resource><name>rules</name><location>xsl/test.xsl</location></resource>
+    </validateWithSchematron>
+    <createReport>
+      <resource><name>report</name><location>report.xsl</location></resource>
+      <customLevel level="warning">T-02</customLevel>
+    </createReport>
+  </scenario>
+</scenarios>

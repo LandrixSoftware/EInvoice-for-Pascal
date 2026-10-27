@@ -18,9 +18,13 @@
   an expression that raises does not match), the document is checked against the
   scenario's XML schema and, if it is schema-valid, with its Schematron
   rule sets; the level of every message follows the configuration's
-  report stylesheet (flag and role, then customLevel), and the document is
-  accepted unless there is no scenario, a fallback scenario, a processing
-  error or a message whose level is error. The XML schema, XPath and
+  report stylesheet (flag and role, then customLevel). With the acceptMatch
+  of the XRechnung configuration the document is accepted unless there is
+  no scenario, a fallback scenario, a processing error or a message whose
+  level is error (the assessment of the report stylesheet); a scenario
+  without acceptMatch (Peppol BIS) accepts, as KoSIT does then, only a
+  schema-valid document without processing error and without any failed
+  assert, whatever its level. The XML schema, XPath and
   Schematron engines are those of LandrixXML. The configuration ships the
   Schematron rule sets as XSLT, which LandrixXML does not run: every XSLT
   file name is mapped to a LandrixXML rule file (RuleFiles), compiled from
@@ -35,10 +39,14 @@
   nicht), das Dokument gegen dessen
   XML-Schema und, wenn es schemagueltig ist, mit dessen
   Schematron-Regelwerken geprueft; die Stufe jeder Meldung folgt dem
-  Bericht-Stylesheet der Konfiguration (flag und role, dann customLevel),
-  und das Dokument wird angenommen, ausser es gibt kein Szenario, ein
-  Fallback-Szenario, einen Verarbeitungsfehler oder eine Meldung der Stufe
-  error. XML-Schema, XPath und Schematron kommen aus LandrixXML. Die
+  Bericht-Stylesheet der Konfiguration (flag und role, dann customLevel).
+  Mit dem acceptMatch der XRechnung-Konfiguration wird das Dokument
+  angenommen, ausser es gibt kein Szenario, ein Fallback-Szenario, einen
+  Verarbeitungsfehler oder eine Meldung der Stufe error (die Bewertung des
+  Bericht-Stylesheets); ein Szenario ohne acceptMatch (Peppol BIS) nimmt,
+  wie KoSIT dann, nur ein schemagueltiges Dokument ohne
+  Verarbeitungsfehler und ohne jedes fehlgeschlagene assert an, gleich
+  welcher Stufe. XML-Schema, XPath und Schematron kommen aus LandrixXML. Die
   Konfiguration liefert die Schematron-Regelwerke als XSLT, das LandrixXML
   nicht ausfuehrt: jeder XSLT-Dateiname wird auf eine Regeldatei von
   LandrixXML abgebildet (RuleFiles), aus derselben Schematron-Quelle
@@ -95,6 +103,7 @@ type
     FLine: Integer;
     FColumn: Integer;
     FText: TLandrixEInvoiceString;
+    FFailedAssert: Boolean;
   public
     property Step: TLandrixEInvoiceValidationStep read FStep;
     { 1-based number of the Schematron step, 0 for the other steps.
@@ -170,6 +179,7 @@ type
   private
     FName: TLandrixEInvoiceString;
     FMatch: TLandrixXmlXPathExpression;
+    FHasAcceptMatch: Boolean;
     FSchemaFile: string;
     FSchematronFiles: TStringList;
     FCustomCodes: TStringList;
@@ -543,7 +553,8 @@ begin
       Scenario := TLandrixEInvoiceValidationScenario.Create;
       FScenarios.Add(Scenario);
       Scenario.FName := U(ChildText(Node, 'name'));
-      if ChildText(Node, 'acceptMatch') <> TLandrixXmlUtf8(AcceptMatch) then
+      Scenario.FHasAcceptMatch := FirstChild(Node, 'acceptMatch') <> nil;
+      if Scenario.FHasAcceptMatch and (ChildText(Node, 'acceptMatch') <> TLandrixXmlUtf8(AcceptMatch)) then
         ConfigError('scenario ' + string(Scenario.FName) + ': acceptMatch other than ' + AcceptMatch);
       if ChildText(Node, 'match') = '' then
         ConfigError('scenario ' + string(Scenario.FName) + ' without match');
@@ -777,6 +788,7 @@ begin
               Msg.FRole := U(SchResult.Role);
               Msg.FLocation := U(SchResult.Location);
               Msg.FText := U(SchResult.Message);
+              Msg.FFailedAssert := SchResult.Kind = xsrFailedAssert;
             end;
         finally
           SchValidator.Free;
@@ -792,12 +804,26 @@ begin
         if Scenario.CustomLevel(Msg.FCode, Level) then
           Msg.FEffectiveLevel := Level;
       end;
-    AResult.FAccepted := (Scenario <> nil) and (AResult.FProcessingError = '') and
-      (Pos('fallback', LowerCase(string(Scenario.FName))) = 0);
-    if AResult.FAccepted then
+    AResult.FAccepted := (Scenario <> nil) and (AResult.FProcessingError = '');
+    if AResult.FAccepted and Scenario.FHasAcceptMatch then
+    begin
+      if Pos('fallback', LowerCase(string(Scenario.FName))) > 0 then
+        AResult.FAccepted := False;
       for I := 0 to AResult.MessageCount - 1 do
         if AResult.Messages[I].FEffectiveLevel = evl_Error then
           AResult.FAccepted := False;
+    end
+    else if AResult.FAccepted then
+    begin
+      { as KoSIT without acceptMatch: schema-valid and no failed assert.
+        DE: wie KoSIT ohne acceptMatch: schemagueltig und kein
+        fehlgeschlagenes assert. }
+      if not AResult.FXmlSchemaValid then
+        AResult.FAccepted := False;
+      for I := 0 to AResult.MessageCount - 1 do
+        if AResult.Messages[I].FFailedAssert then
+          AResult.FAccepted := False;
+    end;
   end;
   Result := AResult.FAccepted;
 end;

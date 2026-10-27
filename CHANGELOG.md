@@ -316,6 +316,14 @@ Supported invoice standards are documented per release.
   `--corpus generated` it runs the 1,219 generated Schematron test documents of XRechnung 3.0.0 too,
   with `--corpus outputs` the XRechnung files a test run wrote. The test `Validator.Outputs`, last in the
   run, validates every XRechnung output of the run (cross, cases, sweep) natively; each must be accepted.
+  Peppol BIS (`--corpus peppol`, configuration 3.0.21): the EN16931 rules are those of `en16931-ubl.xml`
+  (same source), the Peppol rules are compiled from `PEPPOL-EN16931-UBL.sch` when loaded (`sync-local.py`
+  copies it to `tests/data/local/kosit/peppol/`). A scenario without `acceptMatch` (Peppol) accepts as
+  KoSIT does then: schema-valid and no failed assert of any level. Compared with KoSIT on the Peppol
+  examples, five mutants, the OpenPEPPOL unit test documents (also with an inserted `CustomizationID`)
+  and the Peppol outputs of a test run (1,294 documents, no difference). Tests
+  `Validator.WithoutAcceptMatch` and `Validator.PeppolOutputs` (every `*-peppol.xml` output of the run).
+  `tools/validate.ps1` still judges Peppol files by the report's assessment (error-level messages only).
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

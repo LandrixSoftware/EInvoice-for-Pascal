@@ -12,10 +12,11 @@
   SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
 }
 
-{ Tests for LandrixEInvoiceValidator. Validator.Scenarios and
-  Validator.Configuration use the small configuration in
-  tests/data/validator/ (scenario choice, customLevel, fallback, the steps
-  and the refused configurations). Validator.KositSuite runs the KoSIT
+{ Tests for LandrixEInvoiceValidator. Validator.Scenarios,
+  Validator.Configuration and Validator.WithoutAcceptMatch use the small
+  configurations in tests/data/validator/ (scenario choice, customLevel,
+  fallback, the steps, the refused configurations and the verdict of a
+  scenario without acceptMatch). Validator.KositSuite runs the KoSIT
   XRechnung test suite 2026-08-31 with the configuration of
   addons/java-tools and compares the result with tests/data/kosit-expected.txt,
   which tools/kosit/kosit-oracle.py --update writes after the KoSIT
@@ -24,7 +25,10 @@
   Validator.Outputs, registered last (RegisterLast), checks every XRechnung
   file the run wrote (*-ubl-30x.xml and *-cii-30x.xml in cross/, cases/ and
   sweep/ next to the program) with that configuration: each must be
-  accepted. }
+  accepted. Validator.PeppolOutputs, registered last too, does the same for
+  the Peppol BIS files (*-peppol.xml) with the Peppol BIS configuration of
+  addons/java-tools and the Peppol schematron of tests/data/local/kosit/peppol;
+  the files of PeppolKnown must be rejected instead (each with its reason). }
 
 unit LandrixEInvoiceTestValidator;
 
@@ -135,6 +139,28 @@ begin
     finally
       R.Free;
     end;
+  finally
+    V.Free;
+  end;
+end;
+
+procedure TestWithoutAcceptMatch;
+var
+  V: TLandrixEInvoiceValidator;
+begin
+  V := TLandrixEInvoiceValidator.Create;
+  try
+    V.LoadConfiguration(DataDir + 'scenarios-no-accept.xml');
+    V.RuleFiles.Values['test.xsl'] := DataDir + 'test.sch';
+    CheckDoc(V, 'doc-a-5.xml', 'Test N', 1, True, '');
+    { a successful report is no failed assert }
+    CheckDoc(V, 'doc-a-7.xml', 'Test N', 1, True, 'T-03:information');
+    { as KoSIT without acceptMatch: any failed assert rejects, whatever its
+      level and customLevel }
+    CheckDoc(V, 'doc-a-150.xml', 'Test N', 1, False, 'T-02:warning');
+    CheckDoc(V, 'doc-a-13.xml', 'Test N', 1, False, 'T-04:warning');
+    CheckDoc(V, 'doc-a-abc.xml', 'Test N', 1, False, 'cvc-datatype-valid.1.2.1:error cvc-type.3.1.3:error');
+    CheckDoc(V, 'doc-x-5.xml', '', 0, False, '');
   finally
     V.Free;
   end;
@@ -333,6 +359,35 @@ begin
   end;
 end;
 
+function PeppolConfig: string;
+begin
+  Result := RepositoryRoot + 'addons' + PathDelim + 'java-tools' + PathDelim + 'validator-configuration-bis' +
+    PathDelim + 'scenarios.xml';
+end;
+
+{ the Peppol BIS configuration: its EN16931 rules are those of
+  en16931-ubl.xml (the same source), the Peppol rules are compiled from the
+  schematron; nil if a file is missing }
+function NewPeppolValidator: TLandrixEInvoiceValidator;
+var
+  En16931, Peppol: string;
+begin
+  Result := nil;
+  En16931 := KositLocal + 'rules' + PathDelim + 'rules' + PathDelim + 'en16931-ubl.xml';
+  Peppol := KositLocal + 'peppol' + PathDelim + 'PEPPOL-EN16931-UBL.sch';
+  if not FileExists(PeppolConfig) or not FileExists(En16931) or not FileExists(Peppol) then
+    Exit;
+  Result := TLandrixEInvoiceValidator.Create;
+  try
+    Result.LoadConfiguration(PeppolConfig);
+    Result.RuleFiles.Values['CEN-EN16931-UBL.xslt'] := En16931;
+    Result.RuleFiles.Values['PEPPOL-EN16931-UBL.xslt'] := Peppol;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
 { the codes of the messages with effective level error }
 function ErrorCodes(R: TLandrixEInvoiceValidationResult): string;
 var
@@ -343,63 +398,102 @@ begin
     if R[I].EffectiveLevel = evl_Error then
       Result := Result + ' ' + Ascii(R[I].Code);
   if R.ScenarioName = '' then
-    Result := Result + ' (no scenario)';
+    Result := Result + ' (no scenario)'
+  else if not R.XmlSchemaValid then
+    Result := Result + ' (XML schema)';
   if R.ProcessingError <> '' then
     Result := Result + ' ' + Ascii(R.ProcessingError);
 end;
 
-procedure TestOutputs;
+{ the outputs of this run matching APatterns in cross/, cases/ and sweep/
+  next to the program must be accepted, those named in AKnown
+  (folder/name) rejected; V is freed }
+procedure CheckOutputs(V: TLandrixEInvoiceValidator; const APatterns, AKnown: array of string;
+  const AWhat: string);
 const
   Folders: array[0..2] of string = ('cross', 'cases', 'sweep');
-  Patterns: array[0..1] of string = ('*-ubl-30x.xml', '*-cii-30x.xml');
 var
-  V: TLandrixEInvoiceValidator;
   R: TLandrixEInvoiceValidationResult;
   SR: TSearchRec;
-  Dir: string;
-  I, K, Files: Integer;
+  Dir, Name: string;
+  I, J, K, Files: Integer;
+  Known: Boolean;
 begin
-  V := NewKositValidator;
-  if V = nil then
-  begin
-    Skip('no KoSIT configuration or rule files (addons/java-tools, tools/testdata/sync-local.py)');
-    Exit;
-  end;
   R := TLandrixEInvoiceValidationResult.Create;
   try
     Files := 0;
     for I := Low(Folders) to High(Folders) do
     begin
       Dir := ExtractFilePath(ParamStr(0)) + Folders[I] + PathDelim;
-      for K := Low(Patterns) to High(Patterns) do
-        if FindFirst(Dir + Patterns[K], faAnyFile, SR) = 0 then
+      for K := Low(APatterns) to High(APatterns) do
+        if FindFirst(Dir + APatterns[K], faAnyFile, SR) = 0 then
           try
             repeat
               Inc(Files);
-              Check(V.Validate(Dir + SR.Name, R), Folders[I] + '/' + SR.Name + ':' + ErrorCodes(R));
+              Name := Folders[I] + '/' + SR.Name;
+              Known := False;
+              for J := Low(AKnown) to High(AKnown) do
+                if AKnown[J] = Name then
+                  Known := True;
+              if Known then
+                Check(not V.Validate(Dir + SR.Name, R), Name + ': known rejection, now accepted')
+              else
+                Check(V.Validate(Dir + SR.Name, R), Name + ':' + ErrorCodes(R));
             until FindNext(SR) <> 0;
           finally
             FindClose(SR);
           end;
     end;
     if Files = 0 then
-      Skip('no XRechnung output of this run');
+      Skip('no ' + AWhat + ' output of this run');
   finally
     R.Free;
     V.Free;
   end;
 end;
 
+procedure TestOutputs;
+var
+  V: TLandrixEInvoiceValidator;
+begin
+  V := NewKositValidator;
+  if V = nil then
+    Skip('no KoSIT configuration or rule files (addons/java-tools, tools/testdata/sync-local.py)')
+  else
+    { no known rejection ('' names no file) }
+    CheckOutputs(V, ['*-ubl-30x.xml', '*-cii-30x.xml'], [''], 'XRechnung');
+end;
+
+const
+  { Peppol outputs the configuration rejects, each with its reason.
+    TitelPositionsgruppen: the line groups are written as cac:SubInvoiceLine,
+    which UBL-CR-646 (warning) flags; without acceptMatch any failed assert
+    rejects. }
+  PeppolKnown: array[0..0] of string = ('cross/TitelPositionsgruppen-ubl-peppol.xml');
+
+procedure TestPeppolOutputs;
+var
+  V: TLandrixEInvoiceValidator;
+begin
+  V := NewPeppolValidator;
+  if V = nil then
+    Skip('no Peppol BIS configuration or rule files (addons/java-tools, tools/testdata/sync-local.py)')
+  else
+    CheckOutputs(V, ['*-peppol.xml'], PeppolKnown, 'Peppol BIS');
+end;
+
 procedure Register;
 begin
   RegisterTest('Validator.Scenarios', TestScenarios);
   RegisterTest('Validator.Configuration', TestConfiguration);
+  RegisterTest('Validator.WithoutAcceptMatch', TestWithoutAcceptMatch);
   RegisterTest('Validator.KositSuite', TestKositSuite);
 end;
 
 procedure RegisterLast;
 begin
   RegisterTest('Validator.Outputs', TestOutputs);
+  RegisterTest('Validator.PeppolOutputs', TestPeppolOutputs);
 end;
 
 end.
