@@ -20,7 +20,11 @@
   addons/java-tools and compares the result with tests/data/kosit-expected.txt,
   which tools/kosit/kosit-oracle.py --update writes after the KoSIT
   validator agreed; it is skipped without tests/data/local/kosit/ (see
-  tools/testdata/sync-local.py) or without the configuration. }
+  tools/testdata/sync-local.py) or without the configuration.
+  Validator.Outputs, registered last (RegisterLast), checks every XRechnung
+  file the run wrote (*-ubl-30x.xml and *-cii-30x.xml in cross/, cases/ and
+  sweep/ next to the program) with that configuration: each must be
+  accepted. }
 
 unit LandrixEInvoiceTestValidator;
 
@@ -29,6 +33,8 @@ unit LandrixEInvoiceTestValidator;
 interface
 
 procedure Register;
+{ Validator.Outputs; register it after the tests that write the outputs. }
+procedure RegisterLast;
 
 implementation
 
@@ -248,32 +254,62 @@ begin
   Result.Sort;
 end;
 
+function KositLocal: string;
+begin
+  Result := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim + 'kosit' + PathDelim;
+end;
+
+function KositConfig: string;
+begin
+  Result := RepositoryRoot + 'addons' + PathDelim + 'java-tools' + PathDelim + 'validator-configuration-xrechnung' +
+    PathDelim + 'scenarios.xml';
+end;
+
+{ the XRechnung configuration with the rule files of tests/data/local/kosit;
+  nil if either is missing }
+function NewKositValidator: TLandrixEInvoiceValidator;
+var
+  I: Integer;
+begin
+  Result := nil;
+  if not FileExists(KositConfig) or
+     not FileExists(KositLocal + 'rules' + PathDelim + 'rules' + PathDelim + KositRuleMap[0, 1]) then
+    Exit;
+  Result := TLandrixEInvoiceValidator.Create;
+  try
+    Result.LoadConfiguration(KositConfig);
+    for I := Low(KositRuleMap) to High(KositRuleMap) do
+      Result.RuleFiles.Values[KositRuleMap[I, 0]] := KositLocal + 'rules' + PathDelim + 'rules' + PathDelim +
+        KositRuleMap[I, 1];
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
 procedure TestKositSuite;
 var
-  Local, Config, Expected: string;
+  Local, Expected: string;
   V: TLandrixEInvoiceValidator;
   R: TLandrixEInvoiceValidationResult;
   Names, Actual, Reference: TStringList;
   I, Accepted: Integer;
 begin
-  Local := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim + 'kosit' + PathDelim;
-  Config := RepositoryRoot + 'addons' + PathDelim + 'java-tools' + PathDelim + 'validator-configuration-xrechnung' +
-    PathDelim + 'scenarios.xml';
+  Local := KositLocal;
   Expected := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'kosit-expected.txt';
-  if not FileExists(Local + 'instances' + PathDelim + 'MANIFEST.txt') or not FileExists(Config) then
+  V := nil;
+  if FileExists(Local + 'instances' + PathDelim + 'MANIFEST.txt') then
+    V := NewKositValidator;
+  if V = nil then
   begin
     Skip('no KoSIT test suite or configuration (tools/testdata/sync-local.py, addons/java-tools)');
     Exit;
   end;
-  V := TLandrixEInvoiceValidator.Create;
   R := TLandrixEInvoiceValidationResult.Create;
   Names := ManifestNames(Local + 'instances' + PathDelim + 'MANIFEST.txt');
   Actual := TStringList.Create;
   Reference := TStringList.Create;
   try
-    V.LoadConfiguration(Config);
-    for I := Low(KositRuleMap) to High(KositRuleMap) do
-      V.RuleFiles.Values[KositRuleMap[I, 0]] := Local + 'rules' + PathDelim + 'rules' + PathDelim + KositRuleMap[I, 1];
     Accepted := 0;
     for I := 0 to Names.Count - 1 do
     begin
@@ -297,11 +333,73 @@ begin
   end;
 end;
 
+{ the codes of the messages with effective level error }
+function ErrorCodes(R: TLandrixEInvoiceValidationResult): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to R.MessageCount - 1 do
+    if R[I].EffectiveLevel = evl_Error then
+      Result := Result + ' ' + Ascii(R[I].Code);
+  if R.ScenarioName = '' then
+    Result := Result + ' (no scenario)';
+  if R.ProcessingError <> '' then
+    Result := Result + ' ' + Ascii(R.ProcessingError);
+end;
+
+procedure TestOutputs;
+const
+  Folders: array[0..2] of string = ('cross', 'cases', 'sweep');
+  Patterns: array[0..1] of string = ('*-ubl-30x.xml', '*-cii-30x.xml');
+var
+  V: TLandrixEInvoiceValidator;
+  R: TLandrixEInvoiceValidationResult;
+  SR: TSearchRec;
+  Dir: string;
+  I, K, Files: Integer;
+begin
+  V := NewKositValidator;
+  if V = nil then
+  begin
+    Skip('no KoSIT configuration or rule files (addons/java-tools, tools/testdata/sync-local.py)');
+    Exit;
+  end;
+  R := TLandrixEInvoiceValidationResult.Create;
+  try
+    Files := 0;
+    for I := Low(Folders) to High(Folders) do
+    begin
+      Dir := ExtractFilePath(ParamStr(0)) + Folders[I] + PathDelim;
+      for K := Low(Patterns) to High(Patterns) do
+        if FindFirst(Dir + Patterns[K], faAnyFile, SR) = 0 then
+          try
+            repeat
+              Inc(Files);
+              Check(V.Validate(Dir + SR.Name, R), Folders[I] + '/' + SR.Name + ':' + ErrorCodes(R));
+            until FindNext(SR) <> 0;
+          finally
+            FindClose(SR);
+          end;
+    end;
+    if Files = 0 then
+      Skip('no XRechnung output of this run');
+  finally
+    R.Free;
+    V.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Validator.Scenarios', TestScenarios);
   RegisterTest('Validator.Configuration', TestConfiguration);
   RegisterTest('Validator.KositSuite', TestKositSuite);
+end;
+
+procedure RegisterLast;
+begin
+  RegisterTest('Validator.Outputs', TestOutputs);
 end;
 
 end.

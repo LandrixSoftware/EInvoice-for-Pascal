@@ -89,5 +89,6 @@ begin
   LandrixEInvoiceTestBusinessCases.Register;
   LandrixEInvoiceTestFacade.Register;
   LandrixEInvoiceTestCalculate.Register;
+  LandrixEInvoiceTestValidator.RegisterLast;
   ExitCode := RunAllTests(FilterParam);
 end.

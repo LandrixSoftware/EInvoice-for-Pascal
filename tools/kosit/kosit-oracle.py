@@ -27,7 +27,11 @@ each made to pass or fail one rule); most of them are rejected, so they test
 the rejecting side. They are copied to build/kosit-oracle/generated/ (some
 names are too long for MAX_PATH below the docs folder; the reports go to
 build/kosit-oracle/rep-gen/, the longest path has about 250 characters).
---corpus all runs both; --update then needs both to be clean.
+--corpus outputs runs the XRechnung files this library wrote in a test run
+(*-ubl-30x.xml, *-cii-30x.xml of build/<toolchain>/cross, cases and sweep;
+--toolchain, default fpc322-linux), copied to build/kosit-oracle/outputs/
+with the folder as prefix. --corpus all runs the test suite, the generated
+documents and the outputs; --update then needs all of them to be clean.
 
 Known differences are listed in tools/kosit/kosit-exceptions.txt
 ("file<TAB>difference line", '*' in the file name for any text, each with a
@@ -39,8 +43,8 @@ probe:
   ./tools/build.ps1 fpc322-win64 -Program tools/kosit/ValidatorProbe.dpr -NoRun
 
 Usage:
-  python tools/kosit/kosit-oracle.py [--corpus suite|generated|all] [--probe <exe>] [--java <java>]
-      [--keep] [--update]
+  python tools/kosit/kosit-oracle.py [--corpus suite|generated|outputs|all] [--toolchain <tc>]
+      [--probe <exe>] [--java <java>] [--keep] [--update]
 The KoSIT reports are kept in build/kosit-oracle/ (--keep reuses them).
 --update rewrites tests/data/kosit-expected.txt, the reference of the test
 Validator.KositSuite (the probe's lines for the test suite instances), when
@@ -225,7 +229,8 @@ def main():
     ap.add_argument("--java")
     ap.add_argument("--keep", action="store_true", help="reuse the KoSIT reports in build/kosit-oracle")
     ap.add_argument("--update", action="store_true", help="rewrite tests/data/kosit-expected.txt")
-    ap.add_argument("--corpus", choices=("suite", "generated", "all"), default="suite")
+    ap.add_argument("--corpus", choices=("suite", "generated", "outputs", "all"), default="suite")
+    ap.add_argument("--toolchain", default="fpc322-linux", help="whose outputs --corpus outputs takes")
     args = ap.parse_args()
     if not os.path.isfile(os.path.join(INSTANCES, "MANIFEST.txt")) or not os.path.isdir(RULES):
         sys.exit("missing tests/data/local/kosit: run tools/testdata/sync-local.py")
@@ -248,6 +253,19 @@ def main():
             for f in glob.glob(os.path.join(GENERATED, "*.xml")):
                 shutil.copyfile(f, os.path.join(copy, os.path.basename(f)))
         runs.append(("rep-gen", [copy]))
+    if args.corpus in ("outputs", "all"):
+        copy = os.path.join(OUT, "outputs")
+        if not args.keep or not os.path.isdir(copy):
+            if os.path.isdir(copy):
+                shutil.rmtree(copy)
+            os.makedirs(copy)
+            for folder in ("cross", "cases", "sweep"):
+                for pattern in ("*-ubl-30x.xml", "*-cii-30x.xml"):
+                    for f in glob.glob(os.path.join(REPO, "build", args.toolchain, folder, pattern)):
+                        shutil.copyfile(f, os.path.join(copy, folder + "_" + os.path.basename(f)))
+        if not glob.glob(os.path.join(copy, "*.xml")):
+            sys.exit("no XRechnung output in build/%s (run ./tools/build.ps1 first)" % args.toolchain)
+        runs.append(("rep-out", [copy]))
     pairs = []
     ours = {}
     for sub, folders in runs:
@@ -295,7 +313,7 @@ def main():
             unexpected += 1
     print("%d documents compared (corpus %s); '-' KoSIT only, '+' probe only" % (compared, args.corpus))
     print("no unexpected difference" if unexpected == 0 else "%d unexpected difference(s)" % unexpected)
-    if args.update and unexpected == 0 and compared and args.corpus != "generated":
+    if args.update and unexpected == 0 and compared and args.corpus in ("suite", "all"):
         text = probe_output(args.probe, [INSTANCES]).stdout
         with open(EXPECTED, "w", encoding="ascii", newline="") as f:
             f.write("".join(line + chr(10) for line in text.splitlines()))
