@@ -392,6 +392,9 @@ Supported invoice standards are documented per release.
   internal unit.
 
 ### Changed
+- The object layer of the PDF reader (lexer, stream filters, decryption, objects, document) moved from
+  `LandrixEInvoicePdf` into the new internal unit `LandrixEInvoicePdfObjects`, for the PDF checks of
+  phase 6; the extraction is unchanged.
 - Sub lines (line groups) are written flat where the target does not nest them: XRechnung CII, the
   Factur-X profiles below EXTENDED, Peppol BIS and UBL credit notes get the lines of a group,
   depth-first, instead of the group (before: the group line alone in CII and credit notes, and

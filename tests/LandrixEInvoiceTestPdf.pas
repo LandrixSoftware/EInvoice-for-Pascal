@@ -40,6 +40,7 @@ uses
   LandrixXmlBase,
   LandrixEInvoiceTypes,
   LandrixEInvoicePdf,
+  LandrixEInvoicePdfObjects,
   LandrixEInvoiceTestFramework;
 
 const
@@ -1088,8 +1089,17 @@ begin
   CheckEquals(0, Failed, IntToStr(Failed) + ' of ' + IntToStr(Files) + ' PDFs differ, first: ' + First);
 end;
 
+{ The object layer has its own copy of the public limits. }
+procedure TestLimits;
+begin
+  CheckEquals(LandrixEInvoicePdfMaxStreamSize, LandrixEInvoicePdfObjectMaxStreamSize, 'stream size');
+  CheckEquals(LandrixEInvoicePdfMaxDepth, LandrixEInvoicePdfObjectMaxDepth, 'depth');
+  CheckEquals(LandrixEInvoicePdfMaxFileSize, LandrixEInvoicePdfObjectMaxFileSize, 'file size');
+end;
+
 procedure Register;
 begin
+  RegisterTest('Pdf.Limits', TestLimits);
   RegisterTest('Pdf.Detection', TestDetection);
   RegisterTest('Pdf.Filters', TestFilters);
   RegisterTest('Pdf.DamagedStreams', TestDamagedStreams);
