@@ -20,6 +20,15 @@ place them differently). Schematron messages are compared with the level of
 the rule set; customLevel shows in the verdict only (the report does not
 carry the effective level). Lines are compared as multisets.
 
+--corpus generated runs the 1,219 generated Schematron test documents of
+XRechnung 3.0.0 instead (landrix-einvoice-docs, folder "generated" of the
+schematron 2.0.0 package, the corpus of tools/rulecheck/rule-oracle.py,
+each made to pass or fail one rule); most of them are rejected, so they test
+the rejecting side. They are copied to build/kosit-oracle/generated/ (some
+names are too long for MAX_PATH below the docs folder; the reports go to
+build/kosit-oracle/rep-gen/, the longest path has about 250 characters).
+--corpus all runs both; --update then needs both to be clean.
+
 Known differences are listed in tools/kosit/kosit-exceptions.txt
 ("file<TAB>difference line", '*' in the file name for any text, each with a
 reason); an unused line is an error.
@@ -30,7 +39,8 @@ probe:
   ./tools/build.ps1 fpc322-win64 -Program tools/kosit/ValidatorProbe.dpr -NoRun
 
 Usage:
-  python tools/kosit/kosit-oracle.py [--probe <exe>] [--java <java>] [--keep] [--update]
+  python tools/kosit/kosit-oracle.py [--corpus suite|generated|all] [--probe <exe>] [--java <java>]
+      [--keep] [--update]
 The KoSIT reports are kept in build/kosit-oracle/ (--keep reuses them).
 --update rewrites tests/data/kosit-expected.txt, the reference of the test
 Validator.KositSuite (the probe's lines for the test suite instances), when
@@ -58,6 +68,8 @@ INSTANCES = os.path.join(LOCAL, "instances")
 RULES = os.path.join(LOCAL, "rules", "rules")
 EXCEPTIONS = os.path.join(HERE, "kosit-exceptions.txt")
 EXPECTED = os.path.join(REPO, "tests", "data", "kosit-expected.txt")
+GENERATED = os.path.join(os.path.dirname(REPO), "landrix-einvoice-docs", "XRechnung 3.0.0",
+                         "xrechnung-3.0.0-schematron-2.0.0", "generated")
 OUT = os.path.join(REPO, "build", "kosit-oracle")
 REP = "{http://www.xoev.de/de/validator/varl/1}"
 SCN = "{http://www.xoev.de/de/validator/framework/1/scenarios}"
@@ -213,25 +225,46 @@ def main():
     ap.add_argument("--java")
     ap.add_argument("--keep", action="store_true", help="reuse the KoSIT reports in build/kosit-oracle")
     ap.add_argument("--update", action="store_true", help="rewrite tests/data/kosit-expected.txt")
+    ap.add_argument("--corpus", choices=("suite", "generated", "all"), default="suite")
     args = ap.parse_args()
     if not os.path.isfile(os.path.join(INSTANCES, "MANIFEST.txt")) or not os.path.isdir(RULES):
         sys.exit("missing tests/data/local/kosit: run tools/testdata/sync-local.py")
     if not os.path.isfile(args.probe):
         sys.exit("probe missing: ./tools/build.ps1 fpc322-win64 -Program tools/kosit/ValidatorProbe.dpr -NoRun")
-    mutants = os.path.join(OUT, "mutants")
-    make_mutants(mutants)
-    folders = [INSTANCES, mutants]
-    files = sorted(glob.glob(os.path.join(INSTANCES, "*.xml"))) + sorted(glob.glob(os.path.join(mutants, "*.xml")))
-    reports = os.path.join(OUT, "reports")
-    if not args.keep or not os.path.isdir(reports):
-        if os.path.isdir(reports):
-            shutil.rmtree(reports)
-        run_kosit(find_java(args.java), files, reports)
-    ours = probe_results(args.probe, folders)
+    runs = []
+    if args.corpus in ("suite", "all"):
+        mutants = os.path.join(OUT, "mutants")
+        make_mutants(mutants)
+        runs.append(("reports", [INSTANCES, mutants]))
+    if args.corpus in ("generated", "all"):
+        if not os.path.isdir(GENERATED):
+            sys.exit("missing: " + GENERATED)
+        # copied: some names are too long for MAX_PATH below the docs folder
+        copy = os.path.join(OUT, "generated")
+        if not args.keep or not os.path.isdir(copy):
+            if os.path.isdir(copy):
+                shutil.rmtree(copy)
+            os.makedirs(copy)
+            for f in glob.glob(os.path.join(GENERATED, "*.xml")):
+                shutil.copyfile(f, os.path.join(copy, os.path.basename(f)))
+        runs.append(("rep-gen", [copy]))
+    pairs = []
+    ours = {}
+    for sub, folders in runs:
+        files = []
+        for folder in folders:
+            files += sorted(glob.glob(os.path.join(folder, "*.xml")))
+        reports = os.path.join(OUT, sub)
+        if not args.keep or not os.path.isdir(reports):
+            if os.path.isdir(reports):
+                shutil.rmtree(reports)
+            run_kosit(find_java(args.java), files, reports)
+        ours.update(probe_results(args.probe, folders))
+        pairs += [(f, reports) for f in files]
     exceptions = load_exceptions()
     unexpected = 0
     compared = 0
-    for f in files:
+    for f, reports in pairs:
         name = os.path.basename(f)
         report = os.path.join(reports, name[:-4] + "-report.xml")
         if not os.path.isfile(report):
@@ -254,14 +287,15 @@ def main():
                 else:
                     print("  %s\t%s" % (name, diff))
                     unexpected += 1
+    names = [os.path.basename(f) for f, _ in pairs]
     for pattern, diff, used in exceptions:
-        if not used:
+        # an exception for a corpus that did not run is not unused
+        if not used and any(fnmatch.fnmatch(n, pattern) for n in names):
             print("  unused exception: %s\t%s" % (pattern, diff))
             unexpected += 1
-    print("%d documents compared (%d test suite instances, %d mutants); '-' KoSIT only, '+' probe only"
-          % (compared, len(glob.glob(os.path.join(INSTANCES, "*.xml"))), len(MUTANTS)))
+    print("%d documents compared (corpus %s); '-' KoSIT only, '+' probe only" % (compared, args.corpus))
     print("no unexpected difference" if unexpected == 0 else "%d unexpected difference(s)" % unexpected)
-    if args.update and unexpected == 0 and compared:
+    if args.update and unexpected == 0 and compared and args.corpus != "generated":
         text = probe_output(args.probe, [INSTANCES]).stdout
         with open(EXPECTED, "w", encoding="ascii", newline="") as f:
             f.write("".join(line + chr(10) for line in text.splitlines()))

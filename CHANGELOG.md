@@ -312,7 +312,8 @@ Supported invoice standards are documented per release.
   report stylesheet; engines of LandrixXML, Schematron rule files mapped by the XSLT file name.
   `tools/kosit/kosit-oracle.py` compares it with the KoSIT validator on the XRechnung test suite
   2026-08-31 and seven mutants (`tools/kosit/ValidatorProbe.dpr`); `tools/testdata/sync-local.py` copies the
-  test suite and the rule files of the LandrixXML submodule to `tests/data/local/kosit/`.
+  test suite and the rule files of the LandrixXML submodule to `tests/data/local/kosit/`. With
+  `--corpus generated` it runs the 1,219 generated Schematron test documents of XRechnung 3.0.0 too.
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111
