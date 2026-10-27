@@ -225,6 +225,7 @@ uses
   LandrixEInvoiceCIICodeRules,
   LandrixEInvoiceIdentifiers,
   LandrixEInvoiceCheckPeppol,
+  LandrixEInvoiceSubLines,
   LandrixEInvoiceUBLWriter;
 
 type
@@ -378,8 +379,8 @@ const
      Source: LegacySource),
     (ID: 'LX-CC-11'; Standards: AllStandards; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: True; Terms: 'BG-DEX-01';
-     Message: 'sub lines the target does not allow (rule table), or an INFORMATION line on the top ' +
-       'level or a DETAIL line with sub lines outside Factur-X EXTENDED';
+     Message: 'an INFORMATION line on the top level or a DETAIL line with sub lines outside Factur-X ' +
+       'EXTENDED (sub lines the target does not write nested are written flat)';
      Source: LegacySource),
     (ID: 'LX-CC-12'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
      Profiles: [epr_Extended]; Severity: eds_Error; Legacy: True; Terms: 'BG-DEX-01';
@@ -1014,17 +1015,6 @@ end;
 function Present(const S: TLandrixEInvoiceString): Boolean;
 begin
   Result := not LandrixEInvoiceIsBlank(S);
-end;
-
-function HasSubInvoiceLines(ALines: TLandrixInvoiceLines): Boolean;
-var
-  I: TLandrixEInvoiceListIndex;
-begin
-  Result := True;
-  for I := 0 to ALines.Count - 1 do
-    if ALines[I].SubInvoiceLines.Count > 0 then
-      Exit;
-  Result := False;
 end;
 
 { Top level only: an INFORMATION line there would count outside EXTENDED.
@@ -1962,7 +1952,7 @@ var
 begin
   AUses.Items := nil;
   AUses.Count := 0;
-  AddLineTaxUses(AUses, AInvoice.InvoiceLines, tuk_Line, not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines));
+  AddLineTaxUses(AUses, AInvoice.InvoiceLines, tuk_Line, LandrixEInvoiceSubLinesNested(AInvoice, ASpec));
   for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
   begin
     Item := AInvoice.AllowanceCharges[I];
@@ -2577,7 +2567,7 @@ begin
       (CIIInvoiceeWritten(AInvoice, ASpec) and ForeignCountry(AInvoice.InvoiceeParty.Address.CountryCode)) or
       (CIIPayeeFull(AInvoice, ASpec) and ForeignCountry(AInvoice.PayeeParty.Address.CountryCode)) or
       ((ASpec.Target.Syntax = esy_UBL) and ForeignOrigin(AInvoice.InvoiceLines,
-        not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines)));
+        LandrixEInvoiceSubLinesNested(AInvoice, ASpec)));
 end;
 
 { BR-FXEXT-CO-04: every line without status or with status DETAIL, on
@@ -3057,9 +3047,7 @@ begin
      ExtensionWritten(AInvoice, ASpec) then
     Exit;
   CII := ASpec.Target.Syntax = esy_CII;
-  { ubl:CreditNote has no sub lines }
-  SubLines := not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines) and
-    (CII or (AInvoice.InvoiceTypeCode <> itc_CreditNote));
+  SubLines := LandrixEInvoiceSubLinesNested(AInvoice, ASpec);
   Seller := AInvoice.AccountingSupplierParty;
   Buyer := AInvoice.AccountingCustomerParty;
   Payee := AInvoice.PayeeParty;
@@ -3665,14 +3653,13 @@ begin
   Result := False;
 end;
 
-{ Sub lines are written where the target allows them, in UBL not in a
-  credit note (ubl:CreditNote has no sub lines).
-  DE: Unterpositionen werden geschrieben, wo das Ziel sie erlaubt, in UBL
-  nicht in einer Gutschrift (ubl:CreditNote hat keine Unterpositionen). }
+{ Sub lines are written nested where the target allows them, otherwise
+  flat (LandrixEInvoiceSubLines).
+  DE: Unterpositionen werden verschachtelt geschrieben, wo das Ziel sie
+  erlaubt, sonst flach (LandrixEInvoiceSubLines). }
 function SubLinesWritten(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
 begin
-  Result := not Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines) and
-    ((ASpec.Target.Syntax = esy_CII) or (AInvoice.InvoiceTypeCode <> itc_CreditNote));
+  Result := LandrixEInvoiceSubLinesNested(AInvoice, ASpec);
 end;
 
 { Document level and line level; UBL checks the allowances and charges of
@@ -3912,10 +3899,8 @@ begin
       Result := HasLineDeliveryData(AInvoice.InvoiceLines) and
         (not ASpec.CanWrite or Forbidden(ASpec, LandrixEInvoiceRuleLineDelivery));
     cr_LXCC11:
-      Result := (HasSubInvoiceLines(AInvoice.InvoiceLines) and
-        Forbidden(ASpec, LandrixEInvoiceRuleLineSubLines)) or
-        (not IsFacturXExtended(ASpec) and (HasInformationLines(AInvoice.InvoiceLines) or
-         HasDetailWithSubInvoiceLines(AInvoice.InvoiceLines)));
+      Result := not IsFacturXExtended(ASpec) and (HasInformationLines(AInvoice.InvoiceLines) or
+        HasDetailWithSubInvoiceLines(AInvoice.InvoiceLines));
     cr_LXCC12:
       Result := HasGroupAmountMismatch(AInvoice.InvoiceLines, False);
     cr_BR02:
@@ -4156,18 +4141,28 @@ var
   G: TVatGroup;
   N: Integer;
   TaxUses: TTaxUses;
+  Flat: TLandrixInvoice;
 begin
   Result := 0;
-  for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
-    if not CheckRows[I].Legacy and not Run(I, AInvoice, ASpec, ADiagnostics) and
-       (CheckRows[I].Severity = eds_Error) then
-      Inc(Result);
-  CollectTaxUses(AInvoice, ASpec, TaxUses);
-  for G := Low(TVatGroup) to High(TVatGroup) do
-    for N := 0 to VatGroupLast[G] do
-      if not RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics) then
+  { checked as written: sub lines the target does not write nested are
+    flat (the writer reports that) }
+  Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
+  try
+    if Flat <> nil then
+      AInvoice := Flat;
+    for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
+      if not CheckRows[I].Legacy and not Run(I, AInvoice, ASpec, ADiagnostics) and
+         (CheckRows[I].Severity = eds_Error) then
         Inc(Result);
-  Inc(Result, LandrixEInvoiceCheckPeppolInvoice(AInvoice, ASpec, ADiagnostics));
+    CollectTaxUses(AInvoice, ASpec, TaxUses);
+    for G := Low(TVatGroup) to High(TVatGroup) do
+      for N := 0 to VatGroupLast[G] do
+        if not RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics) then
+          Inc(Result);
+    Inc(Result, LandrixEInvoiceCheckPeppolInvoice(AInvoice, ASpec, ADiagnostics));
+  finally
+    Flat.Free;
+  end;
 end;
 
 function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
@@ -4178,30 +4173,59 @@ var
   N: Integer;
   TaxUses: TTaxUses;
   Found: Boolean;
+  Flat, Written: TLandrixInvoice;
+  Rows, LegacyRows: Integer;
 begin
   Result := True;
   Found := False;
-  { an identifier can have one row per syntax or standard (BR-51, BR-CL-21) }
+  { the rules judge the invoice as written (flat where the target does not
+    write sub lines nested); the LX-CC compatibility rules judge the
+    structure the caller built and need no copy }
+  Rows := 0;
+  LegacyRows := 0;
   for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
     if TLandrixEInvoiceString(CheckRows[I].ID) = ARuleID then
     begin
-      Found := True;
-      if not Run(I, AInvoice, ASpec, ADiagnostics) then
-        Result := False;
+      Inc(Rows);
+      if CheckRows[I].Legacy then
+        Inc(LegacyRows);
     end;
-  if Found then
-    Exit;
-  for G := Low(TVatGroup) to High(TVatGroup) do
-    for N := 0 to VatGroupLast[G] do
-      if TLandrixEInvoiceString(VatRuleID(G, N)) = ARuleID then
+  Flat := nil;
+  if (Rows = 0) or (LegacyRows < Rows) then
+    Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
+  try
+    Written := AInvoice;
+    if Flat <> nil then
+      Written := Flat;
+    { an identifier can have one row per syntax or standard (BR-51, BR-CL-21) }
+    for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
+      if TLandrixEInvoiceString(CheckRows[I].ID) = ARuleID then
       begin
-        CollectTaxUses(AInvoice, ASpec, TaxUses);
-        Result := RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics);
-        Exit;
+        Found := True;
+        if CheckRows[I].Legacy then
+        begin
+          if not Run(I, AInvoice, ASpec, ADiagnostics) then
+            Result := False;
+        end
+        else if not Run(I, Written, ASpec, ADiagnostics) then
+          Result := False;
       end;
-  Result := LandrixEInvoiceCheckPeppolRule(AInvoice, ASpec, ARuleID, ADiagnostics, Found);
-  if Found then
-    Exit;
+    if Found then
+      Exit;
+    for G := Low(TVatGroup) to High(TVatGroup) do
+      for N := 0 to VatGroupLast[G] do
+        if TLandrixEInvoiceString(VatRuleID(G, N)) = ARuleID then
+        begin
+          CollectTaxUses(Written, ASpec, TaxUses);
+          Result := RunVat(G, N, Written, ASpec, TaxUses, ADiagnostics);
+          Exit;
+        end;
+    Result := LandrixEInvoiceCheckPeppolRule(Written, ASpec, ARuleID, ADiagnostics, Found);
+    if Found then
+      Exit;
+  finally
+    Flat.Free;
+  end;
   raise ELandrixEInvoiceError.Create('LandrixEInvoiceCheckRule: unknown rule ' + string(ARuleID));
 end;
 

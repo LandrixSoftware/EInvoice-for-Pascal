@@ -1303,7 +1303,8 @@ begin
 end;
 
 { Title with line groups (sub invoice lines). The validation warning
-  UBL-CR-646 (SubInvoiceLine) is expected. }
+  UBL-CR-646 (SubInvoiceLine) is expected for XRechnung UBL; Peppol BIS
+  writes the groups flat. }
 procedure ScenarioTitleLineGroups(AInvoice: TLandrixInvoice);
 begin
   FillHeader(AInvoice, '991-01484-64');

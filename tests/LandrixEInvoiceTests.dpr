@@ -51,7 +51,8 @@ uses
   LandrixEInvoiceTestSweep,
   LandrixEInvoiceTestBusinessCases,
   LandrixEInvoiceTestFacade,
-  LandrixEInvoiceTestCalculate;
+  LandrixEInvoiceTestCalculate,
+  LandrixEInvoiceTestSubLines;
 
 function FilterParam: string;
 var
@@ -89,6 +90,7 @@ begin
   LandrixEInvoiceTestBusinessCases.Register;
   LandrixEInvoiceTestFacade.Register;
   LandrixEInvoiceTestCalculate.Register;
+  LandrixEInvoiceTestSubLines.Register;
   LandrixEInvoiceTestValidator.RegisterLast;
   ExitCode := RunAllTests(FilterParam);
 end.

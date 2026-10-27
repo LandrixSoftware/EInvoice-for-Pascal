@@ -15,8 +15,10 @@ changes:
 move to the facade `TLandrixEInvoice` step by step. See
 [examples/CompatXRechnung](../examples/CompatXRechnung/CompatXRechnung.dpr).
 
-The 111 example files of XRechnung-for-Delphi are produced with the same content (one
-deliberate difference: Factur-X EXTENDED writes every invoiced object identifier, BT-18).
+The 111 example files of XRechnung-for-Delphi are produced with the same content (two
+deliberate differences: Factur-X EXTENDED writes every invoiced object identifier, BT-18, and
+Peppol BIS writes line groups flat instead of as `cac:SubInvoiceLine`, see
+[Writing](writing.md)).
 The business cases are in [examples/BusinessCases](../examples/BusinessCases/BusinessCases.dpr).
 
 ## Differences

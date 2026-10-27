@@ -50,6 +50,17 @@ document as UTF-16 text: store it as UTF-8 (`LandrixEInvoiceStringToUtf8`, or us
 In UBL a credit note (BT-3 = 381) is written as `CreditNote`, every other invoice as
 `Invoice`. CII has one root for both.
 
+## Sub lines (line groups)
+
+Sub lines are written nested where the target has them: XRechnung UBL (as `cac:SubInvoiceLine`,
+with the extension identifier) and Factur-X / ZUGFeRD EXTENDED (`ParentLineID`). Everywhere else
+(XRechnung CII, the Factur-X profiles below EXTENDED, Peppol BIS, a UBL credit note) the invoice is
+written **flat**: a group is replaced by its lines, depth-first, so the sum of the lines (BT-106)
+stays the same. The group lines themselves (title, subtotal) and INFORMATION sub lines are left
+out; each top-level group is reported as a warning (`edk_NotAllowed`, an error with
+`eio_Strict`). The rules are checked on the flat invoice, as it is written; your invoice object is
+not changed.
+
 ## Changing the document before writing
 
 `ToCII`, `ToUBLInvoice` and `ToUBLCreditNote` return the syntax model of an invoice. Change it

@@ -107,7 +107,8 @@ uses
   LandrixEInvoiceCodes,
   LandrixEInvoiceLexical,
   LandrixEInvoiceRules,
-  LandrixEInvoiceCalc;
+  LandrixEInvoiceCalc,
+  LandrixEInvoiceSubLines;
 
 type
   PUBLID = ^TLandrixUBLID;
@@ -1540,6 +1541,8 @@ begin
       ' left out: UBL has no element for it', eds_Warning);
   if ALine.SubInvoiceLines.Count = 0 then
     Exit;
+  { WriteUBLDocument writes sub lines flat where they are not nested
+    (LandrixEInvoiceSubLines), so this and Permit below only guard }
   if ATarget.InvoiceLine = nil then
   begin
     Report(edk_NotAllowed, APath, 'sub lines of line ' + ALine.ID + ' left out: the XRechnung extension ' +
@@ -2881,12 +2884,21 @@ procedure WriteUBLDocument(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvo
   ADiagnostics: TLandrixEInvoiceDiagnostics; const ADocument: TUBLDocument);
 var
   Mapper: TUBLWriteMapper;
+  Flat: TLandrixInvoice;
 begin
-  Mapper := TUBLWriteMapper.Create(AInvoice, ASpec, ADiagnostics, ADocument);
+  { sub lines in Peppol and in a credit note are written flat }
+  Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, ADiagnostics);
   try
-    Mapper.Execute;
+    if Flat <> nil then
+      AInvoice := Flat;
+    Mapper := TUBLWriteMapper.Create(AInvoice, ASpec, ADiagnostics, ADocument);
+    try
+      Mapper.Execute;
+    finally
+      Mapper.Free;
+    end;
   finally
-    Mapper.Free;
+    Flat.Free;
   end;
 end;
 

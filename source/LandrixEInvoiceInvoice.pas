@@ -547,7 +547,10 @@ type
         exactly the sum of its DETAIL and GROUP sub-lines (BR-FXEXT-08);
         sub-lines must be complete lines (quantity, net price, VAT
         category).
-      - XRechnung CII and ZUGFeRD EN16931 do not support sub-lines.
+      - XRechnung CII and the Factur-X profiles below EXTENDED do not
+        support sub-lines; there, in Peppol and in a UBL credit note they
+        are written flat:
+        the lines of a group instead of the group (LandrixEInvoiceSubLines).
       DE: Unterpositionen, z. B. Titel/Positionsgruppen (gehoeren dem
       Objekt).
       - XRechnung UBL (Erweiterung): cac:SubInvoiceLine; der Betrag der
@@ -558,7 +561,11 @@ type
         Oberposition (GROUP) muss genau die Summe ihrer DETAIL- und
         GROUP-Unterpositionen tragen (BR-FXEXT-08); Unterpositionen muessen
         vollstaendige Positionen sein (Menge, Nettopreis, Steuerkategorie).
-      - XRechnung CII und ZUGFeRD EN16931 kennen keine Unterpositionen. }
+      - XRechnung CII und die Factur-X-Profile unter EXTENDED kennen keine
+        Unterpositionen; dort, in Peppol und in einer UBL-Gutschrift werden
+        sie flach
+        geschrieben: die Positionen einer Gruppe statt der Gruppe
+        (LandrixEInvoiceSubLines). }
     SubInvoiceLines: TLandrixInvoiceLines;
     { BT-X-8, EXTENDED only. With ilsrc_None writers derive the value from
       the structure: GROUP with sub-lines, DETAIL as a sub-line, otherwise

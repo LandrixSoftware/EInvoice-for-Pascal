@@ -50,6 +50,18 @@ Dokument als UTF-16-Text: als UTF-8 speichern (`LandrixEInvoiceStringToUtf8` ode
 In UBL wird eine Gutschrift (BT-3 = 381) als `CreditNote` geschrieben, jede andere Rechnung als
 `Invoice`. CII hat eine Wurzel für beide.
 
+## Unterpositionen (Positionsgruppen)
+
+Unterpositionen werden verschachtelt geschrieben, wo das Ziel sie kennt: XRechnung UBL (als
+`cac:SubInvoiceLine`, mit der Kennung der Erweiterung) und Factur-X / ZUGFeRD EXTENDED
+(`ParentLineID`). Überall sonst (XRechnung CII, die Factur-X-Profile unter EXTENDED, Peppol BIS,
+eine UBL-Gutschrift) wird die Rechnung **flach** geschrieben: eine Gruppe wird durch ihre
+Positionen ersetzt, der Tiefe nach, so dass die Summe der Positionen (BT-106) gleich bleibt. Die
+Gruppenpositionen selbst (Titel, Zwischensumme) und INFORMATION-Unterpositionen entfallen; je
+Gruppe auf oberster Ebene gibt es eine Warnung (`edk_NotAllowed`, mit `eio_Strict` ein Fehler).
+Geprüft wird die flache Rechnung, so wie sie geschrieben wird; Ihr Rechnungsobjekt bleibt
+unverändert.
+
 ## Das Dokument vor dem Schreiben ändern
 
 `ToCII`, `ToUBLInvoice` und `ToUBLCreditNote` liefern das Syntaxmodell einer Rechnung. Ändern

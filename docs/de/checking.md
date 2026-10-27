@@ -98,7 +98,10 @@ for I := 0 to Integer(D.Count) - 1 do
 
 `eio_CheckOnRead` prüft beim Lesen die Geschäftsregeln der erkannten Spezifikation; die
 Verstöße landen in `Doc.Diagnostics`. Oder `Check` mit `Doc.Info.Spec.Target` aufrufen, wie
-[examples/CheckInvoice](../../examples/CheckInvoice/CheckInvoice.dpr) es tut.
+[examples/CheckInvoice](../../examples/CheckInvoice/CheckInvoice.dpr) es tut. Die Regeln beurteilen
+die Rechnung so, wie diese Bibliothek sie für die Spezifikation schreibt: Unterpositionen, die sie
+dort nicht verschachtelt (z. B. `cac:SubInvoiceLine` in einer Peppol-Datei), werden flach geprüft,
+siehe [Schreiben](writing.md).
 
 ## Regelkennungen
 

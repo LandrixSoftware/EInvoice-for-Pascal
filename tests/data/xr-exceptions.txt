@@ -41,14 +41,19 @@ zugferd252_XRECHNUNG_Reisekostenabrechnung-cii-30x.xml	lost BG-4[1]/BG-6[1]/BT-4
 
 # --- across syntaxes (sweep-cross: XRechnung written in the other syntax) ---
 # XRechnung CII has no sub lines (BG-DEX-01) and no third party payments (BG-DEX-09); without them
-# nothing is left that needs the extension, so the identifier (BT-24) differs.
-cross kosit-xr302_extension_04.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+# nothing is left that needs the extension, so the identifier (BT-24) differs. The sub lines are
+# written flat (extension_04): the group lines are lost, the sub lines are added as lines.
+cross kosit-xr302_extension_04.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[
+cross kosit-xr302_extension_04.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	added BG-25[
 cross kosit-xr302_extension_04.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
-cross kosit-xr302_extension_04.02a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+cross kosit-xr302_extension_04.02a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[
+cross kosit-xr302_extension_04.02a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	added BG-25[
 cross kosit-xr302_extension_04.02a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
-cross kosit-xr302_extension_04.03a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+cross kosit-xr302_extension_04.03a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[
+cross kosit-xr302_extension_04.03a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	added BG-25[
 cross kosit-xr302_extension_04.03a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
-cross kosit-xr302_extension_04.04a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[*/BG-DEX-01
+cross kosit-xr302_extension_04.04a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-25[
+cross kosit-xr302_extension_04.04a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	added BG-25[
 cross kosit-xr302_extension_04.04a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
 cross kosit-xr302_extension_05.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	* BG-2[1]/BT-24 =
 cross kosit-xr302_extension_05.01a-INVOICE_ubl-ubl-30x-x-cii-30x.xml	lost BG-DEX-09[

@@ -89,6 +89,7 @@ uses
   LandrixEInvoiceCodes,
   LandrixEInvoiceLexical,
   LandrixEInvoiceRules,
+  LandrixEInvoiceSubLines,
   LandrixEInvoiceCalc,
   LandrixEInvoiceCIIProfiles;
 
@@ -3065,22 +3066,31 @@ function LandrixEInvoiceInvoiceToCII(AInvoice: TLandrixInvoice; const ASpec: TLa
   ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixCIIInvoice;
 var
   Mapper: TCIIWriteMapper;
+  Flat: TLandrixInvoice;
 begin
   if (ASpec.Target.Syntax <> esy_CII) or not ASpec.CanWrite then
     raise ELandrixEInvoiceError.Create('LandrixEInvoiceInvoiceToCII: ' +
       string(LandrixEInvoiceTargetToStr(ASpec.Target)) + ' is no CII specification the library writes');
-  Result := TLandrixCIIInvoice.Create;
+  { sub lines outside Factur-X EXTENDED are written flat }
+  Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, ADiagnostics);
   try
-    Mapper := TCIIWriteMapper.Create(AInvoice, ASpec, ADiagnostics, Result);
+    if Flat <> nil then
+      AInvoice := Flat;
+    Result := TLandrixCIIInvoice.Create;
     try
-      Mapper.Execute;
-    finally
-      Mapper.Free;
+      Mapper := TCIIWriteMapper.Create(AInvoice, ASpec, ADiagnostics, Result);
+      try
+        Mapper.Execute;
+      finally
+        Mapper.Free;
+      end;
+      LandrixEInvoicePruneCII(Result, ASpec.Target.Profile, ADiagnostics);
+    except
+      Result.Free;
+      raise;
     end;
-    LandrixEInvoicePruneCII(Result, ASpec.Target.Profile, ADiagnostics);
-  except
-    Result.Free;
-    raise;
+  finally
+    Flat.Free;
   end;
 end;
 

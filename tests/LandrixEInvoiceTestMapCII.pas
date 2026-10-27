@@ -371,8 +371,10 @@ begin
     Line := Invoice.InvoiceLines.AddInvoiceLine;
     Line.ID := '1';
     Line.UnitCodeOther := 'QQQ';
-    Line.DeliveryNoteNumber := 'LS-1';
     Line.SubInvoiceLines.AddInvoiceLine.ID := '1.1';
+    Line.SubInvoiceLines[0].DeliveryNoteNumber := 'LS-1';
+    { the group line is left out below EXTENDED: the sub line carries what is checked }
+    Line.SubInvoiceLines[0].UnitCodeOther := 'QQQ';
     Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), Spec), 'spec');
     CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
     try
@@ -381,9 +383,11 @@ begin
       CII.Free;
     end;
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SpecifiedLineTradeDelivery'), 'line delivery not allowed');
-    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:IncludedSupplyChainTradeLineItem'), 'sub lines not allowed');
+    { below EXTENDED the sub line is written flat in place of its group }
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:IncludedSupplyChainTradeLineItem'), 'sub lines written flat');
     Check(Pos('LS-1', Xml) = 0, 'delivery note left out');
-    Check(Pos('<ram:LineID>1.1</ram:LineID>', Xml) = 0, 'sub line left out');
+    Check(Pos('<ram:LineID>1.1</ram:LineID>', Xml) > 0, 'sub line written as a line');
+    Check(Pos('<ram:LineID>1</ram:LineID>', Xml) = 0, 'group line left out');
     Check(Pos('unitCode="QQQ"', Xml) > 0, 'other unit written');
     Check(Pos('<ram:TypeCode>999</ram:TypeCode>', Xml) > 0, 'other type code written');
     D.Clear;

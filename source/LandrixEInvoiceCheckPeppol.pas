@@ -97,6 +97,7 @@ uses
   LandrixEInvoiceLexical,
   LandrixEInvoiceRules,
   LandrixEInvoiceCalc,
+  LandrixEInvoiceSubLines,
   LandrixEInvoiceIdentifiers;
 
 type
@@ -666,13 +667,13 @@ begin
   Result := False;
 end;
 
-{ ubl:CreditNote has no sub lines; they are written where the target
-  allows them. DE: ubl:CreditNote hat keine Unterpositionen; sie werden
-  geschrieben, wo das Ziel sie erlaubt. }
+{ Sub lines are written nested where the target allows them, otherwise
+  flat (LandrixEInvoiceSubLines; Peppol: always flat). DE: Unterpositionen
+  werden verschachtelt geschrieben, wo das Ziel sie erlaubt, sonst flach
+  (LandrixEInvoiceSubLines; Peppol: immer flach). }
 function SubLinesWritten(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
 begin
-  Result := (LandrixEInvoiceRuleLevel(ASpec, LandrixEInvoiceRuleLineSubLines) <> erl_Forbidden) and
-    (AInvoice.InvoiceTypeCode <> itc_CreditNote);
+  Result := LandrixEInvoiceSubLinesNested(AInvoice, ASpec);
 end;
 
 { --- written identifiers ---------------------------------------------------------- }
@@ -2180,36 +2181,53 @@ function LandrixEInvoiceCheckPeppolInvoice(AInvoice: TLandrixInvoice; const ASpe
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 var
   I: TPeppolRuleIndex;
+  Flat: TLandrixInvoice;
 begin
   Result := 0;
   if not Applies(ASpec) then
     Exit;
-  for I := Low(TPeppolRuleIndex) to High(TPeppolRuleIndex) do
-    if Violated(I, AInvoice, ASpec) then
-    begin
-      AddViolation(ADiagnostics, PeppolRows[I]);
-      if PeppolRows[I].Severity = eds_Error then
-        Inc(Result);
-    end;
+  { checked as written: Peppol writes sub lines flat }
+  Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
+  try
+    if Flat <> nil then
+      AInvoice := Flat;
+    for I := Low(TPeppolRuleIndex) to High(TPeppolRuleIndex) do
+      if Violated(I, AInvoice, ASpec) then
+      begin
+        AddViolation(ADiagnostics, PeppolRows[I]);
+        if PeppolRows[I].Severity = eds_Error then
+          Inc(Result);
+      end;
+  finally
+    Flat.Free;
+  end;
 end;
 
 function LandrixEInvoiceCheckPeppolRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; out AFound: Boolean): Boolean;
 var
   I: TPeppolRuleIndex;
+  Flat: TLandrixInvoice;
 begin
   Result := True;
   AFound := False;
-  for I := Low(TPeppolRuleIndex) to High(TPeppolRuleIndex) do
-    if TLandrixEInvoiceString(PeppolRows[I].ID) = ARuleID then
-    begin
-      AFound := True;
-      if Applies(ASpec) and Violated(I, AInvoice, ASpec) then
+  Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
+  try
+    if Flat <> nil then
+      AInvoice := Flat;
+    for I := Low(TPeppolRuleIndex) to High(TPeppolRuleIndex) do
+      if TLandrixEInvoiceString(PeppolRows[I].ID) = ARuleID then
       begin
-        AddViolation(ADiagnostics, PeppolRows[I]);
-        Result := False;
+        AFound := True;
+        if Applies(ASpec) and Violated(I, AInvoice, ASpec) then
+        begin
+          AddViolation(ADiagnostics, PeppolRows[I]);
+          Result := False;
+        end;
       end;
-    end;
+  finally
+    Flat.Free;
+  end;
 end;
 
 end.

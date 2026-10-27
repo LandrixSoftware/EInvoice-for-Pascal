@@ -92,7 +92,9 @@ for I := 0 to Integer(D.Count) - 1 do
 
 `eio_CheckOnRead` checks the business rules of the detected specification while reading; the
 violations go to `Doc.Diagnostics`. Or call `Check` with `Doc.Info.Spec.Target`, as
-[examples/CheckInvoice](../examples/CheckInvoice/CheckInvoice.dpr) does.
+[examples/CheckInvoice](../examples/CheckInvoice/CheckInvoice.dpr) does. The rules judge the
+invoice as this library writes it for that specification: sub lines it does not nest (e.g.
+`cac:SubInvoiceLine` in a Peppol file) are checked flat, see [Writing](writing.md).
 
 ## Rule identifiers
 

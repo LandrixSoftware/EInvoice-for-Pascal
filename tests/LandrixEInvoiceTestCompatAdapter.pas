@@ -168,6 +168,8 @@ var
 begin
   State := PGoldenState(AData);
   Inc(State^.Files);
+  if GoldenDeviation(AFileName) <> '' then
+    Exit;
   if not XmlEquivalent(LoadFile(State^.Dir + AFileName),
     GoldenView(AFileName, SaveToBytes(AInvoice, VersionOfTarget(ATarget), nil)), Diff) then
   begin
@@ -225,6 +227,8 @@ begin
   try
     repeat
       Inc(Files);
+      if GoldenDeviation(SR.Name) <> '' then
+        Continue;
       Version := TXRechnungValidationHelper.GetXRechnungVersion(TXRechnungString(Dir + SR.Name));
       if Version <> VersionOfFileName(SR.Name) then
       begin
@@ -340,10 +344,11 @@ begin
     Line.DeliveryNoteNumber := '';
 
     Line.SubInvoiceLines.AddInvoiceLine.ID := '1.1';
-    CheckEquals(ccSubInvoiceLinesNotSupported, CodeOf(Invoice, XRechnungVersion_30x_UNCEFACT), 'sub lines XRechnung CII');
-    CheckEquals(ccSubInvoiceLinesNotSupported, CodeOf(Invoice, ZUGFeRDEN16931Version_250), 'sub lines EN16931');
+    { written flat where the target does not nest them (owner decision 2026-10-27) }
+    CheckEquals(ccOK, CodeOf(Invoice, XRechnungVersion_30x_UNCEFACT), 'sub lines XRechnung CII');
+    CheckEquals(ccOK, CodeOf(Invoice, ZUGFeRDEN16931Version_250), 'sub lines EN16931');
     CheckEquals(ccOK, CodeOf(Invoice, XRechnungVersion_30x_UBL), 'sub lines XRechnung UBL');
-    CheckEquals(ccOK, CodeOf(Invoice, PeppolBillingVersion_30), 'sub lines Peppol (discouraged)');
+    CheckEquals(ccOK, CodeOf(Invoice, PeppolBillingVersion_30), 'sub lines Peppol');
     Line.LineStatusReasonCode := ilsrc_Detail;
     CheckEquals(ccSubInvoiceLinesNotSupported, CodeOf(Invoice, XRechnungVersion_30x_UBL), 'DETAIL with sub lines UBL');
     Line.LineStatusReasonCode := ilsrc_None;

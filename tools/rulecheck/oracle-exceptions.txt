@@ -68,9 +68,10 @@ ubl-inv-br-dex-14-test-30[67]-code-*.xml	missed BR-CO-15
 *-peppol-en16931-r053-2-*.xml	missed BR-CO-15
 ubl-*-peppol-en16931-r053-2-*-identity.xml	missed BR-S-08
 
-# XRechnung CII with sub lines (extension): the rule table leaves sub lines out of XRechnung
-# CII, so the written sum of line net amounts (BT-106, including the sub lines) no longer
-# matches the lines; the output would fail BR-CO-10, and BR-S-08 for the breakdown.
+# XRechnung CII with sub lines (extension): XRechnung CII writes them flat, the sub lines in
+# place of their group; in this document the group (288.79) is not the sum of its sub line
+# (26.07), so the written sum of line net amounts (BT-106) no longer matches the lines; the
+# output would fail BR-CO-10, and BR-S-08 for the breakdown.
 cii-br-dex-15-test-on-sub-invoice-lines-1014-identity.xml	extra BR-CO-10
 cii-br-dex-15-test-on-sub-invoice-lines-1014-identity.xml	extra BR-S-08
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra BR-53

@@ -35,6 +35,13 @@ function ScenarioAttachmentDir: string;
   the comparison. }
 function GoldenView(const AFileName: string; const AXml: TLandrixXmlUtf8): TLandrixXmlUtf8;
 
+{ The reason this library deliberately writes the golden file AFileName
+  differently, '' for any other file; such a file is not compared.
+  TitelPositionsgruppen-ubl-peppol.xml: the sub lines are written flat in
+  Peppol (UBL-CR-646, KoSIT rejects the nested form; owner decision
+  2026-10-27). }
+function GoldenDeviation(const AFileName: string): string;
+
 implementation
 
 uses
@@ -57,6 +64,13 @@ begin
     if S[AAt + I - 1] <> ASub[I] then
       Exit;
   Result := True;
+end;
+
+function GoldenDeviation(const AFileName: string): string;
+begin
+  Result := '';
+  if AFileName = 'TitelPositionsgruppen-ubl-peppol.xml' then
+    Result := 'sub lines written flat in Peppol';
 end;
 
 function GoldenView(const AFileName: string; const AXml: TLandrixXmlUtf8): TLandrixXmlUtf8;

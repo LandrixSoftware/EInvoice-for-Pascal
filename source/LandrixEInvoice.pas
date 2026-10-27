@@ -406,6 +406,7 @@ uses
   LandrixEInvoiceFiles,
   LandrixEInvoiceCalc,
   LandrixEInvoiceCheck,
+  LandrixEInvoiceSubLines,
   LandrixEInvoiceCIIProfiles,
   LandrixEInvoiceCIICodeRules,
   LandrixEInvoiceCIIReader,
@@ -571,8 +572,10 @@ var
   UBLInvoice: TLandrixUBLInvoice;
   UBLCreditNote: TLandrixUBLCreditNote;
   Owned: TObject;
+  Flat: TLandrixInvoice;
 begin
   Owned := nil;
+  Flat := nil;
   W := TLandrixXmlWriter.Create;
   try
     W.Indent := True;
@@ -580,6 +583,11 @@ begin
       mk_Invoice:
         begin
           Invoice := TLandrixInvoice(AModel);
+          { one flat copy for the checks and the mapping (sub lines the
+            target does not write nested); reported once, here }
+          Flat := LandrixEInvoiceFlattenSubLines(Invoice, ASpec, ADiagnostics);
+          if Flat <> nil then
+            Invoice := Flat;
           if not (eio_NoRuleCheck in AOptions) then
             LandrixEInvoiceCheckInvoice(Invoice, ASpec, ADiagnostics);
           if ASpec.Target.Syntax = esy_CII then
@@ -635,6 +643,7 @@ begin
   finally
     W.Free;
     Owned.Free;
+    Flat.Free;
   end;
 end;
 

@@ -27,8 +27,7 @@
   sweep/ next to the program) with that configuration: each must be
   accepted. Validator.PeppolOutputs, registered last too, does the same for
   the Peppol BIS files (*-peppol.xml) with the Peppol BIS configuration of
-  addons/java-tools and the Peppol schematron of tests/data/local/kosit/peppol;
-  the files of PeppolKnown must be rejected instead (each with its reason).
+  addons/java-tools and the Peppol schematron of tests/data/local/kosit/peppol.
   Validator.ZugferdOutputs, registered last as well, checks the ZUGFeRD
   files (*-cii*-25.xml) with the ZUGFeRD 2.5.2 configuration of
   addons/java-tools, whose Schematron sources are compiled (ZugferdRuleMap,
@@ -469,13 +468,6 @@ begin
 end;
 
 const
-  { Peppol outputs the configuration rejects, each with its reason.
-    TitelPositionsgruppen: the line groups are written as cac:SubInvoiceLine,
-    which UBL-CR-646 (warning) flags; without acceptMatch any failed assert
-    rejects. }
-  PeppolKnown: array[0..0] of string = ('cross/TitelPositionsgruppen-ubl-peppol.xml');
-
-const
   { the Schematron step of each profile (a wrapper XSLT of the configuration
     importing the profile's XSLT) and the source of that XSLT }
   ZugferdRuleMap: array[0..4, 0..1] of string = (
@@ -533,7 +525,8 @@ begin
   if V = nil then
     Skip('no Peppol BIS configuration or rule files (addons/java-tools, tools/testdata/sync-local.py)')
   else
-    CheckOutputs(V, ['*-peppol.xml'], PeppolKnown, 'Peppol BIS');
+    { no known rejection ('' names no file) }
+    CheckOutputs(V, ['*-peppol.xml'], [''], 'Peppol BIS');
 end;
 
 procedure Register;

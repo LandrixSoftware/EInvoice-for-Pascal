@@ -15,8 +15,9 @@ sich die uses-Klausel ändert:
 Objekt, und Sie können Schritt für Schritt auf die Fassade `TLandrixEInvoice` umstellen. Siehe
 [examples/CompatXRechnung](../../examples/CompatXRechnung/CompatXRechnung.dpr).
 
-Die 111 Beispieldateien von XRechnung-for-Delphi entstehen inhaltlich gleich (eine gewollte
-Abweichung: Factur-X EXTENDED schreibt jede Objektkennung, BT-18). Die Geschäftsfälle stehen in
+Die 111 Beispieldateien von XRechnung-for-Delphi entstehen inhaltlich gleich (zwei gewollte
+Abweichungen: Factur-X EXTENDED schreibt jede Objektkennung, BT-18, und Peppol BIS schreibt
+Positionsgruppen flach statt als `cac:SubInvoiceLine`, siehe [Schreiben](writing.md)). Die Geschäftsfälle stehen in
 [examples/BusinessCases](../../examples/BusinessCases/BusinessCases.dpr).
 
 ## Unterschiede

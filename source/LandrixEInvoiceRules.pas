@@ -200,7 +200,8 @@ const
 
   Rules: array[0..35] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
-      Peppol only a warning of the EN 16931 rules }
+      Peppol only a warning of the EN 16931 rules. Where the level is not
+      erl_Allowed they are written flat (LandrixEInvoiceSubLines). }
     (Key: LandrixEInvoiceRuleLineSubLines; Standards: [est_FacturX]; Syntaxes: [esy_CII];
      Profiles: [epr_Extended]; Level: erl_Allowed; Terms: 'BT-X-304, BT-X-8';
      Source: 'Factur-X 1.09 EXTENDED'),

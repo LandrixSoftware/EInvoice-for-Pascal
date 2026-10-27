@@ -2178,7 +2178,7 @@ begin
     Line.AllowanceCharges.Clear;
 
     { sub lines: R130 also in UBL (context cac:Price), R120 not; XRechnung
-      CII and UBL credit notes do not write sub lines }
+      CII and UBL credit notes write them flat, as lines }
     Sub := Line.SubInvoiceLines.AddInvoiceLine;
     Sub.ID := '1.1';
     Sub.Name := 'Sub item';
@@ -2187,14 +2187,14 @@ begin
     Sub.NetPriceAmount := 100;
     Sub.LineAmount := 90;
     Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R120'), 'R120: UBL sub line not checked');
-    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R120'), 'R120: XRechnung CII writes no sub lines');
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R120'), 'R120: XRechnung CII writes the sub line flat');
     Sub.LineAmount := 100;
     Sub.BaseQuantity := 1;
     Sub.BaseQuantityUnitCodeOther := 'KGM';
     Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R130'), 'R130: UBL sub line');
-    Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R130'), 'R130: XRechnung CII writes no sub lines');
+    Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R130'), 'R130: XRechnung CII writes the sub line flat');
     Invoice.InvoiceTypeCode := itc_CreditNote;
-    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R130'), 'R130: a UBL credit note has no sub lines');
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R130'), 'R130: a UBL credit note writes it flat');
     Invoice.InvoiceTypeCode := itc_CommercialInvoice;
     Sub.BaseQuantityUnitCode := iuc_piece;
     Sub.BaseQuantityUnitCodeOther := '';

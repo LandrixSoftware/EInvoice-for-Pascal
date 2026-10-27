@@ -98,7 +98,8 @@ Supported invoice standards are documented per release.
 - Mapping between the invoice model and the CII syntax model (`LandrixEInvoiceMapCII`:
   `LandrixEInvoiceInvoiceToCII`, `LandrixEInvoiceCIIToInvoice`), one method per business group.
   Writing follows the rule table of the target specification (`LandrixEInvoiceRules`: content a
-  specification forbids, e.g. sub lines outside Factur-X EXTENDED, is left out and reported);
+  specification forbids, e.g. delivery data per line outside Factur-X EXTENDED, is left out and
+  reported);
   reading reports every element and attribute the invoice model cannot hold (`edk_NotMapped`),
   values that cannot be converted (`edk_ConversionFailed`) and unknown codes, which are kept in
   the new `...Other` fields of the model (`edk_UnknownCode`). Totals are taken from the model as
@@ -391,6 +392,15 @@ Supported invoice standards are documented per release.
   internal unit.
 
 ### Changed
+- Sub lines (line groups) are written flat where the target does not nest them: XRechnung CII, the
+  Factur-X profiles below EXTENDED, Peppol BIS and UBL credit notes get the lines of a group,
+  depth-first, instead of the group (before: the group line alone in CII and credit notes, and
+  `cac:SubInvoiceLine` in Peppol, which UBL-CR-646 flags and the KoSIT validator rejects). The
+  group lines and INFORMATION sub lines are left out; each top-level group is reported
+  (`edk_NotAllowed`). New internal unit
+  `LandrixEInvoiceSubLines`; the facade, the mappers and the checks work on the same flat copy, so
+  the rules judge the invoice as written. LX-CC-11 no longer reports sub lines of such a target
+  (the compatibility adapter returns `ccOK` instead of `ccSubInvoiceLinesNotSupported` there).
 - The compatibility adapter reads and writes through the facade `TLandrixEInvoice` (writing without
   business rule check and despite errors, as before); an unknown specification identifier now also
   adds a warning to its diagnostics. A failed load leaves the invoice unchanged (before, it was
