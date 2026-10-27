@@ -304,6 +304,7 @@ Supported invoice standards are documented per release.
 - UBL-SR-29 in `LandrixEInvoiceCheck` (XRechnung and Peppol, UBL): at most one party identifier
   with scheme SEPA, counted as the UBL writer fills them (BT-29/BT-46 global identifiers, BT-90,
   BT-60 with its scheme).
+- Unit of measure text `Satz` maps to `SET`, as in XRechnung-for-Delphi `a4a1b17`.
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

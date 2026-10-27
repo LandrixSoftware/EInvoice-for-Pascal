@@ -1387,7 +1387,7 @@ type
 const
   { Normalized aliases (lower case ASCII, umlauts as ae/oe/ue/ss, 2/3 for
     superscript two/three). The first match wins. }
-  UnitAliases: array[0..232] of TUnitAlias = (
+  UnitAliases: array[0..233] of TUnitAlias = (
     (Alias: 'st'; UnitCode: iuc_piece),
     (Alias: 'st.'; UnitCode: iuc_piece),
     (Alias: 'stk.'; UnitCode: iuc_piece),
@@ -1586,6 +1586,7 @@ const
     (Alias: 'qty'; UnitCode: iuc_number_of_articles),
     (Alias: 'set'; UnitCode: iuc_set),
     (Alias: 'sets'; UnitCode: iuc_set),
+    (Alias: 'satz'; UnitCode: iuc_set),
     (Alias: 'j'; UnitCode: iuc_year),
     (Alias: 'y'; UnitCode: iuc_year),
     (Alias: 'yr'; UnitCode: iuc_year),
