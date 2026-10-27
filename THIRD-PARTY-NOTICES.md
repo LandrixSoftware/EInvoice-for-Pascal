@@ -11,6 +11,17 @@ https://github.com/landrix/LandrixXML-for-Pascal
 Licensed under the MIT License.
 See [LICENSES/MIT.txt](LICENSES/MIT.txt).
 
+LandrixXML contains material derived from third-party works, listed in its own
+[THIRD-PARTY-NOTICES.md](external/landrix-xml/THIRD-PARTY-NOTICES.md): tables from the Unicode
+Character Database (Copyright (c) 1991-2022 Unicode, Inc., Unicode License V3,
+`external/landrix-xml/LICENSES/Unicode-3.0.txt`), the character classes of XML 1.0 (Fourth
+Edition) (Copyright (c) 2006 W3C (MIT, ERCIM, Keio), W3C Document License), case mapping tables
+computed with SaxonJ-HE 12.9 (no Saxon code), and in its XML Schema
+units the error codes, messages and identity constraint matching of Apache Xerces-J 2.12.2
+(Copyright 1999-2022 The Apache Software Foundation, Apache License 2.0, see
+[LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt); the Xerces NOTICE text is reproduced in the
+LandrixXML notices).
+
 ## Code lists
 
 The code lists in `tools/codelists/src/` and the code tables generated from them in

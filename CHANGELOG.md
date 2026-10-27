@@ -12,7 +12,9 @@ Supported invoice standards are documented per release.
   License), third-party notices, contribution rules, security policy.
 - LandrixXML for Pascal as Git submodule in `external/landrix-xml`, pinned to
   release 0.2.0 plus the fixes for the Delphi 13 macOS ARM64 and FPC aarch64-darwin
-  diagnostics (`5f8c579`).
+  diagnostics (`5f8c579`), then to `525642c` (XPath 2.0, XML Schema and Schematron engines, exact
+  decimal and IEEE double arithmetic, Unicode normalization, third-party notices; not used by this
+  library yet).
 - `tools/check-forbidden.py`: checks sources for language features and units that
   Delphi 6 does not support. `cwstring` is allowed in programs (`.dpr`/`.lpr`) only; old-style
   `object` types must not have a VMT.
