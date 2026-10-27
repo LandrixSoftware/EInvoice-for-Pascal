@@ -240,7 +240,7 @@ type
     cr_BR10, cr_BR11, cr_BR16, cr_BR17, cr_BR18, cr_BR19, cr_BR20, cr_BR21,
     cr_BR23, cr_BR25, cr_BR27, cr_BR28, cr_BR29, cr_BR30, cr_BR32, cr_BR33,
     cr_BR37, cr_BR38, cr_BR42, cr_BR44, cr_BR47, cr_BR51UBL, cr_BR51CII, cr_BR52, cr_BR53, cr_BR54,
-    cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65, cr_BRB01, cr_BRB02,
+    cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65, cr_BRB01, cr_BRB02, cr_UBLSR29,
     cr_BRDE01, cr_BRDE02, cr_BRDE03, cr_BRDE04, cr_BRDE05, cr_BRDE06,
     cr_BRDE07, cr_BRDE08, cr_BRDE09, cr_BRDE10, cr_BRDE11, cr_BRDE15,
     cr_BRDE16, cr_BRDE17, cr_BRDE18, cr_BRDE19, cr_BRDE20, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
@@ -575,6 +575,11 @@ const
     (ID: 'BR-B-02'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
      Profiles: FromBasic; Severity: eds_Error; Legacy: False; Terms: 'BT-118, BT-151, BT-95, BT-102';
      Message: 'an invoice with VAT category B (split payment) shall not contain VAT category S';
+     Source: EN16931Source),
+    (ID: 'UBL-SR-29'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-29, BT-46, BT-60, BT-90';
+     Message: 'the document shall contain at most one party identifier with scheme SEPA (bank assigned ' +
+       'creditor reference)';
      Source: EN16931Source),
     (ID: 'BR-DE-1'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BG-16';
@@ -1414,6 +1419,57 @@ begin
        (ASubLines and AnyLineViolated(AIndex, ALines[I].SubInvoiceLines, True)) then
       Exit;
   Result := False;
+end;
+
+{ UBL-SR-29: count(//cac:PartyIdentification/cbc:ID[upper-case(@schemeID)
+  = 'SEPA']) <= 1, as the UBL writer fills them: the global identifiers of
+  seller and buyer (BT-29/BT-46, without scheme 0088), the creditor
+  identifier BT-90 (with the payee when one is written, otherwise with the
+  seller) and the payee identifier BT-60 with its scheme. The scheme is
+  compared in ASCII; XPath upper-case also maps U+017F (long s) to S, but
+  such a scheme breaks BR-CL-10 anyway.
+  DE: UBL-SR-29: hoechstens eine Parteikennung mit Schema SEPA, so wie der
+  UBL-Writer sie fuellt: die globalen Kennungen von Verkaeufer und Kaeufer
+  (BT-29/BT-46, ohne Schema 0088), die Glaeubiger-ID BT-90 (beim
+  Zahlungsempfaenger, wenn einer geschrieben wird, sonst beim Verkaeufer)
+  und die Kennung des Zahlungsempfaengers BT-60 mit ihrem Schema. Das
+  Schema wird in ASCII verglichen; upper-case in XPath bildet auch U+017F
+  (langes s) auf S ab, ein solches Schema verletzt aber ohnehin BR-CL-10. }
+function SEPAScheme(const AScheme: TLandrixEInvoiceString): Boolean;
+const
+  Letters = 'SEPA';
+var
+  I: Integer;
+  C: TLandrixEInvoiceChar;
+begin
+  Result := Length(AScheme) = 4;
+  if Result then
+    for I := 1 to 4 do
+    begin
+      C := AScheme[I];
+      if (C >= 'a') and (C <= 'z') then
+        C := TLandrixEInvoiceChar(Ord(C) - 32);
+      if C <> TLandrixEInvoiceChar(Letters[I]) then
+        Result := False;
+    end;
+end;
+
+function SEPAGlobalIdentifier(AParty: TLandrixInvoiceAccountingParty): Integer;
+begin
+  if Present(AParty.GlobalIdentifierSellerBuyer) and SEPAScheme(AParty.GlobalIdentifierSellerBuyerSchemeID) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+function SEPAIdentifierCount(AInvoice: TLandrixInvoice): Integer;
+begin
+  Result := SEPAGlobalIdentifier(AInvoice.AccountingSupplierParty) +
+    SEPAGlobalIdentifier(AInvoice.AccountingCustomerParty);
+  if Present(AInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier) then
+    Inc(Result);
+  if Present(AInvoice.PayeeParty.Identifier) and SEPAScheme(AInvoice.PayeeParty.IdentifierSchemeID) then
+    Inc(Result);
 end;
 
 { BR-17: the payee needs a name and must not repeat the seller. UBL
@@ -3984,6 +4040,8 @@ begin
         not Present(Seller.VATCompanyNumber) and not PartySet(TaxRepresentative);
     cr_BRDE17:
       Result := not TypeCodeSupported(AInvoice);
+    cr_UBLSR29:
+      Result := SEPAIdentifierCount(AInvoice) > 1;
     { BR-DE-18: the lines as written; the second part of the test (a line
       break after the last cash discount line) always holds, as the text
       ends every line with LF and replaces # in the free text.

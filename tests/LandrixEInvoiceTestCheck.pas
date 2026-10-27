@@ -319,6 +319,13 @@ begin
     Line.TaxCategory := idtfcc_None
   else if AID = 'BR-DE-17' then
     Invoice.InvoiceTypeCode := itc_PrepaymentInvoice
+  else if AID = 'UBL-SR-29' then
+  begin
+    Seller.BankAssignedCreditorIdentifier := 'DE98ZZZ09999999999';
+    Invoice.PayeeParty.Name := 'Payee';
+    Invoice.PayeeParty.Identifier := 'DE98ZZZ09999999999';
+    Invoice.PayeeParty.IdentifierSchemeID := 'sepa';
+  end
   else if AID = 'BR-DE-18' then
   begin
     Invoice.PaymentTermsType := iptt_CashDiscount2;
@@ -601,7 +608,7 @@ type
   end;
 
 const
-  RuleCases: array[0..148] of TRuleCase = (
+  RuleCases: array[0..149] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -699,6 +706,7 @@ const
     (ID: 'BR-CO-26'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-FXEXT-CO-04'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'BR-DE-17'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
+    (ID: 'UBL-SR-29'; Target: tk_Peppol; NotApplicable: tk_XRCII),
     (ID: 'BR-DE-18'; Target: tk_XRCII; NotApplicable: tk_Peppol),
     (ID: 'BR-DE-19'; Target: tk_XRCII; NotApplicable: tk_Peppol),
     (ID: 'BR-DE-20'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
@@ -1193,6 +1201,75 @@ begin
   finally
     Invoice.Free;
     D.Free;
+  end;
+end;
+
+{ UBL-SR-29 counts the SEPA identifiers the UBL writer produces: the
+  prediction is compared with the written syntax model. }
+function SEPACount(AList: TLandrixUBLPartyIdentificationList): Integer;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result := 0;
+  for I := 0 to AList.Count - 1 do
+    if UpperCase(string(AList[I].ID.SchemeID)) = 'SEPA' then
+      Inc(Result);
+end;
+
+procedure TestSEPAIdentifiers;
+var
+  Invoice: TLandrixInvoice;
+  UBL: TLandrixUBLInvoice;
+  CaseNo, Count: Integer;
+begin
+  for CaseNo := 1 to 6 do
+  begin
+    Invoice := TLandrixInvoice.Create;
+    try
+      FillComplete(Invoice);
+      Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := 'DE98ZZZ09999999999';
+      case CaseNo of
+        2:
+          Invoice.PayeeParty.Name := 'Payee';
+        3:
+          begin
+            Invoice.PayeeParty.Name := 'Payee';
+            Invoice.PayeeParty.Identifier := 'DE98ZZZ09999999999';
+            Invoice.PayeeParty.IdentifierSchemeID := 'sepa';
+          end;
+        4:
+          begin
+            Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := 'DE11ZZZ00000000001';
+            Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := 'SEPA';
+          end;
+        5:
+          begin
+            Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := '';
+            Invoice.AccountingCustomerParty.GlobalIdentifierSellerBuyer := 'DE11ZZZ00000000001';
+            Invoice.AccountingCustomerParty.GlobalIdentifierSellerBuyerSchemeID := 'Sepa';
+          end;
+        6:
+          begin
+            Invoice.PayeeParty.Identifier := 'DE98ZZZ09999999999';
+            Invoice.PayeeParty.IdentifierSchemeID := ' SEPA';
+          end;
+      end;
+      UBL := LandrixEInvoiceInvoiceToUBLInvoice(Invoice, SpecOf(tk_XRUBL), nil);
+      try
+        Count := SEPACount(UBL.AccountingSupplierParty.Party.PartyIdentification) +
+          SEPACount(UBL.AccountingCustomerParty.Party.PartyIdentification) +
+          SEPACount(UBL.PayeeParty.PartyIdentification);
+      finally
+        UBL.Free;
+      end;
+      Check((Count <= 1) = LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'UBL-SR-29', nil),
+        'variant ' + IntToStr(CaseNo) + ', ' + IntToStr(Count) + ' written');
+      Check((CaseNo in [3, 4]) = (Count > 1), 'variant ' + IntToStr(CaseNo) + ' count');
+      if CaseNo = 3 then
+        Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-10', nil), 'lower case scheme sepa');
+    finally
+      Invoice.Free;
+    end;
   end;
 end;
 
@@ -2206,6 +2283,7 @@ begin
   RegisterTest('Check.SubLines', TestSubLines);
   RegisterTest('Check.CheckCII', TestCheckCII);
   RegisterTest('Check.CheckUBL', TestCheckUBL);
+  RegisterTest('Check.SEPAIdentifiers', TestSEPAIdentifiers);
   RegisterTest('Check.TaxTolerance', TestTaxTolerance);
   RegisterTest('Check.Totals', TestTotals);
   RegisterTest('Check.VatCategories', TestVatCategories);
