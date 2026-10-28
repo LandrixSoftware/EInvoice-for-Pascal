@@ -41,6 +41,8 @@ uses
   LandrixEInvoiceTypes,
   LandrixEInvoicePdf,
   LandrixEInvoicePdfObjects,
+  LandrixEInvoicePdfCheck,
+  LandrixEInvoiceDiagnostics,
   LandrixEInvoiceTestFramework;
 
 const
@@ -266,10 +268,15 @@ const
     '00C8CBBC512E527106CD6C479F';
 
 type
-  TPdfOffsets = array[0..15] of Integer;
+  TPdfOffsets = array[0..79] of Integer;
 
-const
-  NoOffsets: TPdfOffsets = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+function NoOffsets: TPdfOffsets;
+var
+  I: Integer;
+begin
+  for I := Low(Result) to High(Result) do
+    Result[I] := 0;
+end;
 
 function IntToAnsi(V: Integer): AnsiString;
 var
@@ -366,6 +373,20 @@ begin
     if Copy(AText, I, Length(ASub)) = ASub then
     begin
       Result := True;
+      Exit;
+    end;
+end;
+
+{ Position of ASub in AText (1-based), 0 if absent. }
+function RawPos(const ASub, AText: AnsiString): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 1 to Length(AText) - Length(ASub) + 1 do
+    if Copy(AText, I, Length(ASub)) = ASub then
+    begin
+      Result := I;
       Exit;
     end;
 end;
@@ -1251,6 +1272,321 @@ begin
   end;
 end;
 
+{ --- the checker of level 2 ------------------------------------------------------ }
+
+const
+  CheckXml = '<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"/>';
+  GoodParams = '/Params << /Size 100 /ModDate (D:20261028120000+01''00) >>';
+
+{ Catalog 1 with ACatalogExtra (the name tree, /AF), pages 2, page 3,
+  file specification 4 with the body ASpec, embedded file 5 with the stream
+  dictionary entries AStreamDict and the data AData. }
+function SimplePdf(const ACatalogExtra, ASpec, AStreamDict, AData: AnsiString): AnsiString;
+var
+  O: TPdfOffsets;
+begin
+  O := NoOffsets;
+  Result := PdfHeader;
+  AddObj(Result, O, 1, '<< /Type /Catalog /Pages 2 0 R ' + ACatalogExtra + ' >>');
+  AddObj(Result, O, 2, PagesBody);
+  AddObj(Result, O, 3, PageBody);
+  AddObj(Result, O, 4, ASpec);
+  AddObj(Result, O, 5, StreamBody(AStreamDict, AData));
+  Finish(Result, O, 6, '');
+end;
+
+const
+  TreeAndAF = '/Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R] >> >> /AF [4 0 R]';
+  GoodSpec = '<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 5 0 R >> ' +
+    '/AFRelationship /Alternative >>';
+  GoodStream = '/Type /EmbeddedFile /Subtype /text#2Fxml ' + GoodParams;
+
+function RunCheck(const APdf: AnsiString; AResult: TLandrixEInvoicePdfCheckResult): Integer;
+var
+  S: TMemoryStream;
+  Checker: TLandrixEInvoicePdfChecker;
+begin
+  S := TMemoryStream.Create;
+  Checker := TLandrixEInvoicePdfChecker.Create;
+  try
+    if APdf <> '' then
+      S.WriteBuffer(APdf[1], Length(APdf));
+    S.Position := 0;
+    Result := Checker.CheckStream(S, AResult);
+  finally
+    Checker.Free;
+    S.Free;
+  end;
+end;
+
+{ Number of findings of rule ARule whose path and message contain AText. }
+function Findings(AResult: TLandrixEInvoicePdfCheckResult; const ARule, AText: string): Integer;
+var
+  I: Integer;
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  Result := 0;
+  for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
+  begin
+    D := AResult.Diagnostics[I];
+    if (string(D.RuleID) = ARule) and (Pos(AText, string(D.Path + ' ' + D.Message)) > 0) then
+      Inc(Result);
+  end;
+end;
+
+function StatusText(AResult: TLandrixEInvoicePdfCheckResult): string;
+const
+  Names: array[TLandrixEInvoicePdfLevelStatus] of string = ('not run', 'passed', 'failed', 'incomplete');
+begin
+  Result := Names[AResult.Status[epl_Embedding]] + ': ' + string(AResult.Diagnostics.ToText);
+end;
+
+procedure CheckOnly(AResult: TLandrixEInvoicePdfCheckResult; const APdf: AnsiString;
+  AStatus: TLandrixEInvoicePdfLevelStatus; const ARule, AText, Msg: string);
+var
+  Errors: Integer;
+begin
+  Errors := RunCheck(APdf, AResult);
+  Check(AResult.Status[epl_Embedding] = AStatus, Msg + ': status ' + StatusText(AResult));
+  CheckEquals(1, Integer(AResult.Diagnostics.Count), Msg + ': one finding: ' + StatusText(AResult));
+  CheckEquals(1, Findings(AResult, ARule, AText), Msg + ': ' + ARule + ' ' + AText);
+  if AStatus = eps_Failed then
+    CheckEquals(1, Errors, Msg + ': errors')
+  else
+    CheckEquals(0, Errors, Msg + ': errors');
+end;
+
+procedure TestCheckEmbedding;
+var
+  R: TLandrixEInvoicePdfCheckResult;
+  O: TPdfOffsets;
+  Pdf: AnsiString;
+  I: Integer;
+begin
+  Check(Length(CheckXml) = 100, 'the /Size of GoodParams is the length of CheckXml');
+  R := TLandrixEInvoicePdfCheckResult.Create;
+  try
+    { the reference case: no finding }
+    CheckEquals(0, RunCheck(SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml), R), 'no errors');
+    Check(R.Status[epl_Embedding] = eps_Passed, 'passed: ' + StatusText(R));
+    CheckEquals(0, Integer(R.Diagnostics.Count), 'no findings: ' + StatusText(R));
+    Check(R.Status[epl_PdfA] = eps_NotRun, 'level 1 not run');
+    Check(R.HybridKind = ehk_FacturX, 'Factur-X');
+    CheckEqualsInvoiceStr('factur-x.xml', R.InvoiceFileName, 'file name');
+    CheckEqualsInvoiceStr('Alternative', R.InvoiceRelationship, 'relationship');
+    CheckEqualsInvoiceStr('1.7', R.PdfVersion, 'header version');
+    CheckEqualsInvoiceStr('', R.CatalogVersion, 'no catalog version');
+    CheckEqualsBytes(CheckXml, StreamText(R.Invoice), 'invoice bytes');
+
+    { recommendations and the general table }
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile /Subtype /text#2Fxml', CheckXml),
+      eps_Passed, 'LX-PDF-04', '/Root/Names/EmbeddedFiles/Names[1]/EF/F/Params', 'no /ModDate');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml + ' '),
+      eps_Passed, 'LX-PDF-05', 'decoded length 101', 'wrong /Size');
+    CheckOnly(R, SimplePdf(TreeAndAF, '<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 5 0 R >> ' +
+      '/AFRelationship /Unspecified >>', GoodStream, CheckXml),
+      eps_Passed, 'BR-HYBRID-11', '/Unspecified', 'relationship outside the table');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile /Subtype /text#2Fxml /Params << /ModDate (D:2026) >>',
+      '<?xml version="1.0" encoding="ISO-8859-1"?>' + CheckXml),
+      eps_Passed, 'LX-PDF-06', 'ISO-8859-1', 'not UTF-8');
+
+    { the file name, exactly }
+    RunCheck(SimplePdf('/Names << /EmbeddedFiles << /Names [(Factur-X.xml) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (Factur-X.xml) /UF (Factur-X.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+      GoodStream, CheckXml), R);
+    Check(R.Status[epl_Embedding] = eps_Failed, 'wrong case: ' + StatusText(R));
+    CheckEquals(2, Findings(R, 'BR-HYBRID-13', '"Factur-X.xml"'), '/F and /UF: ' + StatusText(R));
+    CheckEquals(2, Integer(R.Diagnostics.Count), 'nothing else: ' + StatusText(R));
+    Check(R.HybridKind = ehk_FacturX, 'still Factur-X');
+    RunCheck(SimplePdf('/Names << /EmbeddedFiles << /Names [(invoice.xml) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (invoice.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+      GoodStream, CheckXml), R);
+    CheckEquals(1, Findings(R, 'BR-HYBRID-13', 'Names[1]/F The file name "invoice.xml"'), 'by the root element: ' +
+      StatusText(R));
+    Check(R.HybridKind = ehk_XRechnung, 'XRechnung by /UF');
+
+    { the file specification }
+    RunCheck(SimplePdf(TreeAndAF, '<< /F (factur-x.xml) /EF << /UF 5 0 R >> >>', GoodStream, CheckXml), R);
+    Check(R.Status[epl_Embedding] = eps_Failed, 'damaged file specification: ' + StatusText(R));
+    CheckEquals(1, Findings(R, 'BR-HYBRID-12', 'no /Type /Filespec'), '/Type');
+    CheckEquals(1, Findings(R, 'BR-HYBRID-12', 'no /UF'), '/UF');
+    CheckEquals(1, Findings(R, 'BR-HYBRID-12', 'no /AFRelationship'), '/AFRelationship');
+    CheckEquals(1, Findings(R, 'BR-HYBRID-12', 'not under /EF /F'), '/EF /F');
+    CheckEquals(4, Integer(R.Diagnostics.Count), 'nothing else: ' + StatusText(R));
+    CheckEqualsBytes(CheckXml, StreamText(R.Invoice), 'still extracted');
+    CheckOnly(R, SimplePdf(TreeAndAF, '<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /AFRelationship /Data >>',
+      GoodStream, CheckXml), eps_Failed, 'BR-HYBRID-12', 'no embedded file stream', 'no /EF');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile /Subtype /application#2Fxml ' + GoodParams,
+      CheckXml), eps_Passed, 'LX-PDF-09', 'application/xml', 'application/xml');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile /Subtype /text#2Fplain ' + GoodParams,
+      CheckXml), eps_Failed, 'BR-HYBRID-12', 'text/plain, not text/xml', 'MIME type');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile ' + GoodParams,
+      CheckXml), eps_Failed, 'BR-HYBRID-12', 'no /Subtype', 'no MIME type');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /XObject /Subtype /text#2Fxml ' + GoodParams,
+      CheckXml), eps_Failed, 'BR-HYBRID-12', '/XObject', 'stream /Type');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, GoodStream + ' /Filter /FlateDecode', CheckXml),
+      eps_Failed, 'BR-HYBRID-12', 'cannot be decoded', 'damaged stream');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile /Subtype /text#2Fxml /Params << /ModDate (D:2026) >>',
+      '<rsm:CrossIndustryInvoice xmlns:rsm="urn:x"><a></b></rsm:CrossIndustryInvoice>'),
+      eps_Failed, 'BR-HYBRID-12', 'factur-x.xml:/rsm:CrossIndustryInvoice', 'not well-formed');
+    Check(R.Diagnostics[0].Line = 1, 'line of the XML error');
+    Check(R.Diagnostics[0].Column > 40, 'column of the XML error');
+
+    { the ways to the file }
+    CheckOnly(R, SimplePdf('/Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R] >> >>', GoodSpec, GoodStream,
+      CheckXml), eps_Failed, 'BR-HYBRID-12', 'no /AF array', 'no /AF');
+    CheckOnly(R, SimplePdf('/AF [4 0 R]', GoodSpec, GoodStream, CheckXml), eps_Failed, 'BR-HYBRID-12',
+      'no name tree', 'no name tree');
+    CheckOnly(R, SimplePdf('/Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R] >> >> /AF []', GoodSpec,
+      GoodStream, CheckXml), eps_Failed, 'BR-HYBRID-12', 'not listed in /AF', 'empty /AF');
+    O := NoOffsets;
+    Pdf := PdfHeader;
+    AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(z.xml) 6 0 R ' +
+      '(factur-x.xml) 4 0 R] >> >> /AF [4 0 R 6 0 R] >>');
+    AddObj(Pdf, O, 2, PagesBody);
+    AddObj(Pdf, O, 3, PageBody);
+    AddObj(Pdf, O, 4, GoodSpec);
+    AddObj(Pdf, O, 5, StreamBody(GoodStream, CheckXml));
+    AddObj(Pdf, O, 6, '<< /Type /Filespec /F (z.xml) /UF (z.xml) /EF << /F 7 0 R >> /AFRelationship /Supplement >>');
+    AddObj(Pdf, O, 7, StreamBody('/Type /EmbeddedFile /Subtype /text#2Fplain', 'z'));
+    Finish(Pdf, O, 8, '');
+    CheckOnly(R, Pdf, eps_Failed, 'BR-HYBRID-12', 'Names[2] Name tree of the embedded files: key not in ascending',
+      'unsorted name tree');
+
+    { other files and a second invoice }
+    O := NoOffsets;
+    Pdf := PdfHeader;
+    AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R ' +
+      '(z.txt) 6 0 R] >> >> /AF [4 0 R] >>');
+    AddObj(Pdf, O, 2, PagesBody);
+    AddObj(Pdf, O, 3, PageBody);
+    AddObj(Pdf, O, 4, GoodSpec);
+    AddObj(Pdf, O, 5, StreamBody(GoodStream, CheckXml));
+    AddObj(Pdf, O, 6, '<< /Type /Filespec /F (z.txt) /UF (z.txt) /EF << /F 7 0 R >> >>');
+    AddObj(Pdf, O, 7, StreamBody('/Type /EmbeddedFile /Subtype /text#2Fplain', 'z'));
+    Finish(Pdf, O, 8, '');
+    RunCheck(Pdf, R);
+    CheckEquals(1, Findings(R, 'LX-PDF-07', '"z.txt" has no /AFRelationship'), 'other file, relationship: ' +
+      StatusText(R));
+    CheckEquals(1, Findings(R, 'LX-PDF-07', '"z.txt" is not listed in /AF'), 'other file, /AF');
+    CheckEquals(2, Integer(R.Diagnostics.Count), 'nothing else: ' + StatusText(R));
+    O := NoOffsets;
+    Pdf := PdfHeader;
+    AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(a.xml) 6 0 R ' +
+      '(factur-x.xml) 4 0 R] >> >> /AF [4 0 R 6 0 R] >>');
+    AddObj(Pdf, O, 2, PagesBody);
+    AddObj(Pdf, O, 3, PageBody);
+    AddObj(Pdf, O, 4, GoodSpec);
+    AddObj(Pdf, O, 5, StreamBody(GoodStream, CheckXml));
+    AddObj(Pdf, O, 6, '<< /Type /Filespec /F (a.xml) /UF (a.xml) /EF << /F 5 0 R >> /AFRelationship /Data >>');
+    Finish(Pdf, O, 7, '');
+    CheckOnly(R, Pdf, eps_Failed, 'BR-HYBRID-12', 'A second invoice XML "a.xml" besides "factur-x.xml" ' +
+      '(a second file specification of the same stream)', 'second invoice');
+    CheckEqualsInvoiceStr('factur-x.xml', R.InvoiceFileName, 'the exact name wins');
+
+    { no invoice }
+    CheckOnly(R, SimplePdf('', GoodSpec, GoodStream, CheckXml), eps_Failed, 'BR-HYBRID-12',
+      'no embedded files', 'no embedded files');
+    CheckOnly(R, SimplePdf('/Names << /EmbeddedFiles << /Names [(a.txt) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (a.txt) /UF (a.txt) /EF << /F 5 0 R >> /AFRelationship /Data >>', GoodStream, 'text'),
+      eps_Failed, 'BR-HYBRID-12', 'None of the 1 embedded files', 'no invoice');
+    Check(R.HybridKind = ehk_None, 'no kind');
+    CheckEquals(0, Integer(R.Invoice.Size), 'no bytes');
+
+    { ZUGFeRD 2.0 and 1.0: recognised, not checked }
+    CheckOnly(R, SimplePdf('/Names << /EmbeddedFiles << /Names [(zugferd-invoice.xml) 4 0 R] >> >>',
+      '<< /F (zugferd-invoice.xml) /EF << /F 5 0 R >> >>', '', CheckXml),
+      eps_Incomplete, 'LX-PDF-03', 'ZUGFeRD 2.0', 'ZUGFeRD 2.0');
+    Check(R.HybridKind = ehk_ZUGFeRD20, 'kind 2.0');
+    CheckEqualsBytes(CheckXml, StreamText(R.Invoice), 'extracted');
+    CheckOnly(R, SimplePdf('/Names << /EmbeddedFiles << /Names [(ZUGFeRD-invoice.xml) 4 0 R] >> >>',
+      '<< /F (ZUGFeRD-invoice.xml) /EF << /F 5 0 R >> >>', '', '<rsm:CrossIndustryDocument xmlns:rsm="urn:x"/>'),
+      eps_Incomplete, 'LX-PDF-03', 'ZUGFeRD 1.0', 'ZUGFeRD 1.0');
+    Check(R.HybridKind = ehk_ZUGFeRD10, 'kind 1.0');
+    RunCheck(SimplePdf('/Names << /EmbeddedFiles << /Names [(zugferd-invoice.xml) 4 0 R] >> >>',
+      '<< /F (zugferd-invoice.xml) /EF << /F 5 0 R >> >>', '/Filter /FlateDecode', CheckXml), R);
+    Check(R.Status[epl_Embedding] = eps_Incomplete, 'damaged 2.0: ' + StatusText(R));
+    CheckEquals(1, Findings(R, 'LX-PDF-03', 'cannot be extracted'), 'damaged 2.0 reported');
+    CheckEquals(2, Integer(R.Diagnostics.Count), 'info and warning: ' + StatusText(R));
+
+    { more ways and values }
+    CheckOnly(R, SimplePdf('/Names << /EmbeddedFiles << /Names [] >> >> /AF [4 0 R]', GoodSpec, GoodStream,
+      CheckXml), eps_Failed, 'BR-HYBRID-12', 'not in the name tree', 'only in /AF');
+    CheckOnly(R, SimplePdf(TreeAndAF, '<< /Type /F /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 5 0 R >> ' +
+      '/AFRelationship /Alternative >>', GoodStream, CheckXml), eps_Failed, 'BR-HYBRID-12', '/Type is /F, not',
+      'wrong /Type');
+    CheckOnly(R, SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile /Subtype /text#2Fxml /Params << /ModDate (D:2026) >>',
+      #$FE#$FF#0'<'#0'a'#0'/'#0'>'), eps_Passed, 'LX-PDF-06', 'UTF-16', 'UTF-16');
+    O := NoOffsets;
+    Pdf := PdfHeader;
+    AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R ' +
+      '(z.txt) 6 0 R] >> >> /AF [4 0 R] >>');
+    AddObj(Pdf, O, 2, PagesBody);
+    AddObj(Pdf, O, 3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /AF [6 0 R] >>');
+    AddObj(Pdf, O, 4, GoodSpec);
+    AddObj(Pdf, O, 5, StreamBody(GoodStream, CheckXml));
+    AddObj(Pdf, O, 6, '<< /Type /Filespec /F (z.txt) /UF (z.txt) /EF << /F 7 0 R >> /AFRelationship /Supplement >>');
+    AddObj(Pdf, O, 7, StreamBody('/Type /EmbeddedFile /Subtype /text#2Fplain', 'z'));
+    Finish(Pdf, O, 8, '');
+    CheckEquals(0, RunCheck(Pdf, R), 'a file associated with a page: ' + StatusText(R));
+    CheckEquals(0, Integer(R.Diagnostics.Count), 'no findings: ' + StatusText(R));
+    { a name tree deeper than the object layer reads }
+    O := NoOffsets;
+    Pdf := PdfHeader;
+    AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles 6 0 R >> /AF [4 0 R] >>');
+    AddObj(Pdf, O, 2, PagesBody);
+    AddObj(Pdf, O, 3, PageBody);
+    AddObj(Pdf, O, 4, GoodSpec);
+    AddObj(Pdf, O, 5, StreamBody(GoodStream, CheckXml));
+    for I := 6 to 75 do
+      AddObj(Pdf, O, I, '<< /Kids [' + IntToAnsi(I + 1) + ' 0 R] /Limits [(factur-x.xml) (factur-x.xml)] >>');
+    AddObj(Pdf, O, 76, '<< /Names [(factur-x.xml) 4 0 R] /Limits [(factur-x.xml) (factur-x.xml)] >>');
+    Finish(Pdf, O, 77, '');
+    RunCheck(Pdf, R);
+    CheckEquals(1, Findings(R, 'LX-PDF-08', 'too deep a name tree'), 'limit: ' + StatusText(R));
+    Check(R.Status[epl_Embedding] <> eps_Passed, 'a limit never passes');
+
+    { the PDF itself }
+    CheckOnly(R, 'no PDF', eps_Failed, 'LX-PDF-01', 'not readable', 'not a PDF');
+    Pdf := SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml);
+    Pdf := Copy(Pdf, 1, RawPos('startxref', Pdf) + 9) + '99999'#10'%%EOF'#10;
+    CheckOnly(R, Pdf, eps_Incomplete, 'LX-PDF-02', 'scan', 'reconstructed');
+    CheckEquals(Length(CheckXml), Integer(R.Invoice.Size), 'still extracted');
+  finally
+    R.Free;
+  end;
+end;
+
+procedure TestCheckFile;
+var
+  R: TLandrixEInvoicePdfCheckResult;
+  Checker: TLandrixEInvoicePdfChecker;
+  S: TMemoryStream;
+  Pdf: AnsiString;
+begin
+  R := TLandrixEInvoicePdfCheckResult.Create;
+  Checker := TLandrixEInvoicePdfChecker.Create;
+  try
+    CheckEquals(1, Checker.CheckFile(RepositoryRoot + 'no-such-file.pdf', R), 'one error');
+    Check(R.Status[epl_Embedding] = eps_Failed, 'failed');
+    CheckEquals(1, Findings(R, 'LX-PDF-01', 'File not readable'), StatusText(R));
+    CheckEquals(0, Checker.CheckStream(nil, nil), 'no result, nothing to do');
+    S := TMemoryStream.Create;
+    try
+      Pdf := 'junk' + SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml);
+      S.WriteBuffer(Pdf[1], Length(Pdf));
+      S.Position := 4;
+      CheckEquals(0, Checker.CheckStream(S, R), 'from the stream position: ' + StatusText(R));
+      Check(R.Status[epl_Embedding] = eps_Passed, 'passed from the position');
+    finally
+      S.Free;
+    end;
+  finally
+    Checker.Free;
+    R.Free;
+  end;
+end;
+
 { The object layer has its own copy of the public limits. }
 procedure TestLimits;
 begin
@@ -1271,6 +1607,8 @@ begin
   RegisterTest('Pdf.Encryption', TestEncryption);
   RegisterTest('Pdf.Corpus', TestCorpus);
   RegisterTest('Pdf.Collector', TestCollector);
+  RegisterTest('Pdf.CheckEmbedding', TestCheckEmbedding);
+  RegisterTest('Pdf.CheckFile', TestCheckFile);
 end;
 
 end.

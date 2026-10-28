@@ -359,14 +359,16 @@ type
   end;
 
   { Collects the file specifications of a document: the name tree first,
-    in its order, then those only listed in /AF; at most 10000 occurrences
-    are read (a further one is noted as an issue). Structural problems of
-    the name tree (keys not sorted or no strings, wrong /Limits, a node with
-    both or none of /Names and /Kids) are noted, not repaired.
+    in its order, then those only listed in /AF; at most 10000 occurrences,
+    100000 name tree nodes and the nesting depth of the object layer are
+    read (see LimitReached). Structural problems of the name tree (keys not
+    sorted or no strings, wrong /Limits, a node with both or none of /Names
+    and /Kids) are noted, not repaired.
     DE: Sammelt die Dateispezifikationen eines Dokuments: zuerst den
     Namensbaum in seiner Reihenfolge, dann die nur in /AF genannten.
-    Hoechstens 10000 Vorkommen werden gelesen (ein weiteres wird als
-    Problem notiert). Strukturfehler des Namensbaums (Schluessel nicht
+    Gelesen werden hoechstens 10000 Vorkommen, 100000 Knoten des
+    Namensbaums und die Verschachtelungstiefe der Objektschicht (siehe
+    LimitReached). Strukturfehler des Namensbaums (Schluessel nicht
     sortiert oder keine Strings, falsche /Limits, ein Knoten mit beiden oder
     keinem von /Names und /Kids) werden notiert, nicht repariert. }
   TLandrixEInvoicePdfCollector = class(TObject)
@@ -380,6 +382,7 @@ type
     FHasNameTree: Boolean;
     FHasAF: Boolean;
     FOccurrences: Integer;
+    FLimitReached: Boolean;
     function GetCount: Integer;
     function GetItem(AIndex: Integer): TLandrixEInvoicePdfFileSpec;
     procedure Issue(const APath, AText: TLandrixEInvoiceString);
@@ -396,12 +399,13 @@ type
     procedure Collect;
     property Count: Integer read GetCount;
     property Items[AIndex: Integer]: TLandrixEInvoicePdfFileSpec read GetItem; default;
-    { One line per problem: path, colon, text; also the note that the
-      occurrence limit was reached (then possibly with an /AF path).
-      DE: Eine Zeile je Problem: Pfad, Doppelpunkt, Text; auch der Hinweis,
-      dass die Grenze der Vorkommen erreicht wurde (dann ggf. mit einem
-      /AF-Pfad). }
+    { One line per problem: path, colon, text.
+      DE: Eine Zeile je Problem: Pfad, Doppelpunkt, Text. }
     property NameTreeIssues: TStringList read FNameTreeIssues;
+    { A limit was reached: not every file specification was read.
+      DE: Eine Grenze wurde erreicht: nicht jede Dateispezifikation wurde
+      gelesen. }
+    property LimitReached: Boolean read FLimitReached;
     { The catalog has /Names /EmbeddedFiles, an /AF array.
       DE: Der Katalog hat /Names /EmbeddedFiles, ein Array /AF. }
     property HasNameTree: Boolean read FHasNameTree;
@@ -3627,9 +3631,7 @@ begin
   Inc(FOccurrences);
   if FOccurrences > MaxOccurrences then
   begin
-    if FOccurrences = MaxOccurrences + 1 then
-      Issue(APath, 'more than ' + TLandrixEInvoiceString(IntToStr(MaxOccurrences)) +
-        ' file specifications; the rest is not read');
+    FLimitReached := True;
     Exit;
   end;
   Spec := FDoc.Resolve(AValue);
@@ -3772,10 +3774,16 @@ begin
     Exit;
   end;
   if ADepth > LandrixEInvoicePdfObjectMaxDepth then
+  begin
+    FLimitReached := True;
     Exit;
+  end;
   Inc(FNodeCount);
   if FNodeCount > 100000 then
+  begin
+    FLimitReached := True;
     Exit;
+  end;
   NamesArr := FDoc.DGet(ANode, 'Names');
   KidsArr := FDoc.DGet(ANode, 'Kids');
   if (NamesArr <> nil) and (KidsArr <> nil) then
@@ -3862,6 +3870,7 @@ var
 begin
   FItems.Clear;
   FOccurrences := 0;
+  FLimitReached := False;
   FNameTreeIssues.Clear;
   FNodeCount := 0;
   FPreviousKey := nil;

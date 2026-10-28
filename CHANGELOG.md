@@ -390,6 +390,16 @@ Supported invoice standards are documented per release.
 - API levels: every unit states `API: stable` or `API: internal` before its `unit` line; the
   README lists both groups and `tools/check-forbidden.py` checks that stable interfaces use no
   internal unit.
+- Internal unit `LandrixEInvoicePdfCheck` (phase 6, level 2 of the PDF validator): `TLandrixEInvoicePdfChecker`
+  checks how a ZUGFeRD 2.5.2 / Factur-X 1.09.2 PDF embeds the invoice XML against the business rules for hybrid
+  documents BR-HYBRID-12 (name tree and `/AF`, file specification, embedded file stream, MIME type, well-formed
+  XML, one invoice only), BR-HYBRID-13 (file name, compared exactly) and BR-HYBRID-11 (the `/AFRelationship`
+  values of the table, without profile and country), plus own findings LX-PDF-01 to LX-PDF-09 (PDF not
+  readable, object table rebuilt, ZUGFeRD 1.0/2.0 recognised but not checked, `/ModDate` missing, `/Size`
+  differs, not UTF-8, other embedded files without `/AFRelationship` or `/AF`, a limit reached,
+  `application/xml`, which every hybrid example of ZUGFeRD 2.5.2 uses, as a warning only). The result
+  (`TLandrixEInvoicePdfCheckResult`) holds a status per level, the findings and the invoice bytes; a rebuilt
+  object table never passes. `tools/pdfcheck/PdfCheckProbe.dpr` runs it over a folder.
 
 ### Changed
 - The object layer of the PDF reader (lexer, stream filters, decryption, objects, document) moved from
@@ -397,7 +407,8 @@ Supported invoice standards are documented per release.
   phase 6; the extraction is unchanged. Its collector (`TLandrixEInvoicePdfCollector`) keeps every
   file specification as found: the routes (name tree, `/AF`), path and key in the name tree, `/Type`, `/F`,
   `/UF`, `/AFRelationship`, the embedded file stream with `/Type`, `/Subtype` and `/Params`, a second file
-  specification on the same stream, and structural problems of the name tree (key order, `/Limits`); the
+  specification on the same stream, structural problems of the name tree (key order, `/Limits`) and whether a
+  limit stopped the collection; the
   document gives access to the trailer `/Info`, the catalog `/Metadata` and `/Version`. The extractor builds
   its attachment list from it as before.
 - Sub lines (line groups) are written flat where the target does not nest them: XRechnung CII, the
