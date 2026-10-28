@@ -178,6 +178,7 @@ type
     FOwned: TObjectList;
     FRootRef: TLandrixEInvoicePdfObject;
     FEncryptRef: TLandrixEInvoicePdfObject;
+    FInfoRef: TLandrixEInvoicePdfObject;
     FIdFirst: TLandrixEInvoicePdfBytes;
     FHeaderPos: Integer;
     FXrefSections: Integer;
@@ -234,6 +235,21 @@ type
     { The document catalog (/Root of the trailer); nil if it is missing.
       DE: Der Dokumentkatalog (/Root des Trailers); nil, wenn er fehlt. }
     function Catalog: TLandrixEInvoicePdfObject;
+    { The document information dictionary (/Info of the newest trailer that
+      has one); nil if there is none.
+      DE: Das Dokumentinformations-Dictionary (/Info des neuesten Trailers,
+      der eines hat); nil, wenn es keines gibt. }
+    function Info: TLandrixEInvoicePdfObject;
+    { The metadata stream of the catalog (/Metadata, XMP); nil if there is
+      none.
+      DE: Der Metadaten-Stream des Katalogs (/Metadata, XMP); nil, wenn es
+      keinen gibt. }
+    function Metadata: TLandrixEInvoicePdfObject;
+    { /Version of the catalog (from PDF 1.4 on it takes precedence over the
+      header when it is later), '' if absent.
+      DE: /Version des Katalogs (ab PDF 1.4 geht sie dem Kopf vor, wenn sie
+      spaeter ist), '', wenn sie fehlt. }
+    function CatalogVersion: AnsiString;
     property XrefSections: Integer read FXrefSections;
     property Reconstructed: Boolean read FReconstructed;
     property Encrypted: Boolean read FEncrypted;
@@ -263,6 +279,134 @@ function LandrixEInvoicePdfDetectXmlRoot(const AData: TLandrixEInvoicePdfBytes):
 { ALen bytes from APos as AnsiString, byte by byte.
   DE: ALen Bytes ab APos als AnsiString, Byte fuer Byte. }
 function LandrixEInvoicePdfBytesToAnsi(const ABuf: TLandrixEInvoicePdfBytes; APos, ALen: Integer): AnsiString;
+
+type
+  { The way a file specification is reached: the name tree /Names
+    /EmbeddedFiles of the catalog or its /AF array (PDF/A-3).
+    DE: Der Weg zu einer Dateispezifikation: der Namensbaum /Names
+    /EmbeddedFiles des Katalogs oder sein Array /AF (PDF/A-3). }
+  TLandrixEInvoicePdfFileSpecRoute = (efr_NameTree, efr_AF);
+  TLandrixEInvoicePdfFileSpecRoutes = set of TLandrixEInvoicePdfFileSpecRoute;
+
+  { One file specification of the catalog as found, also when it is
+    damaged; values are taken as written (#xx escapes of names decoded, no
+    case or alias normalisation). The objects belong to the document.
+    DE: Eine Dateispezifikation des Katalogs wie vorgefunden, auch wenn sie
+    beschaedigt ist; Werte wie geschrieben (#xx-Escapes in Namen
+    dekodiert, keine Normalisierung von Gross-/Kleinschreibung oder
+    Aliassen). Die Objekte gehoeren dem Dokument. }
+  TLandrixEInvoicePdfFileSpec = class(TObject)
+  public
+    { The file specification dictionary; its object and generation number,
+      -1 for a direct object.
+      DE: Das Dictionary der Dateispezifikation; seine Objekt- und
+      Generationsnummer, -1 bei einem direkten Objekt. }
+    Spec: TLandrixEInvoicePdfObject;
+    SpecNum: Integer;
+    SpecGen: Integer;
+    Routes: TLandrixEInvoicePdfFileSpecRoutes;
+    { First place in the name tree (e.g.
+      /Root/Names/EmbeddedFiles/Kids[0]/Names[1]), its key and how often the
+      name tree lists this file specification.
+      DE: Erste Stelle im Namensbaum (z. B.
+      /Root/Names/EmbeddedFiles/Kids[0]/Names[1]), ihr Schluessel und wie
+      oft der Namensbaum diese Dateispezifikation nennt. }
+    NameTreePath: TLandrixEInvoiceString;
+    NameTreeKey: TLandrixEInvoiceString;
+    NameTreeCount: Integer;
+    { First index in /AF, -1 if not listed there.
+      DE: Erster Index in /AF, -1, wenn dort nicht genannt. }
+    AFIndex: Integer;
+    { /Type, /F, /UF, /AFRelationship, /Desc; Has... tells whether present.
+      DE: /Type, /F, /UF, /AFRelationship, /Desc; Has... sagt, ob vorhanden. }
+    TypeName: AnsiString;
+    HasF: Boolean;
+    FileNameF: TLandrixEInvoiceString;
+    HasUF: Boolean;
+    FileNameUF: TLandrixEInvoiceString;
+    HasRelationship: Boolean;
+    Relationship: AnsiString;
+    Description: TLandrixEInvoiceString;
+    { /EF has /F and /UF. DE: /EF hat /F und /UF. }
+    HasEmbeddedF: Boolean;
+    HasEmbeddedUF: Boolean;
+    { The embedded file stream (/EF /F, else /UF, else /DOS), nil if there
+      is none; its object and generation number, -1 for a direct object.
+      DE: Der eingebettete Dateistream (/EF /F, sonst /UF, sonst /DOS), nil,
+      wenn es keinen gibt; seine Objekt- und Generationsnummer, -1 bei einem
+      direkten Objekt. }
+    Stream: TLandrixEInvoicePdfObject;
+    StreamNum: Integer;
+    StreamGen: Integer;
+    { /Type and /Subtype of the stream (e.g. EmbeddedFile, text/xml).
+      DE: /Type und /Subtype des Streams (z. B. EmbeddedFile, text/xml). }
+    StreamType: AnsiString;
+    Subtype: AnsiString;
+    { /Params of the stream: /Size (-1 if absent) and /ModDate.
+      DE: /Params des Streams: /Size (-1, wenn sie fehlt) und /ModDate. }
+    HasParams: Boolean;
+    ParamsSize: Int64;
+    HasModDate: Boolean;
+    ModDate: TLandrixEInvoiceString;
+    { Index of an earlier file specification with the same stream, -1 if
+      none. DE: Index einer frueheren Dateispezifikation mit demselben
+      Stream, -1, wenn keine. }
+    DuplicateOf: Integer;
+    constructor Create;
+    { /UF if present and not empty, else /F.
+      DE: /UF, wenn vorhanden und nicht leer, sonst /F. }
+    function FileName: TLandrixEInvoiceString;
+  end;
+
+  { Collects the file specifications of a document: the name tree first,
+    in its order, then those only listed in /AF; at most 10000 occurrences
+    are read (a further one is noted as an issue). Structural problems of
+    the name tree (keys not sorted or no strings, wrong /Limits, a node with
+    both or none of /Names and /Kids) are noted, not repaired.
+    DE: Sammelt die Dateispezifikationen eines Dokuments: zuerst den
+    Namensbaum in seiner Reihenfolge, dann die nur in /AF genannten.
+    Hoechstens 10000 Vorkommen werden gelesen (ein weiteres wird als
+    Problem notiert). Strukturfehler des Namensbaums (Schluessel nicht
+    sortiert oder keine Strings, falsche /Limits, ein Knoten mit beiden oder
+    keinem von /Names und /Kids) werden notiert, nicht repariert. }
+  TLandrixEInvoicePdfCollector = class(TObject)
+  private
+    FDoc: TLandrixEInvoicePdfDocument;
+    FItems: TObjectList;
+    FNameTreeIssues: TStringList;
+    FNodeCount: Integer;
+    FPreviousKey: TLandrixEInvoicePdfBytes;
+    FHasPreviousKey: Boolean;
+    FHasNameTree: Boolean;
+    FHasAF: Boolean;
+    FOccurrences: Integer;
+    function GetCount: Integer;
+    function GetItem(AIndex: Integer): TLandrixEInvoicePdfFileSpec;
+    procedure Issue(const APath, AText: TLandrixEInvoiceString);
+    procedure AddOccurrence(AValue: TLandrixEInvoicePdfObject; ARoute: TLandrixEInvoicePdfFileSpecRoute;
+      const APath: TLandrixEInvoiceString; AIndex: Integer; const AKey: TLandrixEInvoiceString);
+    procedure WalkNameTree(ANode: TLandrixEInvoicePdfObject; const APath: TLandrixEInvoiceString;
+      ADepth: Integer; ARoot: Boolean; out ALeast, AGreatest: TLandrixEInvoicePdfBytes; out AHasKeys: Boolean);
+  public
+    constructor Create(ADoc: TLandrixEInvoicePdfDocument);
+    destructor Destroy; override;
+    { Collects anew; items and issues of an earlier call are cleared.
+      DE: Sammelt neu; Eintraege und Probleme eines frueheren Aufrufs werden
+      geleert. }
+    procedure Collect;
+    property Count: Integer read GetCount;
+    property Items[AIndex: Integer]: TLandrixEInvoicePdfFileSpec read GetItem; default;
+    { One line per problem: path, colon, text; also the note that the
+      occurrence limit was reached (then possibly with an /AF path).
+      DE: Eine Zeile je Problem: Pfad, Doppelpunkt, Text; auch der Hinweis,
+      dass die Grenze der Vorkommen erreicht wurde (dann ggf. mit einem
+      /AF-Pfad). }
+    property NameTreeIssues: TStringList read FNameTreeIssues;
+    { The catalog has /Names /EmbeddedFiles, an /AF array.
+      DE: Der Katalog hat /Names /EmbeddedFiles, ein Array /AF. }
+    property HasNameTree: Boolean read FHasNameTree;
+    property HasAF: Boolean read FHasAF;
+  end;
 
 implementation
 
@@ -2058,6 +2202,8 @@ begin
     FRootRef := ADict.RawGet('Root');
   if FEncryptRef = nil then
     FEncryptRef := ADict.RawGet('Encrypt');
+  if FInfoRef = nil then
+    FInfoRef := ADict.RawGet('Info');
   if Length(FIdFirst) = 0 then
   begin
     IdObj := ADict.RawGet('ID');
@@ -2898,6 +3044,38 @@ begin
     Result := nil;
 end;
 
+function TLandrixEInvoicePdfDocument.Info: TLandrixEInvoicePdfObject;
+begin
+  Result := Resolve(FInfoRef);
+  if (Result <> nil) and not Result.IsDictLike then
+    Result := nil;
+end;
+
+function TLandrixEInvoicePdfDocument.Metadata: TLandrixEInvoicePdfObject;
+var
+  Cat: TLandrixEInvoicePdfObject;
+begin
+  Result := nil;
+  Cat := Catalog;
+  if Cat <> nil then
+    Result := DGet(Cat, 'Metadata');
+  if (Result <> nil) and (Result.Kind <> pok_Stream) then
+    Result := nil;
+end;
+
+function TLandrixEInvoicePdfDocument.CatalogVersion: AnsiString;
+var
+  Cat, O: TLandrixEInvoicePdfObject;
+begin
+  Result := '';
+  Cat := Catalog;
+  if Cat = nil then
+    Exit;
+  O := DGet(Cat, 'Version');
+  if (O <> nil) and (O.Kind = pok_Name) then
+    Result := O.NameVal;
+end;
+
 function TLandrixEInvoicePdfDocument.GetStreamData(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
 var
   LenObj, FilterObj, ParmObj, F, P, O: TLandrixEInvoicePdfObject;
@@ -3344,6 +3522,371 @@ begin
     S := LandrixEInvoicePdfBytesToAnsi(AData, Start, I - Start);
     Result := AnsiToText(S);
     Exit;
+  end;
+end;
+
+//==============================================================================
+// File specifications
+//==============================================================================
+
+constructor TLandrixEInvoicePdfFileSpec.Create;
+begin
+  inherited Create;
+  SpecNum := -1;
+  SpecGen := -1;
+  AFIndex := -1;
+  StreamNum := -1;
+  StreamGen := -1;
+  ParamsSize := -1;
+  DuplicateOf := -1;
+end;
+
+function TLandrixEInvoicePdfFileSpec.FileName: TLandrixEInvoiceString;
+begin
+  if FileNameUF <> '' then
+    Result := FileNameUF
+  else
+    Result := FileNameF;
+end;
+
+const
+  { occurrences of file specifications read by the collector }
+  MaxOccurrences = 10000;
+
+function SameBytes(const A, B: TLandrixEInvoicePdfBytes): Boolean;
+var
+  I: Integer;
+begin
+  Result := Length(A) = Length(B);
+  if Result then
+    for I := 0 to Integer(Length(A)) - 1 do
+      if A[I] <> B[I] then
+      begin
+        Result := False;
+        Exit;
+      end;
+end;
+
+{ <0, 0, >0 as A sorts before, equal to or after B (bytes, ISO 32000-1,
+  7.9.6: keys in lexical order). }
+function CompareBytes(const A, B: TLandrixEInvoicePdfBytes): Integer;
+var
+  I, N: Integer;
+begin
+  N := Integer(Length(A));
+  if Integer(Length(B)) < N then
+    N := Integer(Length(B));
+  for I := 0 to N - 1 do
+    if A[I] <> B[I] then
+    begin
+      Result := Integer(A[I]) - Integer(B[I]);
+      Exit;
+    end;
+  Result := Integer(Length(A)) - Integer(Length(B));
+end;
+
+constructor TLandrixEInvoicePdfCollector.Create(ADoc: TLandrixEInvoicePdfDocument);
+begin
+  inherited Create;
+  FDoc := ADoc;
+  FItems := TObjectList.Create(True);
+  FNameTreeIssues := TStringList.Create;
+end;
+
+destructor TLandrixEInvoicePdfCollector.Destroy;
+begin
+  FNameTreeIssues.Free;
+  FItems.Free;
+  inherited Destroy;
+end;
+
+function TLandrixEInvoicePdfCollector.GetCount: Integer;
+begin
+  Result := Integer(FItems.Count);
+end;
+
+function TLandrixEInvoicePdfCollector.GetItem(AIndex: Integer): TLandrixEInvoicePdfFileSpec;
+begin
+  Result := TLandrixEInvoicePdfFileSpec(FItems[AIndex]);
+end;
+
+procedure TLandrixEInvoicePdfCollector.Issue(const APath, AText: TLandrixEInvoiceString);
+begin
+  FNameTreeIssues.Add(string(APath + ': ' + AText));
+end;
+
+procedure TLandrixEInvoicePdfCollector.AddOccurrence(AValue: TLandrixEInvoicePdfObject;
+  ARoute: TLandrixEInvoicePdfFileSpecRoute; const APath: TLandrixEInvoiceString; AIndex: Integer;
+  const AKey: TLandrixEInvoiceString);
+var
+  Spec, Ef, Raw, O, Params: TLandrixEInvoicePdfObject;
+  Item: TLandrixEInvoicePdfFileSpec;
+  I: TLandrixEInvoiceListIndex;
+begin
+  { the lookups below are linear: bound the work for hostile files }
+  Inc(FOccurrences);
+  if FOccurrences > MaxOccurrences then
+  begin
+    if FOccurrences = MaxOccurrences + 1 then
+      Issue(APath, 'more than ' + TLandrixEInvoiceString(IntToStr(MaxOccurrences)) +
+        ' file specifications; the rest is not read');
+    Exit;
+  end;
+  Spec := FDoc.Resolve(AValue);
+  if (Spec = nil) or not Spec.IsDictLike then
+    Exit;
+  { the same file specification again: one more way to it }
+  for I := 0 to FItems.Count - 1 do
+    if TLandrixEInvoicePdfFileSpec(FItems[I]).Spec = Spec then
+    begin
+      Item := TLandrixEInvoicePdfFileSpec(FItems[I]);
+      if ARoute = efr_NameTree then
+      begin
+        if not (efr_NameTree in Item.Routes) then
+        begin
+          Item.NameTreePath := APath;
+          Item.NameTreeKey := AKey;
+        end;
+        Inc(Item.NameTreeCount);
+      end
+      else if Item.AFIndex < 0 then
+        Item.AFIndex := AIndex;
+      Include(Item.Routes, ARoute);
+      Exit;
+    end;
+  Item := TLandrixEInvoicePdfFileSpec.Create;
+  FItems.Add(Item);
+  Item.Spec := Spec;
+  if (AValue <> nil) and (AValue.Kind = pok_Ref) then
+  begin
+    Item.SpecNum := AValue.RefNum;
+    Item.SpecGen := AValue.RefGen;
+  end;
+  Item.Routes := [ARoute];
+  if ARoute = efr_NameTree then
+  begin
+    Item.NameTreePath := APath;
+    Item.NameTreeKey := AKey;
+    Item.NameTreeCount := 1;
+  end
+  else
+    Item.AFIndex := AIndex;
+  O := FDoc.DGet(Spec, 'Type');
+  if (O <> nil) and (O.Kind = pok_Name) then
+    Item.TypeName := O.NameVal;
+  O := FDoc.DGet(Spec, 'F');
+  if (O <> nil) and (O.Kind = pok_Str) then
+  begin
+    Item.HasF := True;
+    Item.FileNameF := LandrixEInvoicePdfTextToString(O.StrVal);
+  end;
+  O := FDoc.DGet(Spec, 'UF');
+  if (O <> nil) and (O.Kind = pok_Str) then
+  begin
+    Item.HasUF := True;
+    Item.FileNameUF := LandrixEInvoicePdfTextToString(O.StrVal);
+  end;
+  O := FDoc.DGet(Spec, 'AFRelationship');
+  if (O <> nil) and (O.Kind = pok_Name) then
+  begin
+    Item.HasRelationship := True;
+    Item.Relationship := O.NameVal;
+  end;
+  O := FDoc.DGet(Spec, 'Desc');
+  if (O <> nil) and (O.Kind = pok_Str) then
+    Item.Description := LandrixEInvoicePdfTextToString(O.StrVal);
+  Ef := FDoc.DGet(Spec, 'EF');
+  if (Ef = nil) or not Ef.IsDictLike then
+    Exit;
+  Item.HasEmbeddedF := Ef.RawGet('F') <> nil;
+  Item.HasEmbeddedUF := Ef.RawGet('UF') <> nil;
+  { /F is the normal case, /UF the Unicode variant of the same stream; a
+    key whose reference leads nowhere counts as absent }
+  Raw := Ef.RawGet('F');
+  O := FDoc.Resolve(Raw);
+  if O = nil then
+  begin
+    Raw := Ef.RawGet('UF');
+    O := FDoc.Resolve(Raw);
+  end;
+  if O = nil then
+  begin
+    Raw := Ef.RawGet('DOS');
+    O := FDoc.Resolve(Raw);
+  end;
+  if (O = nil) or (O.Kind <> pok_Stream) then
+    Exit;
+  Item.Stream := O;
+  if Raw.Kind = pok_Ref then
+  begin
+    Item.StreamNum := Raw.RefNum;
+    Item.StreamGen := Raw.RefGen;
+  end;
+  for I := 0 to FItems.Count - 2 do
+    if TLandrixEInvoicePdfFileSpec(FItems[I]).Stream = O then
+    begin
+      Item.DuplicateOf := Integer(I);
+      Break;
+    end;
+  O := FDoc.DGet(Item.Stream, 'Type');
+  if (O <> nil) and (O.Kind = pok_Name) then
+    Item.StreamType := O.NameVal;
+  O := FDoc.DGet(Item.Stream, 'Subtype');
+  if (O <> nil) and (O.Kind = pok_Name) then
+    Item.Subtype := O.NameVal;
+  Params := FDoc.DGet(Item.Stream, 'Params');
+  if (Params <> nil) and Params.IsDictLike then
+  begin
+    Item.HasParams := True;
+    O := FDoc.DGet(Params, 'Size');
+    if (O <> nil) and (O.Kind = pok_Num) then
+      Item.ParamsSize := O.AsInt;
+    O := FDoc.DGet(Params, 'ModDate');
+    if (O <> nil) and (O.Kind = pok_Str) then
+    begin
+      Item.HasModDate := True;
+      Item.ModDate := LandrixEInvoicePdfTextToString(O.StrVal);
+    end;
+  end;
+end;
+
+{ A node of the name tree (ISO 32000-1, 7.9.6): the root has /Kids or
+  /Names, an intermediate node /Kids, a leaf /Names; every node but the
+  root has /Limits with the least and the greatest key below it; keys are
+  strings in ascending lexical order across the whole tree. }
+procedure TLandrixEInvoicePdfCollector.WalkNameTree(ANode: TLandrixEInvoicePdfObject;
+  const APath: TLandrixEInvoiceString; ADepth: Integer; ARoot: Boolean; out ALeast,
+  AGreatest: TLandrixEInvoicePdfBytes; out AHasKeys: Boolean);
+var
+  NamesArr, KidsArr, Key, Limits, Lo, Hi: TLandrixEInvoicePdfObject;
+  KidLeast, KidGreatest: TLandrixEInvoicePdfBytes;
+  KidHasKeys: Boolean;
+  I: Integer;
+begin
+  ALeast := nil;
+  AGreatest := nil;
+  AHasKeys := False;
+  if (ANode = nil) or not ANode.IsDictLike then
+  begin
+    Issue(APath, 'node is no dictionary');
+    Exit;
+  end;
+  if ADepth > LandrixEInvoicePdfObjectMaxDepth then
+    Exit;
+  Inc(FNodeCount);
+  if FNodeCount > 100000 then
+    Exit;
+  NamesArr := FDoc.DGet(ANode, 'Names');
+  KidsArr := FDoc.DGet(ANode, 'Kids');
+  if (NamesArr <> nil) and (KidsArr <> nil) then
+    Issue(APath, 'node has both /Names and /Kids')
+  else if (NamesArr = nil) and (KidsArr = nil) then
+    Issue(APath, 'node has neither /Names nor /Kids');
+  { leaf: /Names [(key) spec (key) spec ...] }
+  if (NamesArr <> nil) and (NamesArr.Kind = pok_Arr) then
+  begin
+    if Odd(NamesArr.ArrCount) then
+      Issue(APath + '/Names', 'odd number of entries');
+    I := 0;
+    while I + 1 < NamesArr.ArrCount do
+    begin
+      Key := FDoc.Resolve(NamesArr.ArrItem(I));
+      if (Key = nil) or (Key.Kind <> pok_Str) then
+        Issue(APath + '/Names[' + TLandrixEInvoiceString(IntToStr(I)) + ']', 'key is no string')
+      else
+      begin
+        if FHasPreviousKey and (CompareBytes(FPreviousKey, Key.StrVal) >= 0) then
+          Issue(APath + '/Names[' + TLandrixEInvoiceString(IntToStr(I)) + ']',
+            'key not in ascending lexical order (unsorted or twice)');
+        FPreviousKey := Key.StrVal;
+        FHasPreviousKey := True;
+        if not AHasKeys or (CompareBytes(Key.StrVal, ALeast) < 0) then
+          ALeast := Key.StrVal;
+        if not AHasKeys or (CompareBytes(Key.StrVal, AGreatest) > 0) then
+          AGreatest := Key.StrVal;
+        AHasKeys := True;
+      end;
+      if (Key <> nil) and (Key.Kind = pok_Str) then
+        AddOccurrence(NamesArr.ArrItem(I + 1), efr_NameTree,
+          APath + '/Names[' + TLandrixEInvoiceString(IntToStr(I + 1)) + ']', I + 1,
+          LandrixEInvoicePdfTextToString(Key.StrVal))
+      else
+        AddOccurrence(NamesArr.ArrItem(I + 1), efr_NameTree,
+          APath + '/Names[' + TLandrixEInvoiceString(IntToStr(I + 1)) + ']', I + 1, '');
+      Inc(I, 2);
+    end;
+  end
+  else if NamesArr <> nil then
+    Issue(APath + '/Names', 'is no array');
+  { inner node: /Kids [node node ...] }
+  if (KidsArr <> nil) and (KidsArr.Kind = pok_Arr) then
+  begin
+    for I := 0 to KidsArr.ArrCount - 1 do
+    begin
+      WalkNameTree(FDoc.Resolve(KidsArr.ArrItem(I)), APath + '/Kids[' + TLandrixEInvoiceString(IntToStr(I)) + ']',
+        ADepth + 1, False, KidLeast, KidGreatest, KidHasKeys);
+      if KidHasKeys then
+      begin
+        if not AHasKeys or (CompareBytes(KidLeast, ALeast) < 0) then
+          ALeast := KidLeast;
+        if not AHasKeys or (CompareBytes(KidGreatest, AGreatest) > 0) then
+          AGreatest := KidGreatest;
+        AHasKeys := True;
+      end;
+    end;
+  end
+  else if KidsArr <> nil then
+    Issue(APath + '/Kids', 'is no array');
+  Limits := FDoc.DGet(ANode, 'Limits');
+  if ARoot then
+    Exit;
+  if (Limits = nil) or (Limits.Kind <> pok_Arr) or (Limits.ArrCount <> 2) then
+    Issue(APath, 'no /Limits with two keys')
+  else
+  begin
+    Lo := FDoc.Resolve(Limits.ArrItem(0));
+    Hi := FDoc.Resolve(Limits.ArrItem(1));
+    if (Lo = nil) or (Lo.Kind <> pok_Str) or (Hi = nil) or (Hi.Kind <> pok_Str) then
+      Issue(APath + '/Limits', 'keys are no strings')
+    else if AHasKeys and (not SameBytes(Lo.StrVal, ALeast) or not SameBytes(Hi.StrVal, AGreatest)) then
+      Issue(APath + '/Limits', 'do not match the least and the greatest key');
+  end;
+end;
+
+procedure TLandrixEInvoicePdfCollector.Collect;
+var
+  Cat, Names, Ef, Af: TLandrixEInvoicePdfObject;
+  Least, Greatest: TLandrixEInvoicePdfBytes;
+  HasKeys: Boolean;
+  I: Integer;
+begin
+  FItems.Clear;
+  FOccurrences := 0;
+  FNameTreeIssues.Clear;
+  FNodeCount := 0;
+  FPreviousKey := nil;
+  FHasPreviousKey := False;
+  FHasNameTree := False;
+  FHasAF := False;
+  Cat := FDoc.Catalog;
+  if Cat = nil then
+    Exit;
+  Names := FDoc.DGet(Cat, 'Names');
+  if (Names <> nil) and Names.IsDictLike then
+  begin
+    Ef := FDoc.DGet(Names, 'EmbeddedFiles');
+    if (Ef <> nil) and Ef.IsDictLike then
+    begin
+      FHasNameTree := True;
+      WalkNameTree(Ef, '/Root/Names/EmbeddedFiles', 0, True, Least, Greatest, HasKeys);
+    end;
+  end;
+  Af := FDoc.DGet(Cat, 'AF');
+  if (Af <> nil) and (Af.Kind = pok_Arr) then
+  begin
+    FHasAF := True;
+    for I := 0 to Af.ArrCount - 1 do
+      AddOccurrence(Af.ArrItem(I), efr_AF, '/Root/AF[' + TLandrixEInvoiceString(IntToStr(I)) + ']', I, '');
   end;
 end;
 

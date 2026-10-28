@@ -1089,6 +1089,168 @@ begin
   CheckEquals(0, Failed, IntToStr(Failed) + ' of ' + IntToStr(Files) + ' PDFs differ, first: ' + First);
 end;
 
+{ --- the collector of the object layer ---------------------------------------- }
+
+function LoadDocument(const APdf: AnsiString): TLandrixEInvoicePdfDocument;
+var
+  S: TMemoryStream;
+  Error: string;
+begin
+  Result := TLandrixEInvoicePdfDocument.Create;
+  S := TMemoryStream.Create;
+  try
+    try
+      if APdf <> '' then
+        S.WriteBuffer(APdf[1], Length(APdf));
+      S.Position := 0;
+      Check(Result.Load(S, Error), 'load: ' + Error);
+    except
+      Result.Free;
+      raise;
+    end;
+  finally
+    S.Free;
+  end;
+end;
+
+procedure TestCollector;
+var
+  Pdf: AnsiString;
+  O: TPdfOffsets;
+  Doc: TLandrixEInvoicePdfDocument;
+  Specs: TLandrixEInvoicePdfCollector;
+  F: TLandrixEInvoicePdfFileSpec;
+  InfoDict, Meta: TLandrixEInvoicePdfObject;
+  List: TLandrixEInvoicePdfAttachmentList;
+  Info: TLandrixEInvoicePdfExtractInfo;
+begin
+  { the standard case: name tree and /AF point to the same file specification }
+  Doc := LoadDocument(InvoicePdf('/Params << /Size 10 /ModDate (D:20261027120000+01''00) >>', '<Invoice/>'));
+  Specs := TLandrixEInvoicePdfCollector.Create(Doc);
+  try
+    Specs.Collect;
+    Check(Specs.HasNameTree and Specs.HasAF, 'name tree and /AF');
+    CheckEquals(1, Specs.Count, 'one file specification');
+    F := Specs[0];
+    Check(F.Routes = [efr_NameTree, efr_AF], 'both routes');
+    CheckEqualsStr('/Root/Names/EmbeddedFiles/Names[1]', string(F.NameTreePath), 'path in the name tree');
+    CheckEqualsInvoiceStr('factur-x.xml', F.NameTreeKey, 'key');
+    CheckEquals(1, F.NameTreeCount, 'listed once');
+    CheckEquals(0, F.AFIndex, 'index in /AF');
+    CheckEquals(4, F.SpecNum, 'object number of the file specification');
+    CheckEqualsBytes('Filespec', F.TypeName, '/Type');
+    Check(F.HasF and F.HasUF, '/F and /UF');
+    CheckEqualsInvoiceStr('factur-x.xml', F.FileName, 'file name');
+    Check(F.HasRelationship, '/AFRelationship present');
+    CheckEqualsBytes('Alternative', F.Relationship, '/AFRelationship');
+    Check(F.HasEmbeddedF and not F.HasEmbeddedUF, '/EF /F only');
+    CheckEquals(5, F.StreamNum, 'object number of the stream');
+    CheckEqualsBytes('EmbeddedFile', F.StreamType, 'stream /Type');
+    CheckEqualsBytes('text/xml', F.Subtype, '/Subtype decoded');
+    Check(F.HasParams and F.HasModDate, '/Params with /ModDate');
+    CheckEquals(10, Integer(F.ParamsSize), '/Params /Size');
+    CheckEqualsInvoiceStr('D:20261027120000+01''00', F.ModDate, '/ModDate');
+    CheckEquals(-1, F.DuplicateOf, 'no duplicate');
+    CheckEquals(0, Specs.NameTreeIssues.Count, 'root without /Limits is fine');
+  finally
+    Specs.Free;
+    Doc.Free;
+  end;
+
+  { two file specifications on one stream, keys out of order, wrong /Limits,
+    no /AF; trailer /Info, catalog /Metadata and /Version }
+  O := NoOffsets;
+  Pdf := PdfHeader;
+  AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Version /2.0 /Metadata 8 0 R ' +
+    '/Names << /EmbeddedFiles << /Kids [6 0 R] >> >> >>');
+  AddObj(Pdf, O, 2, PagesBody);
+  AddObj(Pdf, O, 3, PageBody);
+  AddObj(Pdf, O, 4, '<< /Type /Filespec /F (b.xml) /EF << /F 5 0 R >> >>');
+  AddObj(Pdf, O, 5, StreamBody('/Type /EmbeddedFile', '<Invoice/>'));
+  AddObj(Pdf, O, 6, '<< /Limits [(a) (z)] /Names [(b) 4 0 R (a) 7 0 R] >>');
+  AddObj(Pdf, O, 7, '<< /F (a.xml) /EF << /UF 5 0 R >> >>');
+  AddObj(Pdf, O, 8, StreamBody('/Type /Metadata /Subtype /XML', '<x:xmpmeta xmlns:x="adobe:ns:meta/"/>'));
+  AddObj(Pdf, O, 9, '<< /Title (T) >>');
+  Finish(Pdf, O, 10, ' /Info 9 0 R');
+  Doc := LoadDocument(Pdf);
+  Specs := TLandrixEInvoicePdfCollector.Create(Doc);
+  try
+    Specs.Collect;
+    Check(Specs.HasNameTree and not Specs.HasAF, 'no /AF');
+    CheckEquals(2, Specs.Count, 'two file specifications');
+    Check(Specs[1].Routes = [efr_NameTree], 'name tree only');
+    CheckEqualsStr('/Root/Names/EmbeddedFiles/Kids[0]/Names[3]', string(Specs[1].NameTreePath), 'path below a kid');
+    CheckEquals(0, Specs[1].DuplicateOf, 'same stream as the first');
+    Check(not Specs[1].HasUF and (Specs[1].TypeName = ''), 'no /UF, no /Type');
+    Check(not Specs[1].HasEmbeddedF and Specs[1].HasEmbeddedUF, '/EF /UF only');
+    Check(not Specs[1].HasRelationship, 'no /AFRelationship');
+    CheckEquals(-1, Integer(Specs[1].ParamsSize), 'no /Size');
+    CheckEquals(2, Specs.NameTreeIssues.Count, 'issues: ' + Specs.NameTreeIssues.Text);
+    Check(Pos('/Kids[0]/Names[2]: key not in ascending lexical order', Specs.NameTreeIssues.Text) > 0, 'order');
+    Check(Pos('/Kids[0]/Limits: do not match', Specs.NameTreeIssues.Text) > 0, 'limits');
+    CheckEqualsBytes('2.0', Doc.CatalogVersion, 'catalog /Version');
+    Meta := Doc.Metadata;
+    Check((Meta <> nil) and (Meta.Kind = pok_Stream), '/Metadata stream');
+    InfoDict := Doc.Info;
+    Check((InfoDict <> nil) and (Doc.DGet(InfoDict, 'Title') <> nil), 'trailer /Info');
+  finally
+    Specs.Free;
+    Doc.Free;
+  end;
+
+  { only in /AF; without /EF; /EF /F leads nowhere (falls back to /UF), /EF
+    /DOS only; a kid without /Limits; /Params without /ModDate }
+  O := NoOffsets;
+  Pdf := PdfHeader;
+  AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Kids [6 0 R] >> >> ' +
+    '/AF [4 0 R 7 0 R 8 0 R] >>');
+  AddObj(Pdf, O, 2, PagesBody);
+  AddObj(Pdf, O, 3, PageBody);
+  AddObj(Pdf, O, 4, '<< /Type /Filespec /F (a.xml) >>');
+  AddObj(Pdf, O, 5, StreamBody('/Type /EmbeddedFile /Params << /Size 10 >>', '<Invoice/>'));
+  AddObj(Pdf, O, 6, '<< /Names [(k) 9 0 R] >>');
+  AddObj(Pdf, O, 7, '<< /Type /Filespec /F (b.xml) /EF << /F 15 0 R /UF 5 0 R >> >>');
+  AddObj(Pdf, O, 8, '<< /Type /Filespec /F (c.xml) /EF << /DOS 10 0 R >> >>');
+  AddObj(Pdf, O, 9, '<< /Type /Filespec /F (k.xml) >>');
+  AddObj(Pdf, O, 10, StreamBody('/Type /EmbeddedFile', '<CreditNote/>'));
+  Finish(Pdf, O, 11, '');
+  Doc := LoadDocument(Pdf);
+  Specs := TLandrixEInvoicePdfCollector.Create(Doc);
+  try
+    Specs.Collect;
+    CheckEquals(4, Specs.Count, 'four file specifications');
+    Check(Specs[0].Routes = [efr_NameTree], 'name tree first');
+    Check(Specs[1].Routes = [efr_AF], 'then /AF only');
+    CheckEquals(0, Specs[1].AFIndex, 'index in /AF');
+    Check(Specs[1].Stream = nil, 'no /EF, no stream');
+    Check(Specs[2].HasEmbeddedF and (Specs[2].StreamNum = 5), '/EF /F leads nowhere: /UF');
+    Check(Specs[2].HasParams and not Specs[2].HasModDate and (Specs[2].ParamsSize = 10), '/Params without /ModDate');
+    CheckEquals(10, Specs[3].StreamNum, '/EF /DOS');
+    CheckEquals(1, Specs.NameTreeIssues.Count, 'issues: ' + Specs.NameTreeIssues.Text);
+    Check(Pos('/Kids[0]: no /Limits', Specs.NameTreeIssues.Text) > 0, 'kid without /Limits');
+  finally
+    Specs.Free;
+    Doc.Free;
+  end;
+  List := TLandrixEInvoicePdfAttachmentList.Create;
+  try
+    Check(ExtractAll(Pdf, List, Info), 'extract');
+    CheckEquals(2, Integer(List.Count), 'specifications without stream left out');
+    CheckEqualsInvoiceStr('b.xml', List[0].FileName, 'first with stream');
+    CheckEqualsInvoiceStr('c.xml', List[1].FileName, 'then /DOS');
+  finally
+    List.Free;
+  end;
+
+  { a document without /Info, /Metadata and /Version }
+  Doc := LoadDocument(BuildInvoicePdf('<Invoice/>'));
+  try
+    Check((Doc.Info = nil) and (Doc.Metadata = nil) and (Doc.CatalogVersion = ''), 'all absent');
+  finally
+    Doc.Free;
+  end;
+end;
+
 { The object layer has its own copy of the public limits. }
 procedure TestLimits;
 begin
@@ -1108,6 +1270,7 @@ begin
   RegisterTest('Pdf.HybridXref', TestHybridXref);
   RegisterTest('Pdf.Encryption', TestEncryption);
   RegisterTest('Pdf.Corpus', TestCorpus);
+  RegisterTest('Pdf.Collector', TestCollector);
 end;
 
 end.

@@ -394,7 +394,12 @@ Supported invoice standards are documented per release.
 ### Changed
 - The object layer of the PDF reader (lexer, stream filters, decryption, objects, document) moved from
   `LandrixEInvoicePdf` into the new internal unit `LandrixEInvoicePdfObjects`, for the PDF checks of
-  phase 6; the extraction is unchanged.
+  phase 6; the extraction is unchanged. Its collector (`TLandrixEInvoicePdfCollector`) keeps every
+  file specification as found: the routes (name tree, `/AF`), path and key in the name tree, `/Type`, `/F`,
+  `/UF`, `/AFRelationship`, the embedded file stream with `/Type`, `/Subtype` and `/Params`, a second file
+  specification on the same stream, and structural problems of the name tree (key order, `/Limits`); the
+  document gives access to the trailer `/Info`, the catalog `/Metadata` and `/Version`. The extractor builds
+  its attachment list from it as before.
 - Sub lines (line groups) are written flat where the target does not nest them: XRechnung CII, the
   Factur-X profiles below EXTENDED, Peppol BIS and UBL credit notes get the lines of a group,
   depth-first, instead of the group (before: the group line alone in CII and credit notes, and

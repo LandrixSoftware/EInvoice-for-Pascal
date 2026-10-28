@@ -359,23 +359,26 @@ end;
 // Collecting the attachments
 //==============================================================================
 
+{ Builds the attachment list from the file specifications of
+  TLandrixEInvoicePdfCollector, in its order (name tree, then /AF): a file
+  specification without stream or with the stream of an earlier one is left
+  out; the limits on count and total size apply.
+  DE: Baut die Anhangliste aus den Dateispezifikationen von
+  TLandrixEInvoicePdfCollector, in dessen Reihenfolge (Namensbaum, dann
+  /AF): eine Dateispezifikation ohne Stream oder mit dem Stream einer
+  frueheren entfaellt; die Grenzen fuer Anzahl und Gesamtgroesse gelten. }
 type
   TPdfAttachmentCollector = class(TObject)
   private
     FDoc: TLandrixEInvoicePdfDocument;
     FList: TLandrixEInvoicePdfAttachmentList;
-    FSeen: TObjectList;
-    FNodeCount: Integer;
     FTotalBytes: Int64;
     FSkipped: Integer;
     FWarning: string;
-    function AlreadySeen(AObj: TLandrixEInvoicePdfObject): Boolean;
     procedure Skip(const AName: TLandrixEInvoiceString; const AReason: string);
-    procedure AddFilespec(ASpec: TLandrixEInvoicePdfObject);
-    procedure WalkNameTree(ANode: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure AddFilespec(ASpec: TLandrixEInvoicePdfFileSpec);
   public
     constructor Create(ADoc: TLandrixEInvoicePdfDocument; AList: TLandrixEInvoicePdfAttachmentList);
-    destructor Destroy; override;
     procedure Collect;
     property Skipped: Integer read FSkipped;
     property Warning: string read FWarning;
@@ -386,20 +389,6 @@ begin
   inherited Create;
   FDoc := ADoc;
   FList := AList;
-  FSeen := TObjectList.Create(False);
-end;
-
-destructor TPdfAttachmentCollector.Destroy;
-begin
-  FSeen.Free;
-  inherited Destroy;
-end;
-
-function TPdfAttachmentCollector.AlreadySeen(AObj: TLandrixEInvoicePdfObject): Boolean;
-begin
-  Result := FSeen.IndexOf(AObj) >= 0;
-  if not Result then
-    FSeen.Add(AObj);
 end;
 
 procedure TPdfAttachmentCollector.Skip(const AName: TLandrixEInvoiceString; const AReason: string);
@@ -409,49 +398,21 @@ begin
     FWarning := 'Embedded file "' + string(AName) + '" skipped: ' + AReason;
 end;
 
-procedure TPdfAttachmentCollector.AddFilespec(ASpec: TLandrixEInvoicePdfObject);
+procedure TPdfAttachmentCollector.AddFilespec(ASpec: TLandrixEInvoicePdfFileSpec);
 var
-  Ef, Stm, O: TLandrixEInvoicePdfObject;
   Att: TLandrixEInvoicePdfAttachment;
   Data: TLandrixEInvoicePdfBytes;
-  NameF, NameUF, Name: TLandrixEInvoiceString;
+  Name: TLandrixEInvoiceString;
 begin
-  if (ASpec = nil) or not ASpec.IsDictLike then
+  if (ASpec.Stream = nil) or (ASpec.DuplicateOf >= 0) then
     Exit;
-  Ef := FDoc.DGet(ASpec, 'EF');
-  if (Ef = nil) or not Ef.IsDictLike then
-    Exit;
-  { /F is the normal case, /UF the Unicode variant of the same stream }
-  Stm := FDoc.DGet(Ef, 'F');
-  if Stm = nil then
-    Stm := FDoc.DGet(Ef, 'UF');
-  if Stm = nil then
-    Stm := FDoc.DGet(Ef, 'DOS');
-  if (Stm = nil) or (Stm.Kind <> pok_Stream) then
-    Exit;
-  if AlreadySeen(Stm) then
-    Exit;
-
-  { file name: /UF before /F }
-  NameF := '';
-  NameUF := '';
-  O := FDoc.DGet(ASpec, 'F');
-  if (O <> nil) and (O.Kind = pok_Str) then
-    NameF := LandrixEInvoicePdfTextToString(O.StrVal);
-  O := FDoc.DGet(ASpec, 'UF');
-  if (O <> nil) and (O.Kind = pok_Str) then
-    NameUF := LandrixEInvoicePdfTextToString(O.StrVal);
-  if NameUF <> '' then
-    Name := NameUF
-  else
-    Name := NameF;
-
+  Name := ASpec.FileName;
   if FList.Count >= LandrixEInvoicePdfMaxAttachments then
   begin
     Skip(Name, 'more than ' + IntToStr(LandrixEInvoicePdfMaxAttachments) + ' attachments');
     Exit;
   end;
-  if not FDoc.GetStreamData(Stm, Data) then
+  if not FDoc.GetStreamData(ASpec.Stream, Data) then
   begin
     Skip(Name, FDoc.StreamError);
     Exit;
@@ -466,15 +427,9 @@ begin
   Att := TLandrixEInvoicePdfAttachment.Create;
   try
     Att.FileName := Name;
-    O := FDoc.DGet(ASpec, 'AFRelationship');
-    if (O <> nil) and (O.Kind = pok_Name) then
-      Att.Relationship := AnsiToText(O.NameVal);
-    O := FDoc.DGet(ASpec, 'Desc');
-    if (O <> nil) and (O.Kind = pok_Str) then
-      Att.Description := LandrixEInvoicePdfTextToString(O.StrVal);
-    O := FDoc.DGet(Stm, 'Subtype');
-    if (O <> nil) and (O.Kind = pok_Name) then
-      Att.MimeType := AnsiToText(O.NameVal);
+    Att.Relationship := AnsiToText(ASpec.Relationship);
+    Att.Description := ASpec.Description;
+    Att.MimeType := AnsiToText(ASpec.Subtype);
     if Length(Data) > 0 then
       Att.Data.WriteBuffer(Data[0], Length(Data));
     Att.Data.Position := 0;
@@ -492,59 +447,19 @@ begin
   end;
 end;
 
-procedure TPdfAttachmentCollector.WalkNameTree(ANode: TLandrixEInvoicePdfObject; ADepth: Integer);
-var
-  NamesArr, KidsArr: TLandrixEInvoicePdfObject;
-  I: Integer;
-begin
-  if (ANode = nil) or not ANode.IsDictLike then
-    Exit;
-  if ADepth > LandrixEInvoicePdfMaxDepth then
-    Exit;
-  Inc(FNodeCount);
-  if FNodeCount > 100000 then
-    Exit;
-  { leaf: /Names [(name) spec (name) spec ...] }
-  NamesArr := FDoc.DGet(ANode, 'Names');
-  if (NamesArr <> nil) and (NamesArr.Kind = pok_Arr) then
-  begin
-    I := 0;
-    while I + 1 < NamesArr.ArrCount do
-    begin
-      AddFilespec(FDoc.Resolve(NamesArr.ArrItem(I + 1)));
-      Inc(I, 2);
-    end;
-  end;
-  { inner node: /Kids [node node ...] }
-  KidsArr := FDoc.DGet(ANode, 'Kids');
-  if (KidsArr <> nil) and (KidsArr.Kind = pok_Arr) then
-    for I := 0 to KidsArr.ArrCount - 1 do
-      WalkNameTree(FDoc.Resolve(KidsArr.ArrItem(I)), ADepth + 1);
-end;
-
-{ The name tree /Names /EmbeddedFiles first, then /AF of the catalog
-  (PDF/A-3); AlreadySeen drops duplicates.
-  DE: Zuerst der Namensbaum /Names /EmbeddedFiles, dann /AF des Katalogs
-  (PDF/A-3); AlreadySeen verwirft Dubletten. }
 procedure TPdfAttachmentCollector.Collect;
 var
-  Cat, Names, Ef, Af: TLandrixEInvoicePdfObject;
+  Specs: TLandrixEInvoicePdfCollector;
   I: Integer;
 begin
-  Cat := FDoc.Catalog;
-  if Cat = nil then
-    Exit;
-  Names := FDoc.DGet(Cat, 'Names');
-  if (Names <> nil) and Names.IsDictLike then
-  begin
-    Ef := FDoc.DGet(Names, 'EmbeddedFiles');
-    if (Ef <> nil) and Ef.IsDictLike then
-      WalkNameTree(Ef, 0);
+  Specs := TLandrixEInvoicePdfCollector.Create(FDoc);
+  try
+    Specs.Collect;
+    for I := 0 to Specs.Count - 1 do
+      AddFilespec(Specs[I]);
+  finally
+    Specs.Free;
   end;
-  Af := FDoc.DGet(Cat, 'AF');
-  if (Af <> nil) and (Af.Kind = pok_Arr) then
-    for I := 0 to Af.ArrCount - 1 do
-      AddFilespec(FDoc.Resolve(Af.ArrItem(I)));
 end;
 
 //==============================================================================
