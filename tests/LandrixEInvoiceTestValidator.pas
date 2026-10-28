@@ -428,14 +428,14 @@ begin
     for I := Low(Folders) to High(Folders) do
     begin
       Dir := ExtractFilePath(ParamStr(0)) + Folders[I] + PathDelim;
-      for K := Low(APatterns) to High(APatterns) do
+      for K := 0 to Integer(High(APatterns)) do
         if FindFirst(Dir + APatterns[K], faAnyFile, SR) = 0 then
           try
             repeat
               Inc(Files);
               Name := Folders[I] + '/' + SR.Name;
               Known := False;
-              for J := Low(AKnown) to High(AKnown) do
+              for J := 0 to Integer(High(AKnown)) do
                 if AKnown[J] = Name then
                   Known := True;
               if Known then

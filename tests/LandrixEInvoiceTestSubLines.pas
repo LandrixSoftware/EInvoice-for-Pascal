@@ -139,7 +139,7 @@ begin
     end;
     { the original is unchanged }
     CheckEqualsStr('1 2 3', LineIDs(Invoice), 'original lines');
-    CheckEquals(3, Invoice.InvoiceLines[1].SubInvoiceLines.Count, 'original sub lines');
+    CheckEquals(3, Integer(Invoice.InvoiceLines[1].SubInvoiceLines.Count), 'original sub lines');
     Check(Invoice.InvoiceLines[1].SubInvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCode = ilsrc_Detail,
       'original status');
     { a flat copy needs no second flattening }
@@ -176,7 +176,7 @@ begin
     Flat := LandrixEInvoiceFlattenSubLines(Invoice, SpecOf(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII)), D);
     try
       CheckEqualsStr('1 2.1', LineIDs(Flat), 'DETAIL kept, empty GROUP as a line');
-      CheckEquals(0, Flat.InvoiceLines[0].SubInvoiceLines.Count, 'DETAIL without its sub lines');
+      CheckEquals(0, Integer(Flat.InvoiceLines[0].SubInvoiceLines.Count), 'DETAIL without its sub lines');
       Check(Flat.InvoiceLines[0].LineStatusReasonCode = ilsrc_Detail, 'top-level status kept');
       Check(Flat.InvoiceLines[1].LineStatusReasonCode = ilsrc_None, 'group status cleared');
       CheckEquals(2, D.CountOf(edk_NotAllowed), 'reports');

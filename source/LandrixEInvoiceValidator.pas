@@ -416,7 +416,7 @@ end;
 
 function TLandrixEInvoiceValidationResult.GetMessageCount: Integer;
 begin
-  Result := FMessages.Count;
+  Result := Integer(FMessages.Count);
 end;
 
 function TLandrixEInvoiceValidationResult.GetMessage(AIndex: Integer): TLandrixEInvoiceValidationMessage;
@@ -517,7 +517,7 @@ end;
 
 function TLandrixEInvoiceValidator.GetScenarioCount: Integer;
 begin
-  Result := FScenarios.Count;
+  Result := Integer(FScenarios.Count);
 end;
 
 function TLandrixEInvoiceValidator.GetScenario(AIndex: Integer): TLandrixEInvoiceValidationScenario;
@@ -704,7 +704,7 @@ begin
     end;
     Evaluator := TLandrixXmlXPathEvaluator.Create(Tree);
     try
-      for I := 0 to FScenarios.Count - 1 do
+      for I := 0 to Integer(FScenarios.Count) - 1 do
       begin
         Candidate := Scenarios[I];
         try
