@@ -1439,9 +1439,13 @@ begin
 end;
 
 { BG-22 document totals, taken from the model as they are: BT-106, BT-109,
-  BT-112, BT-107, BT-108, BT-113, BT-114 (only if not 0), BT-115.
+  BT-112, BT-107, BT-108, BT-113 and BT-114 (only if not 0; BT-113 is
+  optional and receivers show 0.00 as a prepayment, as XRechnung-for-Delphi
+  4caa0a1), BT-115.
   DE: BG-22 Gesamtbetraege, unveraendert aus dem Modell: BT-106, BT-109,
-  BT-112, BT-107, BT-108, BT-113, BT-114 (nur wenn nicht 0), BT-115. }
+  BT-112, BT-107, BT-108, BT-113 und BT-114 (nur wenn nicht 0; BT-113 ist
+  optional, und Empfaenger zeigen 0.00 als Vorauszahlung an, wie
+  XRechnung-for-Delphi 4caa0a1), BT-115. }
 procedure TUBLWriteMapper.MapTotals;
 var
   Total: TLandrixUBLMonetaryTotal;
@@ -1452,7 +1456,8 @@ begin
   Total.TaxInclusiveAmount := Money(FInvoice.TaxInclusiveAmount);
   Total.AllowanceTotalAmount := Money(FInvoice.AllowanceTotalAmount);
   Total.ChargeTotalAmount := Money(FInvoice.ChargeTotalAmount);
-  Total.PrepaidAmount := Money(FInvoice.PrepaidAmount);
+  if FInvoice.PrepaidAmount <> 0 then
+    Total.PrepaidAmount := Money(FInvoice.PrepaidAmount);
   if FInvoice.PayableRoundingAmount <> 0 then
     Total.PayableRoundingAmount := Money(FInvoice.PayableRoundingAmount);
   Total.PayableAmount := Money(FInvoice.PayableAmount);

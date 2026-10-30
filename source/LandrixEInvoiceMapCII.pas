@@ -1498,13 +1498,15 @@ end;
 { BG-22 document totals, taken from the model as they are: BT-106, BT-108,
   BT-107, BT-109, BT-110 (in the invoice currency), BT-111 (in the VAT
   accounting currency, only when BT-6 differs), BT-114 (only if not 0),
-  BT-112, BT-113, BT-115. A differing BT-6 without BT-111 is an error
-  (BR-53).
+  BT-112, BT-113 (only if not 0: optional, and receivers show 0.00 as a
+  prepayment; as XRechnung-for-Delphi 4caa0a1), BT-115. A differing BT-6
+  without BT-111 is an error (BR-53).
   DE: BG-22 Gesamtbetraege, unveraendert aus dem Modell: BT-106, BT-108,
   BT-107, BT-109, BT-110 (in der Rechnungswaehrung), BT-111 (in der
   Steuerwaehrung, nur wenn BT-6 abweicht), BT-114 (nur wenn nicht 0),
-  BT-112, BT-113, BT-115. Ein abweichendes BT-6 ohne BT-111 ist ein Fehler
-  (BR-53). }
+  BT-112, BT-113 (nur wenn nicht 0: optional, und Empfaenger zeigen 0.00
+  als Vorauszahlung an; wie XRechnung-for-Delphi 4caa0a1), BT-115. Ein
+  abweichendes BT-6 ohne BT-111 ist ein Fehler (BR-53). }
 procedure TCIIWriteMapper.MapTotals;
 var
   Sum: TLandrixCIITradeSettlementHeaderMonetarySummation;
@@ -1541,16 +1543,16 @@ begin
   if FInvoice.PayableRoundingAmount <> 0 then
     Sum.RoundingAmount := CIIAmount(FInvoice.PayableRoundingAmount);
   Sum.GrandTotalAmount := CIIAmount(FInvoice.TaxInclusiveAmount);
-  if TotalWanted('ram:TotalPrepaidAmount', FInvoice.PrepaidAmount) then
+  if FInvoice.PrepaidAmount <> 0 then
     Sum.TotalPrepaidAmount := CIIAmount(FInvoice.PrepaidAmount);
   Sum.DuePayableAmount := CIIAmount(FInvoice.PayableAmount);
 end;
 
-{ A total the profile does not contain (MINIMUM: BT-106, BT-107, BT-108,
-  BT-113) is written only when it is not 0; then the pruning reports it.
+{ A total the profile does not contain (MINIMUM: BT-106, BT-107, BT-108)
+  is written only when it is not 0; then the pruning reports it.
   DE: Eine Summe, die das Profil nicht enthaelt (MINIMUM: BT-106, BT-107,
-  BT-108, BT-113), wird nur geschrieben, wenn sie nicht 0 ist; dann meldet
-  das Kuerzen sie. }
+  BT-108), wird nur geschrieben, wenn sie nicht 0 ist; dann meldet das
+  Kuerzen sie. }
 function TCIIWriteMapper.TotalWanted(const AName: TLandrixEInvoiceString; AValue: Currency): Boolean;
 begin
   Result := (AValue <> 0) or LandrixEInvoiceCIIAllowed(Settlement +

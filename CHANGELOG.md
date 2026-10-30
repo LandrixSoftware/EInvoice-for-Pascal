@@ -402,6 +402,8 @@ Supported invoice standards are documented per release.
   object table never passes. `tools/pdfcheck/PdfCheckProbe.dpr` runs it over a folder.
 
 ### Changed
+- BT-113 (prepaid amount, UBL `cbc:PrepaidAmount`, CII `ram:TotalPrepaidAmount`) is written only when it is not
+  0: the element is optional and receivers showed 0.00 as a prepayment (as XRechnung-for-Delphi `4caa0a1`).
 - The object layer of the PDF reader (lexer, stream filters, decryption, objects, document) moved from
   `LandrixEInvoicePdf` into the new internal unit `LandrixEInvoicePdfObjects`, for the PDF checks of
   phase 6; the extraction is unchanged. Its collector (`TLandrixEInvoicePdfCollector`) keeps every

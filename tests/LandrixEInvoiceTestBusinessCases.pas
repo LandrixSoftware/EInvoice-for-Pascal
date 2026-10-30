@@ -684,10 +684,13 @@ begin
 end;
 
 { BG-22: paid amount 50.00 (BT-113) and rounding 0.01 (BT-114); amount due
-  119.00 - 50.00 + 0.01 = 69.01 (BR-CO-16). }
+  119.00 - 50.00 + 0.01 = 69.01 (BR-CO-16). A paid amount of 0 is not
+  written. }
 procedure TestPrepaidAndRounding;
 var
   Inv: TLandrixInvoice;
+  T: TCaseTarget;
+  D: TLandrixEInvoiceDiagnostics;
 begin
   Inv := TLandrixInvoice.Create;
   try
@@ -701,6 +704,18 @@ begin
       'cii:<ram:TotalPrepaidAmount>50.00</ram:TotalPrepaidAmount>',
       'cii:<ram:RoundingAmount>0.01</ram:RoundingAmount>',
       'cii:<ram:DuePayableAmount>69.01</ram:DuePayableAmount>'], []);
+    Inv.PrepaidAmount := 0;
+    Inv.PayableAmount := Cents(11901);
+    for T := Low(TCaseTarget) to High(TCaseTarget) do
+    begin
+      D := TLandrixEInvoiceDiagnostics.Create;
+      try
+        Check(Pos('PrepaidAmount', LandrixXmlUtf8ToString(WriteTarget(Inv, T, D))) = 0,
+          TargetSuffix[T] + ': no BT-113 at 0');
+      finally
+        D.Free;
+      end;
+    end;
   finally
     Inv.Free;
   end;
