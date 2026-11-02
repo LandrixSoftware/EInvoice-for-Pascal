@@ -43,6 +43,7 @@ uses
   LandrixEInvoicePdfObjects,
   LandrixEInvoicePdfCheck,
   LandrixEInvoiceDiagnostics,
+  LandrixEInvoice,
   LandrixEInvoiceTestFramework;
 
 const
@@ -1557,6 +1558,179 @@ begin
   end;
 end;
 
+function Facts(AStandard: TLandrixEInvoiceStandard; ASyntax: TLandrixEInvoiceSyntax;
+  AProfile: TLandrixEInvoiceProfile; const ASeller, ABuyer: string): TLandrixEInvoicePdfInvoiceFacts;
+begin
+  Result.Target.Standard := AStandard;
+  Result.Target.Syntax := ASyntax;
+  Result.Target.Profile := AProfile;
+  Result.Target.Version := '';
+  Result.SellerCountryCode := TLandrixEInvoiceString(ASeller);
+  Result.BuyerCountryCode := TLandrixEInvoiceString(ABuyer);
+end;
+
+function FacturXFacts(AProfile: TLandrixEInvoiceProfile; const ASeller, ABuyer: string): TLandrixEInvoicePdfInvoiceFacts;
+begin
+  Result := Facts(est_FacturX, esy_CII, AProfile, ASeller, ABuyer);
+end;
+
+{ Runs both passes; checks status, number of findings and the finding of
+  ARule with AText ('' rule: no finding expected). }
+procedure CheckFactsCase(AResult: TLandrixEInvoicePdfCheckResult; const APdf: AnsiString;
+  const AFacts: TLandrixEInvoicePdfInvoiceFacts; AStatus: TLandrixEInvoicePdfLevelStatus; ACount: Integer;
+  const ARule, AText, Msg: string);
+var
+  Checker: TLandrixEInvoicePdfChecker;
+  Errors: Integer;
+begin
+  RunCheck(APdf, AResult);
+  Checker := TLandrixEInvoicePdfChecker.Create;
+  try
+    Errors := Checker.CheckInvoiceFacts(AResult, AFacts);
+  finally
+    Checker.Free;
+  end;
+  Check(AResult.Status[epl_Embedding] = AStatus, Msg + ': status ' + StatusText(AResult));
+  CheckEquals(ACount, Integer(AResult.Diagnostics.Count), Msg + ': findings: ' + StatusText(AResult));
+  if ARule <> '' then
+    CheckEquals(1, Findings(AResult, ARule, AText), Msg + ': ' + ARule + ' ' + AText);
+  if AStatus = eps_Failed then
+    Check(Errors > 0, Msg + ': errors')
+  else
+    CheckEquals(0, Errors, Msg + ': errors');
+end;
+
+function NamedPdf(const AName, ARelationship: AnsiString): AnsiString;
+begin
+  Result := SimplePdf('/Names << /EmbeddedFiles << /Names [(' + AName + ') 4 0 R] >> >> /AF [4 0 R]',
+    '<< /Type /Filespec /F (' + AName + ') /UF (' + AName + ') /EF << /F 5 0 R >> /AFRelationship /' +
+    ARelationship + ' >>', GoodStream, CheckXml);
+end;
+
+procedure TestCheckFacts;
+var
+  R: TLandrixEInvoicePdfCheckResult;
+  Checker: TLandrixEInvoicePdfChecker;
+  Good: AnsiString;
+begin
+  Good := NamedPdf('factur-x.xml', 'Alternative');
+  R := TLandrixEInvoicePdfCheckResult.Create;
+  Checker := TLandrixEInvoicePdfChecker.Create;
+  try
+    { the reference case and the facts kept in the result }
+    CheckFactsCase(R, Good, FacturXFacts(epr_EN16931, 'DE', 'DE'), eps_Passed, 0, '', '', 'EN 16931 in DE');
+    Check(R.FactsChecked and (R.Profile = epr_EN16931), 'facts checked, profile derived');
+    CheckEqualsInvoiceStr('DE', R.InvoiceFacts.SellerCountryCode, 'facts kept');
+    CheckEqualsInvoiceStr('/Root/Names/EmbeddedFiles/Names[1]', R.InvoicePath, 'path of the invoice');
+    CheckEqualsInvoiceStr('factur-x.xml', R.InvoiceFileNameF, '/F kept');
+    { a second call adds nothing }
+    CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'second call');
+    CheckEquals(0, Integer(R.Diagnostics.Count), 'second call without findings');
+    Check(R.Profile = epr_EN16931, 'second call keeps the profile');
+
+    { BR-HYBRID-11 per profile and country }
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), FacturXFacts(epr_EN16931, 'DE', 'DE'), eps_Passed, 1,
+      'BR-HYBRID-11', 'asks for /Alternative for the profile EN 16931 with seller and buyer in DE', 'Data in DE');
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), FacturXFacts(epr_EN16931, 'FR', 'FR'), eps_Passed, 0, '', '',
+      'Data in FR');
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), FacturXFacts(epr_EN16931, 'DE', 'FR'), eps_Passed, 0, '', '',
+      'Data across borders');
+    CheckFactsCase(R, Good, FacturXFacts(epr_BasicWL, 'DE', 'FR'), eps_Passed, 1, 'BR-HYBRID-11',
+      'asks for /Data for the profile BASIC WL', 'BASIC WL across borders');
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Unspecified'), FacturXFacts(epr_Minimum, 'FR', 'FR'), eps_Passed, 1,
+      'BR-HYBRID-11', '/Unspecified', 'a value outside the table is reported once');
+
+    { BR-HYBRID-DE-01/02, BR-HYBRID-FR-01 }
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), FacturXFacts(epr_Minimum, 'DE', 'DE'), eps_Failed, 1,
+      'BR-HYBRID-DE-01', 'MINIMUM', 'MINIMUM in DE');
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), FacturXFacts(epr_BasicWL, 'DE', 'DE'), eps_Failed, 1,
+      'BR-HYBRID-DE-02', 'BASIC WL', 'BASIC WL in DE');
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), FacturXFacts(epr_BasicWL, 'DE', ''), eps_Passed, 0, '', '',
+      'BASIC WL, buyer country unknown');
+    CheckFactsCase(R, NamedPdf('xrechnung.xml', 'Alternative'), Facts(est_XRechnung, esy_CII, epr_None, 'FR', 'FR'),
+      eps_Failed, 1, 'BR-HYBRID-FR-01', 'XRECHNUNG', 'XRECHNUNG in FR');
+    Check(R.Profile = epr_XRechnung, 'XRechnung CII is the profile XRECHNUNG');
+    CheckFactsCase(R, NamedPdf('xrechnung.xml', 'Data'), Facts(est_XRechnung, esy_CII, epr_None, 'FR', 'FR'),
+      eps_Failed, 1, 'BR-HYBRID-FR-01', 'XRECHNUNG', 'XRECHNUNG in FR: no BR-HYBRID-11 (not applicable)');
+    CheckFactsCase(R, NamedPdf('xrechnung.xml', 'Data'), Facts(est_XRechnung, esy_CII, epr_None, 'DE', 'FR'),
+      eps_Passed, 1, 'BR-HYBRID-11', 'asks for /Alternative for the profile XRECHNUNG', 'XRECHNUNG across borders');
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), FacturXFacts(epr_None, 'DE', 'DE'), eps_Passed, 0, '', '',
+      'Factur-X without profile');
+
+    { BR-HYBRID-13: file name and profile }
+    CheckFactsCase(R, NamedPdf('xrechnung.xml', 'Alternative'), Facts(est_XRechnung, esy_CII, epr_None, 'DE', 'DE'),
+      eps_Passed, 0, '', '', 'XRECHNUNG as xrechnung.xml');
+    CheckFactsCase(R, Good, Facts(est_XRechnung, esy_CII, epr_None, 'DE', 'DE'), eps_Failed, 2, 'BR-HYBRID-13',
+      'Names[1]/UF An invoice of the profile XRECHNUNG is named xrechnung.xml', 'XRECHNUNG as factur-x.xml');
+    CheckFactsCase(R, NamedPdf('xrechnung.xml', 'Alternative'), FacturXFacts(epr_Extended, 'DE', 'DE'), eps_Failed, 2,
+      'BR-HYBRID-13', 'Names[1]/F The file name xrechnung.xml needs the profile XRECHNUNG; the invoice has the ' +
+      'profile EXTENDED', 'EXTENDED as xrechnung.xml');
+
+    { no ZUGFeRD profile }
+    CheckFactsCase(R, Good, Facts(est_PeppolBIS, esy_UBL, epr_None, 'DE', 'DE'), eps_Failed, 1, 'LX-PDF-10',
+      'Names[1] The embedded invoice is UBL', 'Peppol UBL');
+    CheckFactsCase(R, NamedPdf('factur-x.xml', 'Data'), Facts(est_None, esy_None, epr_None, 'DE', 'DE'), eps_Passed,
+      0, '', '', 'unknown profile: the general table only');
+
+    { an incomplete first pass stays incomplete with a warning and fails with an error }
+    Good := SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml);
+    Good := Copy(Good, 1, RawPos('startxref', Good) + 9) + '99999'#10'%%EOF'#10;
+    CheckFactsCase(R, Good, FacturXFacts(epr_BasicWL, 'FR', 'FR'), eps_Incomplete, 2, 'BR-HYBRID-11',
+      'asks for /Data', 'incomplete and a warning');
+    CheckFactsCase(R, Good, FacturXFacts(epr_Minimum, 'DE', 'DE'), eps_Failed, 3, 'BR-HYBRID-DE-01', 'MINIMUM',
+      'incomplete and an error');
+
+    { nothing to do }
+    RunCheck(SimplePdf('/Names << /EmbeddedFiles << /Names [(zugferd-invoice.xml) 4 0 R] >> >>',
+      '<< /F (zugferd-invoice.xml) /EF << /F 5 0 R >> >>', '', CheckXml), R);
+    CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'ZUGFeRD 2.0');
+    Check(not R.FactsChecked and (R.Status[epl_Embedding] = eps_Incomplete), 'ZUGFeRD 2.0 untouched');
+    R.Clear;
+    CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'not checked yet');
+    Check(not R.FactsChecked and (R.Status[epl_Embedding] = eps_NotRun), 'cleared result untouched');
+    CheckEquals(0, Checker.CheckInvoiceFacts(nil, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'no result');
+  finally
+    Checker.Free;
+    R.Free;
+  end;
+end;
+
+{ The caller's way through the facade: a UBL invoice without BT-24 has no
+  specification, so the syntax comes from Info.Syntax (LX-PDF-10). }
+procedure TestCheckFactsFacade;
+var
+  R: TLandrixEInvoicePdfCheckResult;
+  Checker: TLandrixEInvoicePdfChecker;
+  Doc: TLandrixEInvoiceDocument;
+  F: TLandrixEInvoicePdfInvoiceFacts;
+begin
+  R := TLandrixEInvoicePdfCheckResult.Create;
+  Checker := TLandrixEInvoicePdfChecker.Create;
+  try
+    RunCheck(SimplePdf(TreeAndAF, GoodSpec, '/Type /EmbeddedFile /Subtype /text#2Fxml /Params << /ModDate (D:2026) >>',
+      '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>'), R);
+    Check(R.Status[epl_Embedding] = eps_Passed, 'first pass: ' + StatusText(R));
+    R.Invoice.Position := 0;
+    Doc := TLandrixEInvoice.LoadFromStream(R.Invoice, [eio_NoPdf, eio_NoRuleCheck]);
+    try
+      Check(not Doc.Info.SpecFound and (Doc.Info.Syntax = esy_UBL), 'UBL without specification');
+      F.Target := Doc.Info.Spec.Target;
+      if not Doc.Info.SpecFound then
+        F.Target.Syntax := Doc.Info.Syntax;
+      F.SellerCountryCode := Doc.Invoice.AccountingSupplierParty.Address.CountryCode;
+      F.BuyerCountryCode := Doc.Invoice.AccountingCustomerParty.Address.CountryCode;
+    finally
+      Doc.Free;
+    end;
+    CheckEquals(1, Checker.CheckInvoiceFacts(R, F), 'one error');
+    CheckEquals(1, Findings(R, 'LX-PDF-10', 'UBL'), 'UBL found: ' + StatusText(R));
+    Check(R.Status[epl_Embedding] = eps_Failed, 'failed');
+  finally
+    Checker.Free;
+    R.Free;
+  end;
+end;
+
 procedure TestCheckFile;
 var
   R: TLandrixEInvoicePdfCheckResult;
@@ -1609,6 +1783,8 @@ begin
   RegisterTest('Pdf.Collector', TestCollector);
   RegisterTest('Pdf.CheckEmbedding', TestCheckEmbedding);
   RegisterTest('Pdf.CheckFile', TestCheckFile);
+  RegisterTest('Pdf.CheckFacts', TestCheckFacts);
+  RegisterTest('Pdf.CheckFactsFacade', TestCheckFactsFacade);
 end;
 
 end.

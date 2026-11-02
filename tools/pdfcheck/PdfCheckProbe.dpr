@@ -13,8 +13,10 @@
 }
 
 { Runs TLandrixEInvoicePdfChecker on every PDF of a folder (or the files
-  given) and prints, per file, a line "file<TAB>status<TAB>kind<TAB>name"
-  and its findings indented below. Used by the PDF oracle. }
+  given), reads the extracted invoice through the facade for the second
+  pass (CheckInvoiceFacts) and prints, per file, a line
+  "file<TAB>status<TAB>kind<TAB>name<TAB>profile" and its findings indented
+  below. Used by the PDF oracle. }
 
 program PdfCheckProbe;
 
@@ -26,7 +28,9 @@ program PdfCheckProbe;
 
 uses
   SysUtils,
+  LandrixEInvoiceTypes,
   LandrixEInvoiceDiagnostics,
+  LandrixEInvoice,
   LandrixEInvoicePdfCheck;
 
 const
@@ -34,6 +38,35 @@ const
   KindNames: array[TLandrixEInvoicePdfHybridKind] of string = ('none', 'factur-x', 'xrechnung', 'zugferd-2.0',
     'zugferd-1.0');
   SeverityNames: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
+  ProfileNames: array[TLandrixEInvoiceProfile] of string = ('none', 'minimum', 'basic-wl', 'basic', 'en16931',
+    'extended', 'xrechnung');
+
+{ The second pass with the facts of the extracted invoice; an invoice the
+  facade cannot read gets no facts. }
+procedure CheckFacts(AChecker: TLandrixEInvoicePdfChecker; AResult: TLandrixEInvoicePdfCheckResult);
+var
+  Doc: TLandrixEInvoiceDocument;
+  Facts: TLandrixEInvoicePdfInvoiceFacts;
+begin
+  if AResult.Invoice.Size = 0 then
+    Exit;
+  AResult.Invoice.Position := 0;
+  try
+    Doc := TLandrixEInvoice.LoadFromStream(AResult.Invoice, [eio_NoPdf, eio_NoRuleCheck, eio_InvoiceOnly]);
+  except
+    Exit;
+  end;
+  try
+    Facts.Target := Doc.Info.Spec.Target;
+    if not Doc.Info.SpecFound then
+      Facts.Target.Syntax := Doc.Info.Syntax;
+    Facts.SellerCountryCode := Doc.Invoice.AccountingSupplierParty.Address.CountryCode;
+    Facts.BuyerCountryCode := Doc.Invoice.AccountingCustomerParty.Address.CountryCode;
+    AChecker.CheckInvoiceFacts(AResult, Facts);
+  finally
+    Doc.Free;
+  end;
+end;
 
 procedure CheckOne(AChecker: TLandrixEInvoicePdfChecker; AResult: TLandrixEInvoicePdfCheckResult;
   const AFileName: string);
@@ -42,8 +75,9 @@ var
   D: TLandrixEInvoiceDiagnostic;
 begin
   AChecker.CheckFile(AFileName, AResult);
+  CheckFacts(AChecker, AResult);
   WriteLn(ExtractFileName(AFileName), #9, StatusNames[AResult.Status[epl_Embedding]], #9,
-    KindNames[AResult.HybridKind], #9, UTF8Encode(AResult.InvoiceFileName));
+    KindNames[AResult.HybridKind], #9, UTF8Encode(AResult.InvoiceFileName), #9, ProfileNames[AResult.Profile]);
   for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
   begin
     D := AResult.Diagnostics[I];

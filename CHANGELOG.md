@@ -399,7 +399,12 @@ Supported invoice standards are documented per release.
   differs, not UTF-8, other embedded files without `/AFRelationship` or `/AF`, a limit reached,
   `application/xml`, which every hybrid example of ZUGFeRD 2.5.2 uses, as a warning only). The result
   (`TLandrixEInvoicePdfCheckResult`) holds a status per level, the findings and the invoice bytes; a rebuilt
-  object table never passes. `tools/pdfcheck/PdfCheckProbe.dpr` runs it over a folder.
+  object table never passes. A second pass, `CheckInvoiceFacts`, takes the target and the seller and buyer
+  countries of the extracted invoice, which the caller reads through the facade
+  (`TLandrixEInvoicePdfInvoiceFacts`), and adds BR-HYBRID-11 per profile and country (the column of a country
+  only when seller and buyer are both in it), BR-HYBRID-13 for file name and profile (`xrechnung.xml` if and
+  only if XRECHNUNG), BR-HYBRID-DE-01/02, BR-HYBRID-FR-01 and LX-PDF-10 (a UBL invoice in the PDF).
+  `tools/pdfcheck/PdfCheckProbe.dpr` runs both passes over a folder.
 
 ### Changed
 - BT-113 (prepaid amount, UBL `cbc:PrepaidAmount`, CII `ram:TotalPrepaidAmount`) is written only when it is not

@@ -18,11 +18,15 @@
   method, a collective rule: several findings share it), BR-HYBRID-13 (file
   name) and BR-HYBRID-11 (/AFRelationship, without profile and country only
   the values the table allows at all), plus own findings LX-PDF-01 to
-  LX-PDF-09 for what the rules do not name. The checker reads no XML except
-  for well-formedness; profile and countries come from the caller in a later
-  step. ZUGFeRD 1.0 and 2.0 are recognised and extracted, not checked. A
-  rebuilt object table or a reached limit never gives eps_Passed.
-  Damaged or hostile input is a finding, not an exception.
+  LX-PDF-10 for what the rules do not name. The checker reads no XML except
+  for well-formedness: the caller reads the extracted invoice through the
+  facade and passes its target and countries to CheckInvoiceFacts, which
+  adds BR-HYBRID-11 per profile and country, BR-HYBRID-13 (file name and
+  profile), BR-HYBRID-DE-01/02 and BR-HYBRID-FR-01; these need the PDF
+  context and therefore belong to level 2. ZUGFeRD 1.0 and 2.0 are
+  recognised and extracted, not checked. A rebuilt object table or a
+  reached limit never gives eps_Passed. Damaged or hostile input is a
+  finding, not an exception.
 
   DE: Pruefungen eines hybriden Rechnungs-PDFs (ZUGFeRD 2.5.2 / Factur-X
   1.09.2). Bisher Ebene 2, die Einbettung der Rechnungs-XML: die
@@ -30,13 +34,16 @@
   BR-HYBRID-12 (Einbettungsmethode, eine Sammelregel: mehrere Befunde
   teilen sie), BR-HYBRID-13 (Dateiname) und BR-HYBRID-11
   (/AFRelationship, ohne Profil und Land nur die Werte, die die Tabelle
-  ueberhaupt erlaubt), dazu eigene Befunde LX-PDF-01 bis LX-PDF-09 fuer
+  ueberhaupt erlaubt), dazu eigene Befunde LX-PDF-01 bis LX-PDF-10 fuer
   das, was die Regeln nicht nennen. Der Pruefer liest keine XML ausser auf
-  Wohlgeformtheit; Profil und Laender kommen in einem spaeteren Schritt vom
-  Aufrufer. ZUGFeRD 1.0 und 2.0 werden erkannt und extrahiert, nicht
-  geprueft. Eine neu aufgebaute Objekttabelle oder eine erreichte Grenze
-  ergibt nie eps_Passed. Beschaedigte oder feindliche Eingaben sind ein
-  Befund, keine Ausnahme. }
+  Wohlgeformtheit: der Aufrufer liest die extrahierte Rechnung ueber die
+  Fassade und uebergibt ihr Ziel und ihre Laender an CheckInvoiceFacts, das
+  BR-HYBRID-11 je Profil und Land, BR-HYBRID-13 (Dateiname und Profil),
+  BR-HYBRID-DE-01/02 und BR-HYBRID-FR-01 ergaenzt; sie brauchen den
+  PDF-Zusammenhang und gehoeren deshalb zu Ebene 2. ZUGFeRD 1.0 und 2.0
+  werden erkannt und extrahiert, nicht geprueft. Eine neu aufgebaute
+  Objekttabelle oder eine erreichte Grenze ergibt nie eps_Passed.
+  Beschaedigte oder feindliche Eingaben sind ein Befund, keine Ausnahme. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -81,6 +88,29 @@ type
     keine Rechnung gefunden. }
   TLandrixEInvoicePdfHybridKind = (ehk_None, ehk_FacturX, ehk_XRechnung, ehk_ZUGFeRD20, ehk_ZUGFeRD10);
 
+  { Facts of the embedded invoice that the caller read through the facade:
+    Target is Info.Spec.Target of the document (est_None if unknown; then
+    set Target.Syntax to Info.Syntax, so that a UBL invoice with a missing
+    or unknown BT-24 is still found, LX-PDF-10);
+    SellerCountryCode is BT-40, BuyerCountryCode BT-55 ('' if unknown; the
+    rule text of annex 3.d swaps the two BT numbers, which does not matter,
+    as its rules need both countries alike). Set every field: a local
+    record is not initialised.
+    DE: Fakten der eingebetteten Rechnung, die der Aufrufer ueber die
+    Fassade gelesen hat: Target ist Info.Spec.Target des Dokuments
+    (est_None, wenn unbekannt; dann Target.Syntax auf Info.Syntax setzen,
+    damit eine UBL-Rechnung mit fehlendem oder unbekanntem BT-24 trotzdem
+    erkannt wird, LX-PDF-10); SellerCountryCode ist BT-40,
+    BuyerCountryCode BT-55 ('' wenn unbekannt; der Regeltext in Anhang 3.d
+    vertauscht die beiden BT-Nummern, was nichts ausmacht, weil seine
+    Regeln beide Laender gleich verlangen). Jedes Feld setzen: ein lokaler
+    Record ist nicht initialisiert. }
+  TLandrixEInvoicePdfInvoiceFacts = record
+    Target: TLandrixEInvoiceTarget;
+    SellerCountryCode: TLandrixEInvoiceString;
+    BuyerCountryCode: TLandrixEInvoiceString;
+  end;
+
   { Result of a check; Clear resets it.
     DE: Ergebnis einer Pruefung; Clear setzt es zurueck. }
   TLandrixEInvoicePdfCheckResult = class(TObject)
@@ -98,6 +128,22 @@ type
       geschrieben; '' ohne Rechnung. }
     InvoiceFileName: TLandrixEInvoiceString;
     InvoiceRelationship: TLandrixEInvoiceString;
+    { /F and /UF of the invoice file specification ('' if absent) and its
+      place in the PDF (e.g. /Root/Names/EmbeddedFiles/Names[1]).
+      DE: /F und /UF der Dateispezifikation der Rechnung ('', wenn sie
+      fehlen) und ihr Ort im PDF (z. B. /Root/Names/EmbeddedFiles/Names[1]). }
+    InvoiceFileNameF: TLandrixEInvoiceString;
+    InvoiceFileNameUF: TLandrixEInvoiceString;
+    InvoicePath: TLandrixEInvoiceString;
+    { Set by CheckInvoiceFacts: the facts as passed and the ZUGFeRD profile
+      derived from them (Factur-X: the profile of the target; XRechnung CII:
+      epr_XRechnung; otherwise epr_None).
+      DE: Von CheckInvoiceFacts gesetzt: die Fakten wie uebergeben und das
+      daraus abgeleitete ZUGFeRD-Profil (Factur-X: das Profil des Ziels;
+      XRechnung CII: epr_XRechnung; sonst epr_None). }
+    FactsChecked: Boolean;
+    InvoiceFacts: TLandrixEInvoicePdfInvoiceFacts;
+    Profile: TLandrixEInvoiceProfile;
     { Version from the header (e.g. 1.7) and /Version of the catalog ('' if
       absent).
       DE: Version aus dem Kopf (z. B. 1.7) und /Version des Katalogs ('',
@@ -128,6 +174,20 @@ type
   public
     function CheckStream(AStream: TStream; AResult: TLandrixEInvoicePdfCheckResult): Integer;
     function CheckFile(const AFileName: string; AResult: TLandrixEInvoicePdfCheckResult): Integer;
+    { Second pass after CheckStream or CheckFile, with the facts of
+      AResult.Invoice: adds the profile and country rules to AResult and
+      sets the level 2 status to eps_Failed if they add an error. Returns
+      the number of errors in AResult. Without effect when AResult holds no
+      checked invoice (none found, ZUGFeRD 1.0/2.0) or the facts were
+      checked already.
+      DE: Zweiter Durchgang nach CheckStream oder CheckFile, mit den Fakten
+      von AResult.Invoice: ergaenzt die Profil- und Laenderregeln in AResult
+      und setzt den Status der Ebene 2 auf eps_Failed, wenn sie einen Fehler
+      hinzufuegen. Liefert die Anzahl der Fehler in AResult. Ohne Wirkung,
+      wenn AResult keine gepruefte Rechnung enthaelt (keine gefunden,
+      ZUGFeRD 1.0/2.0) oder die Fakten schon geprueft wurden. }
+    function CheckInvoiceFacts(AResult: TLandrixEInvoicePdfCheckResult;
+      const AFacts: TLandrixEInvoicePdfInvoiceFacts): Integer;
   end;
 
 implementation
@@ -162,6 +222,11 @@ const
   RuleLimit = 'LX-PDF-08';
   { the MIME type is application/xml, not text/xml }
   RuleMimeType = 'LX-PDF-09';
+  { the embedded invoice is UBL, no CII invoice of a ZUGFeRD profile }
+  RuleNotCII = 'LX-PDF-10';
+  RuleNoMinimum = 'BR-HYBRID-DE-01';
+  RuleNoBasicWL = 'BR-HYBRID-DE-02';
+  RuleNoXRechnung = 'BR-HYBRID-FR-01';
 
 function ToText(const S: string): TLandrixEInvoiceString;
 begin
@@ -309,6 +374,17 @@ begin
   HybridKind := ehk_None;
   InvoiceFileName := '';
   InvoiceRelationship := '';
+  InvoiceFileNameF := '';
+  InvoiceFileNameUF := '';
+  InvoicePath := '';
+  FactsChecked := False;
+  InvoiceFacts.Target.Standard := est_None;
+  InvoiceFacts.Target.Syntax := esy_None;
+  InvoiceFacts.Target.Profile := epr_None;
+  InvoiceFacts.Target.Version := '';
+  InvoiceFacts.SellerCountryCode := '';
+  InvoiceFacts.BuyerCountryCode := '';
+  Profile := epr_None;
   PdfVersion := '';
   CatalogVersion := '';
   FDiagnostics.Clear;
@@ -790,6 +866,9 @@ begin
     FResult.HybridKind := KindOf(Invoice);
     FResult.InvoiceFileName := F.FileName;
     FResult.InvoiceRelationship := AnsiToText(F.Relationship);
+    FResult.InvoiceFileNameF := F.FileNameF;
+    FResult.InvoiceFileNameUF := F.FileNameUF;
+    FResult.InvoicePath := SpecPath(Invoice);
   end;
   if FResult.HybridKind in [ehk_ZUGFeRD10, ehk_ZUGFeRD20] then
   begin
@@ -931,6 +1010,154 @@ begin
     AResult.Status[epl_Embedding] := eps_Incomplete
   else
     AResult.Status[epl_Embedding] := eps_Passed;
+end;
+
+{ The ZUGFeRD profile of a target: Factur-X its profile, XRechnung CII the
+  profile XRECHNUNG, anything else none.
+  DE: Das ZUGFeRD-Profil eines Ziels: Factur-X sein Profil, XRechnung CII
+  das Profil XRECHNUNG, alles andere keines. }
+function HybridProfile(const ATarget: TLandrixEInvoiceTarget): TLandrixEInvoiceProfile;
+begin
+  Result := epr_None;
+  if ATarget.Standard = est_FacturX then
+    Result := ATarget.Profile
+  else if (ATarget.Standard = est_XRechnung) and (ATarget.Syntax = esy_CII) then
+    Result := epr_XRechnung;
+end;
+
+function ProfileText(AProfile: TLandrixEInvoiceProfile): TLandrixEInvoiceString;
+const
+  Names: array[TLandrixEInvoiceProfile] of string = ('none', 'MINIMUM', 'BASIC WL', 'BASIC', 'EN 16931',
+    'EXTENDED', 'XRECHNUNG');
+begin
+  Result := ToText(Names[AProfile]);
+end;
+
+procedure AddFindingAt(AResult: TLandrixEInvoicePdfCheckResult; const ARule: TLandrixEInvoiceString;
+  ASeverity: TLandrixEInvoiceDiagnosticSeverity; const APath, AMessage: TLandrixEInvoiceString);
+var
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  D := AResult.Diagnostics.AddDiagnostic(edk_RuleViolation, APath, 0, 0, 0, AMessage);
+  D.Severity := ASeverity;
+  D.RuleID := ARule;
+end;
+
+{ Code list HybridDocumentFilename, usage rules: xrechnung.xml needs the
+  profile XRECHNUNG, factur-x.xml must not have it (BR-HYBRID-13).
+  DE: Codeliste HybridDocumentFilename, Verwendungsregeln: xrechnung.xml
+  verlangt das Profil XRECHNUNG, factur-x.xml darf es nicht haben
+  (BR-HYBRID-13). }
+procedure CheckNameAndProfile(AResult: TLandrixEInvoicePdfCheckResult; const AName, AKey: TLandrixEInvoiceString);
+begin
+  if (AName = 'xrechnung.xml') and (AResult.Profile <> epr_XRechnung) then
+    AddFindingAt(AResult, RuleFileName, eds_Error, AResult.InvoicePath + AKey, 'The file name xrechnung.xml ' +
+      'needs the profile XRECHNUNG; the invoice has the profile ' + ProfileText(AResult.Profile))
+  else if (AName = 'factur-x.xml') and (AResult.Profile = epr_XRechnung) then
+    AddFindingAt(AResult, RuleFileName, eds_Error, AResult.InvoicePath + AKey, 'An invoice of the profile ' +
+      'XRECHNUNG is named xrechnung.xml, not factur-x.xml');
+end;
+
+{ BR-HYBRID-11 per profile and country (specification 6.2.2): MINIMUM and
+  BASIC WL Data; BASIC, EN 16931, EXTENDED Alternative in Germany and
+  Alternative, Source or Data in France; XRECHNUNG Alternative (not
+  applicable in France, see BR-HYBRID-FR-01). The column of a country
+  applies only when seller and buyer are both in it (owner decision
+  2026-11-02); otherwise the profile row over both columns. A value outside
+  Data, Source and Alternative has its warning from CheckStream already.
+  DE: BR-HYBRID-11 je Profil und Land (Spezifikation 6.2.2): MINIMUM und
+  BASIC WL Data; BASIC, EN 16931, EXTENDED in Deutschland Alternative, in
+  Frankreich Alternative, Source oder Data; XRECHNUNG Alternative (in
+  Frankreich nicht anwendbar, siehe BR-HYBRID-FR-01). Die Spalte eines
+  Landes gilt nur, wenn Verkaeufer und Kaeufer beide dort sind
+  (Entscheidung des Eigentuemers 2026-11-02); sonst die Profilzeile ueber
+  beide Spalten. Ein Wert ausserhalb von Data, Source und Alternative hat
+  seine Warnung schon aus CheckStream. }
+procedure CheckRelationship(AResult: TLandrixEInvoicePdfCheckResult; const ACountry: TLandrixEInvoiceString);
+var
+  Rel, Allowed: TLandrixEInvoiceString;
+begin
+  Rel := AResult.InvoiceRelationship;
+  if (Rel <> 'Data') and (Rel <> 'Source') and (Rel <> 'Alternative') then
+    Exit;
+  case AResult.Profile of
+    epr_Minimum, epr_BasicWL:
+      Allowed := 'Data';
+    epr_Basic, epr_EN16931, epr_Extended:
+      if ACountry = 'DE' then
+        Allowed := 'Alternative'
+      else
+        Allowed := '';
+    epr_XRechnung:
+      if ACountry = 'FR' then
+        Allowed := ''
+      else
+        Allowed := 'Alternative';
+  else
+    Allowed := '';
+  end;
+  if (Allowed <> '') and (Rel <> Allowed) then
+  begin
+    if ACountry <> '' then
+      AddFindingAt(AResult, RuleRelationship, eds_Warning, AResult.InvoicePath + '/AFRelationship',
+        '/AFRelationship is /' + Rel + '; the table of the specification asks for /' + Allowed + ' for the profile ' +
+        ProfileText(AResult.Profile) + ' with seller and buyer in ' + ACountry)
+    else
+      AddFindingAt(AResult, RuleRelationship, eds_Warning, AResult.InvoicePath + '/AFRelationship',
+        '/AFRelationship is /' + Rel + '; the table of the specification asks for /' + Allowed + ' for the profile ' +
+        ProfileText(AResult.Profile));
+  end;
+end;
+
+function TLandrixEInvoicePdfChecker.CheckInvoiceFacts(AResult: TLandrixEInvoicePdfCheckResult;
+  const AFacts: TLandrixEInvoicePdfInvoiceFacts): Integer;
+var
+  Before: Integer;
+  Country: TLandrixEInvoiceString;
+begin
+  Result := 0;
+  if AResult = nil then
+    Exit;
+  Before := CountErrors(AResult.Diagnostics);
+  Result := Before;
+  if AResult.FactsChecked or (AResult.Status[epl_Embedding] = eps_NotRun) or
+     (AResult.HybridKind in [ehk_None, ehk_ZUGFeRD10, ehk_ZUGFeRD20]) then
+    Exit;
+  AResult.FactsChecked := True;
+  AResult.InvoiceFacts := AFacts;
+  AResult.Profile := HybridProfile(AFacts.Target);
+  if AFacts.Target.Syntax = esy_UBL then
+    AddFindingAt(AResult, RuleNotCII, eds_Error, AResult.InvoicePath, 'The embedded invoice is UBL; a hybrid document holds ' +
+      'a CII invoice of a ZUGFeRD profile')
+  else if AResult.Profile <> epr_None then
+  begin
+    if AResult.InvoiceFileNameF <> '' then
+      CheckNameAndProfile(AResult, AResult.InvoiceFileNameF, '/F');
+    if AResult.InvoiceFileNameUF <> '' then
+      CheckNameAndProfile(AResult, AResult.InvoiceFileNameUF, '/UF');
+    Country := '';
+    if (AFacts.SellerCountryCode = AFacts.BuyerCountryCode) and
+       ((AFacts.SellerCountryCode = 'DE') or (AFacts.SellerCountryCode = 'FR')) then
+      Country := AFacts.SellerCountryCode;
+    { BR-HYBRID-DE-01/02: seller and buyer in Germany, no MINIMUM and no
+      BASIC WL; BR-HYBRID-FR-01: in France, no XRECHNUNG.
+      DE: BR-HYBRID-DE-01/02: Verkaeufer und Kaeufer in Deutschland, kein
+      MINIMUM und kein BASIC WL; BR-HYBRID-FR-01: in Frankreich kein
+      XRECHNUNG. }
+    if (Country = 'DE') and (AResult.Profile = epr_Minimum) then
+      AddFindingAt(AResult, RuleNoMinimum, eds_Error, AResult.InvoicePath, 'Seller and buyer are in Germany; the profile ' +
+        'MINIMUM must not be used')
+    else if (Country = 'DE') and (AResult.Profile = epr_BasicWL) then
+      AddFindingAt(AResult, RuleNoBasicWL, eds_Error, AResult.InvoicePath, 'Seller and buyer are in Germany; the profile ' +
+        'BASIC WL must not be used')
+    else if (Country = 'FR') and (AResult.Profile = epr_XRechnung) then
+      AddFindingAt(AResult, RuleNoXRechnung, eds_Error, AResult.InvoicePath, 'Seller and buyer are in France; the profile ' +
+        'XRECHNUNG must not be used');
+    CheckRelationship(AResult, Country);
+  end;
+  Result := CountErrors(AResult.Diagnostics);
+  if Result > Before then
+    AResult.Status[epl_Embedding] := eps_Failed;
 end;
 
 function TLandrixEInvoicePdfChecker.CheckFile(const AFileName: string; AResult: TLandrixEInvoicePdfCheckResult): Integer;
