@@ -375,6 +375,9 @@ begin
     Line.SubInvoiceLines[0].DeliveryNoteNumber := 'LS-1';
     { the group line is left out below EXTENDED: the sub line carries what is checked }
     Line.SubInvoiceLines[0].UnitCodeOther := 'QQQ';
+    { CII D16B of the KoSIT scenario EN16931 allows one preceding invoice }
+    Invoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference.ID := 'RE-A';
+    Invoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference.ID := 'RE-B';
     Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), Spec), 'spec');
     CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
     try
@@ -390,6 +393,8 @@ begin
     Check(Pos('<ram:LineID>1</ram:LineID>', Xml) = 0, 'group line left out');
     Check(Pos('unitCode="QQQ"', Xml) > 0, 'other unit written');
     Check(Pos('<ram:TypeCode>999</ram:TypeCode>', Xml) > 0, 'other type code written');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:InvoiceReferencedDocument'), 'second preceding invoice left out');
+    Check((Pos('RE-A', Xml) > 0) and (Pos('RE-B', Xml) = 0), 'first preceding invoice written');
     D.Clear;
     Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), Spec), 'spec');
     CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
@@ -401,6 +406,7 @@ begin
     CheckEquals(0, D.CountOf(edk_NotAllowed), 'EXTENDED allows both');
     Check(Pos('<ram:ParentLineID>1</ram:ParentLineID>', Xml) > 0, 'sub line with parent');
     Check(Pos('LS-1', Xml) > 0, 'delivery note written');
+    Check((Pos('RE-A', Xml) > 0) and (Pos('RE-B', Xml) > 0), 'EXTENDED writes both preceding invoices');
   finally
     Invoice.Free;
     D.Free;

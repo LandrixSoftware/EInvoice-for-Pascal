@@ -198,7 +198,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..35] of TLandrixEInvoiceRule = (
+  Rules: array[0..36] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules. Where the level is not
       erl_Allowed they are written flat (LandrixEInvoiceSubLines). }
@@ -254,6 +254,17 @@ const
     (Key: LandrixEInvoiceRuleMultiplePrecedingInvoices; Standards: [est_XRechnung]; Syntaxes: [esy_CII];
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BG-3';
      Source: 'one ram:InvoiceReferencedDocument in XRechnung CII'),
+    { The Factur-X EN16931 schema allows several, but the KoSIT XRechnung
+      configuration validates the guideline urn:cen.eu:en16931:2017 against
+      CII D16B, which allows one. BASIC and BASIC WL have their own guideline
+      IDs and keep several, as in their schemas.
+      DE: Das Factur-X-Schema EN16931 erlaubt mehrere, die KoSIT-
+      Konfiguration fuer XRechnung prueft die Kennung urn:cen.eu:en16931:2017
+      aber gegen CII D16B, das eines erlaubt. BASIC und BASIC WL haben eigene
+      Kennungen und behalten mehrere wie in ihren Schemata. }
+    (Key: LandrixEInvoiceRuleMultiplePrecedingInvoices; Standards: [est_FacturX]; Syntaxes: [esy_CII];
+     Profiles: [epr_EN16931]; Level: erl_Forbidden; Terms: 'BG-3';
+     Source: 'one ram:InvoiceReferencedDocument in CII D16B (KoSIT scenario EN16931 CII)'),
     (Key: LandrixEInvoiceRuleBuyerReferencePlaceholder; Standards: [est_XRechnung]; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Allowed; Terms: 'BT-10';
      Source: 'XRechnung: buyer reference is mandatory'),

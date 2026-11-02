@@ -407,6 +407,10 @@ Supported invoice standards are documented per release.
   `tools/pdfcheck/PdfCheckProbe.dpr` runs both passes over a folder.
 
 ### Changed
+- Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as
+  XRechnung CII already did; further ones are left out with a warning and reported by LX-CC-03. The KoSIT
+  XRechnung configuration validates this profile against CII D16B, which allows one (as XRechnung-for-Delphi
+  `163eacf`). BASIC, BASIC WL and EXTENDED keep several.
 - BT-113 (prepaid amount, UBL `cbc:PrepaidAmount`, CII `ram:TotalPrepaidAmount`) is written only when it is not
   0: the element is optional and receivers showed 0.00 as a prepayment (as XRechnung-for-Delphi `4caa0a1`).
 - The object layer of the PDF reader (lexer, stream filters, decryption, objects, document) moved from

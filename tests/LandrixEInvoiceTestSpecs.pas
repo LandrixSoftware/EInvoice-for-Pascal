@@ -246,6 +246,16 @@ begin
   Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleElectronicAddressDefaultEM) = erl_Forbidden, 'EM Peppol');
   Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleElectronicAddressDefaultEM) = erl_Allowed, 'EM XRechnung');
   Check(LandrixEInvoiceRuleLevel(FxEn, 'No.Such.Key') = erl_Allowed, 'unknown key allowed');
+  Check(LandrixEInvoiceRuleLevel(XrCii, LandrixEInvoiceRuleMultiplePrecedingInvoices) = erl_Forbidden,
+    'preceding invoices XRechnung CII');
+  Check(LandrixEInvoiceRuleLevel(FxEn, LandrixEInvoiceRuleMultiplePrecedingInvoices) = erl_Forbidden,
+    'preceding invoices EN16931');
+  Check(LandrixEInvoiceRuleLevel(SpecOf(TLandrixEInvoiceTargets.FacturX('1.09', epr_Basic)),
+    LandrixEInvoiceRuleMultiplePrecedingInvoices) = erl_Allowed, 'preceding invoices BASIC');
+  Check(LandrixEInvoiceRuleLevel(FxExt, LandrixEInvoiceRuleMultiplePrecedingInvoices) = erl_Allowed,
+    'preceding invoices EXTENDED');
+  Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleMultiplePrecedingInvoices) = erl_Allowed,
+    'preceding invoices UBL');
   Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleBuyerReferencePlaceholder) = erl_Allowed, 'placeholder Peppol');
   Check(LandrixEInvoiceRuleLevel(XrUbl, LandrixEInvoiceRuleLineOrderNumber) = erl_Forbidden, 'line order number UBL');
   Check(LandrixEInvoiceRuleLevel(Peppol, LandrixEInvoiceRuleDeliveryNote) = erl_Forbidden, 'delivery note Peppol');

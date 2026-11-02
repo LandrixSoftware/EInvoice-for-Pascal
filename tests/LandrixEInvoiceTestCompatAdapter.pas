@@ -306,6 +306,8 @@ begin
     Invoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference.ID := 'B';
     CheckEquals(ccTooManyPrecedingInvoices, CodeOf(Invoice, XRechnungVersion_30x_UNCEFACT), 'two preceding CII');
     CheckEquals(ccOK, CodeOf(Invoice, XRechnungVersion_30x_UBL), 'two preceding UBL');
+    CheckEquals(ccTooManyPrecedingInvoices, CodeOf(Invoice, ZUGFeRDEN16931Version_250), 'two preceding EN16931');
+    CheckEquals(ccOK, CodeOf(Invoice, ZUGFeRDExtendedVersion_250), 'two preceding EXTENDED');
     Invoice.PrecedingInvoiceReferences.Clear;
 
     Invoice.PaymentTypes.AddPaymentType.PaymentMeansCode := ipmc_SEPADirectDebit;
