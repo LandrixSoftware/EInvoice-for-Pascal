@@ -25,7 +25,9 @@
   its exit code is shown, not used.
   Every configuration runs in its own validator
   call: with several configurations in one call, validator 1.6.3 matches no
-  scenario for the ZUGFeRD EN16931 files.
+  scenario for the ZUGFeRD EN16931 files. The XRechnung configuration has a
+  scenario "EN16931 (CII)" for the plain identifier urn:cen.eu:en16931:2017,
+  the same as Factur-X EN16931; two matching scenarios mean none.
 
   Default folder: build/<toolchain>/cross/ of the first toolchain that has
   one (written by tools/build.ps1, test Cross.Write). Reports and HTML go to
