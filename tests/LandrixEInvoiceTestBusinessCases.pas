@@ -558,10 +558,12 @@ end;
 
 { BG-23 / BR-O: not subject to VAT: no VAT identifier of seller or buyer
   (BR-O-02), the seller identified by legal registration and tax number,
-  exemption reason (BR-O-10). }
+  exemption reason (BR-O-10), a document charge of 5.00 without VAT rate
+  (BR-O-07). Net and gross 105.00. }
 procedure TestVatNotSubject;
 var
   Inv: TLandrixInvoice;
+  Charge: TLandrixInvoiceAllowanceCharge;
 begin
   Inv := TLandrixInvoice.Create;
   try
@@ -570,7 +572,21 @@ begin
     Inv.AccountingSupplierParty.VATCompanyNumber := '123/456/78901';
     Inv.AccountingSupplierParty.CompanyID := 'HRB 12345';
     SetSingleCategory(Inv, idtfcc_O_ServicesOutsideScopeOfTax, 0, 'Nicht steuerbar', 'VATEX-EU-O');
+    Charge := Inv.AllowanceCharges.AddAllowanceCharge;
+    Charge.ChargeIndicator := True;
+    Charge.ReasonCodeCharge := issdc_FC_FreightService;
+    Charge.Reason := 'Fracht';
+    Charge.Amount := Cents(500);
+    Charge.TaxCategory := idtfcc_O_ServicesOutsideScopeOfTax;
+    Inv.ChargeTotalAmount := Cents(500);
+    Inv.TaxExclusiveAmount := Cents(10500);
+    Inv.TaxAmountSubtotals[0].TaxableAmount := Cents(10500);
+    Inv.TaxInclusiveAmount := Cents(10500);
+    Inv.PayableAmount := Cents(10500);
     RunCase('vat-o', Inv, ['ubl:<cbc:ID>O</cbc:ID>', 'cii:<ram:CategoryCode>O</ram:CategoryCode>',
+      'ubl:<cbc:Amount currencyID="EUR">5.00</cbc:Amount><cac:TaxCategory><cbc:ID>O</cbc:ID><cac:TaxScheme>',
+      'cii:<ram:CategoryTradeTax><ram:TypeCode>VAT</ram:TypeCode><ram:CategoryCode>O</ram:CategoryCode>' +
+      '</ram:CategoryTradeTax>',
       'ubl:<cbc:CompanyID>123/456/78901</cbc:CompanyID>', 'cii:<ram:ID schemeID="FC">123/456/78901</ram:ID>',
       'cii:<ram:ExemptionReasonCode>VATEX-EU-O</ram:ExemptionReasonCode>'], []);
   finally
