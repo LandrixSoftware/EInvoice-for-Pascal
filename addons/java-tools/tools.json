@@ -89,6 +89,26 @@
       "dir": "jre/macos-aarch64",
       "unpack": true,
       "strip": 1
+    },
+    {
+      "name": "qpdf",
+      "platform": "windows-x64",
+      "url": "https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-msvc64.zip",
+      "file": "qpdf-12.4.2-msvc64.zip",
+      "sha256": "db87077e683630c1217e0e8f9a20a9749d952ab676e881c3689187763a5de25d",
+      "dir": "qpdf/windows-x64",
+      "unpack": true,
+      "strip": 1
+    },
+    {
+      "name": "qpdf",
+      "platform": "windows-aarch64",
+      "url": "https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-msvc-arm64.zip",
+      "file": "qpdf-12.4.2-msvc-arm64.zip",
+      "sha256": "2b5d7740a2513d8a841116692dc2cf7efe83f35262386ebab18bed35fbf15ab1",
+      "dir": "qpdf/windows-aarch64",
+      "unpack": true,
+      "strip": 1
     }
   ]
 }

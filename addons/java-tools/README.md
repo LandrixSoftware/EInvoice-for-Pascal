@@ -1,6 +1,6 @@
 # Java tools
 
-Java-based tools around EInvoice-for-Pascal. Only the scripts and the manifest are in the
+Java-based tools around EInvoice-for-Pascal, and qpdf for the PDF oracle. Only the scripts and the manifest are in the
 repository; the tools themselves are downloaded into this folder (git-ignored).
 
 ```powershell
@@ -21,6 +21,7 @@ platform, into the same folder if it is shared.
 | `validator-configuration-zugferd/` | configuration for ZUGFeRD 2.5.2 / Factur-X 1.09.2 |
 | `xrechnung-visualization/` | KoSIT XRechnung visualization 2026-01-31; its `xsl/*-xr.xsl` turn UBL and CII into the syntax-neutral XR form (`tools/testdata/xr-compare.py`) |
 | `jre/<os>-<arch>/` | Eclipse Temurin 21 JRE: `windows-x64`, `windows-aarch64`, `linux-x64`, `linux-aarch64`, `macos-aarch64` |
+| `qpdf/<os>-<arch>/` | qpdf 12.4.2 (`bin/qpdf.exe`), `windows-x64` and `windows-aarch64` for `tools/pdfcheck/pdf-oracle.py`; on Linux and macOS the oracle uses `qpdf` from the `PATH` (the release archives unpack there without the executable bit) |
 | `download/` | downloaded files (cache) |
 
 `tools.json` pins every download by URL and SHA-256; the script refuses a file with another

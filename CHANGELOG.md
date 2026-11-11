@@ -406,6 +406,12 @@ Supported invoice standards are documented per release.
   only when seller and buyer are both in it), BR-HYBRID-13 for file name and profile (`xrechnung.xml` if and
   only if XRECHNUNG), BR-HYBRID-DE-01/02, BR-HYBRID-FR-01 and LX-PDF-10 (a UBL invoice in the PDF).
   `tools/pdfcheck/PdfCheckProbe.dpr` runs both passes over a folder.
+- `tools/pdfcheck/pdf-oracle.py`: compares the PDF reader with qpdf 12.4.2 (pinned for Windows x64 and
+  ARM64 in `addons/java-tools/tools.json`; elsewhere `qpdf` from the `PATH`) on the local PDF corpus and
+  five mutants with a broken `startxref`: the keys of the name tree, per file the file specification, `/F`,
+  `/UF`, MIME type, `/ModDate` and the content byte for byte, and whether the cross-reference table had to
+  be rebuilt. `PdfCheckProbe -facts=DIR` prints the file specifications of the collector for it.
+  Exceptions in `tools/pdfcheck/pdf-exceptions.txt` (none).
 
 ### Changed
 - Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as

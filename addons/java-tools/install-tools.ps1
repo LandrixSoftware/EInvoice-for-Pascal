@@ -9,8 +9,11 @@
   copied or unpacked into their folder. The folders are git-ignored.
 
   Installed by default: the KoSIT validator, its configurations for
-  XRechnung, Peppol BIS Billing and ZUGFeRD / Factur-X, and the Java runtime
-  (Temurin 21) of the current platform under jre/<os>-<arch>. Linux and
+  XRechnung, Peppol BIS Billing and ZUGFeRD / Factur-X, the Java runtime
+  (Temurin 21) of the current platform under jre/<os>-<arch>, and qpdf for
+  the PDF oracle (tools/pdfcheck/pdf-oracle.py; Windows only, elsewhere
+  an installed qpdf is used). An entry with a platform is installed only
+  for that platform. Linux and
   macOS users may use an installed Java runtime instead (-NoJre). On Windows
   the Linux and macOS runtimes are skipped: their archives contain symbolic
   links that the Windows tar cannot create.
@@ -117,8 +120,9 @@ if (-not $NoJre -and -not ($Platform -contains 'all')) {
 }
 
 foreach ($entry in $Manifest.tools) {
-  if ($entry.name -eq 'jre') {
-    if ($NoJre -or (-not ($Platform -contains 'all') -and -not ($wanted -contains $entry.platform))) { continue }
+  if ($entry.name -eq 'jre' -and $NoJre) { continue }
+  if ($entry.PSObject.Properties.Name -contains 'platform') {
+    if (-not ($Platform -contains 'all') -and -not ($wanted -contains $entry.platform)) { continue }
   }
   Install-Entry $entry
 }

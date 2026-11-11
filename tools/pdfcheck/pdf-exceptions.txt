@@ -1,0 +1,3 @@
+# Known differences between tools/pdfcheck/pdf-oracle.py (qpdf) and PdfCheckProbe.
+# One per line: file<TAB>check<TAB>reason; file may be *. Checks: probe, qpdf, rebuilt, mutant,
+# keys, spec, mime, moddate, data. None known (2026-11-11, qpdf 12.4.2, 528 PDFs and 5 mutants).
