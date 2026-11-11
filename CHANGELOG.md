@@ -407,6 +407,15 @@ Supported invoice standards are documented per release.
   only when seller and buyer are both in it), BR-HYBRID-13 for file name and profile (`xrechnung.xml` if and
   only if XRECHNUNG), BR-HYBRID-DE-01/02, BR-HYBRID-FR-01 and LX-PDF-10 (a UBL invoice in the PDF).
   `tools/pdfcheck/PdfCheckProbe.dpr` runs both passes over a folder.
+- `LandrixEInvoicePdfCheck`, level 3: when level 2 found a Factur-X or XRechnung invoice, the checker reads
+  the XMP metadata of the catalog (element and attribute form) and reports BR-HYBRID-02 (the PDF/A part the
+  XMP claims), BR-HYBRID-03 to -05 (extension schema, namespace, prefix `fx`), BR-HYBRID-06 to -10
+  (`fx:DocumentType`, `fx:ConformanceLevel`, `fx:DocumentFileName`, `fx:Version` against their code lists;
+  `EN16931` without a blank is an error; for XRECHNUNG a version like `3.0` is accepted, a version other than
+  `1.0` is a warning), BR-HYBRID-14 (`fx:DocumentFileName` and the embedded name) and LX-PDF-11 (no readable
+  XMP); `CheckInvoiceFacts` adds BR-HYBRID-15 (`fx:ConformanceLevel` and the profile of the invoice). The
+  values read are in the result (`XmpDocumentType`, `XmpDocumentFileName`, `XmpVersion`,
+  `XmpConformanceLevel`, `PdfAPart`, `PdfAConformance`); every level has its own status.
 - `tools/pdfcheck/pdf-oracle.py`: compares the PDF reader with qpdf 12.4.2 (pinned for Windows x64 and
   ARM64 in `addons/java-tools/tools.json`; elsewhere `qpdf` from the `PATH`) on the local PDF corpus and
   five mutants with a broken `startxref`: the keys of the name tree, per file the file specification, `/F`,

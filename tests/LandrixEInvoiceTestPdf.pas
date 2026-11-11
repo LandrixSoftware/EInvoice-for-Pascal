@@ -39,6 +39,7 @@ uses
   Classes,
   LandrixXmlBase,
   LandrixEInvoiceTypes,
+  LandrixEInvoiceSpecs,
   LandrixEInvoicePdf,
   LandrixEInvoicePdfObjects,
   LandrixEInvoicePdfCheck,
@@ -1279,21 +1280,106 @@ const
   CheckXml = '<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"/>';
   GoodParams = '/Params << /Size 100 /ModDate (D:20261028120000+01''00) >>';
 
+{ --- level 3 ------------------------------------------------------------------ }
+
+function RawReplace(const S, AOld, ANew: AnsiString): AnsiString;
+var
+  P: Integer;
+begin
+  P := RawPos(AOld, S);
+  Check(P > 0, 'RawReplace: "' + RawText(AOld) + '" not found');
+  if P = 0 then
+    Result := S
+  else
+    Result := Copy(S, 1, P - 1) + ANew + Copy(S, P + Length(AOld), MaxInt);
+end;
+
+{ An XMP packet as the writer side builds it: pdfaid, the extension schema
+  LandrixEInvoicePdfXmpSchema and LandrixEInvoicePdfXmpDescription of
+  ATarget. }
+function XmpPacket(const ATarget: TLandrixEInvoiceTarget): AnsiString;
+begin
+  Result := '<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>'#10 +
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'#10 +
+    '<rdf:Description xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/" rdf:about="">' +
+    '<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance></rdf:Description>'#10 +
+    '<rdf:Description xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" ' +
+    'xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#" ' +
+    'rdf:about=""><pdfaExtension:schemas><rdf:Bag>'#10 +
+    Utf8Raw(LandrixEInvoiceStringToUtf8(TLandrixEInvoiceString(LandrixEInvoicePdfXmpSchema))) +
+    #10'</rdf:Bag></pdfaExtension:schemas></rdf:Description>'#10 +
+    Utf8Raw(LandrixEInvoiceStringToUtf8(LandrixEInvoicePdfXmpDescription(ATarget))) +
+    #10'</rdf:RDF></x:xmpmeta>'#10'<?xpacket end="w"?>';
+end;
+
+function GoodXmp: AnsiString;
+begin
+  Result := XmpPacket(TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931));
+end;
+
+{ Number of level 3 findings: their paths start with "XMP " or are
+  /Root/Metadata. }
+function IsMetadataFinding(D: TLandrixEInvoiceDiagnostic): Boolean;
+begin
+  Result := (Copy(string(D.Path), 1, 4) = 'XMP ') or (string(D.Path) = '/Root/Metadata');
+end;
+
+function MetadataCount(AResult: TLandrixEInvoicePdfCheckResult): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
+    if IsMetadataFinding(AResult.Diagnostics[I]) then
+      Inc(Result);
+end;
+
+{ Level 2 findings: all others. }
+function EmbeddingCount(AResult: TLandrixEInvoicePdfCheckResult): Integer;
+begin
+  Result := Integer(AResult.Diagnostics.Count) - MetadataCount(AResult);
+end;
+
+function EmbeddingErrors(AResult: TLandrixEInvoicePdfCheckResult): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
+    if not IsMetadataFinding(AResult.Diagnostics[I]) and (AResult.Diagnostics[I].Severity = eds_Error) then
+      Inc(Result);
+end;
+
 { Catalog 1 with ACatalogExtra (the name tree, /AF), pages 2, page 3,
   file specification 4 with the body ASpec, embedded file 5 with the stream
-  dictionary entries AStreamDict and the data AData. }
-function SimplePdf(const ACatalogExtra, ASpec, AStreamDict, AData: AnsiString): AnsiString;
+  dictionary entries AStreamDict and the data AData, and the XMP packet AXmp
+  as /Metadata 6 (none if AXmp is ''). SimplePdf uses GoodXmp. }
+function SimplePdfX(const ACatalogExtra, ASpec, AStreamDict, AData, AXmp: AnsiString): AnsiString;
 var
   O: TPdfOffsets;
 begin
   O := NoOffsets;
   Result := PdfHeader;
-  AddObj(Result, O, 1, '<< /Type /Catalog /Pages 2 0 R ' + ACatalogExtra + ' >>');
+  if AXmp = '' then
+    AddObj(Result, O, 1, '<< /Type /Catalog /Pages 2 0 R ' + ACatalogExtra + ' >>')
+  else
+    AddObj(Result, O, 1, '<< /Type /Catalog /Pages 2 0 R /Metadata 6 0 R ' + ACatalogExtra + ' >>');
   AddObj(Result, O, 2, PagesBody);
   AddObj(Result, O, 3, PageBody);
   AddObj(Result, O, 4, ASpec);
   AddObj(Result, O, 5, StreamBody(AStreamDict, AData));
-  Finish(Result, O, 6, '');
+  if AXmp = '' then
+    Finish(Result, O, 6, '')
+  else
+  begin
+    AddObj(Result, O, 6, StreamBody('/Type /Metadata /Subtype /XML', AXmp));
+    Finish(Result, O, 7, '');
+  end;
+end;
+
+function SimplePdf(const ACatalogExtra, ASpec, AStreamDict, AData: AnsiString): AnsiString;
+begin
+  Result := SimplePdfX(ACatalogExtra, ASpec, AStreamDict, AData, GoodXmp);
 end;
 
 const
@@ -1342,14 +1428,16 @@ begin
   Result := Names[AResult.Status[epl_Embedding]] + ': ' + string(AResult.Diagnostics.ToText);
 end;
 
+{ Level 2 only: level 3 findings are not counted. }
 procedure CheckOnly(AResult: TLandrixEInvoicePdfCheckResult; const APdf: AnsiString;
   AStatus: TLandrixEInvoicePdfLevelStatus; const ARule, AText, Msg: string);
 var
   Errors: Integer;
 begin
-  Errors := RunCheck(APdf, AResult);
+  RunCheck(APdf, AResult);
+  Errors := EmbeddingErrors(AResult);
   Check(AResult.Status[epl_Embedding] = AStatus, Msg + ': status ' + StatusText(AResult));
-  CheckEquals(1, Integer(AResult.Diagnostics.Count), Msg + ': one finding: ' + StatusText(AResult));
+  CheckEquals(1, EmbeddingCount(AResult), Msg + ': one finding: ' + StatusText(AResult));
   CheckEquals(1, Findings(AResult, ARule, AText), Msg + ': ' + ARule + ' ' + AText);
   if AStatus = eps_Failed then
     CheckEquals(1, Errors, Msg + ': errors')
@@ -1370,7 +1458,7 @@ begin
     { the reference case: no finding }
     CheckEquals(0, RunCheck(SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml), R), 'no errors');
     Check(R.Status[epl_Embedding] = eps_Passed, 'passed: ' + StatusText(R));
-    CheckEquals(0, Integer(R.Diagnostics.Count), 'no findings: ' + StatusText(R));
+    CheckEquals(0, EmbeddingCount(R), 'no findings: ' + StatusText(R));
     Check(R.Status[epl_PdfA] = eps_NotRun, 'level 1 not run');
     Check(R.HybridKind = ehk_FacturX, 'Factur-X');
     CheckEqualsInvoiceStr('factur-x.xml', R.InvoiceFileName, 'file name');
@@ -1397,7 +1485,7 @@ begin
       GoodStream, CheckXml), R);
     Check(R.Status[epl_Embedding] = eps_Failed, 'wrong case: ' + StatusText(R));
     CheckEquals(2, Findings(R, 'BR-HYBRID-13', '"Factur-X.xml"'), '/F and /UF: ' + StatusText(R));
-    CheckEquals(2, Integer(R.Diagnostics.Count), 'nothing else: ' + StatusText(R));
+    CheckEquals(2, EmbeddingCount(R), 'nothing else: ' + StatusText(R));
     Check(R.HybridKind = ehk_FacturX, 'still Factur-X');
     RunCheck(SimplePdf('/Names << /EmbeddedFiles << /Names [(invoice.xml) 4 0 R] >> >> /AF [4 0 R]',
       '<< /Type /Filespec /F (invoice.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
@@ -1413,7 +1501,7 @@ begin
     CheckEquals(1, Findings(R, 'BR-HYBRID-12', 'no /UF'), '/UF');
     CheckEquals(1, Findings(R, 'BR-HYBRID-12', 'no /AFRelationship'), '/AFRelationship');
     CheckEquals(1, Findings(R, 'BR-HYBRID-12', 'not under /EF /F'), '/EF /F');
-    CheckEquals(4, Integer(R.Diagnostics.Count), 'nothing else: ' + StatusText(R));
+    CheckEquals(4, EmbeddingCount(R), 'nothing else: ' + StatusText(R));
     CheckEqualsBytes(CheckXml, StreamText(R.Invoice), 'still extracted');
     CheckOnly(R, SimplePdf(TreeAndAF, '<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /AFRelationship /Data >>',
       GoodStream, CheckXml), eps_Failed, 'BR-HYBRID-12', 'no embedded file stream', 'no /EF');
@@ -1470,7 +1558,7 @@ begin
     CheckEquals(1, Findings(R, 'LX-PDF-07', '"z.txt" has no /AFRelationship'), 'other file, relationship: ' +
       StatusText(R));
     CheckEquals(1, Findings(R, 'LX-PDF-07', '"z.txt" is not listed in /AF'), 'other file, /AF');
-    CheckEquals(2, Integer(R.Diagnostics.Count), 'nothing else: ' + StatusText(R));
+    CheckEquals(2, EmbeddingCount(R), 'nothing else: ' + StatusText(R));
     O := NoOffsets;
     Pdf := PdfHeader;
     AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(a.xml) 6 0 R ' +
@@ -1508,7 +1596,7 @@ begin
       '<< /F (zugferd-invoice.xml) /EF << /F 5 0 R >> >>', '/Filter /FlateDecode', CheckXml), R);
     Check(R.Status[epl_Embedding] = eps_Incomplete, 'damaged 2.0: ' + StatusText(R));
     CheckEquals(1, Findings(R, 'LX-PDF-03', 'cannot be extracted'), 'damaged 2.0 reported');
-    CheckEquals(2, Integer(R.Diagnostics.Count), 'info and warning: ' + StatusText(R));
+    CheckEquals(2, EmbeddingCount(R), 'info and warning: ' + StatusText(R));
 
     { more ways and values }
     CheckOnly(R, SimplePdf('/Names << /EmbeddedFiles << /Names [] >> >> /AF [4 0 R]', GoodSpec, GoodStream,
@@ -1529,8 +1617,9 @@ begin
     AddObj(Pdf, O, 6, '<< /Type /Filespec /F (z.txt) /UF (z.txt) /EF << /F 7 0 R >> /AFRelationship /Supplement >>');
     AddObj(Pdf, O, 7, StreamBody('/Type /EmbeddedFile /Subtype /text#2Fplain', 'z'));
     Finish(Pdf, O, 8, '');
-    CheckEquals(0, RunCheck(Pdf, R), 'a file associated with a page: ' + StatusText(R));
-    CheckEquals(0, Integer(R.Diagnostics.Count), 'no findings: ' + StatusText(R));
+    RunCheck(Pdf, R);
+    CheckEquals(0, EmbeddingErrors(R), 'a file associated with a page: ' + StatusText(R));
+    CheckEquals(0, EmbeddingCount(R), 'no findings: ' + StatusText(R));
     { a name tree deeper than the object layer reads }
     O := NoOffsets;
     Pdf := PdfHeader;
@@ -1591,7 +1680,7 @@ begin
     Checker.Free;
   end;
   Check(AResult.Status[epl_Embedding] = AStatus, Msg + ': status ' + StatusText(AResult));
-  CheckEquals(ACount, Integer(AResult.Diagnostics.Count), Msg + ': findings: ' + StatusText(AResult));
+  CheckEquals(ACount, EmbeddingCount(AResult), Msg + ': findings: ' + StatusText(AResult));
   if ARule <> '' then
     CheckEquals(1, Findings(AResult, ARule, AText), Msg + ': ' + ARule + ' ' + AText);
   if AStatus = eps_Failed then
@@ -1625,7 +1714,7 @@ begin
     CheckEqualsInvoiceStr('factur-x.xml', R.InvoiceFileNameF, '/F kept');
     { a second call adds nothing }
     CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'second call');
-    CheckEquals(0, Integer(R.Diagnostics.Count), 'second call without findings');
+    CheckEquals(0, EmbeddingCount(R), 'second call without findings');
     Check(R.Profile = epr_EN16931, 'second call keeps the profile');
 
     { BR-HYBRID-11 per profile and country }
@@ -1689,6 +1778,279 @@ begin
     CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'not checked yet');
     Check(not R.FactsChecked and (R.Status[epl_Embedding] = eps_NotRun), 'cleared result untouched');
     CheckEquals(0, Checker.CheckInvoiceFacts(nil, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'no result');
+  finally
+    Checker.Free;
+    R.Free;
+  end;
+end;
+
+function MetadataStatusText(AResult: TLandrixEInvoicePdfCheckResult): string;
+const
+  Names: array[TLandrixEInvoicePdfLevelStatus] of string = ('not run', 'passed', 'failed', 'incomplete');
+begin
+  Result := Names[AResult.Status[epl_Metadata]] + ': ' + string(AResult.Diagnostics.ToText);
+end;
+
+{ The reference PDF with the XMP packet AXmp; checks the level 3 status,
+  the number of level 3 findings and the finding of ARule with AText. }
+procedure CheckXmp(AResult: TLandrixEInvoicePdfCheckResult; const AXmp: AnsiString;
+  AStatus: TLandrixEInvoicePdfLevelStatus; ACount: Integer; const ARule, AText, Msg: string);
+begin
+  RunCheck(SimplePdfX(TreeAndAF, GoodSpec, GoodStream, CheckXml, AXmp), AResult);
+  Check(AResult.Status[epl_Embedding] = eps_Passed, Msg + ': level 2 ' + StatusText(AResult));
+  Check(AResult.Status[epl_Metadata] = AStatus, Msg + ': status ' + MetadataStatusText(AResult));
+  CheckEquals(ACount, MetadataCount(AResult), Msg + ': findings: ' + MetadataStatusText(AResult));
+  if ARule <> '' then
+    CheckEquals(1, Findings(AResult, ARule, AText), Msg + ': ' + ARule + ' ' + AText);
+end;
+
+procedure TestCheckMetadata;
+var
+  R: TLandrixEInvoicePdfCheckResult;
+  Checker: TLandrixEInvoicePdfChecker;
+  Good, XR, Pdf: AnsiString;
+  I: Integer;
+begin
+  Good := GoodXmp;
+  XR := XmpPacket(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII));
+  R := TLandrixEInvoicePdfCheckResult.Create;
+  Checker := TLandrixEInvoicePdfChecker.Create;
+  try
+    { the reference case: what the writer side writes passes }
+    CheckEquals(0, RunCheck(SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml), R), 'no errors');
+    Check(R.Status[epl_Metadata] = eps_Passed, 'passed: ' + MetadataStatusText(R));
+    CheckEquals(0, Integer(R.Diagnostics.Count), 'no findings: ' + MetadataStatusText(R));
+    CheckEqualsInvoiceStr('INVOICE', R.XmpDocumentType, 'document type');
+    CheckEqualsInvoiceStr('factur-x.xml', R.XmpDocumentFileName, 'file name');
+    CheckEqualsInvoiceStr('1.0', R.XmpVersion, 'version');
+    CheckEqualsInvoiceStr('EN 16931', R.XmpConformanceLevel, 'conformance level');
+    CheckEqualsInvoiceStr('3', R.PdfAPart, 'PDF/A part');
+    CheckEqualsInvoiceStr('B', R.PdfAConformance, 'PDF/A conformance');
+    Check(R.Status[epl_PdfA] = eps_NotRun, 'level 1 not run');
+    { the attribute form says the same }
+    CheckXmp(R, RawReplace(RawReplace(Good, '<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance>' +
+      '</rdf:Description>', '</rdf:Description>'), 'xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/" rdf:about="">',
+      'xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/" rdf:about="" pdfaid:part="3" pdfaid:conformance="U">'),
+      eps_Passed, 0, '', '', 'pdfaid as attributes');
+    CheckEqualsInvoiceStr('U', R.PdfAConformance, 'conformance from the attribute');
+    { an extension schema item as rdf:Description instead of rdf:parseType }
+    CheckXmp(R, RawReplace(RawReplace(Good, '<rdf:Bag>'#10'<rdf:li rdf:parseType="Resource">',
+      '<rdf:Bag>'#10'<rdf:li><rdf:Description>'), '</pdfaSchema:property>'#10'</rdf:li>',
+      '</pdfaSchema:property>'#10'</rdf:Description></rdf:li>'), eps_Passed, 0, '', '', 'rdf:Description in rdf:li');
+
+    { LX-PDF-11: no readable XMP }
+    CheckXmp(R, '', eps_Failed, 1, 'LX-PDF-11', 'no XMP metadata', 'no /Metadata');
+    CheckXmp(R, '<x:xmpmeta xmlns:x="adobe:ns:meta/">', eps_Failed, 1, 'LX-PDF-11', 'not well-formed', 'damaged XMP');
+    CheckXmp(R, '<x:xmpmeta xmlns:x="adobe:ns:meta/"/>', eps_Failed, 1, 'LX-PDF-11', 'no rdf:RDF', 'empty XMP');
+    CheckEqualsInvoiceStr('', R.XmpConformanceLevel, 'no values');
+
+    { BR-HYBRID-02: the claimed PDF/A part }
+    CheckXmp(R, RawReplace(Good, '<pdfaid:part>3<', '<pdfaid:part>2<'), eps_Failed, 1, 'BR-HYBRID-02',
+      'XMP pdfaid:part The XMP metadata claims PDF/A part 2', 'PDF/A-2');
+    CheckXmp(R, RawReplace(Good, '<pdfaid:conformance>B<', '<pdfaid:conformance>X<'), eps_Failed, 1, 'BR-HYBRID-02',
+      'conformance level "X"', 'PDF/A-3X');
+    CheckXmp(R, RawReplace(RawReplace(Good, '<pdfaid:part>3<', '<pdfaid:part>4<'), '<pdfaid:conformance>B<',
+      '<pdfaid:conformance>F<'), eps_Passed, 0, '', '', 'PDF/A-4f');
+    CheckXmp(R, RawReplace(Good, '<pdfaid:part>3</pdfaid:part>', ''), eps_Failed, 1, 'BR-HYBRID-02',
+      'claims no PDF/A part', 'no part');
+
+    { BR-HYBRID-03 to -05: the extension schema }
+    CheckXmp(R, RawReplace(RawReplace(Good, 'pdfaExtension:schemas>', 'pdfaExtension:schemaz>'), 'pdfaExtension:schemas>',
+      'pdfaExtension:schemaz>'), eps_Failed, 1,
+      'BR-HYBRID-03', 'no PDF/A extension schema', 'no extension schema');
+    CheckXmp(R, RawReplace(Good, '<pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#<',
+      '<pdfaSchema:namespaceURI>urn:factur-x:pdfa:crossindustrydocument:invoice:1p0#<'), eps_Failed, 1,
+      'BR-HYBRID-04', 'declares the namespace urn:factur-x:pdfa:crossindustrydocument', 'schema namespace case');
+    CheckXmp(R, RawReplace(Good, '<pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#<',
+      '<pdfaSchema:namespaceURI>urn:other#<'), eps_Failed, 1, 'BR-HYBRID-03', 'does not declare the namespace',
+      'other schema only');
+    CheckXmp(R, RawReplace(Good, '<pdfaSchema:prefix>fx<', '<pdfaSchema:prefix>zf<'), eps_Failed, 1, 'BR-HYBRID-05',
+      'declares the prefix "zf"', 'schema prefix');
+    CheckXmp(R, RawReplace(Good, '<pdfaProperty:name>Version<', '<pdfaProperty:name>Versio<'), eps_Failed, 1,
+      'BR-HYBRID-03', 'declares no property Version', 'property missing');
+    CheckXmp(R, RawReplace(Good, 'ConformanceLevel</pdfaProperty:name>'#10'<pdfaProperty:valueType>Text<',
+      'ConformanceLevel</pdfaProperty:name>'#10'<pdfaProperty:valueType>Integer<'), eps_Failed, 1, 'BR-HYBRID-03',
+      'ConformanceLevel has the value type "Integer"', 'value type');
+    CheckXmp(R, RawReplace(Good, 'DocumentType</pdfaProperty:name>'#10'<pdfaProperty:valueType>Text</pdfaProperty:valueType>'#10 +
+      '<pdfaProperty:category>external<', 'DocumentType</pdfaProperty:name>'#10'<pdfaProperty:valueType>Text' +
+      '</pdfaProperty:valueType>'#10'<pdfaProperty:category>internal<'), eps_Failed, 1, 'BR-HYBRID-03',
+      'DocumentType has the category "internal"', 'category');
+    CheckXmp(R, RawReplace(Good, '<pdfaProperty:description>INVOICE</pdfaProperty:description>', ''), eps_Failed, 1,
+      'BR-HYBRID-03', 'DocumentType has no description', 'description');
+
+    { BR-HYBRID-04/-05: the properties }
+    CheckXmp(R, RawReplace(Good, 'xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#"',
+      'xmlns:fx="urn:factur-x:pdfa:crossindustrydocument:invoice:1p0#"'), eps_Failed, 1, 'BR-HYBRID-04',
+      'use the namespace urn:factur-x:pdfa:crossindustrydocument:invoice:1p0#', 'property namespace');
+    CheckEqualsInvoiceStr('EN 16931', R.XmpConformanceLevel, 'read in the other namespace');
+    CheckXmp(R, RawReplace(Good, 'xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#"',
+      'xmlns:fx="urn:other#"'), eps_Failed, 1, 'BR-HYBRID-04', 'use the namespace urn:other#', 'another URI');
+    CheckXmp(R, RawReplace(Good, '<fx:ConformanceLevel>EN 16931</fx:ConformanceLevel>', ''), eps_Failed, 1, 'BR-HYBRID-07',
+      'fx:ConformanceLevel is missing', 'ConformanceLevel missing');
+    Pdf := Good;
+    Pdf := RawReplace(Pdf, 'xmlns:fx=', 'xmlns:f=');
+    while RawPos('fx:Document', Pdf) > 0 do
+      Pdf := RawReplace(Pdf, 'fx:Document', 'f:Document');
+    while RawPos('fx:Version', Pdf) > 0 do
+      Pdf := RawReplace(Pdf, 'fx:Version', 'f:Version');
+    while RawPos('fx:ConformanceLevel', Pdf) > 0 do
+      Pdf := RawReplace(Pdf, 'fx:ConformanceLevel', 'f:ConformanceLevel');
+    CheckXmp(R, Pdf, eps_Failed, 1, 'BR-HYBRID-05', 'use the prefix "f"', 'property prefix');
+
+    { BR-HYBRID-06 to -10: the code lists }
+    CheckXmp(R, RawReplace(Good, '>INVOICE</fx:', '>ORDER</fx:'), eps_Failed, 1, 'BR-HYBRID-06', 'Order-X',
+      'ORDER');
+    CheckXmp(R, RawReplace(Good, '>INVOICE</fx:', '>Invoice</fx:'), eps_Failed, 1, 'BR-HYBRID-06',
+      '"Invoice" is not in the code list', 'Invoice');
+    CheckXmp(R, RawReplace(Good, '>EN 16931<', '>EN16931<'), eps_Failed, 1, 'BR-HYBRID-07',
+      '"EN16931" is not in the code list', 'EN16931 without a blank');
+    CheckXmp(R, RawReplace(Good, '>EN 16931<', '>COMFORT<'), eps_Failed, 1, 'BR-HYBRID-07', 'Order-X', 'COMFORT');
+    CheckXmp(R, RawReplace(Good, '<fx:DocumentFileName>factur-x.xml<', '<fx:DocumentFileName>invoice.xml<'),
+      eps_Failed, 2, 'BR-HYBRID-08', '"invoice.xml" is not in the code list', 'invoice.xml');
+    CheckEquals(1, Findings(R, 'BR-HYBRID-14', 'is invoice.xml; the embedded invoice is named factur-x.xml'),
+      'and a different name');
+    CheckXmp(R, RawReplace(Good, '<fx:DocumentFileName>factur-x.xml<', '<fx:DocumentFileName>xrechnung.xml<'),
+      eps_Failed, 2, 'BR-HYBRID-08', 'xrechnung.xml needs fx:ConformanceLevel XRECHNUNG, not EN 16931',
+      'xrechnung.xml with EN 16931');
+    CheckXmp(R, RawReplace(Good, '>EN 16931<', '>XRECHNUNG<'), eps_Failed, 1, 'BR-HYBRID-08',
+      'XRECHNUNG needs fx:DocumentFileName xrechnung.xml', 'XRECHNUNG as factur-x.xml');
+    CheckXmp(R, RawReplace(Good, '<fx:Version>1.0<', '<fx:Version>2p1<'), eps_Passed, 1, 'BR-HYBRID-10',
+      'fx:Version is 2p1', 'legacy version');
+    CheckXmp(R, RawReplace(Good, '<fx:Version>1.0<', '<fx:Version>3.0<'), eps_Failed, 1, 'BR-HYBRID-09',
+      '"3.0" is not in the code list', 'version 3.0 for EN 16931');
+    CheckXmp(R, RawReplace(Good, '<fx:Version>1.0</fx:Version>', '<fx:Version></fx:Version>'), eps_Failed, 1,
+      'BR-HYBRID-09', 'fx:Version is missing', 'empty version');
+
+    { XRECHNUNG: a version like 3.0 is accepted }
+    Pdf := SimplePdfX('/Names << /EmbeddedFiles << /Names [(xrechnung.xml) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (xrechnung.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+      GoodStream, CheckXml, RawReplace(XR, '<fx:Version>1.0<', '<fx:Version>3.0<'));
+    RunCheck(Pdf, R);
+    Check(R.Status[epl_Metadata] = eps_Passed, 'XRECHNUNG 3.0: ' + MetadataStatusText(R));
+    CheckEquals(1, MetadataCount(R), 'XRECHNUNG 3.0: ' + MetadataStatusText(R));
+    CheckEquals(1, Findings(R, 'BR-HYBRID-10', 'fx:Version is 3.0'), 'XRECHNUNG 3.0 warns');
+    CheckEqualsInvoiceStr('xrechnung.xml', R.XmpDocumentFileName, 'XRechnung file name');
+
+    { BR-HYBRID-14: the embedded name differs }
+    RunCheck(SimplePdfX('/Names << /EmbeddedFiles << /Names [(xrechnung.xml) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (xrechnung.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+      GoodStream, CheckXml, Good), R);
+    Check(R.Status[epl_Metadata] = eps_Passed, 'BR-HYBRID-14 is a warning: ' + MetadataStatusText(R));
+    CheckEquals(1, MetadataCount(R), 'one finding: ' + MetadataStatusText(R));
+    CheckEquals(1, Findings(R, 'BR-HYBRID-14', 'fx:DocumentFileName is factur-x.xml; the embedded invoice is ' +
+      'named xrechnung.xml'), 'BR-HYBRID-14');
+
+    { BR-HYBRID-15 in the second pass }
+    RunCheck(SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml), R);
+    CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Extended, 'DE', 'DE')), 'BR-HYBRID-15 no error');
+    CheckEquals(1, Findings(R, 'BR-HYBRID-15', 'XMP fx:ConformanceLevel fx:ConformanceLevel is EN 16931; the ' +
+      'invoice has the profile EXTENDED'), 'BR-HYBRID-15: ' + MetadataStatusText(R));
+    CheckEquals(1, Integer(R.Diagnostics.Count), 'nothing else: ' + MetadataStatusText(R));
+    Check(R.Status[epl_Metadata] = eps_Passed, 'a warning');
+    RunCheck(SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml), R);
+    CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_EN16931, 'DE', 'DE')), 'same profile');
+    CheckEquals(0, Integer(R.Diagnostics.Count), 'same profile: ' + MetadataStatusText(R));
+    RunCheck(SimplePdfX(TreeAndAF, GoodSpec, GoodStream, CheckXml, RawReplace(Good, '>EN 16931<', '>EN16931<')), R);
+    Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Extended, 'DE', 'DE'));
+    CheckEquals(0, Findings(R, 'BR-HYBRID-15', 'fx:ConformanceLevel'), 'a value outside the code list has its error already');
+
+    { RDF variants: rdf:resource, the attribute form of the fx properties }
+    CheckXmp(R, RawReplace(Good, '<pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#' +
+      '</pdfaSchema:namespaceURI>', '<pdfaSchema:namespaceURI rdf:resource="urn:factur-x:pdfa:CrossIndustryDocument:' +
+      'invoice:1p0#"/>'), eps_Passed, 0, '', '', 'rdf:resource');
+    CheckXmp(R, RawReplace(Good, '<rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" ' +
+      'rdf:about="">'#10'<fx:DocumentType>INVOICE</fx:DocumentType>'#10'<fx:DocumentFileName>factur-x.xml' +
+      '</fx:DocumentFileName>'#10'<fx:Version>1.0</fx:Version>'#10'<fx:ConformanceLevel>EN 16931' +
+      '</fx:ConformanceLevel></rdf:Description>', '<rdf:Description xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:' +
+      'invoice:1p0#" rdf:about="" fx:DocumentType="INVOICE" fx:DocumentFileName="factur-x.xml" fx:Version="1.0" ' +
+      'fx:ConformanceLevel="BASIC"/>'), eps_Passed, 0, '', '', 'fx as attributes');
+    CheckEqualsInvoiceStr('BASIC', R.XmpConformanceLevel, 'conformance level from the attribute');
+
+    { one value per property }
+    CheckXmp(R, RawReplace(Good, '<fx:DocumentType>INVOICE</fx:DocumentType>', '<fx:DocumentType>INVOICE' +
+      '</fx:DocumentType><fx:DocumentType>ORDER</fx:DocumentType>'), eps_Failed, 1, 'BR-HYBRID-06',
+      'fx:DocumentType occurs 2 times', 'a second fx:DocumentType');
+    CheckXmp(R, RawReplace(Good, 'xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about=""',
+      'xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#" rdf:about="" fx:Version="1.0"'), eps_Failed, 1,
+      'BR-HYBRID-09', 'fx:Version occurs 2 times', 'attribute and element');
+    CheckXmp(R, RawReplace(Good, '<pdfaid:part>3</pdfaid:part>', '<pdfaid:part>3</pdfaid:part><pdfaid:part>2' +
+      '</pdfaid:part>'), eps_Failed, 1, 'BR-HYBRID-02', 'pdfaid:part occurs 2 times', 'a second pdfaid:part');
+
+    { the extension schema: its name and the containers }
+    CheckXmp(R, RawReplace(Good, '<pdfaSchema:schema>Factur-X PDFA Extension Schema</pdfaSchema:schema>', ''),
+      eps_Failed, 1, 'BR-HYBRID-03', 'has no name', 'no schema name');
+    CheckXmp(R, RawReplace(RawReplace(Good, '<rdf:Bag>', '<rdf:Alt>'), '</rdf:Bag>', '</rdf:Alt>'), eps_Failed, 2,
+      'BR-HYBRID-03', 'pdfaExtension:schemas is an rdf:Alt; expected rdf:Bag', 'schemas not in a Bag');
+    CheckXmp(R, RawReplace(RawReplace(Good, '<rdf:Seq>', '<rdf:Bag>'), '</rdf:Seq>', '</rdf:Bag>'), eps_Failed, 5,
+      'BR-HYBRID-03', 'pdfaSchema:property is an rdf:Bag; expected rdf:Seq', 'properties not in a Seq');
+
+    CheckXmp(R, RawReplace(Good, '<pdfaProperty:name>Version</pdfaProperty:name>'#10'<pdfaProperty:valueType>Text' +
+      '</pdfaProperty:valueType>', '<pdfaProperty:name>Version</pdfaProperty:name>'#10'<pdfaProperty:valueType>Text' +
+      '</pdfaProperty:valueType><pdfaProperty:valueType>Integer</pdfaProperty:valueType>'), eps_Failed, 1,
+      'BR-HYBRID-03', 'pdfaProperty:valueType occurs 2 times', 'a second value type');
+    CheckXmp(R, RawReplace(Good, '</rdf:Bag>', '</rdf:Bag><rdf:Alt/>'), eps_Failed, 2, 'BR-HYBRID-03',
+      'pdfaExtension:schemas has 2 elements; expected one rdf:Bag', 'a second container');
+
+    { limits: a finding, never passed }
+    Pdf := '';
+    for I := 1 to 20001 do
+      Pdf := Pdf + '<a/>';
+    CheckXmp(R, '<x:xmpmeta xmlns:x="adobe:ns:meta/">' + Pdf + '</x:xmpmeta>', eps_Incomplete, 1, 'LX-PDF-08',
+      'too large', 'too many elements');
+    Pdf := '';
+    for I := 1 to 20001 do
+      Pdf := Pdf + 'a<!---->';
+    CheckXmp(R, '<x:xmpmeta xmlns:x="adobe:ns:meta/">' + Pdf + '</x:xmpmeta>', eps_Incomplete, 1, 'LX-PDF-08',
+      'too large', 'too many text pieces');
+    Pdf := '';
+    for I := 1 to 70 do
+      Pdf := '<a>' + Pdf + '</a>';
+    CheckXmp(R, Pdf, eps_Incomplete, 1, 'LX-PDF-08', 'too deep', 'too deep');
+    { a value cut at the limit cannot pass }
+    Pdf := '1.';
+    for I := 1 to 4094 do
+      Pdf := Pdf + '0';
+    Pdf := SimplePdfX('/Names << /EmbeddedFiles << /Names [(xrechnung.xml) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (xrechnung.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+      GoodStream, CheckXml, RawReplace(XR, '<fx:Version>1.0<', '<fx:Version>' + Pdf + 'X<'));
+    RunCheck(Pdf, R);
+    CheckEquals(1, Findings(R, 'BR-HYBRID-09', 'is not in the code list'), 'cut version: ' + MetadataStatusText(R));
+    { the same with the rest in a second text piece right at the limit }
+    Pdf := '1.';
+    for I := 1 to 4094 do
+      Pdf := Pdf + '0';
+    Pdf := SimplePdfX('/Names << /EmbeddedFiles << /Names [(xrechnung.xml) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (xrechnung.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+      GoodStream, CheckXml, RawReplace(XR, '<fx:Version>1.0<', '<fx:Version>' + Pdf + '<![CDATA[X]]><'));
+    RunCheck(Pdf, R);
+    CheckEquals(1, Findings(R, 'BR-HYBRID-09', 'is not in the code list'), 'cut at a piece boundary: ' +
+      MetadataStatusText(R));
+
+    { BR-HYBRID-15 for XRECHNUNG }
+    RunCheck(SimplePdfX('/Names << /EmbeddedFiles << /Names [(xrechnung.xml) 4 0 R] >> >> /AF [4 0 R]',
+      '<< /Type /Filespec /F (xrechnung.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+      GoodStream, CheckXml, XR), R);
+    CheckEquals(0, Checker.CheckInvoiceFacts(R, Facts(est_XRechnung, esy_CII, epr_None, 'DE', 'DE')), 'XRECHNUNG');
+    CheckEquals(0, Integer(R.Diagnostics.Count), 'XRECHNUNG matches: ' + MetadataStatusText(R));
+
+    { levels have their own status }
+    RunCheck(SimplePdf('/AF [4 0 R]', GoodSpec, GoodStream, CheckXml), R);
+    Check((R.Status[epl_Embedding] = eps_Failed) and (R.Status[epl_Metadata] = eps_Passed),
+      'level 2 fails, level 3 passes: ' + MetadataStatusText(R));
+    CheckXmp(R, RawReplace(Good, '>INVOICE</fx:', '>ORDER</fx:'), eps_Failed, 1, 'BR-HYBRID-06', 'Order-X',
+      'level 3 fails, level 2 passes');
+    Pdf := SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml);
+    Pdf := Copy(Pdf, 1, RawPos('startxref', Pdf) + 9) + '99999'#10'%%EOF'#10;
+    RunCheck(Pdf, R);
+    Check(R.Status[epl_Metadata] = eps_Incomplete, 'reconstructed: ' + MetadataStatusText(R));
+    RunCheck(SimplePdf('/Names << /EmbeddedFiles << /Names [(zugferd-invoice.xml) 4 0 R] >> >>',
+      '<< /F (zugferd-invoice.xml) /EF << /F 5 0 R >> >>', '', CheckXml), R);
+    Check(R.Status[epl_Metadata] = eps_Incomplete, 'ZUGFeRD 2.0: ' + MetadataStatusText(R));
+    CheckEquals(0, MetadataCount(R), 'ZUGFeRD 2.0 not checked');
+    RunCheck(SimplePdf('', GoodSpec, GoodStream, CheckXml), R);
+    Check(R.Status[epl_Metadata] = eps_NotRun, 'no invoice: ' + MetadataStatusText(R));
+    RunCheck('no PDF', R);
+    Check(R.Status[epl_Metadata] = eps_NotRun, 'not readable: ' + MetadataStatusText(R));
   finally
     Checker.Free;
     R.Free;
@@ -1785,6 +2147,7 @@ begin
   RegisterTest('Pdf.CheckFile', TestCheckFile);
   RegisterTest('Pdf.CheckFacts', TestCheckFacts);
   RegisterTest('Pdf.CheckFactsFacade', TestCheckFactsFacade);
+  RegisterTest('Pdf.CheckMetadata', TestCheckMetadata);
 end;
 
 end.

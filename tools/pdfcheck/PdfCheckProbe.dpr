@@ -15,8 +15,9 @@
 { Runs TLandrixEInvoicePdfChecker on every PDF of a folder (or the files
   given), reads the extracted invoice through the facade for the second
   pass (CheckInvoiceFacts) and prints, per file, a line
-  "file<TAB>status<TAB>kind<TAB>name<TAB>profile" and its findings indented
-  below. With -facts=DIR it also prints, per file specification of the
+  "file<TAB>status<TAB>kind<TAB>name<TAB>profile<TAB>xmp status<TAB>
+  fx:ConformanceLevel" (status: level 2, xmp status: level 3) and its
+  findings indented below. With -facts=DIR it also prints, per file specification of the
   collector, a line "  spec<TAB>index<TAB>routes<TAB>key<TAB>spec object<TAB>
   /F<TAB>/UF<TAB>stream object<TAB>subtype<TAB>moddate<TAB>size" and writes
   the decoded data to DIR/<file>.<index>.bin (tools/pdfcheck/pdf-oracle.py). }
@@ -164,7 +165,8 @@ begin
   AChecker.CheckFile(AFileName, AResult);
   CheckFacts(AChecker, AResult);
   WriteLn(ExtractFileName(AFileName), #9, StatusNames[AResult.Status[epl_Embedding]], #9,
-    KindNames[AResult.HybridKind], #9, UTF8Encode(AResult.InvoiceFileName), #9, ProfileNames[AResult.Profile]);
+    KindNames[AResult.HybridKind], #9, UTF8Encode(AResult.InvoiceFileName), #9, ProfileNames[AResult.Profile], #9,
+    StatusNames[AResult.Status[epl_Metadata]], #9, UTF8Encode(AResult.XmpConformanceLevel));
   for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
   begin
     D := AResult.Diagnostics[I];
