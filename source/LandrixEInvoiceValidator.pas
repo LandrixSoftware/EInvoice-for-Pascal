@@ -224,6 +224,8 @@ type
     function SchemaOf(const AFileName: string): TObject;
     function RulesOf(const AXsltFile: string): TObject;
     procedure ClearCaches;
+    function DoValidate(const AFileName: string; AData: TMemoryStream;
+      AResult: TLandrixEInvoiceValidationResult): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -242,6 +244,18 @@ type
       ELandrixEInvoiceError aus (ein Problem der Einrichtung, nicht des
       Dokuments). }
     function Validate(const AFileName: string; AResult: TLandrixEInvoiceValidationResult): Boolean;
+    { The same for the document in AStream, read from its position to the
+      end (e.g. an invoice extracted from a PDF); the data is read once
+      into memory. The document has no URI (document-uri() and base-uri()
+      are empty; the KoSIT configurations do not use them). Nothing left,
+      no stream or more than 2 GB: a well-formedness error.
+      DE: Dasselbe fuer das Dokument in AStream, gelesen ab seiner Position
+      bis zum Ende (z. B. eine aus einem PDF gezogene Rechnung); die Daten
+      werden einmal in den Speicher gelesen. Das Dokument hat keine URI
+      (document-uri() und base-uri() sind leer; die KoSIT-Konfigurationen
+      nutzen sie nicht). Nichts mehr da, kein Stream oder mehr als 2 GB:
+      ein Wohlgeformtheitsfehler. }
+    function ValidateStream(AStream: TStream; AResult: TLandrixEInvoiceValidationResult): Boolean;
     { the name of the configuration (scenarios/name).
       DE: der Name der Konfiguration (scenarios/name). }
     property Name: TLandrixEInvoiceString read FName;
@@ -270,6 +284,7 @@ uses
   SysUtils,
   LandrixXmlBase,
   LandrixXmlDom,
+  LandrixXmlReader,
   LandrixXmlXPathTree,
   LandrixXmlXPathEval,
   LandrixXmlXsdSchema,
@@ -669,7 +684,46 @@ end;
 
 function TLandrixEInvoiceValidator.Validate(const AFileName: string;
   AResult: TLandrixEInvoiceValidationResult): Boolean;
+begin
+  Result := DoValidate(AFileName, nil, AResult);
+end;
+
+function TLandrixEInvoiceValidator.ValidateStream(AStream: TStream;
+  AResult: TLandrixEInvoiceValidationResult): Boolean;
 var
+  Data: TMemoryStream;
+  Count: Int64;
+  Msg: TLandrixEInvoiceValidationMessage;
+begin
+  Count := 0;
+  if AStream <> nil then
+    Count := AStream.Size - AStream.Position;
+  if Count > MaxInt then
+  begin
+    AResult.Clear;
+    Msg := AResult.Add(evs_Wellformedness, 0, 'generic-error', evl_Error);
+    Msg.FText := 'The document is larger than 2 GB';
+    Result := False;
+    Exit;
+  end;
+  Data := TMemoryStream.Create;
+  try
+    { CopyFrom with 0 copies the whole stream: only when bytes are left }
+    if Count > 0 then
+      Data.CopyFrom(AStream, Count);
+    Result := DoValidate('', Data, AResult);
+  finally
+    Data.Free;
+  end;
+end;
+
+{ The run on the file AFileName, or on AData when it is not nil (both
+  passes, scenario and Schematron on the tree and the XML schema, read the
+  same bytes). }
+function TLandrixEInvoiceValidator.DoValidate(const AFileName: string; AData: TMemoryStream;
+  AResult: TLandrixEInvoiceValidationResult): Boolean;
+var
+  Reader: TLandrixXmlReader;
   Tree: TLandrixXmlXPathTree;
   Evaluator: TLandrixXmlXPathEvaluator;
   Scenario, Candidate: TLandrixEInvoiceValidationScenario;
@@ -691,7 +745,18 @@ begin
   try
     { well-formedness: a document that does not load matches no scenario }
     try
-      Tree.LoadFromFile(AFileName);
+      if AData = nil then
+        Tree.LoadFromFile(AFileName)
+      else
+      begin
+        Reader := TLandrixXmlReader.Create;
+        try
+          Reader.LoadFromBuffer(AData.Memory^, Integer(AData.Size));
+          Tree.LoadFromReader(Reader);
+        finally
+          Reader.Free;
+        end;
+      end;
     except
       on E: ELandrixXmlError do
       begin
@@ -731,7 +796,18 @@ begin
     XsdValidator := TLandrixXmlXsdValidator.Create(TLandrixXmlXsdSchemaSet(SchemaOf(Scenario.FSchemaFile)));
     try
       XsdValidator.MaxErrors := 0;
-      XsdValidator.ValidateFile(AFileName);
+      if AData = nil then
+        XsdValidator.ValidateFile(AFileName)
+      else
+      begin
+        Reader := TLandrixXmlReader.Create;
+        try
+          Reader.LoadFromBuffer(AData.Memory^, Integer(AData.Size));
+          XsdValidator.ValidateReader(Reader);
+        finally
+          Reader.Free;
+        end;
+      end;
       for I := 0 to XsdValidator.ErrorCount - 1 do
       begin
         XsdError := XsdValidator.Errors[I];

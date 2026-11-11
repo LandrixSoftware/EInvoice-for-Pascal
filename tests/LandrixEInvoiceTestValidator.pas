@@ -16,7 +16,8 @@
   Validator.Configuration and Validator.WithoutAcceptMatch use the small
   configurations in tests/data/validator/ (scenario choice, customLevel,
   fallback, the steps, the refused configurations and the verdict of a
-  scenario without acceptMatch). Validator.KositSuite runs the KoSIT
+  scenario without acceptMatch); Validator.Stream checks that ValidateStream
+  gives what Validate gives on the file. Validator.KositSuite runs the KoSIT
   XRechnung test suite 2026-08-31 with the configuration of
   addons/java-tools and compares the result with tests/data/kosit-expected.txt,
   which tools/kosit/kosit-oracle.py --update writes after the KoSIT
@@ -261,6 +262,111 @@ begin
     Lines.Add('rejected');
 end;
 
+{ S without loss: characters outside printable ASCII as #hex }
+function Lossless(const S: TLandrixEInvoiceString): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to Length(S) do
+    if (Ord(S[I]) >= 32) and (Ord(S[I]) < 127) and (S[I] <> '#') then
+      Result := Result + Char(Ord(S[I]))
+    else
+      Result := Result + '#' + IntToHex(Ord(S[I]), 4);
+end;
+
+{ the message texts, one line each, for comparisons beyond AddResultLines }
+procedure AddTexts(Lines: TStrings; R: TLandrixEInvoiceValidationResult);
+var
+  I: Integer;
+begin
+  for I := 0 to R.MessageCount - 1 do
+    Lines.Add('text ' + Lossless(R[I].Text));
+end;
+
+{ ValidateStream on the file AFileName behind the bytes 'junk', read from the
+  position after them }
+function ValidateFromStream(V: TLandrixEInvoiceValidator; const AFileName: string;
+  R: TLandrixEInvoiceValidationResult): Boolean;
+var
+  S: TMemoryStream;
+  F: TFileStream;
+begin
+  S := TMemoryStream.Create;
+  try
+    S.WriteBuffer(PAnsiChar(AnsiString('junk'))^, 4);
+    F := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    try
+      S.CopyFrom(F, 0);
+    finally
+      F.Free;
+    end;
+    S.Position := 4;
+    Result := V.ValidateStream(S, R);
+  finally
+    S.Free;
+  end;
+end;
+
+{ ValidateStream gives exactly what Validate gives: scenario, schema result,
+  every message with its position, verdict. }
+procedure TestStream;
+const
+  Docs: array[0..10] of string = ('doc-a-0.xml', 'doc-a-13.xml', 'doc-a-150.xml', 'doc-a-42.xml', 'doc-a-5.xml',
+    'doc-a-7.xml', 'doc-a-abc.xml', 'doc-b-5.xml', 'doc-broken.xml', 'doc-f-5.xml', 'doc-x-5.xml');
+var
+  V: TLandrixEInvoiceValidator;
+  R: TLandrixEInvoiceValidationResult;
+  FromFile, FromStream: TStringList;
+  S: TMemoryStream;
+  I: Integer;
+begin
+  V := NewValidator;
+  R := TLandrixEInvoiceValidationResult.Create;
+  FromFile := TStringList.Create;
+  FromStream := TStringList.Create;
+  try
+    for I := Low(Docs) to High(Docs) do
+    begin
+      FromFile.Clear;
+      FromStream.Clear;
+      V.Validate(DataDir + Docs[I], R);
+      AddResultLines(FromFile, Docs[I], R);
+      AddTexts(FromFile, R);
+      ValidateFromStream(V, DataDir + Docs[I], R);
+      AddResultLines(FromStream, Docs[I], R);
+      AddTexts(FromStream, R);
+      CheckEqualsStr(FromFile.Text, FromStream.Text, Docs[I] + ': stream as file');
+    end;
+    { an empty stream and no stream: not well-formed, no exception }
+    S := TMemoryStream.Create;
+    try
+      Check(not V.ValidateStream(S, R), 'empty stream rejected');
+      CheckEquals(1, R.MessageCount, 'empty stream: one message');
+      Check((R.MessageCount = 1) and (R[0].Step = evs_Wellformedness), 'empty stream: well-formedness');
+    finally
+      S.Free;
+    end;
+    { a stream at its end holds nothing more, however much is before }
+    S := TMemoryStream.Create;
+    try
+      S.LoadFromFile(DataDir + 'doc-a-5.xml');
+      S.Position := S.Size;
+      Check(not V.ValidateStream(S, R), 'stream at its end rejected');
+      Check((R.MessageCount = 1) and (R[0].Step = evs_Wellformedness), 'stream at its end: well-formedness');
+    finally
+      S.Free;
+    end;
+    Check(not V.ValidateStream(nil, R), 'no stream rejected');
+    Check((R.MessageCount = 1) and (R[0].Step = evs_Wellformedness), 'no stream: well-formedness');
+  finally
+    FromStream.Free;
+    FromFile.Free;
+    R.Free;
+    V.Free;
+  end;
+end;
+
 { the file names of MANIFEST.txt ("sha256  name" per line), sorted }
 function ManifestNames(const AFile: string): TStringList;
 var
@@ -321,7 +427,7 @@ var
   Local, Expected: string;
   V: TLandrixEInvoiceValidator;
   R: TLandrixEInvoiceValidationResult;
-  Names, Actual, Reference: TStringList;
+  Names, Actual, Reference, FromStream, FileFull: TStringList;
   I, Accepted: Integer;
 begin
   Local := KositLocal;
@@ -338,6 +444,8 @@ begin
   Names := ManifestNames(Local + 'instances' + PathDelim + 'MANIFEST.txt');
   Actual := TStringList.Create;
   Reference := TStringList.Create;
+  FromStream := TStringList.Create;
+  FileFull := TStringList.Create;
   try
     Accepted := 0;
     for I := 0 to Names.Count - 1 do
@@ -345,7 +453,13 @@ begin
       if V.Validate(Local + 'instances' + PathDelim + Names[I], R) then
         Inc(Accepted);
       AddResultLines(Actual, Names[I], R);
+      AddResultLines(FileFull, Names[I], R);
+      AddTexts(FileFull, R);
+      ValidateFromStream(V, Local + 'instances' + PathDelim + Names[I], R);
+      AddResultLines(FromStream, Names[I], R);
+      AddTexts(FromStream, R);
     end;
+    CheckEqualsStr(FileFull.Text, FromStream.Text, 'ValidateStream gives the same results');
     CheckEquals(86, Names.Count, 'instances');
     CheckEquals(Names.Count, Accepted, 'every instance accepted');
     Reference.LoadFromFile(Expected);
@@ -354,6 +468,8 @@ begin
       if I < Actual.Count then
         CheckEqualsStr(Reference[I], Actual[I], 'line ' + IntToStr(I + 1));
   finally
+    FileFull.Free;
+    FromStream.Free;
     Reference.Free;
     Actual.Free;
     Names.Free;
@@ -533,6 +649,7 @@ procedure Register;
 begin
   RegisterTest('Validator.Scenarios', TestScenarios);
   RegisterTest('Validator.Configuration', TestConfiguration);
+  RegisterTest('Validator.Stream', TestStream);
   RegisterTest('Validator.WithoutAcceptMatch', TestWithoutAcceptMatch);
   RegisterTest('Validator.KositSuite', TestKositSuite);
 end;
