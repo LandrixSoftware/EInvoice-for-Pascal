@@ -1,0 +1,3 @@
+# Known differences of tools/pdfcheck/mustang-oracle.py: file<TAB>check<TAB>reason (file may be *); checks
+# ConformanceLevel, DocumentType, DocumentFileName, Version, xmp, pdfa, mustang, mutant, probe. None known
+# (2026-11-11, Mustang 2.26.0, 299 PDFs with level 3 and 10 mutants).

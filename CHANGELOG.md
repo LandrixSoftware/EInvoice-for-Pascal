@@ -422,6 +422,11 @@ Supported invoice standards are documented per release.
   `/UF`, MIME type, `/ModDate` and the content byte for byte, and whether the cross-reference table had to
   be rebuilt. `PdfCheckProbe -facts=DIR` prints the file specifications of the collector for it.
   Exceptions in `tools/pdfcheck/pdf-exceptions.txt` (none).
+- `tools/pdfcheck/mustang-oracle.py`: compares level 3 of the PDF checker with Mustang 2.26.0 (pinned in
+  `addons/java-tools/tools.json`, run with the pinned Java runtime) on every corpus PDF with a Factur-X or
+  XRechnung invoice and on mutants with one XMP value changed in place: per PDF whether each side rejects
+  `fx:ConformanceLevel`, `fx:DocumentType`, `fx:DocumentFileName`, `fx:Version`, the XMP packet and the PDF/A
+  part. Exceptions in `tools/pdfcheck/mustang-exceptions.txt` (none).
 
 ### Changed
 - Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as

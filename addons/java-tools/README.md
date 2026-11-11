@@ -16,6 +16,7 @@ platform, into the same folder if it is shared.
 | Folder | Content |
 |---|---|
 | `validator/` | KoSIT validator (standalone JAR) |
+| `mustang/` | Mustang CLI 2.26.0 (JAR) for `tools/pdfcheck/mustang-oracle.py` |
 | `validator-configuration-xrechnung/` | KoSIT configuration for XRechnung 3.0.2 |
 | `validator-configuration-bis/` | KoSIT configuration for Peppol BIS Billing 3.0 |
 | `validator-configuration-zugferd/` | configuration for ZUGFeRD 2.5.2 / Factur-X 1.09.2 |
