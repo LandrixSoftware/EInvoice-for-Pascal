@@ -1,6 +1,15 @@
 {
   "comment": "Input of gen-codelists.py. Sources are committed byte-exact under src/; the generator verifies the checksums and never downloads anything.",
   "sources": {
+    "cldr-47": {
+      "title": "Unicode CLDR 47.0.0, German territory and currency names (cldr-json: cldr-localenames-full main/de/territories.json, cldr-numbers-full main/de/currencies.json), Unicode License V3",
+      "registry": "https://github.com/unicode-org/cldr-json",
+      "files": {
+        "LICENSE": "b4c0ae8ef04f7059f96ce5bbe0467f9fe6f6d81bbe13517701dfeb961fb4d0b6",
+        "currencies.json": "9765520521fbfe95b6d4c58adb2e5430e36f8d06d1d33e52586ef7c64f1f1744",
+        "territories.json": "7a588516781c3d235e7e0d4557f20c65e8c81bd1887f301283c616e1e26734ac"
+      }
+    },
     "ec-v17": {
       "title": "European Commission, EN16931 code lists values, version 17 (genericode), valid from 2026-05-15",
       "registry": "https://ec.europa.eu/digital-building-blocks/sites/display/DIGITAL/Registry+of+supporting+artefacts+to+implement+EN16931",
@@ -24,6 +33,14 @@
         "Unit.gc": "ee2e3a90a059b5ef1f17473267f4677196ee1f98a1b5f3333ee5f8ca615dd13c",
         "VATEX.gc": "3ac67d81d3bdf1cf34173f1b99b67b820a5db52a4111f4aada22c193f0c02d7b"
       }
+    }
+  },
+  "names": {
+    "german": "names-de.json",
+    "cldr_version": "47.0.0",
+    "cldr": {
+      "CountryCode": {"file": "cldr-47/territories.json", "path": ["main", "de", "localeDisplayNames", "territories"]},
+      "CurrencyCode": {"file": "cldr-47/currencies.json", "path": ["main", "de", "numbers", "currencies"], "field": "displayName"}
     }
   },
   "lists": [

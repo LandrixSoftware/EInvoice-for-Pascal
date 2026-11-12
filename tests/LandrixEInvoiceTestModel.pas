@@ -31,6 +31,8 @@ uses
   LandrixXmlBase,
   LandrixEInvoiceTypes,
   LandrixEInvoiceCodes,
+  LandrixEInvoiceCodeNames,
+  LandrixEInvoiceReportHtml,
   LandrixEInvoiceInvoice,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestInvoiceCompare;
@@ -161,6 +163,51 @@ begin
   CheckEqualsInvoiceStr('S', LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(idtfcc_S_StandardRate), 'standard rate');
   CheckEqualsInvoiceStr('BLP', LandrixEInvoiceNoteSubjectCodeToStr(insc_BLP), 'BLP');
   CheckEqualsInvoiceStr('GROUP', LandrixEInvoiceLineStatusReasonCodeToStr(ilsrc_Group), 'GROUP');
+end;
+
+{ The names of codes: English from the code lists, German by hand or from
+  CLDR, English as the fallback; every member of the lists with names has
+  an English name. }
+procedure TestCodeNames;
+var
+  T: TLandrixInvoiceTypeCode;
+  V: TLandrixInvoiceDutyTaxFeeCategoryCode;
+  C: TLandrixInvoiceCountryCode;
+  P: TLandrixInvoicePaymentMeansCode;
+begin
+  CheckEqualsInvoiceStr('Credit note', LandrixEInvoiceCodeName(ecl_TypeCode, '381', eln_English), '381 en');
+  CheckEqualsInvoiceStr('Gutschrift', LandrixEInvoiceCodeName(ecl_TypeCode, '381', eln_German), '381 de');
+  CheckEqualsInvoiceStr('Standard rate', LandrixEInvoiceCodeName(ecl_DutyTaxFeeCategoryCode, 's', eln_English),
+    'case-insensitive');
+  CheckEqualsInvoiceStr('Germany', LandrixEInvoiceCodeName(ecl_CountryCode, 'DE', eln_English), 'DE en');
+  CheckEqualsInvoiceStr('Deutschland', LandrixEInvoiceCodeName(ecl_CountryCode, 'DE', eln_German), 'DE de');
+  CheckEqualsInvoiceStr('Schweizer Franken', LandrixEInvoiceCodeName(ecl_CurrencyCode, 'CHF', eln_German),
+    'CHF de');
+  CheckEqualsInvoiceStr(Wide([Ord('C'), $F4, Ord('t'), Ord('e'), Ord(' '), Ord('d'), Ord(''''), Ord('I'), Ord('v'),
+    Ord('o'), Ord('i'), Ord('r'), Ord('e')]), LandrixEInvoiceCodeName(ecl_CountryCode, 'CI', eln_English),
+    'CI en, decoded');
+  CheckEqualsInvoiceStr(Wide([Ord('C'), $F4, Ord('t'), Ord('e'), Ord(' '), Ord('d'), $2019, Ord('I'), Ord('v'),
+    Ord('o'), Ord('i'), Ord('r'), Ord('e')]), LandrixEInvoiceCodeName(ecl_CountryCode, 'CI', eln_German),
+    'CI de, decoded');
+  CheckEqualsInvoiceStr(Wide([Ord('S'), Ord('t'), $FC, Ord('c'), Ord('k')]),
+    LandrixEInvoiceCodeName(ecl_UnitCode, 'H87', eln_German), 'H87 de');
+  { no German name: the English one }
+  CheckEqualsInvoiceStr('percent weight', LandrixEInvoiceCodeName(ecl_UnitCode, '60', eln_German), 'fallback');
+  CheckEqualsInvoiceStr('', LandrixEInvoiceCodeName(ecl_UnitCode, 'NOPE', eln_English), 'unknown code');
+  CheckEqualsInvoiceStr('', LandrixEInvoiceCodeName(ecl_UnitCode, '', eln_German), 'empty code');
+  for T := Succ(Low(T)) to High(T) do
+    Check(LandrixEInvoiceCodeName(ecl_TypeCode, LandrixEInvoiceTypeCodeToStr(T), eln_German) <> '',
+      'type code ' + string(LandrixEInvoiceTypeCodeToStr(T)) + ' named');
+  for V := Succ(Low(V)) to High(V) do
+    Check(LandrixEInvoiceCodeName(ecl_DutyTaxFeeCategoryCode, LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(V),
+      eln_German) <> LandrixEInvoiceCodeName(ecl_DutyTaxFeeCategoryCode,
+      LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(V), eln_English), 'VAT category in German');
+  for P := Succ(Low(P)) to High(P) do
+    Check(LandrixEInvoiceCodeName(ecl_PaymentMeansCode, LandrixEInvoicePaymentMeansCodeToStr(P), eln_English) <> '',
+      'payment means named');
+  for C := Succ(Low(C)) to High(C) do
+    Check(LandrixEInvoiceCodeName(ecl_CountryCode, LandrixEInvoiceCountryCodeToStr(C), eln_English) <> '',
+      'country ' + string(LandrixEInvoiceCountryCodeToStr(C)) + ' named');
 end;
 
 procedure TestNewCodeLists;
@@ -1104,6 +1151,7 @@ begin
   RegisterTest('Codes.UnitCode', TestUnitCodes);
   RegisterTest('Codes.OtherLists', TestOtherCodeLists);
   RegisterTest('Codes.NewLists', TestNewCodeLists);
+  RegisterTest('Codes.Names', TestCodeNames);
   RegisterTest('Model.CreateFullInvoice', TestCreateFullInvoice);
   RegisterTest('Model.ListExtract', TestListExtract);
   RegisterTest('Model.Notes', TestNotes);

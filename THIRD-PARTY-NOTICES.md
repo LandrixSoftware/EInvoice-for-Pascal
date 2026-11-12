@@ -33,6 +33,14 @@ Decision 2011/833/EU. The lists contain codes maintained by UN/CEFACT (UNTDID, U
 Recommendations 20 and 21), ISO (ISO 3166-1, ISO 4217, ISO/IEC 6523) and other bodies;
 versions and checksums are recorded in `tools/codelists/manifest.json`.
 
+## Unicode CLDR
+
+The German country and currency names in `source/LandrixEInvoiceCodeNames.pas` are generated
+from Unicode CLDR 47.0.0 (cldr-json, `main/de/territories.json` and `main/de/currencies.json`),
+committed byte-exact in `tools/codelists/src/cldr-47/` with checksums in
+`tools/codelists/manifest.json`. Copyright (c) 2004-2025 Unicode, Inc. Licensed under the Unicode
+License V3, see [LICENSES/Unicode-3.0.txt](LICENSES/Unicode-3.0.txt).
+
 ## Factur-X / ZUGFeRD schema
 
 `tools/syntaxmodel/cii.json` and the units generated from it
