@@ -35,7 +35,8 @@
   paths below its Schema/factur-x-1.09.2 folder); skipped without that configuration.
   Validation.Xml checks LandrixEInvoiceValidation with the small configuration
   (verdict from KoSIT, reading, the predicted findings of the own rule check
-  on a generated XRechnung); Validation.KositSuite runs it over the KoSIT test
+  on a generated XRechnung; without a configuration no verdict);
+  Validation.KositSuite runs it over the KoSIT test
   suite (same verdict and KoSIT findings as the engine, every instance read
   and checked), skipped like Validator.KositSuite. }
 
@@ -872,15 +873,63 @@ begin
     DV.Free;
     V.Free;
   end;
-  { no configuration: a problem of the setup }
+  { no configuration: no verdict; reading and the rule check run }
   DV := TLandrixEInvoiceDocumentValidator.Create;
   R := TLandrixEInvoiceDocumentValidation.Create;
   try
+    S := InvoiceStream(True);
     try
-      DV.ValidateFile(DataDir + 'doc-a-5.xml', R);
-      FailNotRaised('ELandrixEInvoiceError');
-    except
-      on ELandrixEInvoiceError do ;
+      CheckEquals(Ord(ev_Incomplete), Ord(DV.ValidateStream(S, R)), 'no KoSIT: invoice verdict');
+      CheckStatus(R, evr_Passed, evr_NotRun, evr_Passed, 'no KoSIT: invoice');
+      CheckEqualsStr('', Findings(R), 'no KoSIT: invoice findings');
+      CheckEqualsStr('', string(R.ScenarioName), 'no KoSIT: no scenario');
+      Check(R.Info.SpecFound, 'no KoSIT: specification found');
+      Check(S.Position = S.Size, 'no KoSIT: stream read to its end');
+      DV.Options.ModelCheck := False;
+      S.Position := 0;
+      DV.ValidateStream(S, R);
+      CheckStatus(R, evr_Passed, evr_NotRun, evr_NotRun, 'no KoSIT: invoice without rule check');
+      DV.Options.ModelCheck := True;
+    finally
+      S.Free;
+    end;
+    S := InvoiceStream(False);
+    try
+      CheckEquals(Ord(ev_Incomplete), Ord(DV.ValidateStream(S, R)), 'no KoSIT: BR-DE-15 verdict');
+      CheckStatus(R, evr_Passed, evr_NotRun, evr_Failed, 'no KoSIT: BR-DE-15');
+      CheckEqualsStr('model:BR-DE-15:error:predicted', Findings(R), 'no KoSIT: BR-DE-15 findings');
+    finally
+      S.Free;
+    end;
+    { an invoice that is not well-formed: reading says where, no rule check }
+    S := InvoiceStream(True);
+    try
+      ReplaceBytes(S, '</Invoice>', '</Invoce>');
+      CheckEquals(Ord(ev_Incomplete), Ord(DV.ValidateStream(S, R)), 'no KoSIT: broken invoice verdict');
+      CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no KoSIT: broken invoice');
+      CheckEqualsStr('read::error', Findings(R), 'no KoSIT: broken invoice findings');
+      Check(R[0].Line > 0, 'no KoSIT: broken invoice line');
+    finally
+      S.Free;
+    end;
+    { not well-formed with an unknown root: the root is reported first }
+    CheckEquals(Ord(ev_Incomplete), Ord(DV.ValidateFile(DataDir + 'doc-broken.xml', R)), 'no KoSIT: broken verdict');
+    CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no KoSIT: broken');
+    CheckEqualsStr('read::error', Findings(R), 'no KoSIT: broken findings');
+    { well-formed, but no invoice }
+    CheckEquals(Ord(ev_Incomplete), Ord(DV.ValidateFile(DataDir + 'doc-a-5.xml', R)), 'no KoSIT: doc-a-5 verdict');
+    CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no KoSIT: doc-a-5');
+    CheckEqualsStr('read::error', Findings(R), 'no KoSIT: doc-a-5 findings');
+    CheckEquals(Ord(ev_Incomplete), Ord(DV.ValidateStream(nil, R)), 'no KoSIT: no stream verdict');
+    CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no KoSIT: no stream');
+    CheckEqualsStr('read::error', Findings(R), 'no KoSIT: no stream findings');
+    S := TMemoryStream.Create;
+    try
+      CheckEquals(Ord(ev_Incomplete), Ord(DV.ValidateStream(S, R)), 'no KoSIT: empty stream verdict');
+      CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no KoSIT: empty stream');
+      CheckEqualsStr('read::error', Findings(R), 'no KoSIT: empty stream findings');
+    finally
+      S.Free;
     end;
   finally
     R.Free;

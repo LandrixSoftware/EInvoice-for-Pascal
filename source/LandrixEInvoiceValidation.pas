@@ -17,8 +17,9 @@
   Schematron; LandrixEInvoiceValidator), reading through the facade and
   the library's own rule check. Only the KoSIT run decides the verdict;
   the own rule check predicts what KoSIT would report and never changes
-  it (its findings are marked Predicted). One flat list of findings, a
-  status per part. So far XML only; PDF follows.
+  it (its findings are marked Predicted). Without a configuration there is
+  no verdict (Incomplete); reading and the rule check still run. One flat
+  list of findings, a status per part. So far XML only; PDF follows.
 
   DE: Prueft ein E-Rechnungs-Dokument als Ganzes: den KoSIT-Lauf einer
   Konfiguration, die der Aufrufer waehlt (Wohlgeformtheit, XML-Schema,
@@ -26,7 +27,9 @@
   die eigene Regelpruefung der Bibliothek. Nur der KoSIT-Lauf entscheidet
   das Urteil; die eigene Regelpruefung sagt voraus, was KoSIT melden
   wuerde, und aendert es nie (ihre Befunde sind als Predicted markiert).
-  Eine flache Befundliste, ein Status je Teil. Bisher nur XML; PDF folgt. }
+  Ohne Konfiguration gibt es kein Urteil (Incomplete); Lesen und
+  Regelpruefung laufen trotzdem. Eine flache Befundliste, ein Status je
+  Teil. Bisher nur XML; PDF folgt. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -50,11 +53,10 @@ uses
 
 type
   { The verdict on a document. Incomplete: no verdict could be reached
-    because a part that decides it did not run (not yet returned by
-    ValidateStream, which always runs KoSIT).
+    because the part that decides it did not run (no KoSIT configuration).
     DE: Das Urteil ueber ein Dokument. Incomplete: es kam kein Urteil
-    zustande, weil ein Teil, der es entscheidet, nicht gelaufen ist (von
-    ValidateStream noch nicht geliefert, das KoSIT immer ausfuehrt). }
+    zustande, weil der Teil, der es entscheidet, nicht gelaufen ist (keine
+    KoSIT-Konfiguration). }
   TLandrixEInvoiceVerdict = (ev_Accepted, ev_Rejected, ev_Incomplete);
 
   { The parts of a validation: reading through the facade, the KoSIT run,
@@ -140,8 +142,10 @@ type
       DE: Leert das Ergebnis: ev_Incomplete, jeder Teil evr_NotRun, keine
       Befunde. }
     procedure Clear;
-    { The verdict: the assessment of the KoSIT run.
-      DE: Das Urteil: die Bewertung des KoSIT-Laufs. }
+    { The verdict: the assessment of the KoSIT run; ev_Incomplete without
+      one.
+      DE: Das Urteil: die Bewertung des KoSIT-Laufs; ev_Incomplete ohne
+      ihn. }
     property Verdict: TLandrixEInvoiceVerdict read FVerdict;
     { The status of each part. DE: Der Status jedes Teils. }
     property Status[APart: TLandrixEInvoiceValidationPart]: TLandrixEInvoicePartStatus read GetStatus;
@@ -168,10 +172,11 @@ type
     FModelCheck: Boolean;
   public
     constructor Create;
-    { The KoSIT configuration to run, loaded and owned by the caller;
-      required so far.
+    { The KoSIT configuration to run, loaded and owned by the caller; nil
+      (the default): no KoSIT run, the verdict is ev_Incomplete.
       DE: Die KoSIT-Konfiguration, die laufen soll, vom Aufrufer geladen
-      und besessen; bisher Pflicht. }
+      und besessen; nil (Vorgabe): kein KoSIT-Lauf, das Urteil ist
+      ev_Incomplete. }
     property Configuration: TLandrixEInvoiceValidator read FConfiguration write FConfiguration;
     { Run the own rule check (default True).
       DE: Die eigene Regelpruefung ausfuehren (Vorgabe True). }
@@ -184,29 +189,37 @@ type
   private
     FOptions: TLandrixEInvoiceValidationOptions;
     procedure ReadAndCheck(AData: TMemoryStream; AResult: TLandrixEInvoiceDocumentValidation);
+    procedure ValidateWithoutKosit(AStream: TStream; ACount: Int64; AResult: TLandrixEInvoiceDocumentValidation);
   public
     constructor Create;
     destructor Destroy; override;
     { Validates the XML document in AStream, read from its position to the
-      end, fills AResult and returns AResult.Verdict. The verdict is the
-      KoSIT assessment: ev_Accepted or ev_Rejected. Reading and the own
-      rule check run on the same bytes unless KoSIT finds the document not
-      well-formed. An exception of reading or of the rule check (other than
-      EOutOfMemory) becomes a finding and leaves that part evr_Incomplete,
-      or evr_Failed for a document the facade cannot read; the verdict
-      stays. No Options.Configuration and a problem of the setup (see
-      TLandrixEInvoiceValidator.Validate) raise ELandrixEInvoiceError.
+      end, fills AResult and returns AResult.Verdict. With
+      Options.Configuration the verdict is the KoSIT assessment
+      (ev_Accepted or ev_Rejected); without it KoSIT stays evr_NotRun and
+      the verdict is ev_Incomplete. Reading and the own rule check run on
+      the same bytes unless KoSIT finds the document not well-formed;
+      without KoSIT, reading reports a document that is not well-formed. An
+      exception of reading or of the rule check (other than EOutOfMemory)
+      becomes a finding and leaves that part evr_Incomplete, or evr_Failed
+      for a document the facade cannot read; the verdict stays. A problem
+      of the setup (see TLandrixEInvoiceValidator.Validate) raises
+      ELandrixEInvoiceError; an exception of AStream itself (e.g. EReadError)
+      is passed on.
       DE: Prueft das XML-Dokument in AStream, gelesen ab seiner Position
-      bis zum Ende, fuellt AResult und liefert AResult.Verdict. Das Urteil
-      ist die Bewertung von KoSIT: ev_Accepted oder ev_Rejected. Lesen und
-      eigene Regelpruefung laufen auf denselben Bytes, ausser KoSIT findet
-      das Dokument nicht wohlgeformt. Eine Ausnahme beim Lesen oder in der
-      Regelpruefung (ausser EOutOfMemory) wird zum Befund und laesst den
-      Teil evr_Incomplete, oder evr_Failed fuer ein Dokument, das die
-      Fassade nicht lesen kann; das Urteil bleibt. Fehlt
-      Options.Configuration oder gibt es ein Problem der Einrichtung (siehe
-      TLandrixEInvoiceValidator.Validate), wird ELandrixEInvoiceError
-      ausgeloest. }
+      bis zum Ende, fuellt AResult und liefert AResult.Verdict. Mit
+      Options.Configuration ist das Urteil die Bewertung von KoSIT
+      (ev_Accepted oder ev_Rejected); ohne bleibt KoSIT evr_NotRun und das
+      Urteil ist ev_Incomplete. Lesen und eigene Regelpruefung laufen auf
+      denselben Bytes, ausser KoSIT findet das Dokument nicht wohlgeformt;
+      ohne KoSIT meldet das Lesen ein nicht wohlgeformtes Dokument. Eine
+      Ausnahme beim Lesen oder in der Regelpruefung (ausser EOutOfMemory)
+      wird zum Befund und laesst den Teil evr_Incomplete, oder evr_Failed
+      fuer ein Dokument, das die Fassade nicht lesen kann; das Urteil
+      bleibt. Ein Problem der Einrichtung (siehe
+      TLandrixEInvoiceValidator.Validate) loest ELandrixEInvoiceError aus;
+      eine Ausnahme von AStream selbst (z. B. EReadError) wird
+      weitergereicht. }
     function ValidateStream(AStream: TStream; AResult: TLandrixEInvoiceDocumentValidation): TLandrixEInvoiceVerdict;
     { The same for a file; a file that cannot be opened raises the
       exception of TFileStream (EFOpenError).
@@ -365,12 +378,16 @@ var
   I: Integer;
   WellFormed: Boolean;
 begin
-  if FOptions.Configuration = nil then
-    raise ELandrixEInvoiceError.Create('No KoSIT configuration (Options.Configuration)');
   AResult.Clear;
   Count := 0;
   if AStream <> nil then
     Count := AStream.Size - AStream.Position;
+  if FOptions.Configuration = nil then
+  begin
+    ValidateWithoutKosit(AStream, Count, AResult);
+    Result := AResult.FVerdict;
+    Exit;
+  end;
   Data := TMemoryStream.Create;
   K := TLandrixEInvoiceValidationResult.Create;
   try
@@ -424,6 +441,33 @@ begin
     Data.Free;
   end;
   Result := AResult.FVerdict;
+end;
+
+{ No KoSIT run: no verdict; reading and the rule check only. Reading
+  reports a document that is not well-formed. }
+procedure TLandrixEInvoiceDocumentValidator.ValidateWithoutKosit(AStream: TStream; ACount: Int64;
+  AResult: TLandrixEInvoiceDocumentValidation);
+var
+  Data: TMemoryStream;
+begin
+  if AStream = nil then
+    AResult.AddFinding(evp_Read, '', eds_Error, '', 0, 0, 'No document (no stream)')
+  else if ACount > MaxInt then
+    AResult.AddFinding(evp_Read, '', eds_Error, '', 0, 0, 'The document is larger than 2 GB')
+  else
+  begin
+    Data := TMemoryStream.Create;
+    try
+      { CopyFrom with 0 copies the whole stream: only when bytes are left }
+      if ACount > 0 then
+        Data.CopyFrom(AStream, ACount);
+      ReadAndCheck(Data, AResult);
+    finally
+      Data.Free;
+    end;
+    Exit;
+  end;
+  AResult.FStatus[evp_Read] := evr_Failed;
 end;
 
 procedure TLandrixEInvoiceDocumentValidator.ReadAndCheck(AData: TMemoryStream;

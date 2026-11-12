@@ -342,6 +342,9 @@ Supported invoice standards are documented per release.
   check) and one flat list of findings; only the KoSIT run decides the verdict, the findings of the own rule
   check are marked as predictions. Tests `Validation.Xml` and `Validation.KositSuite` (same verdict and KoSIT
   findings as the engine over the KoSIT test suite).
+- `LandrixEInvoiceValidation` without a KoSIT configuration (`Options.Configuration` nil, now the default):
+  no KoSIT run, the verdict is `ev_Incomplete`; reading reports a document that is not well-formed, the own rule
+  check runs as before.
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111
