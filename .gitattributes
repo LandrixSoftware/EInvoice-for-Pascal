@@ -21,3 +21,6 @@ examples/*/attachments/** -text
 
 # Code list sources must stay byte-exact (checksums in tools/codelists/manifest.json).
 tools/codelists/src/** -text
+
+# The report schema is a published contract: LF everywhere.
+schemas/** text eol=lf

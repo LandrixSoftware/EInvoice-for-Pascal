@@ -63,10 +63,12 @@ uses
   LandrixEInvoice,
   LandrixEInvoiceValidator,
   LandrixEInvoiceValidation,
+  LandrixEInvoiceValidationReport,
   LandrixEInvoicePdfCheck,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestCheck,
-  LandrixEInvoiceTestPdf;
+  LandrixEInvoiceTestPdf,
+  LandrixEInvoiceTestValidationReport;
 
 function DataDir: string;
 begin
@@ -693,6 +695,7 @@ begin
   CheckEquals(Ord(ARead), Ord(R.Status[evp_Read]), AName + ': read status');
   CheckEquals(Ord(AKosit), Ord(R.Status[evp_KoSIT]), AName + ': KoSIT status');
   CheckEquals(Ord(AModel), Ord(R.Status[evp_ModelCheck]), AName + ': model check status');
+  CheckValidationReport(R, AName);
 end;
 
 { a complete invoice for ATarget as bytes; without a buyer reference an
@@ -744,6 +747,7 @@ begin
   CheckEquals(Ord(AEmbedding), Ord(R.Status[evp_PdfEmbedding]), AName + ': embedding status');
   CheckEquals(Ord(AMetadata), Ord(R.Status[evp_PdfMetadata]), AName + ': metadata status');
   CheckEquals(Ord(evr_NotRun), Ord(R.Status[evp_PdfA]), AName + ': PDF/A not run');
+  CheckValidationReport(R, AName);
 end;
 
 { validates the bytes APdf }
@@ -1137,6 +1141,7 @@ begin
           Failed := (R.Status[evp_PdfEmbedding] = evr_Failed) or (R.Status[evp_PdfMetadata] = evr_Failed);
           Check(R.Verdict <> ev_Accepted, SR.Name + ': not accepted without KoSIT');
           CheckEquals(Ord(Failed), Ord(R.Verdict = ev_Rejected), SR.Name + ': rejected exactly on a failed level');
+          CheckValidationReport(R, SR.Name);
           if R.Verdict = ev_Rejected then
             Inc(Rejected)
           else
@@ -1206,6 +1211,7 @@ begin
           Inc(KositFindings);
         end;
       CheckEquals(K.MessageCount, KositFindings, Names[I] + ': KoSIT findings');
+      CheckValidationReport(R, Names[I]);
       CheckEquals(Ord(evr_Passed), Ord(R.Status[evp_Read]), Names[I] + ': read');
       { the rule check runs when reading knows the specification (BT-24)
         and not otherwise }
@@ -1228,6 +1234,227 @@ begin
   end;
 end;
 
+function IntUtf8(AValue: Integer): TLandrixXmlUtf8;
+begin
+  Result := LandrixEInvoiceStringToUtf8(TLandrixEInvoiceString(IntToStr(AValue)));
+end;
+
+{ S with every AOld replaced by ANew }
+function ReplaceUtf8(const S, AOld, ANew: TLandrixXmlUtf8): TLandrixXmlUtf8;
+var
+  Rest: TLandrixXmlUtf8;
+  P: Integer;
+begin
+  Result := '';
+  Rest := S;
+  P := Pos(AOld, Rest);
+  while P > 0 do
+  begin
+    Result := Result + Copy(Rest, 1, P - 1) + ANew;
+    Delete(Rest, 1, P - 1 + Length(AOld));
+    P := Pos(AOld, Rest);
+  end;
+  Result := Result + Rest;
+end;
+
+{ The XML report: byte-stable (golden files), written at the stream
+  position, the same into a file; configuration name, scenario and KoSIT
+  step. CheckStatus and the corpus tests check every other report against
+  the schema. }
+procedure TestDocumentReport;
+var
+  V: TLandrixEInvoiceValidator;
+  DV: TLandrixEInvoiceDocumentValidator;
+  R: TLandrixEInvoiceDocumentValidation;
+  W: TLandrixEInvoiceValidationReportWriter;
+  S: TMemoryStream;
+  Xml: TLandrixXmlUtf8;
+  Written: AnsiString;
+  FileName: string;
+  Raised: Boolean;
+begin
+  DV := TLandrixEInvoiceDocumentValidator.Create;
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  W := TLandrixEInvoiceValidationReportWriter.Create;
+  V := nil;
+  try
+    CheckValidationReport(R, 'new result');
+    { XML without KoSIT, BR-DE-15 predicted }
+    S := InvoiceStream(False);
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckGoldenReport(ReportUtf8(R, 'invoice.xml'), 'xml-no-kosit.xml');
+    { a PDF without XMP: level 3 fails, line and column in the XMP packet }
+    ValidateBytes(DV, XRechnungPdf(False, False), R);
+    CheckGoldenReport(ReportUtf8(R, 'invoice.pdf'), 'pdf-no-xmp.xml');
+    { an embedded invoice that is not well-formed: BR-HYBRID-12 counts its
+      line in the invoice }
+    ValidateBytes(DV, BuildHybridPdf('xrechnung.xml', '<a>'#10'<b></a>', TLandrixEInvoiceTargets.XRechnung('3.0',
+      esy_CII), True), R);
+    Xml := ReportUtf8(R, '');
+    Check(Pos(TLandrixXmlUtf8('rule="BR-HYBRID-12" severity="error" line="2" column="') +
+      IntUtf8(R[0].Column) + TLandrixXmlUtf8('" positionIn="invoice"'), Xml) > 0,
+      'BR-HYBRID-12 line in the invoice: ' + Findings(R));
+    CheckValidationReport(R, 'BR-HYBRID-12');
+    { damaged XMP: LX-PDF-11 counts its line in the XMP packet }
+    S := BytesStream(XRechnungPdf(True, True));
+    try
+      ReplaceBytes(S, '</rdf:RDF></x:xmpmeta>', '</rdf:RDX></x:xmpmeta>');
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    Xml := ReportUtf8(R, '');
+    CheckEqualsStr('xmp:LX-PDF-11:error', Findings(R), 'damaged XMP findings');
+    Check(R[0].Line > 0, 'damaged XMP line');
+    Check(Pos(TLandrixXmlUtf8('rule="LX-PDF-11" severity="error" line="') + IntUtf8(R[0].Line) +
+      TLandrixXmlUtf8('" column="') + IntUtf8(R[0].Column) + TLandrixXmlUtf8('" positionIn="xmp"'),
+      Xml) > 0, 'LX-PDF-11 line in the XMP packet');
+    CheckValidationReport(R, 'damaged XMP');
+    { at the stream position; the same into a file }
+    Xml := ReportUtf8(R, 'invoice.pdf');
+    S := BytesStream('junk');
+    try
+      S.Position := 4;
+      W.DocumentName := 'invoice.pdf';
+      W.WriteToStream(R, S);
+      CheckEquals(4 + Length(Xml), Integer(S.Size), 'report written at the position');
+      Written := '';
+      SetLength(Written, Integer(S.Size) - 4);
+      Move((PAnsiChar(S.Memory) + 4)^, PAnsiChar(Written)^, Length(Written));
+      Check(Written = AnsiString(Xml), 'report bytes in the stream');
+      FileName := ExtractFilePath(ParamStr(0)) + 'validation-report-test.xml';
+      W.SaveToFile(R, FileName);
+      S.LoadFromFile(FileName);
+      DeleteFile(FileName);
+      CheckEquals(Length(Xml), Integer(S.Size), 'report file size');
+      Written := '';
+      SetLength(Written, Integer(S.Size));
+      Move(S.Memory^, PAnsiChar(Written)^, Length(Written));
+      Check(Written = AnsiString(Xml), 'report file bytes');
+      { no result: an exception, nothing written }
+      S.Clear;
+      Raised := False;
+      try
+        W.WriteToStream(nil, S);
+      except
+        on ELandrixEInvoiceError do
+          Raised := True;
+      end;
+      Check(Raised, 'no result raises');
+      CheckEquals(0, Integer(S.Size), 'no result: nothing written');
+    finally
+      S.Free;
+    end;
+    { with the test configuration: its name, the scenario, the KoSIT step }
+    V := NewValidator;
+    DV.Options.Configuration := V;
+    DV.ValidateFile(DataDir + 'doc-a-13.xml', R);
+    CheckEqualsStr('Test configuration', string(R.ConfigurationName), 'configuration name');
+    CheckEquals(Ord(efs_Schematron), Ord(R[0].Step), 'doc-a-13: Schematron step');
+    CheckEquals(Ord(efs_None), Ord(R[1].Step), 'doc-a-13: reading has no step');
+    Xml := ReportUtf8(R, '');
+    Check(Pos(TLandrixXmlUtf8('configuration="Test configuration" scenario="Test A"'), Xml) > 0,
+      'report: configuration and scenario');
+    Check(Pos(TLandrixXmlUtf8('step="schematron"'), Xml) > 0, 'report: Schematron step');
+    CheckStatus(R, evr_Failed, evr_Failed, evr_NotRun, 'doc-a-13');
+    DV.ValidateFile(DataDir + 'doc-broken.xml', R);
+    CheckEquals(Ord(efs_Wellformedness), Ord(R[0].Step), 'broken: well-formedness step');
+    CheckStatus(R, evr_NotRun, evr_Failed, evr_NotRun, 'broken');
+    ValidateBytes(DV, InvoiceBytes(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), True), R);
+    CheckEquals(Ord(efs_None), Ord(R[0].Step), 'no scenario: no step');
+    CheckEqualsStr('', string(R.ScenarioName), 'no scenario: name');
+    CheckEqualsStr('Test configuration', string(R.ConfigurationName), 'no scenario: configuration name');
+    DV.Options.Configuration := nil;
+    DV.ValidateFile(DataDir + 'doc-a-5.xml', R);
+    CheckEqualsStr('', string(R.ConfigurationName), 'no KoSIT: no configuration name');
+    CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no KoSIT');
+  finally
+    W.Free;
+    R.Free;
+    DV.Free;
+    V.Free;
+  end;
+end;
+
+{ Characters XML does not allow, here in the names of a PDF, become U+FFFD;
+  the report stays valid and says so. }
+procedure TestDocumentReportSanitize;
+var
+  DV: TLandrixEInvoiceDocumentValidator;
+  R: TLandrixEInvoiceDocumentValidation;
+  Invoice: AnsiString;
+  Xml, Fffd: TLandrixXmlUtf8;
+  Target: TLandrixEInvoiceTarget;
+begin
+  Fffd := Utf8Bytes([$EF, $BF, $BD]);
+  DV := TLandrixEInvoiceDocumentValidator.Create;
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  try
+    Target := TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII);
+    Invoice := InvoiceBytes(Target, True);
+    { a control character in a PDFDocEncoding name }
+    ValidateBytes(DV, BuildHybridPdf('x'#1'.xml', Invoice, Target, True), R);
+    Check((R.Pdf <> nil) and (Pos(WideChar(1), R.Pdf.InvoiceFileName) > 0), 'control character read');
+    Xml := ReportUtf8(R, 'a'#11'b.pdf');
+    CheckEqualsStr('', ReportSchemaErrors(Xml), 'control character: report valid');
+    Check(Pos(TLandrixXmlUtf8('name="a') + Fffd + TLandrixXmlUtf8('b.pdf"'), Xml) > 0, 'document name sanitized');
+    Check(Pos(TLandrixXmlUtf8('invoiceFileName="x') + Fffd + TLandrixXmlUtf8('.xml"'), Xml) > 0,
+      'file name sanitized');
+    Check(Pos(TLandrixXmlUtf8('sanitized="true"'), Xml) > 0, 'marked sanitized');
+    CheckValidationReport(R, 'control character');
+    { UTF-16: U+FFFE and a high surrogate without its partner }
+    ValidateBytes(DV, BuildHybridPdf(Bytes([$FE, $FF, $FF, $FE, $D8, $00, $00, Ord('.'), $00, Ord('x'), $00, Ord('m'),
+      $00, Ord('l')]), Invoice, Target, True), R);
+    Xml := ReportUtf8(R, '');
+    CheckEqualsStr('', ReportSchemaErrors(Xml), 'UTF-16: report valid');
+    Check((R.Pdf <> nil) and (Pos(WideChar($D800), R.Pdf.InvoiceFileName) > 0), 'UTF-16: lone surrogate read');
+    Check(Pos(TLandrixXmlUtf8('invoiceFileName="') + Fffd + Fffd + TLandrixXmlUtf8('.xml"'), Xml) > 0,
+      'UTF-16: file name sanitized');
+    CheckValidationReport(R, 'UTF-16');
+  finally
+    R.Free;
+    DV.Free;
+  end;
+end;
+
+{ The schema: a minor version may add attributes and trailing elements; the
+  enumerations, the major version and the six parts are fixed. }
+procedure TestReportSchema;
+var
+  R: TLandrixEInvoiceDocumentValidation;
+  Xml: TLandrixXmlUtf8;
+begin
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  try
+    Xml := ReportUtf8(R, '');
+  finally
+    R.Free;
+  end;
+  CheckEqualsStr('', ReportSchemaErrors(Xml), 'new result valid');
+  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.0"', '1" version="1.1" future="x"')),
+    'minor version with a new attribute');
+  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '</validationReport>',
+    '<future xmlns="urn:example:future"/></validationReport>')), 'minor version with a new element');
+  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '</parts>', '<future xmlns="urn:example:future"/></parts>')),
+    'minor version with a new element in parts');
+  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '</findings>',
+    '<future xmlns="urn:example:future"/></findings>')), 'minor version with a new element in findings');
+  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '</validationReport>', '<verdict>maybe</verdict></validationReport>')) <>
+    '', 'second verdict invalid');
+  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<part name="kosit"', '<part name="read"')) <> '',
+    'a part twice invalid');
+  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.0"', '1" version="2.0"')) <> '', 'major version 2 invalid');
+  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<verdict>incomplete</verdict>', '<verdict>maybe</verdict>')) <> '',
+    'unknown verdict invalid');
+  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<part name="read" status="notRun"/>', '')) <> '',
+    'five parts invalid');
+  Check(ReportSchemaErrors(ReplaceUtf8(Xml, 'status="notRun"', 'status="skipped"')) <> '', 'unknown status invalid');
+end;
+
 procedure Register;
 begin
   RegisterTest('Validator.Scenarios', TestScenarios);
@@ -1240,6 +1467,9 @@ begin
   RegisterTest('Validation.PdfCorpus', TestDocumentPdfCorpus);
   RegisterTest('Validation.KositSuite', TestDocumentKositSuite);
   RegisterTest('Validation.PdfKosit', TestDocumentPdfKosit);
+  RegisterTest('Validation.Report', TestDocumentReport);
+  RegisterTest('Validation.ReportSanitize', TestDocumentReportSanitize);
+  RegisterTest('Validation.ReportSchema', TestReportSchema);
 end;
 
 procedure RegisterLast;

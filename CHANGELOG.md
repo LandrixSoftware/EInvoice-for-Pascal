@@ -353,6 +353,16 @@ Supported invoice standards are documented per release.
   incomplete. Tests `Validation.Pdf`, `Validation.PdfKosit` and `Validation.PdfCorpus` (528 local PDFs).
   `TLandrixEInvoicePdfChecker.CheckStream` and the PDF object layer pass `EOutOfMemory` on instead of reporting
   LX-PDF-01.
+- Validation report as XML: internal unit `LandrixEInvoiceValidationReport` with
+  `TLandrixEInvoiceValidationReportWriter` (`DocumentName`, `WriteToStream`, `SaveToFile`); own format 1.0,
+  namespace `urn:landrix:einvoice:validation-report:1`, schema `schemas/landrix-einvoice-validation-report-1.xsd`
+  (closed enumerations, wildcards for additions of a minor version). The report holds the document, the
+  specification the library assigns, the verdict, every part with its status, the PDF facts and the flat list of
+  findings (counts without the predictions); no timestamp, so the same result gives the same bytes. Characters
+  XML does not allow are replaced by U+FFFD and marked `sanitized`. New: `ConfigurationName` of the result and
+  `Step` of a finding (KoSIT well-formedness, XML schema or Schematron). Every report written by the tests is
+  checked against the schema and read back; tests `Validation.Report` (golden reports in
+  `tests/data/validation-report/`), `Validation.ReportSanitize` and `Validation.ReportSchema`.
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

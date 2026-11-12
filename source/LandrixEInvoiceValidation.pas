@@ -92,6 +92,15 @@ type
     der scheiterte, ein Teil, der eine Ausnahme ausloeste). }
   TLandrixEInvoicePartStatus = (evr_NotRun, evr_Passed, evr_Failed, evr_Incomplete);
 
+  { The KoSIT step that reported a finding (well-formedness, XML schema,
+    Schematron); efs_None for every other finding, also for the KoSIT
+    findings of the validation itself (no scenario, a processing error).
+    DE: Der KoSIT-Schritt, der einen Befund gemeldet hat (Wohlgeformtheit,
+    XML-Schema, Schematron); efs_None fuer jeden anderen Befund, auch fuer
+    die KoSIT-Befunde der Pruefung selbst (kein Szenario, ein
+    Verarbeitungsfehler). }
+  TLandrixEInvoiceFindingStep = (efs_None, efs_Wellformedness, efs_XmlSchema, efs_Schematron);
+
   { One finding. RuleID: the KoSIT code (cvc-..., generic-error or the id
     of the assert or report), the rule identifier of the own rule check
     (e.g. BR-DE-15), for reading the kind of the diagnostic (e.g.
@@ -124,6 +133,7 @@ type
     FColumn: Integer;
     FText: TLandrixEInvoiceString;
     FPredicted: Boolean;
+    FStep: TLandrixEInvoiceFindingStep;
   public
     { The part that reported it. DE: Der Teil, der ihn gemeldet hat. }
     property Part: TLandrixEInvoiceValidationPart read FPart;
@@ -142,6 +152,9 @@ type
       DE: True fuer die Befunde der eigenen Regelpruefung: sie sagen
       voraus, was KoSIT melden wuerde, sie ersetzen es nicht. }
     property Predicted: Boolean read FPredicted;
+    { KoSIT: the step that reported it; efs_None otherwise.
+      DE: KoSIT: der Schritt, der ihn gemeldet hat; sonst efs_None. }
+    property Step: TLandrixEInvoiceFindingStep read FStep;
   end;
 
   { The result of a validation.
@@ -152,6 +165,7 @@ type
     FStatus: array[TLandrixEInvoiceValidationPart] of TLandrixEInvoicePartStatus;
     FFindings: TObjectList;
     FScenarioName: TLandrixEInvoiceString;
+    FConfigurationName: TLandrixEInvoiceString;
     FInfo: TLandrixEInvoiceDocumentInfo;
     FPdf: TLandrixEInvoicePdfCheckResult;
     function GetStatus(APart: TLandrixEInvoiceValidationPart): TLandrixEInvoicePartStatus;
@@ -192,6 +206,11 @@ type
     { The KoSIT scenario chosen, '' if none.
       DE: Das gewaehlte KoSIT-Szenario, '' wenn keines. }
     property ScenarioName: TLandrixEInvoiceString read FScenarioName;
+    { The name of the KoSIT configuration that ran (its scenarios/name, as
+      it was at the time of the run), '' without a KoSIT run.
+      DE: Der Name der KoSIT-Konfiguration, die lief (ihr scenarios/name,
+      wie er zur Zeit des Laufs war), '' ohne KoSIT-Lauf. }
+    property ConfigurationName: TLandrixEInvoiceString read FConfigurationName;
     { What reading found out (syntax, BT-24, specification); empty when the
       document could not be read, except for a PDF: Source eso_Pdf and
       PdfAttachmentName are always set (Pdf has the details).
@@ -307,6 +326,18 @@ begin
   end;
 end;
 
+function StepOf(AStep: TLandrixEInvoiceValidationStep): TLandrixEInvoiceFindingStep;
+begin
+  case AStep of
+    evs_Wellformedness:
+      Result := efs_Wellformedness;
+    evs_XmlSchema:
+      Result := efs_XmlSchema;
+  else
+    Result := efs_Schematron;
+  end;
+end;
+
 { --- TLandrixEInvoiceDocumentValidation ---------------------------------- }
 
 constructor TLandrixEInvoiceDocumentValidation.Create;
@@ -332,6 +363,7 @@ begin
     FStatus[P] := evr_NotRun;
   FFindings.Clear;
   FScenarioName := '';
+  FConfigurationName := '';
   FPdf.Free;
   FPdf := nil;
   Finalize(FInfo);
@@ -368,6 +400,7 @@ begin
   Result.FColumn := AColumn;
   Result.FText := AText;
   Result.FPredicted := (APart = evp_ModelCheck) and (ARuleID <> '');
+  Result.FStep := efs_None;
 end;
 
 { A part that raised: a document the facade cannot read fails reading;
@@ -495,13 +528,15 @@ begin
   try
     FOptions.Configuration.ValidateStream(AData, K);
     AResult.FScenarioName := K.ScenarioName;
+    AResult.FConfigurationName := FOptions.Configuration.Name;
     AWellFormed := True;
     for I := 0 to K.MessageCount - 1 do
     begin
       M := K[I];
       if M.Step = evs_Wellformedness then
         AWellFormed := False;
-      AResult.AddFinding(evp_KoSIT, M.Code, SeverityOf(M.EffectiveLevel), M.Location, M.Line, M.Column, M.Text);
+      AResult.AddFinding(evp_KoSIT, M.Code, SeverityOf(M.EffectiveLevel), M.Location, M.Line, M.Column,
+        M.Text).FStep := StepOf(M.Step);
     end;
     { KoSIT rejects without a message when no scenario is chosen (it
       chooses one when exactly one matches, whatever its name) }

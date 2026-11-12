@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EInvoice-for-Pascal: validation report, format version 1
+
+  Copyright (C) 2026 Landrix Software GmbH & Co. KG
+  SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
+
+  The report of TLandrixEInvoiceValidationReportWriter
+  (source/LandrixEInvoiceValidationReport.pas).
+
+  Versioning: the namespace carries the major version, the attribute
+  "version" of the root element the full format version (1.0, 1.1, ...).
+  A minor version only adds optional attributes, or optional elements at
+  the end of an element in another namespace than this one; this schema
+  already accepts both (the wildcards below). Elements of this namespace
+  cannot be added or repeated, so a report has one verdict, one text per
+  finding and so on. The enumerations are closed: a new value (a new part,
+  status, hybrid kind, ...) or a changed meaning is a new major version
+  with a new namespace. Consumers ignore what they do not know.
+
+  Empty values, line and column 0 and false flags are omitted, except
+  pdf/@factsChecked, which is always written.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:r="urn:landrix:einvoice:validation-report:1"
+    targetNamespace="urn:landrix:einvoice:validation-report:1"
+    elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+  <xs:element name="validationReport">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="generator" type="r:Generator"/>
+        <xs:element name="document" type="r:Document"/>
+        <xs:element name="verdict" type="r:Verdict"/>
+        <xs:element name="parts" type="r:Parts">
+          <!-- six parts, each name once: every part is there -->
+          <xs:unique name="partName">
+            <xs:selector xpath="r:part"/>
+            <xs:field xpath="@name"/>
+          </xs:unique>
+        </xs:element>
+        <xs:element name="pdf" type="r:Pdf" minOccurs="0"/>
+        <xs:element name="findings" type="r:Findings"/>
+        <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="version" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:pattern value="1\.[0-9]+"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:anyAttribute namespace="##any" processContents="lax"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- The library that wrote the report. -->
+  <xs:complexType name="Generator">
+    <xs:sequence>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="version" type="xs:string" use="required"/>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- The validated document: name as the caller gave it, where the invoice
+       came from and what reading found out (root element, syntax, BT-24,
+       BT-23). specification: only when the library knows BT-24. -->
+  <xs:complexType name="Document">
+    <xs:sequence>
+      <xs:element name="specification" type="r:Specification" minOccurs="0"/>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="source" type="r:Source" use="required"/>
+    <xs:attribute name="rootName" type="xs:string"/>
+    <xs:attribute name="syntax" type="r:Syntax"/>
+    <xs:attribute name="customizationId" type="xs:string"/>
+    <xs:attribute name="profileId" type="xs:string"/>
+    <xs:attribute name="sanitized" type="xs:boolean"/>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- The specification the library assigns to BT-24. version is the
+       version of the target (e.g. 3.0), libraryRelease the exact release the
+       library is built for, not the one of the sender. -->
+  <xs:complexType name="Specification">
+    <xs:sequence>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="standard" type="r:Standard" use="required"/>
+    <xs:attribute name="syntax" type="r:Syntax" use="required"/>
+    <xs:attribute name="profile" type="r:Profile"/>
+    <xs:attribute name="version" type="xs:string"/>
+    <xs:attribute name="libraryRelease" type="xs:string"/>
+    <xs:attribute name="usesExtension" type="xs:boolean"/>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- Every part once (the unique constraint on parts), written in this
+       order: read, kosit, modelCheck, pdfEmbedding, pdfMetadata, pdfA. kosit
+       carries the configuration and the scenario. -->
+  <xs:complexType name="Parts">
+    <xs:sequence>
+      <xs:element name="part" type="r:Part" minOccurs="6" maxOccurs="6"/>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <xs:complexType name="Part">
+    <xs:sequence>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="r:PartName" use="required"/>
+    <xs:attribute name="status" type="r:Status" use="required"/>
+    <xs:attribute name="configuration" type="xs:string"/>
+    <xs:attribute name="scenario" type="xs:string"/>
+    <xs:attribute name="sanitized" type="xs:boolean"/>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- PDF only: what the PDF checker found, as written in the PDF. profile
+       only when factsChecked (derived from the invoice); xmpPdfaPart and
+       xmpPdfaConformance are what the XMP claims, not a PDF/A check. -->
+  <xs:complexType name="Pdf">
+    <xs:sequence>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="hybridKind" type="r:HybridKind" use="required"/>
+    <xs:attribute name="factsChecked" type="xs:boolean" use="required"/>
+    <xs:attribute name="profile" type="r:Profile"/>
+    <xs:attribute name="pdfVersion" type="xs:string"/>
+    <xs:attribute name="catalogVersion" type="xs:string"/>
+    <xs:attribute name="invoiceFileName" type="xs:string"/>
+    <xs:attribute name="invoicePath" type="xs:string"/>
+    <xs:attribute name="relationship" type="xs:string"/>
+    <xs:attribute name="xmpDocumentType" type="xs:string"/>
+    <xs:attribute name="xmpDocumentFileName" type="xs:string"/>
+    <xs:attribute name="xmpVersion" type="xs:string"/>
+    <xs:attribute name="xmpConformanceLevel" type="xs:string"/>
+    <xs:attribute name="xmpPdfaPart" type="xs:string"/>
+    <xs:attribute name="xmpPdfaConformance" type="xs:string"/>
+    <xs:attribute name="sanitized" type="xs:boolean"/>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- The findings in the order of the result. errors, warnings, infos count
+       the findings that are not predicted; predicted counts the others. -->
+  <xs:complexType name="Findings">
+    <xs:sequence>
+      <xs:element name="finding" type="r:Finding" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="errors" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="warnings" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="infos" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="predicted" type="xs:nonNegativeInteger" use="required"/>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- rule: KoSIT code or assert id, rule of the own check or the PDF
+       checker, kind of a reading diagnostic; absent for a finding of the
+       validation itself. step: KoSIT only. positionIn: what line and column
+       count in (the invoice XML, or the XMP packet for level 3 findings).
+       predicted: a finding of the own rule check. sanitized: a character
+       not allowed in XML was replaced by U+FFFD in a value of this
+       finding. -->
+  <xs:complexType name="Finding">
+    <xs:sequence>
+      <xs:element name="location" type="xs:string" minOccurs="0"/>
+      <xs:element name="text" type="xs:string"/>
+      <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="part" type="r:PartName" use="required"/>
+    <xs:attribute name="rule" type="xs:string"/>
+    <xs:attribute name="severity" type="r:Severity" use="required"/>
+    <xs:attribute name="step" type="r:Step"/>
+    <xs:attribute name="predicted" type="xs:boolean"/>
+    <xs:attribute name="line" type="xs:positiveInteger"/>
+    <xs:attribute name="column" type="xs:positiveInteger"/>
+    <xs:attribute name="positionIn" type="r:PositionIn"/>
+    <xs:attribute name="sanitized" type="xs:boolean"/>
+    <xs:anyAttribute namespace="##any" processContents="lax"/>
+  </xs:complexType>
+
+  <xs:simpleType name="Verdict">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="accepted"/>
+      <xs:enumeration value="rejected"/>
+      <xs:enumeration value="incomplete"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PartName">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="read"/>
+      <xs:enumeration value="kosit"/>
+      <xs:enumeration value="modelCheck"/>
+      <xs:enumeration value="pdfEmbedding"/>
+      <xs:enumeration value="pdfMetadata"/>
+      <xs:enumeration value="pdfA"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Status">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="notRun"/>
+      <xs:enumeration value="passed"/>
+      <xs:enumeration value="failed"/>
+      <xs:enumeration value="incomplete"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Severity">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="info"/>
+      <xs:enumeration value="warning"/>
+      <xs:enumeration value="error"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Step">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="wellformedness"/>
+      <xs:enumeration value="xmlSchema"/>
+      <xs:enumeration value="schematron"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PositionIn">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="invoice"/>
+      <xs:enumeration value="xmp"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Source">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="xml"/>
+      <xs:enumeration value="pdf"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Syntax">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ubl"/>
+      <xs:enumeration value="cii"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Standard">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="xrechnung"/>
+      <xs:enumeration value="facturX"/>
+      <xs:enumeration value="peppolBis"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Profile">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="minimum"/>
+      <xs:enumeration value="basicWL"/>
+      <xs:enumeration value="basic"/>
+      <xs:enumeration value="en16931"/>
+      <xs:enumeration value="extended"/>
+      <xs:enumeration value="xrechnung"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="HybridKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="none"/>
+      <xs:enumeration value="facturX"/>
+      <xs:enumeration value="xrechnung"/>
+      <xs:enumeration value="zugferd20"/>
+      <xs:enumeration value="zugferd10"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

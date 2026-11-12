@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<validationReport xmlns="urn:landrix:einvoice:validation-report:1" version="1.0">
+  <generator name="EInvoice-for-Pascal" version="@VERSION@"/>
+  <document name="invoice.xml" source="xml" rootName="Invoice" syntax="ubl" customizationId="urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" profileId="urn:fdc:peppol.eu:2017:poacc:billing:01:1.0">
+    <specification standard="xrechnung" syntax="ubl" version="3.0" libraryRelease="3.0.2"/>
+  </document>
+  <verdict>incomplete</verdict>
+  <parts>
+    <part name="read" status="passed"/>
+    <part name="kosit" status="notRun"/>
+    <part name="modelCheck" status="failed"/>
+    <part name="pdfEmbedding" status="notRun"/>
+    <part name="pdfMetadata" status="notRun"/>
+    <part name="pdfA" status="notRun"/>
+  </parts>
+  <findings errors="0" warnings="0" infos="0" predicted="1">
+    <finding part="modelCheck" rule="BR-DE-15" severity="error" predicted="true">
+      <location>BT-10</location>
+      <text>the buyer reference (BT-10) shall be provided</text>
+    </finding>
+  </findings>
+</validationReport>
