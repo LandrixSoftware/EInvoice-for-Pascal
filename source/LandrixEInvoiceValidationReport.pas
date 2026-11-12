@@ -19,7 +19,8 @@
   verdict, every part with its status, the PDF facts and the flat list of
   findings. No timestamp: the same result gives the same bytes. A character
   that XML does not allow (from a broken document, a PDF name) is replaced
-  by U+FFFD and the element is marked sanitized, so the report never fails
+  by U+FFFD (LandrixEInvoiceReportSanitize) and the element is marked
+  sanitized, so the report never fails
   because of the document it describes.
   DE: Schreibt das Ergebnis einer Pruefung (LandrixEInvoiceValidation) als
   XML-Bericht im Format 1.0, Namespace
@@ -28,8 +29,8 @@
   Urteil, jeden Teil mit seinem Status, die PDF-Fakten und die flache
   Befundliste. Kein Zeitstempel: dasselbe Ergebnis ergibt dieselben Bytes.
   Ein Zeichen, das XML nicht erlaubt (aus einem kaputten Dokument, einem
-  PDF-Namen), wird durch U+FFFD ersetzt und das Element als sanitized
-  markiert; der Bericht scheitert so nie an dem Dokument, das er
+  PDF-Namen), wird durch U+FFFD ersetzt (LandrixEInvoiceReportSanitize) und
+  das Element als sanitized markiert; der Bericht scheitert so nie an dem Dokument, das er
   beschreibt. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
@@ -75,17 +76,6 @@ type
     property DocumentName: TLandrixEInvoiceString read FDocumentName write FDocumentName;
   end;
 
-{ S with every character XML 1.0 does not allow (control characters other
-  than TAB, LF, CR; U+FFFE, U+FFFF; a surrogate without its partner)
-  replaced by U+FFFD; ASanitized becomes True if one was replaced. Also
-  used by the HTML report (LandrixEInvoiceValidationHtml).
-  DE: S, in dem jedes Zeichen, das XML 1.0 nicht erlaubt
-  (Steuerzeichen ausser TAB, LF, CR; U+FFFE, U+FFFF; ein Surrogat ohne
-  Partner), durch U+FFFD ersetzt ist; ASanitized wird True, wenn eines
-  ersetzt wurde. Auch fuer den HTML-Bericht
-  (LandrixEInvoiceValidationHtml). }
-function LandrixEInvoiceReportSanitize(const S: TLandrixEInvoiceString; var ASanitized: Boolean): TLandrixEInvoiceString;
-
 implementation
 
 uses
@@ -94,7 +84,8 @@ uses
   LandrixXmlWriter,
   LandrixEInvoiceDiagnostics,
   LandrixEInvoice,
-  LandrixEInvoicePdfCheck;
+  LandrixEInvoicePdfCheck,
+  LandrixEInvoiceReportHtml;
 
 const
   ReportNamespace = 'urn:landrix:einvoice:validation-report:1';
@@ -116,32 +107,6 @@ const
     'en16931', 'extended', 'xrechnung');
   HybridKindNames: array[TLandrixEInvoicePdfHybridKind] of TLandrixXmlUtf8 = ('none', 'facturX', 'xrechnung',
     'zugferd20', 'zugferd10');
-
-function LandrixEInvoiceReportSanitize(const S: TLandrixEInvoiceString; var ASanitized: Boolean): TLandrixEInvoiceString;
-var
-  I, N: Integer;
-  C: Cardinal;
-begin
-  Result := S;
-  N := Length(S);
-  I := 1;
-  while I <= N do
-  begin
-    C := Ord(S[I]);
-    if (C >= $D800) and (C <= $DBFF) and (I < N) and (Ord(S[I + 1]) >= $DC00) and (Ord(S[I + 1]) <= $DFFF) then
-      Inc(I, 2)
-    else
-    begin
-      if not ((C = 9) or (C = 10) or (C = 13) or ((C >= $20) and (C <= $D7FF)) or
-              ((C >= $E000) and (C <= $FFFD))) then
-      begin
-        Result[I] := WideChar($FFFD);
-        ASanitized := True;
-      end;
-      Inc(I);
-    end;
-  end;
-end;
 
 { An attribute with a value from outside (cleaned); omitted when empty. }
 procedure TextAttribute(W: TLandrixXmlWriter; const AName: TLandrixXmlUtf8; const AValue: TLandrixEInvoiceString;

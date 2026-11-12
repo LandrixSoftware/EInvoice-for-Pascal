@@ -20,7 +20,8 @@
   English or German; the texts of the findings stay as the rule sets
   write them. No timestamp: the same result gives the same bytes.
   Characters XML does not allow are replaced by U+FFFD
-  (LandrixEInvoiceReportSanitize) and the page says so.
+  (LandrixEInvoiceReportSanitize, LandrixEInvoiceReportHtml) and the page
+  says so.
   DE: Schreibt das Ergebnis einer Pruefung (LandrixEInvoiceValidation) als
   eine HTML-Seite zum Lesen und Drucken: das Urteil, das Dokument, jeden
   Teil mit seinem Status, die PDF-Fakten und die Befunde in der
@@ -30,7 +31,8 @@
   Texte der Befunde bleiben, wie die Regelwerke sie schreiben. Kein
   Zeitstempel: dasselbe Ergebnis ergibt dieselben Bytes. Zeichen, die XML
   nicht erlaubt, werden durch U+FFFD ersetzt
-  (LandrixEInvoiceReportSanitize), und die Seite sagt es. }
+  (LandrixEInvoiceReportSanitize, LandrixEInvoiceReportHtml), und die Seite
+  sagt es. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -46,13 +48,10 @@ interface
 uses
   Classes,
   LandrixEInvoiceTypes,
+  LandrixEInvoiceReportHtml,
   LandrixEInvoiceValidation;
 
 type
-  { The language of the labels of a report.
-    DE: Die Sprache der Beschriftungen eines Berichts. }
-  TLandrixEInvoiceReportLanguage = (eln_English, eln_German);
-
   { Writes validation reports as HTML.
     DE: Schreibt Pruefberichte als HTML. }
   TLandrixEInvoiceValidationHtmlWriter = class(TObject)
@@ -85,11 +84,9 @@ implementation
 
 uses
   SysUtils,
-  LandrixXmlBase,
   LandrixEInvoiceDiagnostics,
   LandrixEInvoice,
-  LandrixEInvoicePdfCheck,
-  LandrixEInvoiceValidationReport;
+  LandrixEInvoicePdfCheck;
 
 type
   TLabel = (lbTitle, lbVerdict, lbDocument, lbName, lbSource, lbRootName, lbSyntax, lbCustomizationId,
@@ -185,21 +182,11 @@ const
     '@media print{body{margin:0;max-width:none}.verdict{border:1px solid #888}}';
 
 type
-  { the page under construction, UTF-8 in memory }
-  TPage = class(TObject)
-  private
-    FOut: TMemoryStream;
-    FLanguage: TLandrixEInvoiceReportLanguage;
-    FSanitized: Boolean;
+  { the page under construction, with the labels of this report }
+  TPage = class(TLandrixEInvoiceHtmlBuilder)
   public
-    constructor Create(AOut: TMemoryStream; ALanguage: TLandrixEInvoiceReportLanguage);
-    { trusted HTML, written as it is }
-    procedure Raw(const S: AnsiString);
     { a label in the page's language }
     procedure Lbl(ALabel: TLabel);
-    { text from outside: sanitized and escaped }
-    procedure Text(const S: TLandrixEInvoiceString);
-    procedure Int(AValue: Integer);
     { "1 error", "2 errors" }
     procedure Count(AValue: Integer; AOne, AMany: TLabel);
     { a row of a facts table; omitted when AValue is empty }
@@ -207,94 +194,9 @@ type
     procedure FactRaw(ALabel: TLabel; const AHtml: AnsiString);
   end;
 
-constructor TPage.Create(AOut: TMemoryStream; ALanguage: TLandrixEInvoiceReportLanguage);
-begin
-  inherited Create;
-  FOut := AOut;
-  FLanguage := ALanguage;
-end;
-
-procedure TPage.Raw(const S: AnsiString);
-begin
-  if S <> '' then
-    FOut.WriteBuffer(PAnsiChar(S)^, Length(S));
-end;
-
 procedure TPage.Lbl(ALabel: TLabel);
 begin
-  Raw(Labels[FLanguage, ALabel]);
-end;
-
-{ the replacement of C in text, '' if C stays; CR becomes a reference, or
-  parsers and browsers would turn it into LF }
-function EscapeOf(C: WideChar): AnsiString;
-begin
-  case C of
-    '&':
-      Result := '&amp;';
-    '<':
-      Result := '&lt;';
-    '>':
-      Result := '&gt;';
-    '"':
-      Result := '&quot;';
-    #13:
-      Result := '&#13;';
-  else
-    Result := '';
-  end;
-end;
-
-procedure TPage.Text(const S: TLandrixEInvoiceString);
-var
-  Clean, Escaped: TLandrixEInvoiceString;
-  Utf8: TLandrixXmlUtf8;
-  Rep: AnsiString;
-  I, J, K, N: Integer;
-begin
-  Clean := LandrixEInvoiceReportSanitize(S, FSanitized);
-  { the length first, then one string: appending per character would copy
-    the whole text each time (quadratic for long finding texts) }
-  N := 0;
-  for I := 1 to Length(Clean) do
-  begin
-    Rep := EscapeOf(Clean[I]);
-    if Rep = '' then
-      Inc(N)
-    else
-      Inc(N, Length(Rep));
-  end;
-  if N = Length(Clean) then
-    Escaped := Clean
-  else
-  begin
-    Escaped := '';
-    SetLength(Escaped, N);
-    J := 1;
-    for I := 1 to Length(Clean) do
-    begin
-      Rep := EscapeOf(Clean[I]);
-      if Rep = '' then
-      begin
-        Escaped[J] := Clean[I];
-        Inc(J);
-      end
-      else
-        for K := 1 to Length(Rep) do
-        begin
-          Escaped[J] := WideChar(Ord(Rep[K]));
-          Inc(J);
-        end;
-    end;
-  end;
-  Utf8 := LandrixEInvoiceStringToUtf8(Escaped);
-  if Utf8 <> '' then
-    FOut.WriteBuffer(PAnsiChar(Utf8)^, Length(Utf8));
-end;
-
-procedure TPage.Int(AValue: Integer);
-begin
-  Text(TLandrixEInvoiceString(IntToStr(AValue)));
+  Raw(Labels[Language, ALabel]);
 end;
 
 procedure TPage.Count(AValue: Integer; AOne, AMany: TLabel);
@@ -337,7 +239,7 @@ begin
   P.Raw('<section><h2>');
   P.Lbl(lbDocument);
   P.Raw('</h2>'#10'<table class="facts">'#10);
-  P.FactRaw(lbSource, SourceLabels[P.FLanguage, Info.Source]);
+  P.FactRaw(lbSource, SourceLabels[P.Language, Info.Source]);
   P.Fact(lbRootName, Info.RootName);
   P.FactRaw(lbSyntax, SyntaxNames[Info.Syntax]);
   P.Fact(lbCustomizationId, Info.CustomizationID);
@@ -362,7 +264,7 @@ begin
     P.Raw(' (' + SyntaxNames[Info.Spec.Target.Syntax] + ')</td></tr>'#10);
     P.Fact(lbLibraryRelease, Info.Spec.ExactVersion);
     if Info.UsesExtension then
-      P.FactRaw(lbUsesExtension, Labels[P.FLanguage, lbYes]);
+      P.FactRaw(lbUsesExtension, Labels[P.Language, lbYes]);
   end;
   P.Raw('</table></section>'#10);
 end;
@@ -385,9 +287,9 @@ begin
   begin
     Status := AResult.Status[Part];
     P.Raw('<tr><td>');
-    P.Raw(PartLabels[P.FLanguage, Part]);
+    P.Raw(PartLabels[P.Language, Part]);
     P.Raw('</td><td class="s-' + StatusClasses[Status] + '">');
-    P.Raw(StatusLabels[P.FLanguage, Status]);
+    P.Raw(StatusLabels[P.Language, Status]);
     P.Raw('</td><td>');
     if Part = evp_KoSIT then
     begin
@@ -416,14 +318,14 @@ begin
   P.Raw('<section><h2>');
   P.Lbl(lbPdf);
   P.Raw('</h2>'#10'<table class="facts">'#10);
-  P.FactRaw(lbHybridKind, HybridKindLabels[P.FLanguage, APdf.HybridKind]);
+  P.FactRaw(lbHybridKind, HybridKindLabels[P.Language, APdf.HybridKind]);
   if APdf.FactsChecked then
   begin
-    P.FactRaw(lbFactsChecked, Labels[P.FLanguage, lbYes]);
+    P.FactRaw(lbFactsChecked, Labels[P.Language, lbYes]);
     P.FactRaw(lbProfile, ProfileNames[APdf.Profile]);
   end
   else
-    P.FactRaw(lbFactsChecked, Labels[P.FLanguage, lbNo]);
+    P.FactRaw(lbFactsChecked, Labels[P.Language, lbNo]);
   P.Fact(lbPdfVersion, APdf.PdfVersion);
   P.Fact(lbCatalogVersion, APdf.CatalogVersion);
   P.Fact(lbInvoiceFile, APdf.InvoiceFileName);
@@ -512,16 +414,16 @@ begin
       P.Raw('<tr class="predicted"><td>')
     else
       P.Raw('<tr><td>');
-    P.Raw(PartLabels[P.FLanguage, F.Part]);
+    P.Raw(PartLabels[P.Language, F.Part]);
     if F.Step <> efs_None then
     begin
       P.Raw('<br/>');
       P.Lbl(lbStep);
       P.Raw(': ');
-      P.Raw(StepLabels[P.FLanguage, F.Step]);
+      P.Raw(StepLabels[P.Language, F.Step]);
     end;
     P.Raw('</td><td class="sev-' + SeverityClasses[F.Severity] + '">');
-    P.Raw(SeverityLabels[P.FLanguage, F.Severity]);
+    P.Raw(SeverityLabels[P.Language, F.Severity]);
     if F.Predicted then
     begin
       P.Raw(' (');
@@ -610,7 +512,7 @@ begin
       WritePdf(P, AResult.Pdf);
     WriteFindings(P, AResult);
     P.Raw('<footer>');
-    if P.FSanitized then
+    if P.Sanitized then
     begin
       P.Raw('<p class="note">');
       P.Lbl(lbSanitizedNote);

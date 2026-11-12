@@ -28,7 +28,7 @@ uses
   LandrixXmlBase,
   LandrixEInvoiceTypes,
   LandrixEInvoiceValidation,
-  LandrixEInvoiceValidationHtml;
+  LandrixEInvoiceReportHtml;
 
 { The HTML page of AResult with ADocumentName in ALanguage as UTF-8. }
 function HtmlUtf8(AResult: TLandrixEInvoiceDocumentValidation; const ADocumentName: TLandrixEInvoiceString;
@@ -68,6 +68,7 @@ uses
   LandrixEInvoiceDiagnostics,
   LandrixEInvoice,
   LandrixEInvoiceValidationReport,
+  LandrixEInvoiceValidationHtml,
   LandrixEInvoiceTestFramework;
 
 const

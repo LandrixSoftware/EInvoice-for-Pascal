@@ -65,6 +65,7 @@ uses
   LandrixEInvoiceValidation,
   LandrixEInvoiceValidationReport,
   LandrixEInvoiceValidationHtml,
+  LandrixEInvoiceReportHtml,
   LandrixEInvoicePdfCheck,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestCheck,
