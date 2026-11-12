@@ -1,5 +1,17 @@
 {
-  "comment": "Labels of the fields of TLandrixInvoice for rendering invoices; own wording (not the EN 16931 term names). 'fields': text per class field (also the heading of an object or list field). 'paths': per model path the business term that applies there ('bt'; several joined with '/' when the content decides, e.g. allowance or charge; '' for none), a reason ('why') when that term is not named in the model comment of the field, and optionally other texts. gen-render-labels.py fails on a missing text, an ambiguous or malformed term, a term outside the model comment without a reason, or a stale entry.",
+  "comment": "Labels of the fields of TLandrixInvoice for rendering invoices; own wording (not the EN 16931 term names). 'sections': the sections of the rendered page in page order, each with its heading and the path prefixes it shows (the longest matching prefix wins; a prefix ending in '*' matches any path starting with the text before it). 'fields': text per class field (also the heading of an object or list field). 'paths': per model path the business term that applies there ('bt'; several joined with '/' when the content decides, e.g. allowance or charge; '' for none), a reason ('why') when that term is not named in the model comment of the field, and optionally other texts. gen-render-labels.py fails on a missing text, an ambiguous or malformed term, a term outside the model comment without a reason, a stale entry, or a path in no section or a prefix that matches no path.",
+  "sections": {
+    "header": {"en": "Invoice details", "de": "Rechnungsangaben", "paths": ["ProfileID", "TestIndicator", "InvoiceNumber", "DocumentName", "InvoiceIssueDate", "InvoiceDueDate", "InvoicePeriodStartDate", "InvoicePeriodEndDate", "InvoiceTypeCode", "InvoiceTypeCodeOther", "InvoiceCurrencyCode", "TaxCurrencyCode", "TaxPointDate", "TaxPointDateCode", "BuyerReference"]},
+    "parties": {"en": "Parties", "de": "Beteiligte", "paths": ["AccountingSupplierParty", "AccountingCustomerParty", "InvoiceeParty", "PayeeParty", "TaxRepresentativeParty", "DeliveryInformation"]},
+    "references": {"en": "References", "de": "Bez\u00fcge", "paths": ["SellerOrderReference", "SellerOrderReferenceDate", "PurchaseOrderReference", "PurchaseOrderReferenceDate", "ContractDocumentReference", "ProjectReference", "ReceiptDocumentReference", "DeliveryReceiptNumber", "DeliveryReceiptDate", "DeliveryReceiptNumberExtended", "DeliveryReceiptDateExtended", "BuyerAccountingReference", "PrecedingInvoiceReferences"]},
+    "lines": {"en": "Invoice lines", "de": "Rechnungspositionen", "paths": ["InvoiceLines"]},
+    "allowances": {"en": "Allowances and charges", "de": "Abschl\u00e4ge und Zuschl\u00e4ge", "paths": ["AllowanceCharges"]},
+    "vat": {"en": "VAT breakdown", "de": "Umsatzsteueraufschl\u00fcsselung", "paths": ["TaxAmountSubtotals"]},
+    "totals": {"en": "Totals", "de": "Summen", "paths": ["LineAmount", "AllowanceTotalAmount", "ChargeTotalAmount", "TaxExclusiveAmount", "TaxAmountTotal", "TaxAmountTotalInTaxCurrency", "TaxInclusiveAmount", "PrepaidAmount", "PrepaidPayments", "PayableRoundingAmount", "PayableAmount"]},
+    "payment": {"en": "Payment", "de": "Zahlung", "paths": ["PaymentID", "PaymentTypes", "PaymentMandateID", "AccountingSupplierParty.BankAssignedCreditorIdentifier", "PaymentTerm*"]},
+    "notes": {"en": "Notes", "de": "Bemerkungen", "paths": ["Notes"]},
+    "attachments": {"en": "Supporting documents", "de": "Rechnungsbegr\u00fcndende Unterlagen", "paths": ["Attachments"]}
+  },
   "fields": {
     "TLandrixInvoice.ProfileID": {"en": "Business process", "de": "Gesch\u00e4ftsprozess"},
     "TLandrixInvoice.TestIndicator": {"en": "Test invoice", "de": "Testrechnung"},

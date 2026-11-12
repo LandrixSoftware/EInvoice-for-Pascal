@@ -54,6 +54,8 @@ procedure CheckValidationReport(AResult: TLandrixEInvoiceDocumentValidation; con
   @VERSION@ for the library version); on a difference the report is written
   to reports/ next to the test program. Also for HTML pages. }
 procedure CheckGoldenReport(const AXml: TLandrixXmlUtf8; const AFile: string);
+{ The same for the golden file AFile in tests/data/<AFolder>/. }
+procedure CheckGoldenFile(const AXml: TLandrixXmlUtf8; const AFolder, AFile: string);
 
 implementation
 
@@ -438,12 +440,17 @@ begin
 end;
 
 procedure CheckGoldenReport(const AXml: TLandrixXmlUtf8; const AFile: string);
+begin
+  CheckGoldenFile(AXml, 'validation-report', AFile);
+end;
+
+procedure CheckGoldenFile(const AXml: TLandrixXmlUtf8; const AFolder, AFile: string);
 var
   Golden, OutDir: string;
   Expected, Actual: AnsiString;
   P: Integer;
 begin
-  Golden := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'validation-report' + PathDelim + AFile;
+  Golden := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + AFolder + PathDelim + AFile;
   Actual := '';
   SetLength(Actual, Length(AXml));
   if AXml <> '' then

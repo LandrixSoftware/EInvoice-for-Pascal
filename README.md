@@ -86,6 +86,7 @@ its level in a comment before its `unit` line (`API: stable` or `API: internal`)
 - **Internal** (may change in any release): `LandrixEInvoiceMapCII`, `LandrixEInvoiceMapUBL`,
   `LandrixEInvoiceCheck`, `LandrixEInvoiceCheckPeppol`, `LandrixEInvoiceIdentifiers`, `LandrixEInvoiceValidator`,
   `LandrixEInvoiceValidation`, `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceReportHtml`, `LandrixEInvoiceCodeNames`, `LandrixEInvoiceRenderLabels`,
+  `LandrixEInvoiceRender`, `LandrixEInvoiceRenderHtml`,
   `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceSubLines`, `LandrixEInvoicePdfObjects`, `LandrixEInvoicePdfCheck`, `LandrixEInvoiceLexical`, `LandrixEInvoiceFiles`,
   `LandrixEInvoiceCIIProfiles`, `LandrixEInvoiceCIICodeRules`, and the
   readers and writers `LandrixEInvoiceCIIReader`, `LandrixEInvoiceCIIWriter`,

@@ -1,0 +1,5 @@
+# Fields of TLandrixInvoice the rendered page does not show, checked by the test
+# Render.Mutations (tests/LandrixEInvoiceTestRender.pas): one line per field,
+# '<path> <reason>', the path as in LandrixEInvoiceRenderLabels (lists with [],
+# sub lines use the paths of a line; a list count as '<list path>.Count').
+# An entry that no mutation uses fails the test.

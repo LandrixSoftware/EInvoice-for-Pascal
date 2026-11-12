@@ -3,13 +3,17 @@
 and the interface of source/LandrixEInvoiceInvoice.pas: one member of
 TLandrixEInvoiceRenderField per model path (fields of the root class and of the
 objects and list items below it; the sub lines of a line reuse the paths of the
-line), with its label in English and German, its business term and its path.
+line), with its label in English and German, its business term, its path and
+the section of the rendered page that shows it (TLandrixEInvoiceRenderSection,
+from 'sections' in labels.json).
 
 Checks (exit 2): every path ends up with a text in both languages; no stale
 entry in 'fields' or 'paths'; a path whose model comment names several terms
 gets its term from a 'paths' entry; a term is '' or BT-/BG- identifiers joined
 with '/'; a term in 'paths' that the model comment of the field does not name
-needs a reason ('why'), and a reason without such a term is an error.
+needs a reason ('why'), and a reason without such a term is an error; every
+path is in exactly one section (longest matching prefix), every prefix of a
+section matches a path, every section has a heading in both languages.
 
 Usage:
   python tools/render/gen-render-labels.py           write the unit
@@ -102,6 +106,64 @@ def member(path):
     return "erf_" + path.replace("[]", "").replace(".", "_")
 
 
+SECTION_KEY = re.compile(r"^[a-z]+$")
+
+
+def prefix_matches(prefix, path):
+    """A prefix matches the path itself and everything below it (after '.' or
+    '[]'); a prefix ending in '*' matches any path starting with the text
+    before the '*'."""
+    if prefix.endswith("*"):
+        return path.startswith(prefix[:-1])
+    return path == prefix or path.startswith(prefix + ".") or path.startswith(prefix + "[]")
+
+
+def sections_of(data, paths):
+    """[(key, en, de)] in page order and {path: key}; fails on a path in no
+    section, a prefix without a path, two prefixes of the same length."""
+    raw = data.get("sections")
+    if not raw:
+        fail("labels.json: 'sections' missing")
+    order = []
+    prefixes = []
+    for key, entry in raw.items():
+        if not SECTION_KEY.match(key):
+            fail("labels.json: bad section key %r (lower-case letters only)" % key)
+        for k in entry:
+            if k not in ("en", "de", "paths"):
+                fail("labels.json: unknown key %r in section %r" % (k, key))
+        if not entry.get("en", "").strip() or not entry.get("de", "").strip():
+            fail("labels.json: section %r needs 'en' and 'de'" % key)
+        if not entry.get("paths"):
+            fail("labels.json: section %r without paths" % key)
+        order.append((key, entry["en"], entry["de"]))
+        for prefix in entry["paths"]:
+            if any(prefix == q for q, _ in prefixes):
+                fail("labels.json: prefix %r in two sections" % prefix)
+            prefixes.append((prefix, key))
+    assigned = {}
+    for path in paths:
+        best = None
+        for prefix, key in prefixes:
+            if prefix_matches(prefix, path):
+                n = len(prefix.rstrip("*"))
+                if best is not None and best[0] == n:
+                    fail("labels.json: path %r matches %r and %r" % (path, best[1], prefix))
+                if best is None or n > best[0]:
+                    best = (n, prefix, key)
+        if best is None:
+            fail("labels.json: path %r is in no section" % path)
+        assigned[path] = best[2]
+    for prefix, key in prefixes:
+        if not any(prefix_matches(prefix, path) for path in paths):
+            fail("labels.json: prefix %r of section %r matches no path" % (prefix, key))
+    return order, assigned
+
+
+def section_member(key):
+    return "ers_" + key[0].upper() + key[1:]
+
+
 def build():
     g = model_parser()
     classes, lists = g.parse(io.open(g.MODEL, encoding="utf-8").read())
@@ -162,7 +224,10 @@ def build():
     for path in overrides:
         if path not in known:
             fail("labels.json: stale path %r" % path)
-    return rows
+    order, assigned = sections_of(data, [r["path"] for r in rows])
+    for r in rows:
+        r["section"] = assigned[r["path"]]
+    return rows, order
 
 
 HEADER = """{
@@ -186,8 +251,9 @@ HEADER = """{
   model path (the sub lines of a line use the members of the line), with a
   label in English and German (own wording, not the EN 16931 term names),
   the business term that applies on that path ('' if none; several joined
-  with '/' when the content decides, e.g. allowance or charge) and the path
-  itself (e.g. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity).
+  with '/' when the content decides, e.g. allowance or charge), the path
+  itself (e.g. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity)
+  and the section of the page that shows it.
 
   DE: ERZEUGT von tools/render/gen-render-labels.py - nicht von Hand aendern.
   tools/render/labels.json (oder das Modell) aendern und den Generator erneut
@@ -198,8 +264,9 @@ HEADER = """{
   Position), mit einer Beschriftung englisch und deutsch (eigene
   Formulierungen, nicht die Begriffsnamen der EN 16931), dem Geschaeftsbegriff,
   der auf diesem Pfad gilt ('' wenn keiner; mehrere mit '/' verbunden, wenn
-  der Inhalt entscheidet, z. B. Abschlag oder Zuschlag) und dem Pfad selbst
-  (z. B. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity). }
+  der Inhalt entscheidet, z. B. Abschlag oder Zuschlag), dem Pfad selbst
+  (z. B. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity) und
+  dem Abschnitt der Seite, der es zeigt. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -217,6 +284,13 @@ uses
   LandrixEInvoiceReportHtml;
 
 type
+  { The sections of a rendered invoice, in page order.
+    DE: Die Abschnitte einer dargestellten Rechnung, in der Reihenfolge der
+    Seite. }
+  TLandrixEInvoiceRenderSection = (
+@SECTIONS@
+  );
+
   { One member per model path, in model order.
     DE: Ein Wert je Modellpfad, in der Reihenfolge des Modells. }
   TLandrixEInvoiceRenderField = ("""
@@ -232,6 +306,17 @@ function LandrixEInvoiceRenderFieldBT(AField: TLandrixEInvoiceRenderField): TLan
 { The model path of AField, e.g. InvoiceLines[].Quantity.
   DE: Der Modellpfad von AField, z. B. InvoiceLines[].Quantity. }
 function LandrixEInvoiceRenderFieldPath(AField: TLandrixEInvoiceRenderField): TLandrixEInvoiceString;
+{ The section of the page that shows AField.
+  DE: Der Abschnitt der Seite, der AField zeigt. }
+function LandrixEInvoiceRenderFieldSection(AField: TLandrixEInvoiceRenderField): TLandrixEInvoiceRenderSection;
+{ The key of ASection as the page marks it (data-section), e.g. 'parties'.
+  DE: Der Schluessel von ASection, mit dem die Seite ihn kennzeichnet
+  (data-section), z. B. 'parties'. }
+function LandrixEInvoiceRenderSectionKey(ASection: TLandrixEInvoiceRenderSection): TLandrixEInvoiceString;
+{ The heading of ASection in ALanguage.
+  DE: Die Ueberschrift von ASection in ALanguage. }
+function LandrixEInvoiceRenderSectionLabel(ASection: TLandrixEInvoiceRenderSection;
+  ALanguage: TLandrixEInvoiceReportLanguage): TLandrixEInvoiceString;
 
 implementation
 """
@@ -299,12 +384,31 @@ begin
   Result := Decoded(Paths[AField]);
 end;
 
+function LandrixEInvoiceRenderFieldSection(AField: TLandrixEInvoiceRenderField): TLandrixEInvoiceRenderSection;
+begin
+  Result := Sections[AField];
+end;
+
+function LandrixEInvoiceRenderSectionKey(ASection: TLandrixEInvoiceRenderSection): TLandrixEInvoiceString;
+begin
+  Result := Decoded(SectionKeys[ASection]);
+end;
+
+function LandrixEInvoiceRenderSectionLabel(ASection: TLandrixEInvoiceRenderSection;
+  ALanguage: TLandrixEInvoiceReportLanguage): TLandrixEInvoiceString;
+begin
+  if ALanguage = eln_German then
+    Result := Decoded(SectionLabelsDe[ASection])
+  else
+    Result := Decoded(SectionLabelsEn[ASection]);
+end;
+
 end.
 """
 
 
-def generate(rows):
-    out = [HEADER]
+def generate(rows, order):
+    out = [HEADER.replace("@SECTIONS@", ",\n".join("    " + section_member(k) for k, _, _ in order))]
     w = out.append
     for i, r in enumerate(rows):
         w("    %s%s" % (r["member"], "," if i < len(rows) - 1 else ""))
@@ -315,6 +419,17 @@ def generate(rows):
         w("  %s: array[TLandrixEInvoiceRenderField] of AnsiString = (" % name)
         for i, r in enumerate(rows):
             w("    %s%s" % (literal(r[key]), "," if i < len(rows) - 1 else ""))
+        w("  );")
+        w("")
+    w("  Sections: array[TLandrixEInvoiceRenderField] of TLandrixEInvoiceRenderSection = (")
+    for i, r in enumerate(rows):
+        w("    %s%s" % (section_member(r["section"]), "," if i < len(rows) - 1 else ""))
+    w("  );")
+    w("")
+    for name, idx in (("SectionKeys", 0), ("SectionLabelsEn", 1), ("SectionLabelsDe", 2)):
+        w("  %s: array[TLandrixEInvoiceRenderSection] of AnsiString = (" % name)
+        for i, o in enumerate(order):
+            w("    %s%s" % (literal(o[idx]), "," if i < len(order) - 1 else ""))
         w("  );")
         w("")
     w(DECODER)
@@ -328,8 +443,8 @@ def main(argv):
     args = argv[1:]
     if any(a != "--check" for a in args):
         fail("unknown argument; usage: gen-render-labels.py [--check]")
-    rows = build()
-    data = generate(rows)
+    rows, order = build()
+    data = generate(rows, order)
     if "--check" in args:
         try:
             with open(OUTPUT, "rb") as f:

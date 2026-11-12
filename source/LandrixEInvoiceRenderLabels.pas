@@ -19,8 +19,9 @@
   model path (the sub lines of a line use the members of the line), with a
   label in English and German (own wording, not the EN 16931 term names),
   the business term that applies on that path ('' if none; several joined
-  with '/' when the content decides, e.g. allowance or charge) and the path
-  itself (e.g. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity).
+  with '/' when the content decides, e.g. allowance or charge), the path
+  itself (e.g. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity)
+  and the section of the page that shows it.
 
   DE: ERZEUGT von tools/render/gen-render-labels.py - nicht von Hand aendern.
   tools/render/labels.json (oder das Modell) aendern und den Generator erneut
@@ -31,8 +32,9 @@
   Position), mit einer Beschriftung englisch und deutsch (eigene
   Formulierungen, nicht die Begriffsnamen der EN 16931), dem Geschaeftsbegriff,
   der auf diesem Pfad gilt ('' wenn keiner; mehrere mit '/' verbunden, wenn
-  der Inhalt entscheidet, z. B. Abschlag oder Zuschlag) und dem Pfad selbst
-  (z. B. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity). }
+  der Inhalt entscheidet, z. B. Abschlag oder Zuschlag), dem Pfad selbst
+  (z. B. AccountingSupplierParty.Address.City, InvoiceLines[].Quantity) und
+  dem Abschnitt der Seite, der es zeigt. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -50,6 +52,22 @@ uses
   LandrixEInvoiceReportHtml;
 
 type
+  { The sections of a rendered invoice, in page order.
+    DE: Die Abschnitte einer dargestellten Rechnung, in der Reihenfolge der
+    Seite. }
+  TLandrixEInvoiceRenderSection = (
+    ers_Header,
+    ers_Parties,
+    ers_References,
+    ers_Lines,
+    ers_Allowances,
+    ers_Vat,
+    ers_Totals,
+    ers_Payment,
+    ers_Notes,
+    ers_Attachments
+  );
+
   { One member per model path, in model order.
     DE: Ein Wert je Modellpfad, in der Reihenfolge des Modells. }
   TLandrixEInvoiceRenderField = (
@@ -358,6 +376,17 @@ function LandrixEInvoiceRenderFieldBT(AField: TLandrixEInvoiceRenderField): TLan
 { The model path of AField, e.g. InvoiceLines[].Quantity.
   DE: Der Modellpfad von AField, z. B. InvoiceLines[].Quantity. }
 function LandrixEInvoiceRenderFieldPath(AField: TLandrixEInvoiceRenderField): TLandrixEInvoiceString;
+{ The section of the page that shows AField.
+  DE: Der Abschnitt der Seite, der AField zeigt. }
+function LandrixEInvoiceRenderFieldSection(AField: TLandrixEInvoiceRenderField): TLandrixEInvoiceRenderSection;
+{ The key of ASection as the page marks it (data-section), e.g. 'parties'.
+  DE: Der Schluessel von ASection, mit dem die Seite ihn kennzeichnet
+  (data-section), z. B. 'parties'. }
+function LandrixEInvoiceRenderSectionKey(ASection: TLandrixEInvoiceRenderSection): TLandrixEInvoiceString;
+{ The heading of ASection in ALanguage.
+  DE: Die Ueberschrift von ASection in ALanguage. }
+function LandrixEInvoiceRenderSectionLabel(ASection: TLandrixEInvoiceRenderSection;
+  ALanguage: TLandrixEInvoiceReportLanguage): TLandrixEInvoiceString;
 
 implementation
 
@@ -1546,6 +1575,341 @@ const
     'Zahlbetrag'
   );
 
+  Sections: array[TLandrixEInvoiceRenderField] of TLandrixEInvoiceRenderSection = (
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Header,
+    ers_Notes,
+    ers_Notes,
+    ers_Notes,
+    ers_Notes,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Payment,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Parties,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Payment,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Lines,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Attachments,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_Allowances,
+    ers_References,
+    ers_References,
+    ers_References,
+    ers_Totals,
+    ers_Totals,
+    ers_Vat,
+    ers_Vat,
+    ers_Vat,
+    ers_Vat,
+    ers_Vat,
+    ers_Vat,
+    ers_Vat,
+    ers_Vat,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals,
+    ers_Totals
+  );
+
+  SectionKeys: array[TLandrixEInvoiceRenderSection] of AnsiString = (
+    'header',
+    'parties',
+    'references',
+    'lines',
+    'allowances',
+    'vat',
+    'totals',
+    'payment',
+    'notes',
+    'attachments'
+  );
+
+  SectionLabelsEn: array[TLandrixEInvoiceRenderSection] of AnsiString = (
+    'Invoice details',
+    'Parties',
+    'References',
+    'Invoice lines',
+    'Allowances and charges',
+    'VAT breakdown',
+    'Totals',
+    'Payment',
+    'Notes',
+    'Supporting documents'
+  );
+
+  SectionLabelsDe: array[TLandrixEInvoiceRenderSection] of AnsiString = (
+    'Rechnungsangaben',
+    'Beteiligte',
+    'Bez\00FCge',
+    'Rechnungspositionen',
+    'Abschl\00E4ge und Zuschl\00E4ge',
+    'Umsatzsteueraufschl\00FCsselung',
+    'Summen',
+    'Zahlung',
+    'Bemerkungen',
+    'Rechnungsbegr\00FCndende Unterlagen'
+  );
+
 { S with every '\' plus four hex digits replaced by that character }
 function Decoded(const S: AnsiString): TLandrixEInvoiceString;
 var
@@ -1607,6 +1971,25 @@ end;
 function LandrixEInvoiceRenderFieldPath(AField: TLandrixEInvoiceRenderField): TLandrixEInvoiceString;
 begin
   Result := Decoded(Paths[AField]);
+end;
+
+function LandrixEInvoiceRenderFieldSection(AField: TLandrixEInvoiceRenderField): TLandrixEInvoiceRenderSection;
+begin
+  Result := Sections[AField];
+end;
+
+function LandrixEInvoiceRenderSectionKey(ASection: TLandrixEInvoiceRenderSection): TLandrixEInvoiceString;
+begin
+  Result := Decoded(SectionKeys[ASection]);
+end;
+
+function LandrixEInvoiceRenderSectionLabel(ASection: TLandrixEInvoiceRenderSection;
+  ALanguage: TLandrixEInvoiceReportLanguage): TLandrixEInvoiceString;
+begin
+  if ALanguage = eln_German then
+    Result := Decoded(SectionLabelsDe[ASection])
+  else
+    Result := Decoded(SectionLabelsEn[ASection]);
 end;
 
 end.

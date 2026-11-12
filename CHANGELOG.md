@@ -386,6 +386,22 @@ Supported invoice standards are documented per release.
   (English and German, own wording), `LandrixEInvoiceRenderFieldBT` (the business term on that path) and
   `LandrixEInvoiceRenderFieldPath`. The generator fails on a field without labels, a path whose term is ambiguous,
   a malformed term or a stale entry; `--check` fails when the unit is out of date. Test `Render.Labels`.
+- An invoice as an HTML page for people: internal unit `LandrixEInvoiceRenderHtml` with
+  `TLandrixEInvoiceRenderHtmlWriter` (`DocumentName`, `Language`, `ShowBusinessTerms`; `WriteToStream` and
+  `SaveToFile` for a `TLandrixInvoice` or a read `TLandrixEInvoiceDocument`). One self-contained page (CSS inline, no
+  script, nothing loaded, no links; also well-formed XML) in sections: invoice details, parties, references, lines
+  (sub lines nested in their line), allowances and charges, VAT breakdown, totals, payment, notes, supporting
+  documents; for a read document also its origin and what reading did not take over (unknown or repeated content,
+  skipped extensions, values that could not be converted, content without a place in the model). Every set field
+  appears once, labelled, in an element marked with its model path (`data-field`) and business term (`data-bt`);
+  empty sections and groups are left out; nothing is computed. Values are formatted in the internal unit
+  `LandrixEInvoiceRender`: amounts with at least two and at most the four stored decimals, other numbers as stored,
+  dates `DD.MM.YYYY` (German) or `YYYY-MM-DD` (English), codes with their names, currency by its code. The sections
+  come from `"sections"` in `tools/render/labels.json` (`TLandrixEInvoiceRenderSection`,
+  `LandrixEInvoiceRenderFieldSection`). Tests `Render.Format`, `Render.Html`, `Render.Mutations` (one mutation per
+  field of the model: the page must change in the elements marked with that field, in its section; exceptions in
+  `tools/render/render-exceptions.txt`), `Render.Golden` (pages in `tests/data/render/`) and `Render.Corpus` (every
+  local golden, CII, UBL and sweep file in both languages, read back as XML).
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

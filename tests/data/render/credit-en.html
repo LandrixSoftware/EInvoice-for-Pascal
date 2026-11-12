@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Invoice</title>
+<style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;margin:2em auto;max-width:72em;padding:0 1em;color:#1a1a1a;background:#fff;line-height:1.4}h1{font-size:1.6em;margin:0 0 .3em}h2{font-size:1.2em;margin:1.6em 0 .5em;border-bottom:1px solid #ccc}h3{font-size:1em;margin:0 0 .4em}h4{font-size:.95em;margin:.8em 0 .3em}.document{font-size:1.1em;margin:0 0 .5em;word-break:break-all}dl{display:grid;grid-template-columns:minmax(10em,18em) 1fr;gap:.2em 1em;margin:0 0 .6em}dt{font-weight:600}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.bt{font-weight:400;font-size:.8em;color:#6b7280}.parties{display:grid;grid-template-columns:repeat(auto-fit,minmax(22em,1fr));gap:1em}.box,.item,.line{border:1px solid #e3e3e3;border-radius:.3em;padding:.6em .8em;margin:0 0 .8em}.box dl,.item dl{grid-template-columns:minmax(8em,14em) 1fr}dl.head{grid-template-columns:repeat(auto-fit,minmax(9em,1fr));grid-auto-flow:row;gap:.2em 1em}dl.head dt{grid-row:1;font-size:.85em}dl.head dd{grid-row:2}.sublines{margin:.6em 0 0 1.2em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}th,td{text-align:left;vertical-align:top;padding:.3em .6em;border-bottom:1px solid #e3e3e3}td{white-space:pre-wrap;overflow-wrap:anywhere}td span+span{margin-left:.5em}.cur{color:#374151}td.loc{font-family:ui-monospace,Consolas,monospace;font-size:.9em;word-break:break-all}.note,footer{color:#6b7280;font-size:.9em}footer{margin-top:2em}@media print{body{margin:0;max-width:none}.box,.item,.line{break-inside:avoid}}</style>
+</head>
+<body>
+<header><h1>Invoice</h1>
+</header>
+<section data-section="header"><h2>Invoice details</h2>
+<dl>
+<dt>Invoice number</dt><dd data-field="InvoiceNumber" data-bt="BT-1">G-2026-0007</dd>
+<dt>Invoice date</dt><dd data-field="InvoiceIssueDate" data-bt="BT-2">2026-11-20</dd>
+<dt>Invoice type</dt><dd data-field="InvoiceTypeCode" data-bt="BT-3">Credit note (381)</dd>
+<dt>Invoice currency</dt><dd data-field="InvoiceCurrencyCode" data-bt="BT-5">Euro (EUR)</dd>
+<dt>Buyer reference</dt><dd data-field="BuyerReference" data-bt="BT-10">leitweg-1</dd>
+<dt>Business process</dt><dd data-field="ProfileID" data-bt="BT-23">urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</dd>
+</dl>
+</section>
+<section data-section="parties"><h2>Parties</h2>
+<div class="parties">
+<div class="box" data-field="AccountingSupplierParty" data-bt="BG-4"><h3>Seller</h3>
+<dl>
+<dt>Name</dt><dd data-field="AccountingSupplierParty.RegistrationName" data-bt="BT-27">Muster GmbH</dd>
+<dt>City</dt><dd data-field="AccountingSupplierParty.Address.City" data-bt="BT-37">Berlin</dd>
+<dt>Country</dt><dd data-field="AccountingSupplierParty.Address.CountryCode" data-bt="BT-40">Germany (DE)</dd>
+</dl></div>
+<div class="box" data-field="AccountingCustomerParty" data-bt="BG-7"><h3>Buyer</h3>
+<dl>
+<dt>Name</dt><dd data-field="AccountingCustomerParty.RegistrationName" data-bt="BT-44">Beispiel AG</dd>
+<dt>City</dt><dd data-field="AccountingCustomerParty.Address.City" data-bt="BT-52">Wien</dd>
+<dt>Country</dt><dd data-field="AccountingCustomerParty.Address.CountryCode" data-bt="BT-55">Austria (AT)</dd>
+</dl></div>
+</div>
+</section>
+<section data-section="references"><h2>References</h2>
+<h4>Preceding invoices</h4>
+<div class="item" data-field="PrecedingInvoiceReferences[]" data-bt="BG-3">
+<dl>
+<dt>Preceding invoice</dt><dd data-field="PrecedingInvoiceReferences[].ID" data-bt="BT-25">R-2026-0815</dd>
+<dt>Date of the preceding invoice</dt><dd data-field="PrecedingInvoiceReferences[].IssueDate" data-bt="BT-26">2026-11-12</dd>
+</dl>
+</div>
+</section>
+<section data-section="lines"><h2>Invoice lines</h2>
+<div class="line" data-field="InvoiceLines[]" data-bt="BG-25">
+<dl class="head">
+<dt>Line</dt><dd data-field="InvoiceLines[].ID" data-bt="BT-126">1</dd>
+<dt>Item</dt><dd data-field="InvoiceLines[].Name" data-bt="BT-153">Rücknahme</dd>
+<dt>Quantity</dt><dd data-field="InvoiceLines[].Quantity" data-bt="BT-129">2</dd>
+<dt>Unit</dt><dd data-field="InvoiceLines[].UnitCode" data-bt="BT-130">piece (H87)</dd>
+<dt>Net price</dt><dd data-field="InvoiceLines[].NetPriceAmount" data-bt="BT-146">49.995</dd>
+<dt>VAT category</dt><dd data-field="InvoiceLines[].TaxCategory" data-bt="BT-151">VAT Reverse charge (AE)</dd>
+<dt>VAT rate</dt><dd data-field="InvoiceLines[].TaxPercent" data-bt="BT-152">0%</dd>
+<dt>Net amount</dt><dd data-field="InvoiceLines[].LineAmount" data-bt="BT-131">99.99</dd>
+</dl>
+</div>
+</section>
+<section data-section="vat"><h2>VAT breakdown</h2>
+<table><thead><tr><th>VAT category</th><th>VAT rate</th><th>Taxable amount</th><th>VAT amount</th><th>VAT exemption reason code</th><th>VAT exemption reason</th></tr></thead><tbody>
+<tr data-field="TaxAmountSubtotals[]" data-bt="BG-23"><td><span data-field="TaxAmountSubtotals[].TaxCategory" data-bt="BT-118">VAT Reverse charge (AE)</span></td><td data-field="TaxAmountSubtotals[].TaxPercent" data-bt="BT-119">0%</td><td data-field="TaxAmountSubtotals[].TaxableAmount" data-bt="BT-116">99.99</td><td data-field="TaxAmountSubtotals[].TaxAmount" data-bt="BT-117">0.00</td><td data-field="TaxAmountSubtotals[].TaxExemptionReasonCode" data-bt="BT-121">Reverse charge (VATEX-EU-AE)</td><td data-field="TaxAmountSubtotals[].TaxExemptionReason" data-bt="BT-120">Steuerschuldnerschaft des Leistungsempfängers</td></tr>
+</tbody></table>
+</section>
+<section data-section="totals"><h2>Totals</h2>
+<dl>
+<dt>Sum of line net amounts</dt><dd data-field="LineAmount" data-bt="BT-106">99.99 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Total without VAT</dt><dd data-field="TaxExclusiveAmount" data-bt="BT-109">99.99 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Total VAT</dt><dd data-field="TaxAmountTotal" data-bt="BT-110">0.00 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Total with VAT</dt><dd data-field="TaxInclusiveAmount" data-bt="BT-112">99.99 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Amount due</dt><dd data-field="PayableAmount" data-bt="BT-115">99.99 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+</dl>
+</section>
+<footer><p>Written by EInvoice-for-Pascal @VERSION@</p></footer>
+</body>
+</html>

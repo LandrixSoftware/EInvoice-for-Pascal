@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Rechnung</title>
+<style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;margin:2em auto;max-width:72em;padding:0 1em;color:#1a1a1a;background:#fff;line-height:1.4}h1{font-size:1.6em;margin:0 0 .3em}h2{font-size:1.2em;margin:1.6em 0 .5em;border-bottom:1px solid #ccc}h3{font-size:1em;margin:0 0 .4em}h4{font-size:.95em;margin:.8em 0 .3em}.document{font-size:1.1em;margin:0 0 .5em;word-break:break-all}dl{display:grid;grid-template-columns:minmax(10em,18em) 1fr;gap:.2em 1em;margin:0 0 .6em}dt{font-weight:600}dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.bt{font-weight:400;font-size:.8em;color:#6b7280}.parties{display:grid;grid-template-columns:repeat(auto-fit,minmax(22em,1fr));gap:1em}.box,.item,.line{border:1px solid #e3e3e3;border-radius:.3em;padding:.6em .8em;margin:0 0 .8em}.box dl,.item dl{grid-template-columns:minmax(8em,14em) 1fr}dl.head{grid-template-columns:repeat(auto-fit,minmax(9em,1fr));grid-auto-flow:row;gap:.2em 1em}dl.head dt{grid-row:1;font-size:.85em}dl.head dd{grid-row:2}.sublines{margin:.6em 0 0 1.2em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}th,td{text-align:left;vertical-align:top;padding:.3em .6em;border-bottom:1px solid #e3e3e3}td{white-space:pre-wrap;overflow-wrap:anywhere}td span+span{margin-left:.5em}.cur{color:#374151}td.loc{font-family:ui-monospace,Consolas,monospace;font-size:.9em;word-break:break-all}.note,footer{color:#6b7280;font-size:.9em}footer{margin-top:2em}@media print{body{margin:0;max-width:none}.box,.item,.line{break-inside:avoid}}</style>
+</head>
+<body>
+<header><h1>Rechnung</h1>
+</header>
+<section data-section="header"><h2>Rechnungsangaben</h2>
+<dl>
+<dt>Rechnungsnummer <span class="bt">BT-1</span></dt><dd data-field="InvoiceNumber" data-bt="BT-1">R-2026-0815</dd>
+<dt>Rechnungsdatum <span class="bt">BT-2</span></dt><dd data-field="InvoiceIssueDate" data-bt="BT-2">12.11.2026</dd>
+<dt>Rechnungsart <span class="bt">BT-3</span></dt><dd data-field="InvoiceTypeCode" data-bt="BT-3">Handelsrechnung (380)</dd>
+<dt>Fälligkeitsdatum <span class="bt">BT-9</span></dt><dd data-field="InvoiceDueDate" data-bt="BT-9">12.12.2026</dd>
+<dt>Abrechnungszeitraum von <span class="bt">BT-73</span></dt><dd data-field="InvoicePeriodStartDate" data-bt="BT-73">01.10.2026</dd>
+<dt>Abrechnungszeitraum bis <span class="bt">BT-74</span></dt><dd data-field="InvoicePeriodEndDate" data-bt="BT-74">31.10.2026</dd>
+<dt>Rechnungswährung <span class="bt">BT-5</span></dt><dd data-field="InvoiceCurrencyCode" data-bt="BT-5">Euro (EUR)</dd>
+<dt>Käuferreferenz <span class="bt">BT-10</span></dt><dd data-field="BuyerReference" data-bt="BT-10">04011000-12345-34</dd>
+<dt>Geschäftsprozess <span class="bt">BT-23</span></dt><dd data-field="ProfileID" data-bt="BT-23">urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</dd>
+</dl>
+</section>
+<section data-section="parties"><h2>Beteiligte</h2>
+<div class="parties">
+<div class="box" data-field="AccountingSupplierParty" data-bt="BG-4"><h3>Verkäufer <span class="bt">BG-4</span></h3>
+<dl>
+<dt>Name <span class="bt">BT-27</span></dt><dd data-field="AccountingSupplierParty.RegistrationName" data-bt="BT-27">Muster &amp; Söhne GmbH</dd>
+<dt>Straße <span class="bt">BT-35</span></dt><dd data-field="AccountingSupplierParty.Address.StreetName" data-bt="BT-35">Hauptstraße 1</dd>
+<dt>Postleitzahl <span class="bt">BT-38</span></dt><dd data-field="AccountingSupplierParty.Address.PostalZone" data-bt="BT-38">10115</dd>
+<dt>Ort <span class="bt">BT-37</span></dt><dd data-field="AccountingSupplierParty.Address.City" data-bt="BT-37">Berlin</dd>
+<dt>Land <span class="bt">BT-40</span></dt><dd data-field="AccountingSupplierParty.Address.CountryCode" data-bt="BT-40">Deutschland (DE)</dd>
+<dt>Umsatzsteuer-Identifikationsnummer <span class="bt">BT-31</span></dt><dd data-field="AccountingSupplierParty.VATCompanyID" data-bt="BT-31">DE123456789</dd>
+<dt>Elektronische Adresse <span class="bt">BT-34</span></dt><dd data-field="AccountingSupplierParty.ElectronicAddressSellerBuyer" data-bt="BT-34">rechnung@example.com</dd>
+<dt>Schema der elektronischen Adresse <span class="bt">BT-34-1</span></dt><dd data-field="AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID" data-bt="BT-34-1">Electronic mail (SMPT) (EM)</dd>
+<dt>Ansprechpartner <span class="bt">BT-41</span></dt><dd data-field="AccountingSupplierParty.ContactName" data-bt="BT-41">Erika Muster</dd>
+<dt>Telefon <span class="bt">BT-42</span></dt><dd data-field="AccountingSupplierParty.ContactTelephone" data-bt="BT-42">+49 30 123456</dd>
+</dl></div>
+<div class="box" data-field="AccountingCustomerParty" data-bt="BG-7"><h3>Käufer <span class="bt">BG-7</span></h3>
+<dl>
+<dt>Name <span class="bt">BT-44</span></dt><dd data-field="AccountingCustomerParty.RegistrationName" data-bt="BT-44">Beispiel AG</dd>
+<dt>Straße <span class="bt">BT-50</span></dt><dd data-field="AccountingCustomerParty.Address.StreetName" data-bt="BT-50">Ringweg 7</dd>
+<dt>Postleitzahl <span class="bt">BT-53</span></dt><dd data-field="AccountingCustomerParty.Address.PostalZone" data-bt="BT-53">80331</dd>
+<dt>Ort <span class="bt">BT-52</span></dt><dd data-field="AccountingCustomerParty.Address.City" data-bt="BT-52">München</dd>
+<dt>Land <span class="bt">BT-55</span></dt><dd data-field="AccountingCustomerParty.Address.CountryCode" data-bt="BT-55">Deutschland (DE)</dd>
+<dt>Elektronische Adresse <span class="bt">BT-49</span></dt><dd data-field="AccountingCustomerParty.ElectronicAddressSellerBuyer" data-bt="BT-49">einkauf@example.org</dd>
+<dt>Schema der elektronischen Adresse <span class="bt">BT-49-1</span></dt><dd data-field="AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID" data-bt="BT-49-1">Electronic mail (SMPT) (EM)</dd>
+</dl></div>
+<div class="box" data-field="PayeeParty" data-bt="BG-10"><h3>Zahlungsempfänger <span class="bt">BG-10</span></h3>
+<dl>
+<dt>Name <span class="bt">BT-59</span></dt><dd data-field="PayeeParty.Name" data-bt="BT-59">Factoring Bank</dd>
+</dl></div>
+<div class="box" data-field="DeliveryInformation" data-bt="BG-13"><h3>Lieferung <span class="bt">BG-13</span></h3>
+<dl>
+<dt>Ort <span class="bt">BT-77</span></dt><dd data-field="DeliveryInformation.Address.City" data-bt="BT-77">Hamburg</dd>
+<dt>Land <span class="bt">BT-80</span></dt><dd data-field="DeliveryInformation.Address.CountryCode" data-bt="BT-80">Deutschland (DE)</dd>
+<dt>Lieferdatum <span class="bt">BT-72</span></dt><dd data-field="DeliveryInformation.ActualDeliveryDate" data-bt="BT-72">20.10.2026</dd>
+</dl></div>
+</div>
+</section>
+<section data-section="references"><h2>Bezüge</h2>
+<dl>
+<dt>Bestellnummer <span class="bt">BT-13</span></dt><dd data-field="PurchaseOrderReference" data-bt="BT-13">B-4711</dd>
+<dt>Vertragsnummer <span class="bt">BT-12</span></dt><dd data-field="ContractDocumentReference" data-bt="BT-12">V-2025-17</dd>
+</dl>
+</section>
+<section data-section="lines"><h2>Rechnungspositionen</h2>
+<div class="line" data-field="InvoiceLines[]" data-bt="BG-25">
+<dl class="head">
+<dt>Position <span class="bt">BT-126</span></dt><dd data-field="InvoiceLines[].ID" data-bt="BT-126">1</dd>
+<dt>Artikel <span class="bt">BT-153</span></dt><dd data-field="InvoiceLines[].Name" data-bt="BT-153">Beratung</dd>
+<dt>Menge <span class="bt">BT-129</span></dt><dd data-field="InvoiceLines[].Quantity" data-bt="BT-129">16</dd>
+<dt>Einheit <span class="bt">BT-130</span></dt><dd data-field="InvoiceLines[].UnitCode" data-bt="BT-130">Stunde (HUR)</dd>
+<dt>Nettopreis <span class="bt">BT-146</span></dt><dd data-field="InvoiceLines[].NetPriceAmount" data-bt="BT-146">95,00</dd>
+<dt>Steuerkategorie <span class="bt">BT-151</span></dt><dd data-field="InvoiceLines[].TaxCategory" data-bt="BT-151">Normalsatz (S)</dd>
+<dt>Steuersatz <span class="bt">BT-152</span></dt><dd data-field="InvoiceLines[].TaxPercent" data-bt="BT-152">19 %</dd>
+<dt>Nettobetrag <span class="bt">BT-131</span></dt><dd data-field="InvoiceLines[].LineAmount" data-bt="BT-131">1.368,00</dd>
+</dl>
+<dl>
+<dt>Artikelbeschreibung <span class="bt">BT-154</span></dt><dd data-field="InvoiceLines[].Description" data-bt="BT-154">Workshop vor Ort,
+zwei Tage</dd>
+<dt>Artikelnummer des Verkäufers <span class="bt">BT-155</span></dt><dd data-field="InvoiceLines[].SellersItemIdentification" data-bt="BT-155">SRV-01</dd>
+</dl>
+<h4>Abschläge und Zuschläge <span class="bt">BG-27/BG-28</span></h4>
+<table><thead><tr><th>Abschlag oder Zuschlag</th><th>Grund (Code) <span class="bt">BT-140/BT-145</span></th><th>Grund <span class="bt">BT-139/BT-144</span></th><th>Basisbetrag <span class="bt">BT-137/BT-142</span></th><th>Prozentsatz <span class="bt">BT-138/BT-143</span></th><th>Betrag <span class="bt">BT-136/BT-141</span></th><th>Steuerkategorie</th><th>Steuersatz</th></tr></thead><tbody>
+<tr data-field="InvoiceLines[].AllowanceCharges[]" data-bt="BG-27/BG-28"><td data-field="InvoiceLines[].AllowanceCharges[].ChargeIndicator">Abschlag</td><td><span data-field="InvoiceLines[].AllowanceCharges[].ReasonCodeAllowance" data-bt="BT-140">Rabatt (95)</span></td><td data-field="InvoiceLines[].AllowanceCharges[].Reason" data-bt="BT-139">Rabatt</td><td data-field="InvoiceLines[].AllowanceCharges[].BaseAmount" data-bt="BT-137">1.520,00</td><td data-field="InvoiceLines[].AllowanceCharges[].MultiplierFactorNumeric" data-bt="BT-138">10 %</td><td data-field="InvoiceLines[].AllowanceCharges[].Amount" data-bt="BT-136">152,00</td><td></td><td data-field="InvoiceLines[].AllowanceCharges[].TaxPercent"></td></tr>
+</tbody></table>
+<h4>Artikeleigenschaften <span class="bt">BG-32</span></h4>
+<table><thead><tr><th>Eigenschaft <span class="bt">BT-160</span></th><th>Wert <span class="bt">BT-161</span></th></tr></thead><tbody>
+<tr data-field="InvoiceLines[].ItemAttributes[]" data-bt="BG-32"><td data-field="InvoiceLines[].ItemAttributes[].Name" data-bt="BT-160">Ort</td><td data-field="InvoiceLines[].ItemAttributes[].Value" data-bt="BT-161">Berlin</td></tr>
+</tbody></table>
+</div>
+<div class="line" data-field="InvoiceLines[]" data-bt="BG-25">
+<dl class="head">
+<dt>Position <span class="bt">BT-126</span></dt><dd data-field="InvoiceLines[].ID" data-bt="BT-126">2</dd>
+<dt>Artikel <span class="bt">BT-153</span></dt><dd data-field="InvoiceLines[].Name" data-bt="BT-153">Material</dd>
+<dt>Menge <span class="bt">BT-129</span></dt><dd data-field="InvoiceLines[].Quantity" data-bt="BT-129">1</dd>
+<dt>Einheit <span class="bt">BT-130</span></dt><dd data-field="InvoiceLines[].UnitCode" data-bt="BT-130">Einheit (C62)</dd>
+<dt>Nettopreis <span class="bt">BT-146</span></dt><dd data-field="InvoiceLines[].NetPriceAmount" data-bt="BT-146">200,00</dd>
+<dt>Steuerkategorie <span class="bt">BT-151</span></dt><dd data-field="InvoiceLines[].TaxCategory" data-bt="BT-151">Normalsatz (S)</dd>
+<dt>Steuersatz <span class="bt">BT-152</span></dt><dd data-field="InvoiceLines[].TaxPercent" data-bt="BT-152">7 %</dd>
+<dt>Nettobetrag <span class="bt">BT-131</span></dt><dd data-field="InvoiceLines[].LineAmount" data-bt="BT-131">200,00</dd>
+</dl>
+<div class="sublines">
+<div class="line" data-field="InvoiceLines[].SubInvoiceLines[]" data-bt="BT-X-304">
+<dl class="head">
+<dt>Position <span class="bt">BT-126</span></dt><dd data-field="InvoiceLines[].ID" data-bt="BT-126">2.1</dd>
+<dt>Artikel <span class="bt">BT-153</span></dt><dd data-field="InvoiceLines[].Name" data-bt="BT-153">Kabel</dd>
+<dt>Menge <span class="bt">BT-129</span></dt><dd data-field="InvoiceLines[].Quantity" data-bt="BT-129">12,5</dd>
+<dt>Einheit <span class="bt">BT-130</span></dt><dd data-field="InvoiceLines[].UnitCode" data-bt="BT-130">Stück (H87)</dd>
+<dt>Nettopreis <span class="bt">BT-146</span></dt><dd data-field="InvoiceLines[].NetPriceAmount" data-bt="BT-146">8,00</dd>
+<dt>Steuerkategorie <span class="bt">BT-151</span></dt><dd data-field="InvoiceLines[].TaxCategory" data-bt="BT-151">Normalsatz (S)</dd>
+<dt>Steuersatz <span class="bt">BT-152</span></dt><dd data-field="InvoiceLines[].TaxPercent" data-bt="BT-152">7 %</dd>
+<dt>Nettobetrag <span class="bt">BT-131</span></dt><dd data-field="InvoiceLines[].LineAmount" data-bt="BT-131">100,00</dd>
+</dl>
+</div>
+<div class="line" data-field="InvoiceLines[].SubInvoiceLines[]" data-bt="BT-X-304">
+<dl class="head">
+<dt>Position <span class="bt">BT-126</span></dt><dd data-field="InvoiceLines[].ID" data-bt="BT-126">2.2</dd>
+<dt>Artikel <span class="bt">BT-153</span></dt><dd data-field="InvoiceLines[].Name" data-bt="BT-153">Stecker</dd>
+<dt>Menge <span class="bt">BT-129</span></dt><dd data-field="InvoiceLines[].Quantity" data-bt="BT-129">50</dd>
+<dt>Einheit <span class="bt">BT-130</span></dt><dd data-field="InvoiceLines[].UnitCode" data-bt="BT-130">Stück (H87)</dd>
+<dt>Nettopreis <span class="bt">BT-146</span></dt><dd data-field="InvoiceLines[].NetPriceAmount" data-bt="BT-146">2,00</dd>
+<dt>Steuerkategorie <span class="bt">BT-151</span></dt><dd data-field="InvoiceLines[].TaxCategory" data-bt="BT-151">Normalsatz (S)</dd>
+<dt>Steuersatz <span class="bt">BT-152</span></dt><dd data-field="InvoiceLines[].TaxPercent" data-bt="BT-152">7 %</dd>
+<dt>Nettobetrag <span class="bt">BT-131</span></dt><dd data-field="InvoiceLines[].LineAmount" data-bt="BT-131">100,00</dd>
+</dl>
+</div>
+</div>
+</div>
+</section>
+<section data-section="allowances"><h2>Abschläge und Zuschläge</h2>
+<table><thead><tr><th>Abschlag oder Zuschlag</th><th>Grund (Code) <span class="bt">BT-98/BT-105</span></th><th>Grund <span class="bt">BT-97/BT-104</span></th><th>Basisbetrag <span class="bt">BT-93/BT-100</span></th><th>Prozentsatz <span class="bt">BT-94/BT-101</span></th><th>Betrag <span class="bt">BT-92/BT-99</span></th><th>Steuerkategorie <span class="bt">BT-95/BT-102</span></th><th>Steuersatz <span class="bt">BT-96/BT-103</span></th></tr></thead><tbody>
+<tr data-field="AllowanceCharges[]" data-bt="BG-20/BG-21"><td data-field="AllowanceCharges[].ChargeIndicator">Zuschlag</td><td><span data-field="AllowanceCharges[].ReasonCodeCharge" data-bt="BT-105">Freight service (FC)</span></td><td data-field="AllowanceCharges[].Reason" data-bt="BT-104">Versand</td><td data-field="AllowanceCharges[].BaseAmount" data-bt="BT-100"></td><td data-field="AllowanceCharges[].MultiplierFactorNumeric" data-bt="BT-101"></td><td data-field="AllowanceCharges[].Amount" data-bt="BT-99">10,00</td><td><span data-field="AllowanceCharges[].TaxCategory" data-bt="BT-102">Normalsatz (S)</span></td><td data-field="AllowanceCharges[].TaxPercent" data-bt="BT-103">19 %</td></tr>
+</tbody></table>
+</section>
+<section data-section="vat"><h2>Umsatzsteueraufschlüsselung</h2>
+<table><thead><tr><th>Steuerkategorie <span class="bt">BT-118</span></th><th>Steuersatz <span class="bt">BT-119</span></th><th>Steuerbemessungsgrundlage <span class="bt">BT-116</span></th><th>Steuerbetrag <span class="bt">BT-117</span></th><th>Code des Befreiungsgrunds <span class="bt">BT-121</span></th><th>Grund der Steuerbefreiung <span class="bt">BT-120</span></th></tr></thead><tbody>
+<tr data-field="TaxAmountSubtotals[]" data-bt="BG-23"><td><span data-field="TaxAmountSubtotals[].TaxCategory" data-bt="BT-118">Normalsatz (S)</span></td><td data-field="TaxAmountSubtotals[].TaxPercent" data-bt="BT-119">19 %</td><td data-field="TaxAmountSubtotals[].TaxableAmount" data-bt="BT-116">1.378,00</td><td data-field="TaxAmountSubtotals[].TaxAmount" data-bt="BT-117">261,82</td><td data-field="TaxAmountSubtotals[].TaxExemptionReasonCode" data-bt="BT-121"></td><td data-field="TaxAmountSubtotals[].TaxExemptionReason" data-bt="BT-120"></td></tr>
+<tr data-field="TaxAmountSubtotals[]" data-bt="BG-23"><td><span data-field="TaxAmountSubtotals[].TaxCategory" data-bt="BT-118">Normalsatz (S)</span></td><td data-field="TaxAmountSubtotals[].TaxPercent" data-bt="BT-119">7 %</td><td data-field="TaxAmountSubtotals[].TaxableAmount" data-bt="BT-116">200,00</td><td data-field="TaxAmountSubtotals[].TaxAmount" data-bt="BT-117">14,00</td><td data-field="TaxAmountSubtotals[].TaxExemptionReasonCode" data-bt="BT-121"></td><td data-field="TaxAmountSubtotals[].TaxExemptionReason" data-bt="BT-120"></td></tr>
+</tbody></table>
+</section>
+<section data-section="totals"><h2>Summen</h2>
+<dl>
+<dt>Summe der Positionsnettobeträge <span class="bt">BT-106</span></dt><dd data-field="LineAmount" data-bt="BT-106">1.568,00 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Summe der Zuschläge <span class="bt">BT-108</span></dt><dd data-field="ChargeTotalAmount" data-bt="BT-108">10,00 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Gesamtbetrag ohne Umsatzsteuer <span class="bt">BT-109</span></dt><dd data-field="TaxExclusiveAmount" data-bt="BT-109">1.578,00 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Umsatzsteuer gesamt <span class="bt">BT-110</span></dt><dd data-field="TaxAmountTotal" data-bt="BT-110">275,82 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Gesamtbetrag mit Umsatzsteuer <span class="bt">BT-112</span></dt><dd data-field="TaxInclusiveAmount" data-bt="BT-112">1.853,82 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Bereits gezahlt <span class="bt">BT-113</span></dt><dd data-field="PrepaidAmount" data-bt="BT-113">53,82 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+<dt>Zahlbetrag <span class="bt">BT-115</span></dt><dd data-field="PayableAmount" data-bt="BT-115">1.800,00 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+</dl>
+</section>
+<section data-section="payment"><h2>Zahlung</h2>
+<dl>
+<dt>Verwendungszweck <span class="bt">BT-83</span></dt><dd data-field="PaymentID" data-bt="BT-83">R-2026-0815</dd>
+<dt>Gläubiger-Identifikationsnummer <span class="bt">BT-90</span></dt><dd data-field="AccountingSupplierParty.BankAssignedCreditorIdentifier" data-bt="BT-90">DE98ZZZ09999999999</dd>
+</dl>
+<h4>Zahlungsanweisungen <span class="bt">BG-16</span></h4>
+<div class="item" data-field="PaymentTypes[]" data-bt="BG-16">
+<dl>
+<dt>Zahlungsart <span class="bt">BT-81</span></dt><dd data-field="PaymentTypes[].PaymentMeansCode" data-bt="BT-81">SEPA-Überweisung (58)</dd>
+<dt>Konto <span class="bt">BT-84/BT-91/BT-87</span></dt><dd data-field="PaymentTypes[].FinancialAccount" data-bt="BT-84/BT-91/BT-87">DE02120300000000202051</dd>
+<dt>Kontoinhaber <span class="bt">BT-85/BT-88</span></dt><dd data-field="PaymentTypes[].FinancialAccountName" data-bt="BT-85/BT-88">Muster &amp; Söhne GmbH</dd>
+<dt>BIC <span class="bt">BT-86</span></dt><dd data-field="PaymentTypes[].FinancialInstitutionBranch" data-bt="BT-86">BYLADEM1001</dd>
+</dl>
+</div>
+<dl>
+<dt>Zahlungsbedingungen</dt><dd data-field="PaymentTermsType">ein Skonto</dd>
+<dt>Skonto 1: Tage</dt><dd data-field="PaymentTermCashDiscount1Days">10</dd>
+<dt>Skonto 1: Prozent</dt><dd data-field="PaymentTermCashDiscount1Percent">2 %</dd>
+<dt>Skonto 1: Basisbetrag</dt><dd data-field="PaymentTermCashDiscount1Base">1.853,82 <span class="cur" data-ref="InvoiceCurrencyCode">EUR</span></dd>
+</dl>
+</section>
+<section data-section="notes"><h2>Bemerkungen</h2>
+<div class="item" data-field="Notes[]" data-bt="BG-1">
+<dl>
+<dt>Betreff <span class="bt">BT-21</span></dt><dd data-field="Notes[].SubjectCode" data-bt="BT-21">General information (AAI)</dd>
+<dt>Bemerkung <span class="bt">BT-22</span></dt><dd data-field="Notes[].Content" data-bt="BT-22">Vielen Dank für Ihren Auftrag.</dd>
+</dl>
+</div>
+</section>
+<section data-section="attachments"><h2>Rechnungsbegründende Unterlagen</h2>
+<div class="item" data-field="Attachments[]" data-bt="BG-24">
+<dl>
+<dt>Dokumentkennung <span class="bt">BT-17/BT-18/BT-122</span></dt><dd data-field="Attachments[].ID" data-bt="BT-17/BT-18/BT-122">Stundenzettel</dd>
+<dt>Dokumentart <span class="bt">BT-17/BT-18/BT-122</span></dt><dd data-field="Attachments[].TypeCode" data-bt="BT-17/BT-18/BT-122">916</dd>
+<dt>Beschreibung <span class="bt">BT-123</span></dt><dd data-field="Attachments[].DocumentDescription" data-bt="BT-123">Stundennachweis Oktober</dd>
+<dt>Dateiname <span class="bt">BT-125-2</span></dt><dd data-field="Attachments[].Filename" data-bt="BT-125-2">stunden.pdf</dd>
+<dt>MIME-Typ <span class="bt">BT-125-1</span></dt><dd data-field="Attachments[].AttachmentType" data-bt="BT-125-1">application/pdf</dd>
+<dt>Eingebettete Datei <span class="bt">BT-125</span></dt><dd data-field="Attachments[].Data" data-bt="BT-125">13 Bytes</dd>
+</dl>
+</div>
+</section>
+<footer><p>Erstellt mit EInvoice-for-Pascal @VERSION@</p></footer>
+</body>
+</html>
