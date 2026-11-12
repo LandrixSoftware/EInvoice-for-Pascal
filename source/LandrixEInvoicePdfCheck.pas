@@ -207,12 +207,15 @@ type
     XRechnung invoice. Both entries clear AResult first and return the
     number of errors (findings with eds_Error) of all levels, as
     TLandrixEInvoice.Check does. The stream variant reads AStream from its
-    position to the end.
+    position to the end. A PDF that cannot be read is a finding (LX-PDF-01);
+    EOutOfMemory is passed on.
     DE: Fuehrt die Pruefungen aus: Ebene 2, dann Ebene 3, wenn Ebene 2 eine
     Factur-X- oder XRechnung-Rechnung gefunden hat. Beide Einstiege leeren
     AResult zuerst und liefern die Anzahl der Fehler (Befunde mit
     eds_Error) aller Ebenen, wie TLandrixEInvoice.Check. Die Stream-Variante
-    liest AStream ab seiner Position bis zum Ende. }
+    liest AStream ab seiner Position bis zum Ende. Ein PDF, das sich nicht
+    lesen laesst, ist ein Befund (LX-PDF-01); EOutOfMemory wird
+    weitergereicht. }
   TLandrixEInvoicePdfChecker = class(TObject)
   public
     function CheckStream(AStream: TStream; AResult: TLandrixEInvoicePdfCheckResult): Integer;
@@ -1875,6 +1878,8 @@ begin
     except
       on E: Exception do
       begin
+        if E is EOutOfMemory then
+          raise;
         AddFinding(AResult, RuleUnreadable, eds_Error, ToText('PDF not readable: ' + E.Message));
         Result := 1;
         Exit;
@@ -1901,7 +1906,11 @@ begin
         EmbeddingIncomplete := Check.Incomplete;
       except
         on E: Exception do
+        begin
+          if E is EOutOfMemory then
+            raise;
           AddFinding(AResult, RuleUnreadable, eds_Error, ToText('PDF not readable: ' + E.Message));
+        end;
       end;
     finally
       Check.Free;
@@ -1920,8 +1929,12 @@ begin
           MetaIncomplete := Meta.Incomplete;
         except
           on E: Exception do
+          begin
+            if E is EOutOfMemory then
+              raise;
             AddFindingAt(AResult, RuleNoXmp, eds_Error, '/Root/Metadata', ToText('XMP metadata not readable: ' +
               E.Message));
+          end;
         end;
       finally
         Meta.Free;

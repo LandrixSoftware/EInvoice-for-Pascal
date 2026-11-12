@@ -27,8 +27,16 @@ unit LandrixEInvoiceTestPdf;
 
 interface
 
+uses
+  LandrixEInvoiceTypes;
+
 { A PDF with AXml embedded as factur-x.xml. }
 function BuildInvoicePdf(const AXml: AnsiString): AnsiString;
+{ A hybrid PDF that passes levels 2 and 3: AXml embedded as AName (name tree
+  and /AF, /AFRelationship /Alternative) and the XMP metadata of ATarget as
+  the writer side builds them; without XMP if AWithXmp is False. }
+function BuildHybridPdf(const AName, AXml: AnsiString; const ATarget: TLandrixEInvoiceTarget;
+  AWithXmp: Boolean): AnsiString;
 
 procedure Register;
 
@@ -38,7 +46,6 @@ uses
   SysUtils,
   Classes,
   LandrixXmlBase,
-  LandrixEInvoiceTypes,
   LandrixEInvoiceSpecs,
   LandrixEInvoicePdf,
   LandrixEInvoicePdfObjects,
@@ -1387,6 +1394,20 @@ const
   GoodSpec = '<< /Type /Filespec /F (factur-x.xml) /UF (factur-x.xml) /EF << /F 5 0 R >> ' +
     '/AFRelationship /Alternative >>';
   GoodStream = '/Type /EmbeddedFile /Subtype /text#2Fxml ' + GoodParams;
+
+function BuildHybridPdf(const AName, AXml: AnsiString; const ATarget: TLandrixEInvoiceTarget;
+  AWithXmp: Boolean): AnsiString;
+var
+  Xmp: AnsiString;
+begin
+  Xmp := '';
+  if AWithXmp then
+    Xmp := XmpPacket(ATarget);
+  Result := SimplePdfX('/Names << /EmbeddedFiles << /Names [(' + AName + ') 4 0 R] >> >> /AF [4 0 R]',
+    '<< /Type /Filespec /F (' + AName + ') /UF (' + AName + ') /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
+    '/Type /EmbeddedFile /Subtype /text#2Fxml /Params << /Size ' + IntToAnsi(Length(AXml)) +
+    ' /ModDate (D:20261028120000+01''00) >>', AXml, Xmp);
+end;
 
 function RunCheck(const APdf: AnsiString; AResult: TLandrixEInvoicePdfCheckResult): Integer;
 var

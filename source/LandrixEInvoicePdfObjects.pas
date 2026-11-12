@@ -2433,6 +2433,8 @@ begin
                 end;
               end;
             except
+              on EOutOfMemory do
+                raise;
               on Exception do
                 ;
             end;
@@ -3314,6 +3316,8 @@ begin
     try
       ParseXrefChain(StartOfs);
     except
+      on EOutOfMemory do
+        raise;
       on Exception do
         FRootRef := nil;
     end;
@@ -3328,6 +3332,8 @@ begin
     try
       Reconstruct;
     except
+      on EOutOfMemory do
+        raise;
       on E: Exception do
       begin
         AError := 'PDF structure not readable: ' + E.Message;
@@ -3354,6 +3360,8 @@ begin
             Break;
           end;
         except
+          on EOutOfMemory do
+            raise;
           on Exception do
             ; // skip a damaged object
         end;
@@ -3425,6 +3433,8 @@ begin
       Result := LandrixEInvoiceUtf8ToString(Utf8);
       Exit;
     except
+      on EOutOfMemory do
+        raise;
       on Exception do
         Result := '';
     end;

@@ -345,6 +345,14 @@ Supported invoice standards are documented per release.
 - `LandrixEInvoiceValidation` without a KoSIT configuration (`Options.Configuration` nil, now the default):
   no KoSIT run, the verdict is `ev_Incomplete`; reading reports a document that is not well-formed, the own rule
   check runs as before.
+- `LandrixEInvoiceValidation` validates hybrid PDFs (ZUGFeRD, Factur-X; told by the content): levels 2 and 3 of
+  `LandrixEInvoicePdfCheck` (embedding, XMP), then KoSIT, reading and the own rule check on the embedded invoice;
+  reading feeds the second pass of the PDF checker (profile and country rules). New parts `evp_PdfEmbedding`,
+  `evp_PdfMetadata` and `evp_PdfA` (PDF/A is not checked, always not run); `Pdf` gives the PDF checker's result.
+  For a PDF levels 2 and 3 decide with KoSIT: rejected if one of them fails, incomplete if one did not run or is
+  incomplete. Tests `Validation.Pdf`, `Validation.PdfKosit` and `Validation.PdfCorpus` (528 local PDFs).
+  `TLandrixEInvoicePdfChecker.CheckStream` and the PDF object layer pass `EOutOfMemory` on instead of reporting
+  LX-PDF-01.
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111
