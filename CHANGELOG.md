@@ -334,6 +334,14 @@ Supported invoice standards are documented per release.
   examples of `tests/data/local/cii` and `cii-invalid`, five mutants and the ZUGFeRD outputs of a test run
   (677 documents, no difference; the configuration's readable locations are compared in the SchXslt form).
   Test `Validator.ZugferdOutputs` (every `*-cii*-25.xml` output of the run, about one minute per toolchain).
+- Internal unit `LandrixEInvoiceValidation` (phase 6, validator entry): `TLandrixEInvoiceDocumentValidator`
+  validates an XML document from a file or stream with a KoSIT configuration the caller loads
+  (`Options.Configuration`), reads it through the facade and runs the own rule check
+  (`LandrixEInvoiceCheckInvoice`, `Options.ModelCheck`). The result (`TLandrixEInvoiceDocumentValidation`)
+  holds the verdict (`ev_Accepted`, `ev_Rejected`, `ev_Incomplete`), a status per part (reading, KoSIT, rule
+  check) and one flat list of findings; only the KoSIT run decides the verdict, the findings of the own rule
+  check are marked as predictions. Tests `Validation.Xml` and `Validation.KositSuite` (same verdict and KoSIT
+  findings as the engine over the KoSIT test suite).
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

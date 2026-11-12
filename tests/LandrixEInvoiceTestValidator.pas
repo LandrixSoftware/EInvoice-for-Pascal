@@ -32,7 +32,12 @@
   Validator.ZugferdOutputs, registered last as well, checks the ZUGFeRD
   files (*-cii*-25.xml) with the ZUGFeRD 2.5.2 configuration of
   addons/java-tools, whose Schematron sources are compiled (ZugferdRuleMap,
-  paths below its Schema/factur-x-1.09.2 folder); skipped without that configuration. }
+  paths below its Schema/factur-x-1.09.2 folder); skipped without that configuration.
+  Validation.Xml checks LandrixEInvoiceValidation with the small configuration
+  (verdict from KoSIT, reading, the predicted findings of the own rule check
+  on a generated XRechnung); Validation.KositSuite runs it over the KoSIT test
+  suite (same verdict and KoSIT findings as the engine, every instance read
+  and checked), skipped like Validator.KositSuite. }
 
 unit LandrixEInvoiceTestValidator;
 
@@ -49,9 +54,16 @@ implementation
 uses
   SysUtils,
   Classes,
+  LandrixXmlBase,
   LandrixEInvoiceTypes,
+  LandrixEInvoiceDiagnostics,
+  LandrixEInvoiceSpecs,
+  LandrixEInvoiceInvoice,
+  LandrixEInvoice,
   LandrixEInvoiceValidator,
-  LandrixEInvoiceTestFramework;
+  LandrixEInvoiceValidation,
+  LandrixEInvoiceTestFramework,
+  LandrixEInvoiceTestCheck;
 
 function DataDir: string;
 begin
@@ -645,6 +657,313 @@ begin
     CheckOutputs(V, ['*-peppol.xml'], [''], 'Peppol BIS');
 end;
 
+{ --- LandrixEInvoiceValidation ------------------------------------------- }
+
+function NewDocumentValidator(V: TLandrixEInvoiceValidator): TLandrixEInvoiceDocumentValidator;
+begin
+  Result := TLandrixEInvoiceDocumentValidator.Create;
+  Result.Options.Configuration := V;
+end;
+
+{ the findings as "part:rule:severity[:predicted]", separated by spaces }
+function Findings(R: TLandrixEInvoiceDocumentValidation): string;
+const
+  PartText: array[TLandrixEInvoiceValidationPart] of string = ('read', 'kosit', 'model');
+  SeverityText: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to R.FindingCount - 1 do
+  begin
+    if Result <> '' then
+      Result := Result + ' ';
+    Result := Result + PartText[R[I].Part] + ':' + string(R[I].RuleID) + ':' + SeverityText[R[I].Severity];
+    if R[I].Predicted then
+      Result := Result + ':predicted';
+  end;
+end;
+
+procedure CheckStatus(R: TLandrixEInvoiceDocumentValidation; ARead, AKosit, AModel: TLandrixEInvoicePartStatus;
+  const AName: string);
+begin
+  CheckEquals(Ord(ARead), Ord(R.Status[evp_Read]), AName + ': read status');
+  CheckEquals(Ord(AKosit), Ord(R.Status[evp_KoSIT]), AName + ': KoSIT status');
+  CheckEquals(Ord(AModel), Ord(R.Status[evp_ModelCheck]), AName + ': model check status');
+end;
+
+{ an XRechnung UBL invoice as bytes; without a buyer reference it breaks
+  BR-DE-15 (written despite the error) }
+function InvoiceStream(AWithBuyerReference: Boolean): TMemoryStream;
+var
+  Invoice: TLandrixInvoice;
+  Xml: TLandrixXmlUtf8;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    if not AWithBuyerReference then
+      Invoice.BuyerReference := '';
+    Xml := TLandrixEInvoice.SaveToUtf8(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL),
+      [eio_WriteDespiteErrors]);
+  finally
+    Invoice.Free;
+  end;
+  Result := TMemoryStream.Create;
+  Result.WriteBuffer(PAnsiChar(Xml)^, Length(Xml));
+  Result.Position := 0;
+end;
+
+{ AStream's bytes with every AOld replaced by ANew }
+procedure ReplaceBytes(AStream: TMemoryStream; const AOld, ANew: AnsiString);
+var
+  S, Rest: AnsiString;
+  P, N: Integer;
+begin
+  N := Integer(AStream.Size);
+  Rest := '';
+  SetLength(Rest, N);
+  if N > 0 then
+    Move(AStream.Memory^, PAnsiChar(Rest)^, N);
+  S := '';
+  P := Pos(AOld, Rest);
+  while P > 0 do
+  begin
+    S := S + Copy(Rest, 1, P - 1) + ANew;
+    Delete(Rest, 1, P - 1 + Length(AOld));
+    P := Pos(AOld, Rest);
+  end;
+  S := S + Rest;
+  AStream.Clear;
+  AStream.WriteBuffer(PAnsiChar(S)^, Length(S));
+  AStream.Position := 0;
+end;
+
+{ The verdict is KoSIT's; reading and the own rule check add findings. }
+procedure TestDocumentXml;
+var
+  V: TLandrixEInvoiceValidator;
+  DV: TLandrixEInvoiceDocumentValidator;
+  R: TLandrixEInvoiceDocumentValidation;
+  S, F: TMemoryStream;
+  FromFile: string;
+begin
+  V := NewValidator;
+  DV := NewDocumentValidator(V);
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  try
+    CheckEquals(Ord(ev_Incomplete), Ord(R.Verdict), 'a new result is incomplete');
+    { accepted by the test configuration, but no invoice: reading fails,
+      no rule check, the verdict stays }
+    CheckEquals(Ord(ev_Accepted), Ord(DV.ValidateFile(DataDir + 'doc-a-5.xml', R)), 'doc-a-5 verdict');
+    CheckEqualsStr('Test A', string(R.ScenarioName), 'doc-a-5 scenario');
+    CheckStatus(R, evr_Failed, evr_Passed, evr_NotRun, 'doc-a-5');
+    CheckEqualsStr('read::error', Findings(R), 'doc-a-5 findings');
+    CheckEqualsStr('', string(R.Info.RootName), 'doc-a-5 no info');
+    CheckEquals(Ord(ev_Accepted), Ord(DV.ValidateFile(DataDir + 'doc-a-7.xml', R)), 'doc-a-7 verdict');
+    CheckEqualsStr('kosit:T-03:info read::error', Findings(R), 'doc-a-7 findings');
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateFile(DataDir + 'doc-a-13.xml', R)), 'doc-a-13 verdict');
+    CheckStatus(R, evr_Failed, evr_Failed, evr_NotRun, 'doc-a-13');
+    CheckEqualsStr('kosit:T-04:error read::error', Findings(R), 'doc-a-13 findings');
+    CheckEqualsStr('v is not 13', string(R[0].Text), 'doc-a-13 text');
+    Check(not R[0].Predicted, 'a KoSIT finding is no prediction');
+    { file and stream give the same }
+    FromFile := Findings(R);
+    S := TMemoryStream.Create;
+    try
+      S.LoadFromFile(DataDir + 'doc-a-13.xml');
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'doc-a-13 stream verdict');
+      CheckEqualsStr(FromFile, Findings(R), 'doc-a-13 stream findings');
+    finally
+      S.Free;
+    end;
+    { not well-formed: KoSIT says so, reading does not run }
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateFile(DataDir + 'doc-broken.xml', R)), 'broken verdict');
+    CheckStatus(R, evr_NotRun, evr_Failed, evr_NotRun, 'broken');
+    CheckEqualsStr('kosit:generic-error:error', Findings(R), 'broken findings');
+    Check(R[0].Line > 0, 'broken line');
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(nil, R)), 'no stream verdict');
+    CheckStatus(R, evr_NotRun, evr_Failed, evr_NotRun, 'no stream');
+    S := TMemoryStream.Create;
+    try
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'empty stream verdict');
+      CheckStatus(R, evr_NotRun, evr_Failed, evr_NotRun, 'empty stream');
+      CheckEqualsStr('kosit:generic-error:error', Findings(R), 'empty stream findings');
+      { read from the position on: what is before does not count }
+      S.WriteBuffer(PAnsiChar(AnsiString('junk'))^, 4);
+      S.Position := S.Size;
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'stream at its end verdict');
+      CheckStatus(R, evr_NotRun, evr_Failed, evr_NotRun, 'stream at its end');
+      F := TMemoryStream.Create;
+      try
+        F.LoadFromFile(DataDir + 'doc-a-13.xml');
+        S.CopyFrom(F, 0);
+      finally
+        F.Free;
+      end;
+      S.Position := 4;
+      DV.ValidateStream(S, R);
+      CheckEqualsStr(FromFile, Findings(R), 'stream from its position');
+      Check(S.Position = S.Size, 'stream read to its end');
+    finally
+      S.Free;
+    end;
+
+    { a valid XRechnung no scenario of the test configuration matches:
+      rejected, read, the rule check finds nothing }
+    S := InvoiceStream(True);
+    try
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'invoice verdict');
+      CheckEqualsStr('', string(R.ScenarioName), 'invoice scenario');
+      CheckStatus(R, evr_Passed, evr_Failed, evr_Passed, 'invoice');
+      { KoSIT has no message for it; the validation adds one }
+      CheckEqualsStr('kosit::error', Findings(R), 'invoice findings');
+      CheckEqualsStr('No scenario of the configuration matches the document', string(R[0].Text),
+        'invoice no scenario');
+      Check(R.Info.SpecFound, 'invoice specification found');
+      CheckEquals(Ord(esy_UBL), Ord(R.Info.Syntax), 'invoice syntax');
+      { without the rule check }
+      DV.Options.ModelCheck := False;
+      S.Position := 0;
+      DV.ValidateStream(S, R);
+      CheckStatus(R, evr_Passed, evr_Failed, evr_NotRun, 'invoice without rule check');
+      DV.Options.ModelCheck := True;
+    finally
+      S.Free;
+    end;
+    { BR-DE-15 broken: a predicted finding, the verdict is still KoSIT's }
+    S := InvoiceStream(False);
+    try
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'BR-DE-15 verdict');
+      CheckStatus(R, evr_Passed, evr_Failed, evr_Failed, 'BR-DE-15');
+      CheckEqualsStr('kosit::error model:BR-DE-15:error:predicted', Findings(R), 'BR-DE-15 findings');
+    finally
+      S.Free;
+    end;
+    { a VAT rate of 1e24 is read, but the rule check cannot format it: the
+      rule check is incomplete, the verdict stays }
+    S := InvoiceStream(True);
+    try
+      ReplaceBytes(S, 'Percent>19', 'Percent>1000000000000000000000000');
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'huge rate verdict');
+      CheckEquals(Ord(evr_Incomplete), Ord(R.Status[evp_ModelCheck]), 'huge rate: rule check incomplete');
+      CheckEqualsStr('model::error', Copy(Findings(R), Length(Findings(R)) - 11, MaxInt), 'huge rate: last finding');
+      Check(not R[R.FindingCount - 1].Predicted, 'huge rate: no prediction');
+    finally
+      S.Free;
+    end;
+  finally
+    R.Free;
+    DV.Free;
+    V.Free;
+  end;
+  { a scenario without a name is chosen like any other: no finding for it }
+  V := TLandrixEInvoiceValidator.Create;
+  DV := NewDocumentValidator(V);
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  try
+    V.LoadConfiguration(DataDir + 'scenarios-unnamed.xml');
+    V.RuleFiles.Values['test.xsl'] := DataDir + 'test.sch';
+    CheckEquals(Ord(ev_Accepted), Ord(DV.ValidateFile(DataDir + 'doc-a-5.xml', R)), 'unnamed verdict');
+    CheckEqualsStr('', string(R.ScenarioName), 'unnamed scenario');
+    CheckEqualsStr('read::error', Findings(R), 'unnamed findings');
+  finally
+    R.Free;
+    DV.Free;
+    V.Free;
+  end;
+  { no configuration: a problem of the setup }
+  DV := TLandrixEInvoiceDocumentValidator.Create;
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  try
+    try
+      DV.ValidateFile(DataDir + 'doc-a-5.xml', R);
+      FailNotRaised('ELandrixEInvoiceError');
+    except
+      on ELandrixEInvoiceError do ;
+    end;
+  finally
+    R.Free;
+    DV.Free;
+  end;
+end;
+
+{ Over the KoSIT test suite: the verdict and the KoSIT findings are those of
+  the engine; every instance is read and checked. }
+procedure TestDocumentKositSuite;
+var
+  Local: string;
+  V: TLandrixEInvoiceValidator;
+  DV: TLandrixEInvoiceDocumentValidator;
+  K: TLandrixEInvoiceValidationResult;
+  R: TLandrixEInvoiceDocumentValidation;
+  Msg: TLandrixEInvoiceValidationMessage;
+  Names: TStringList;
+  I, J, KositFindings, Checked: Integer;
+begin
+  Local := KositLocal;
+  V := nil;
+  if FileExists(Local + 'instances' + PathDelim + 'MANIFEST.txt') then
+    V := NewKositValidator;
+  if V = nil then
+  begin
+    Skip('no KoSIT test suite or configuration (tools/testdata/sync-local.py, addons/java-tools)');
+    Exit;
+  end;
+  DV := NewDocumentValidator(V);
+  K := TLandrixEInvoiceValidationResult.Create;
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  Names := ManifestNames(Local + 'instances' + PathDelim + 'MANIFEST.txt');
+  try
+    Checked := 0;
+    for I := 0 to Names.Count - 1 do
+    begin
+      V.Validate(Local + 'instances' + PathDelim + Names[I], K);
+      DV.ValidateFile(Local + 'instances' + PathDelim + Names[I], R);
+      CheckEquals(Ord(K.Accepted), Ord(R.Verdict = ev_Accepted), Names[I] + ': verdict');
+      CheckEquals(Ord(ev_Accepted), Ord(R.Verdict), Names[I] + ': accepted');
+      CheckEqualsStr(string(K.ScenarioName), string(R.ScenarioName), Names[I] + ': scenario');
+      { the KoSIT findings are the engine's messages, in order, in full }
+      KositFindings := 0;
+      for J := 0 to R.FindingCount - 1 do
+        if R[J].Part = evp_KoSIT then
+        begin
+          if KositFindings < K.MessageCount then
+          begin
+            Msg := K[KositFindings];
+            CheckEqualsStr(string(Msg.Code), string(R[J].RuleID), Names[I] + ': KoSIT code');
+            CheckEquals(Ord(Msg.EffectiveLevel), Ord(R[J].Severity), Names[I] + ': KoSIT level');
+            CheckEqualsStr(Lossless(Msg.Location), Lossless(R[J].Location), Names[I] + ': KoSIT location');
+            CheckEquals(Msg.Line, R[J].Line, Names[I] + ': KoSIT line');
+            CheckEquals(Msg.Column, R[J].Column, Names[I] + ': KoSIT column');
+            CheckEqualsStr(Lossless(Msg.Text), Lossless(R[J].Text), Names[I] + ': KoSIT text');
+            Check(not R[J].Predicted, Names[I] + ': KoSIT no prediction');
+          end;
+          Inc(KositFindings);
+        end;
+      CheckEquals(K.MessageCount, KositFindings, Names[I] + ': KoSIT findings');
+      CheckEquals(Ord(evr_Passed), Ord(R.Status[evp_Read]), Names[I] + ': read');
+      { the rule check runs when reading knows the specification (BT-24)
+        and not otherwise }
+      if R.Info.SpecFound then
+      begin
+        Inc(Checked);
+        Check(R.Status[evp_ModelCheck] in [evr_Passed, evr_Failed], Names[I] + ': rule check ran');
+      end
+      else
+        CheckEquals(Ord(evr_NotRun), Ord(R.Status[evp_ModelCheck]), Names[I] + ': no rule check');
+    end;
+    CheckEquals(86, Names.Count, 'instances');
+    Check(Checked > 80, 'most instances checked');
+  finally
+    Names.Free;
+    R.Free;
+    K.Free;
+    DV.Free;
+    V.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Validator.Scenarios', TestScenarios);
@@ -652,6 +971,8 @@ begin
   RegisterTest('Validator.Stream', TestStream);
   RegisterTest('Validator.WithoutAcceptMatch', TestWithoutAcceptMatch);
   RegisterTest('Validator.KositSuite', TestKositSuite);
+  RegisterTest('Validation.Xml', TestDocumentXml);
+  RegisterTest('Validation.KositSuite', TestDocumentKositSuite);
 end;
 
 procedure RegisterLast;
