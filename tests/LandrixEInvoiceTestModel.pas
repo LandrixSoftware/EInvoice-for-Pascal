@@ -32,6 +32,7 @@ uses
   LandrixEInvoiceTypes,
   LandrixEInvoiceCodes,
   LandrixEInvoiceCodeNames,
+  LandrixEInvoiceRenderLabels,
   LandrixEInvoiceReportHtml,
   LandrixEInvoiceInvoice,
   LandrixEInvoiceTestFramework,
@@ -208,6 +209,48 @@ begin
   for C := Succ(Low(C)) to High(C) do
     Check(LandrixEInvoiceCodeName(ecl_CountryCode, LandrixEInvoiceCountryCodeToStr(C), eln_English) <> '',
       'country ' + string(LandrixEInvoiceCountryCodeToStr(C)) + ' named');
+end;
+
+{ The labels of the model paths: every field has both labels and a unique
+  path; the business term is the one of the path (seller, buyer, delivery). }
+procedure TestRenderLabels;
+var
+  F, G: TLandrixEInvoiceRenderField;
+  Unique: Boolean;
+begin
+  CheckEqualsInvoiceStr('City', LandrixEInvoiceRenderFieldLabel(erf_AccountingSupplierParty_Address_City,
+    eln_English), 'city en');
+  CheckEqualsInvoiceStr('Ort', LandrixEInvoiceRenderFieldLabel(erf_AccountingSupplierParty_Address_City,
+    eln_German), 'city de');
+  CheckEqualsInvoiceStr('BT-37', LandrixEInvoiceRenderFieldBT(erf_AccountingSupplierParty_Address_City),
+    'seller city');
+  CheckEqualsInvoiceStr('BT-52', LandrixEInvoiceRenderFieldBT(erf_AccountingCustomerParty_Address_City),
+    'buyer city');
+  CheckEqualsInvoiceStr('BT-77', LandrixEInvoiceRenderFieldBT(erf_DeliveryInformation_Address_City),
+    'delivery city');
+  CheckEqualsInvoiceStr('BT-92/BT-99', LandrixEInvoiceRenderFieldBT(erf_AllowanceCharges_Amount),
+    'allowance or charge');
+  CheckEqualsInvoiceStr('', LandrixEInvoiceRenderFieldBT(erf_PaymentTermsType), 'no term');
+  CheckEqualsInvoiceStr('BT-20', LandrixEInvoiceRenderFieldBT(erf_PaymentTermNetNote), 'payment terms text');
+  CheckEqualsInvoiceStr('BT-21', LandrixEInvoiceRenderFieldBT(erf_Notes_SubjectCodeOther), 'code as text');
+  CheckEqualsInvoiceStr('BG-5', LandrixEInvoiceRenderFieldBT(erf_AccountingSupplierParty_Address), 'seller address');
+  CheckEqualsInvoiceStr('AccountingSupplierParty.Address.City',
+    LandrixEInvoiceRenderFieldPath(erf_AccountingSupplierParty_Address_City), 'path');
+  CheckEqualsInvoiceStr('InvoiceLines[].Quantity', LandrixEInvoiceRenderFieldPath(erf_InvoiceLines_Quantity),
+    'list path');
+  CheckEqualsInvoiceStr(Wide([Ord('V'), Ord('e'), Ord('r'), Ord('k'), $E4, Ord('u'), Ord('f'), Ord('e'), Ord('r')]),
+    LandrixEInvoiceRenderFieldLabel(erf_AccountingSupplierParty, eln_German), 'umlaut decoded');
+  for F := Low(F) to High(F) do
+  begin
+    Check(LandrixEInvoiceRenderFieldLabel(F, eln_English) <> '', 'label en ' + IntToStr(Ord(F)));
+    Check(LandrixEInvoiceRenderFieldLabel(F, eln_German) <> '', 'label de ' + IntToStr(Ord(F)));
+  end;
+  Unique := True;
+  for F := Low(F) to High(F) do
+    for G := Low(G) to High(G) do
+      if (G > F) and (LandrixEInvoiceRenderFieldPath(F) = LandrixEInvoiceRenderFieldPath(G)) then
+        Unique := False;
+  Check(Unique, 'paths unique');
 end;
 
 procedure TestNewCodeLists;
@@ -1152,6 +1195,7 @@ begin
   RegisterTest('Codes.OtherLists', TestOtherCodeLists);
   RegisterTest('Codes.NewLists', TestNewCodeLists);
   RegisterTest('Codes.Names', TestCodeNames);
+  RegisterTest('Render.Labels', TestRenderLabels);
   RegisterTest('Model.CreateFullInvoice', TestCreateFullInvoice);
   RegisterTest('Model.ListExtract', TestListExtract);
   RegisterTest('Model.Notes', TestNotes);
