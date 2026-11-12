@@ -799,6 +799,8 @@ var
   R: TLandrixEInvoiceDocumentValidation;
   S, F: TMemoryStream;
   FromFile: string;
+  I: Integer;
+  Found: Boolean;
 begin
   V := NewValidator;
   DV := NewDocumentValidator(V);
@@ -892,15 +894,23 @@ begin
     finally
       S.Free;
     end;
-    { a VAT rate of 1e24 is read, but the rule check cannot format it: the
-      rule check is incomplete, the verdict stays }
+    { a VAT rate of 1e24 is read, but no writer can write it: the rule
+      check reports it as an error of its own (no prediction of a KoSIT
+      rule), the verdict stays }
     S := InvoiceStream(True);
     try
       ReplaceBytes(S, 'Percent>19', 'Percent>1000000000000000000000000');
       CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'huge rate verdict');
-      CheckEquals(Ord(evr_Incomplete), Ord(R.Status[evp_ModelCheck]), 'huge rate: rule check incomplete');
-      CheckEqualsStr('model::error', Copy(Findings(R), Length(Findings(R)) - 11, MaxInt), 'huge rate: last finding');
-      Check(not R[R.FindingCount - 1].Predicted, 'huge rate: no prediction');
+      CheckEquals(Ord(evr_Failed), Ord(R.Status[evp_ModelCheck]), 'huge rate: rule check failed');
+      Found := False;
+      for I := 0 to R.FindingCount - 1 do
+        if (R[I].Part = evp_ModelCheck) and (R[I].RuleID = '') and (R[I].Severity = eds_Error) and
+           (Pos('cannot be written', string(R[I].Text)) > 0) then
+        begin
+          Found := True;
+          Check(not R[I].Predicted, 'huge rate: no prediction');
+        end;
+      Check(Found, 'huge rate: reported by the rule check: ' + Findings(R));
     finally
       S.Free;
     end;

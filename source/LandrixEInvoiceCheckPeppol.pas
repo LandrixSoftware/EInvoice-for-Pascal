@@ -70,29 +70,39 @@ uses
 { Runs every rule of this unit when ASpec is Peppol BIS (otherwise none)
   and adds one edk_RuleViolation per violation to ADiagnostics (nil:
   discarded). Returns the number of violations with severity eds_Error.
+  A rule that cannot judge a number the writers cannot format holds
+  (LandrixEInvoiceCheckInvoice reports the number).
   DE: Fuehrt jede Regel dieser Unit aus, wenn ASpec Peppol BIS ist (sonst
   keine), und fuegt je Verstoss ein edk_RuleViolation an ADiagnostics an
   (nil: verworfen). Liefert die Anzahl der Verstoesse mit Schwere
-  eds_Error. }
+  eds_Error. Eine Regel, die eine Zahl nicht beurteilen kann, die die
+  Writer nicht formatieren koennen, gilt als erfuellt
+  (LandrixEInvoiceCheckInvoice meldet die Zahl). }
 function LandrixEInvoiceCheckPeppolInvoice(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 
 { Checks the rule ARuleID (case-sensitive) if this unit has it (AFound):
   True if it holds or ASpec is not Peppol BIS, otherwise False and one
   edk_RuleViolation in ADiagnostics (nil: discarded). AFound False: the
-  identifier is not a rule of this unit, the result is True.
+  identifier is not a rule of this unit, the result is True. ASkip: the
+  rule does not run (True); a rule that cannot judge a number holds as for
+  LandrixEInvoiceCheckPeppolInvoice.
   DE: Prueft die Regel ARuleID (Gross- und Kleinschreibung zaehlt), wenn
   diese Unit sie hat (AFound): True, wenn sie erfuellt ist oder ASpec nicht
   Peppol BIS ist, sonst False und ein edk_RuleViolation in ADiagnostics
   (nil: verworfen). AFound False: die Kennung ist keine Regel dieser Unit,
-  das Ergebnis ist True. }
+  das Ergebnis ist True. ASkip: die Regel laeuft nicht (True); eine Regel,
+  die eine Zahl nicht beurteilen kann, gilt wie bei
+  LandrixEInvoiceCheckPeppolInvoice als erfuellt. }
 function LandrixEInvoiceCheckPeppolRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
-  const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; out AFound: Boolean): Boolean;
+  const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; ASkip: Boolean;
+  out AFound: Boolean): Boolean;
 
 implementation
 
 uses
   SysUtils,
+  LandrixXmlBase,
   LandrixEInvoiceCodes,
   LandrixEInvoiceLexical,
   LandrixEInvoiceRules,
@@ -1136,13 +1146,54 @@ begin
   Result := AmountSignOf(LandrixEInvoiceAmountToLexical(AValue));
 end;
 
+type
+  { Raised where a rule formats a number the writers cannot format
+    (LandrixEInvoiceCheckInvoice reports the number); the rule then holds.
+    Only this exception is caught.
+    DE: Ausgeloest, wo eine Regel eine Zahl formatiert, die die Writer
+    nicht formatieren koennen (LandrixEInvoiceCheckInvoice meldet die
+    Zahl); die Regel gilt dann als erfuellt. Nur diese Ausnahme wird
+    abgefangen. }
+  EUnwritableNumber = class(Exception);
+
+{ The rate as written (two decimals); EUnwritableNumber for NaN, infinite
+  and 1e23 and above.
+  DE: Der Satz, wie er geschrieben wird (zwei Nachkommastellen);
+  EUnwritableNumber fuer NaN, unendlich und ab 1e23. }
+function PercentLexical(APercent: Double): TLandrixEInvoiceString;
+begin
+  try
+    Result := LandrixEInvoicePercentToLexical(APercent);
+  except
+    on ELandrixXmlError do
+      raise EUnwritableNumber.Create('number cannot be formatted');
+  end;
+end;
+
+{ The payment terms text as written (LandrixEInvoicePaymentTermsText);
+  EUnwritableNumber when a cash discount percentage of the levels of
+  PaymentTermsType cannot be formatted.
+  DE: Der Text der Zahlungsbedingungen, wie er geschrieben wird;
+  EUnwritableNumber, wenn ein Skontoprozentsatz der Stufen von
+  PaymentTermsType nicht formatiert werden kann. }
+function TermsText(AInvoice: TLandrixInvoice): TLandrixEInvoiceString;
+begin
+  if AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3] then
+    PercentLexical(AInvoice.PaymentTermCashDiscount1Percent);
+  if AInvoice.PaymentTermsType in [iptt_CashDiscount2, iptt_CashDiscount3] then
+    PercentLexical(AInvoice.PaymentTermCashDiscount2Percent);
+  if AInvoice.PaymentTermsType = iptt_CashDiscount3 then
+    PercentLexical(AInvoice.PaymentTermCashDiscount3Percent);
+  Result := LandrixEInvoicePaymentTermsText(AInvoice);
+end;
+
 { SE-R-006: number(cbc:Percent) is 25, 12 or 6 (written with two
   decimals). DE: SE-R-006: der Satz ist 25, 12 oder 6. }
 function StandardSwedishRate(APercent: Double): Boolean;
 var
   Value: Double;
 begin
-  Result := XPathNumber(LandrixEInvoicePercentToLexical(APercent), Value) and
+  Result := XPathNumber(PercentLexical(APercent), Value) and
     ((Value = 25) or (Value = 12) or (Value = 6));
 end;
 
@@ -2036,7 +2087,7 @@ begin
     pr_DER017:
       Result := BothDE and not InList(TypeCode, '326 380 384 389 381 875 876 877');
     pr_DER018:
-      Result := BothDE and not LandrixEInvoiceCashDiscountTextValid(LandrixEInvoicePaymentTermsText(AInvoice));
+      Result := BothDE and not LandrixEInvoiceCashDiscountTextValid(TermsText(AInvoice));
     pr_DER019, pr_DER020, pr_DER0231..pr_DER0252:
       Result := BothDE and AnyPaymentViolated(AIndex, AInvoice);
     pr_DER022:
@@ -2175,6 +2226,22 @@ begin
   Result := (ASpec.Target.Standard = est_PeppolBIS) and (ASpec.Target.Syntax = esy_UBL);
 end;
 
+{ Violated; a rule that cannot judge a number the writers cannot format
+  holds (EUnwritableNumber).
+  DE: Violated; eine Regel, die eine Zahl nicht beurteilen kann, die die
+  Writer nicht formatieren koennen, gilt als erfuellt
+  (EUnwritableNumber). }
+function ViolatedWritable(AIndex: TPeppolRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  try
+    Result := Violated(AIndex, AInvoice, ASpec);
+  except
+    on EUnwritableNumber do
+      Result := False;
+  end;
+end;
+
 { --- public -------------------------------------------------------------------- }
 
 function LandrixEInvoiceCheckPeppolInvoice(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
@@ -2192,7 +2259,7 @@ begin
     if Flat <> nil then
       AInvoice := Flat;
     for I := Low(TPeppolRuleIndex) to High(TPeppolRuleIndex) do
-      if Violated(I, AInvoice, ASpec) then
+      if ViolatedWritable(I, AInvoice, ASpec) then
       begin
         AddViolation(ADiagnostics, PeppolRows[I]);
         if PeppolRows[I].Severity = eds_Error then
@@ -2204,7 +2271,8 @@ begin
 end;
 
 function LandrixEInvoiceCheckPeppolRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
-  const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; out AFound: Boolean): Boolean;
+  const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; ASkip: Boolean;
+  out AFound: Boolean): Boolean;
 var
   I: TPeppolRuleIndex;
   Flat: TLandrixInvoice;
@@ -2219,7 +2287,7 @@ begin
       if TLandrixEInvoiceString(PeppolRows[I].ID) = ARuleID then
       begin
         AFound := True;
-        if Applies(ASpec) and Violated(I, AInvoice, ASpec) then
+        if not ASkip and Applies(ASpec) and ViolatedWritable(I, AInvoice, ASpec) then
         begin
           AddViolation(ADiagnostics, PeppolRows[I]);
           Result := False;

@@ -594,3 +594,10 @@ Supported invoice standards are documented per release.
 - UBL: a contact department without a person name is written as the contact point
   (`cac:Contact/cbc:Name`, BT-41/BT-56) instead of being left out; XRechnung requires BT-41
   (BR-DE-5), and a valid CII invoice whose seller contact is a department became invalid UBL.
+- The rule check (`LandrixEInvoiceCheckInvoice`, also `eio_CheckOnRead` and the validator) no longer raises for a
+  number the writers cannot format (NaN, infinite, 1e23 and above): each such number the writers write is an
+  error of its own (`edk_ConversionFailed`, path = business term), a rule that cannot judge it holds, and with a
+  NaN no rule runs (its comparisons differ between compilers). VAT rates are compared exactly as written (two
+  decimals, any size) in the VAT category rules, BR-S-09 and BR-CO-17; before, a rate above the `Currency` range
+  became 0, taxable amount x rate could overflow, and BR-CO-17 rounded `-0.5` away from 0 unlike XPath. Cent
+  amounts of the rules cover the whole `Currency` range.

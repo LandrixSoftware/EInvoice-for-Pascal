@@ -140,11 +140,19 @@ uses
 
 { Runs every rule that applies to ASpec (except the LX-CC compatibility
   rules) and adds one edk_RuleViolation per violation to ADiagnostics (nil:
-  discarded). Returns the number of violations with severity eds_Error.
+  discarded). A number the writers write but cannot format (NaN, infinite,
+  1e23 and above) is an error of its own (edk_ConversionFailed); a rule
+  that cannot judge it holds, with a NaN no rule runs (its comparisons
+  differ between compilers). Returns the number of errors (violations and
+  such numbers).
   DE: Fuehrt jede Regel aus, die fuer ASpec gilt (ausser den
   LX-CC-Kompatibilitaetsregeln), und fuegt je Verstoss ein
-  edk_RuleViolation an ADiagnostics an (nil: verworfen). Liefert die Anzahl
-  der Verstoesse mit Schwere eds_Error. }
+  edk_RuleViolation an ADiagnostics an (nil: verworfen). Eine Zahl, die
+  kein Writer schreiben kann (NaN, unendlich, ab 1e23), ist ein eigener
+  Fehler (edk_ConversionFailed), sofern die Writer sie schreiben; eine
+  Regel, die sie nicht beurteilen kann, gilt als erfuellt, bei NaN laeuft
+  keine Regel (Vergleiche damit fallen je Compiler anders aus). Liefert die
+  Anzahl der Fehler (Verstoesse und solche Zahlen). }
 function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 
@@ -154,7 +162,9 @@ function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLa
   raises ELandrixEInvoiceError. ASpec may be the empty entry of
   LandrixEInvoiceFindSpec (a target without entry); the LX-CC rules apply
   to it as they did to the versions XRechnung-for-Delphi could not write,
-  the official rules do not.
+  the official rules do not. A rule that cannot judge a number the
+  writers cannot format holds, with a NaN every rule holds
+  (LandrixEInvoiceCheckInvoice reports the number).
   DE: Prueft die eine Regel ARuleID (Gross- und Kleinschreibung zaehlt,
   z. B. 'LX-CC-04'). True, wenn sie erfuellt ist oder fuer ASpec nicht
   gilt; sonst False und ein edk_RuleViolation in ADiagnostics (nil:
@@ -162,7 +172,9 @@ function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLa
   ASpec darf der leere Eintrag von LandrixEInvoiceFindSpec sein (Ziel ohne
   Eintrag); die LX-CC-Regeln gelten dafuer, wie sie fuer die Versionen
   galten, die XRechnung-for-Delphi nicht schreiben konnte, die offiziellen
-  Regeln nicht. }
+  Regeln nicht. Eine Regel, die eine Zahl nicht beurteilen kann, die die
+  Writer nicht formatieren koennen, gilt als erfuellt, bei NaN jede Regel
+  (LandrixEInvoiceCheckInvoice meldet die Zahl). }
 function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 
@@ -215,6 +227,8 @@ function LandrixEInvoiceCheckUBLCreditNote(AUBL: TLandrixUBLCreditNote; const AS
 implementation
 
 uses
+  SysUtils,
+  LandrixXmlBase,
   LandrixXmlWriter,
   LandrixEInvoiceCodes,
   LandrixEInvoiceLexical,
@@ -1665,13 +1679,431 @@ begin
   Result := False;
 end;
 
+{ --- exact decimals ------------------------------------------------------------- }
+
+type
+  { A decimal number as XPath computes with it (xs:decimal): the digits,
+    least significant first, times 10^-Scale. }
+  TDigits = array of Byte;
+  TExact = record
+    Negative: Boolean;
+    Scale: Integer;
+    Digits: TDigits;
+  end;
+
+const
+  { Saxon divides xs:decimal values without trailing zeros (integer part
+    included) to 18 decimals plus the excess of the dividend's scale over
+    the divisor's, rounded half down. }
+  XPathDivideScale = 18;
+
+function Trimmed(const ADigits: TDigits): TDigits;
+var
+  N: Integer;
+begin
+  N := Integer(Length(ADigits));
+  while (N > 0) and (ADigits[N - 1] = 0) do
+    Dec(N);
+  Result := Copy(ADigits, 0, N);
+end;
+
+{ A lexical decimal as the mappers write it ('-12.3400'). }
+function ExactOf(const AText: TLandrixEInvoiceString): TExact;
+var
+  I, N: Integer;
+  C: TLandrixEInvoiceChar;
+begin
+  Result.Negative := False;
+  Result.Scale := 0;
+  SetLength(Result.Digits, Integer(Length(AText)));
+  N := 0;
+  for I := Integer(Length(AText)) downto 1 do
+  begin
+    C := AText[I];
+    if (C >= '0') and (C <= '9') then
+    begin
+      Result.Digits[N] := Byte(Ord(C) - Ord('0'));
+      Inc(N);
+    end
+    else if C = '.' then
+      Result.Scale := N
+    else if C = '-' then
+      Result.Negative := True;
+  end;
+  SetLength(Result.Digits, N);
+  Result.Digits := Trimmed(Result.Digits);
+  if Integer(Length(Result.Digits)) = 0 then
+    Result.Negative := False;
+end;
+
+{ The magnitude of A times 10^(AScale - A.Scale); AScale >= A.Scale. }
+function Shifted(const A: TExact; AScale: Integer): TDigits;
+var
+  I, Shift: Integer;
+begin
+  Shift := AScale - A.Scale;
+  Result := nil;
+  SetLength(Result, Integer(Length(A.Digits)) + Shift);
+  for I := 0 to Shift - 1 do
+    Result[I] := 0;
+  for I := 0 to Integer(Length(A.Digits)) - 1 do
+    Result[I + Shift] := A.Digits[I];
+  Result := Trimmed(Result);
+end;
+
+function MagCompare(const X, Y: TDigits): Integer;
+var
+  I: Integer;
+begin
+  Result := Integer(Length(X)) - Integer(Length(Y));
+  I := Integer(Length(X)) - 1;
+  while (Result = 0) and (I >= 0) do
+  begin
+    Result := Integer(X[I]) - Integer(Y[I]);
+    Dec(I);
+  end;
+end;
+
+function MagAdd(const X, Y: TDigits): TDigits;
+var
+  I, N, D, Carry: Integer;
+begin
+  N := Integer(Length(X));
+  if Integer(Length(Y)) > N then
+    N := Integer(Length(Y));
+  Result := nil;
+  SetLength(Result, N + 1);
+  Carry := 0;
+  for I := 0 to N do
+  begin
+    D := Carry;
+    if I < Integer(Length(X)) then
+      Inc(D, X[I]);
+    if I < Integer(Length(Y)) then
+      Inc(D, Y[I]);
+    Result[I] := Byte(D mod 10);
+    Carry := D div 10;
+  end;
+  Result := Trimmed(Result);
+end;
+
+{ X - Y for X >= Y. }
+function MagSub(const X, Y: TDigits): TDigits;
+var
+  I, D, Borrow: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Integer(Length(X)));
+  Borrow := 0;
+  for I := 0 to Integer(Length(X)) - 1 do
+  begin
+    D := Integer(X[I]) - Borrow;
+    if I < Integer(Length(Y)) then
+      Dec(D, Y[I]);
+    if D < 0 then
+    begin
+      Inc(D, 10);
+      Borrow := 1;
+    end
+    else
+      Borrow := 0;
+    Result[I] := Byte(D);
+  end;
+  Result := Trimmed(Result);
+end;
+
+function MagMul(const X, Y: TDigits): TDigits;
+var
+  I, J, D, Carry: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Integer(Length(X)) + Integer(Length(Y)) + 1);
+  for I := 0 to Integer(Length(Result)) - 1 do
+    Result[I] := 0;
+  for I := 0 to Integer(Length(X)) - 1 do
+  begin
+    Carry := 0;
+    for J := 0 to Integer(Length(Y)) - 1 do
+    begin
+      D := Integer(Result[I + J]) + Integer(X[I]) * Integer(Y[J]) + Carry;
+      Result[I + J] := Byte(D mod 10);
+      Carry := D div 10;
+    end;
+    J := I + Integer(Length(Y));
+    while Carry > 0 do
+    begin
+      D := Result[J] + Carry;
+      Result[J] := Byte(D mod 10);
+      Carry := D div 10;
+      Inc(J);
+    end;
+  end;
+  Result := Trimmed(Result);
+end;
+
+{ X div Y for Y > 0, by long division; ARemainder is X mod Y. }
+function MagDiv(const X, Y: TDigits; out ARemainder: TDigits): TDigits;
+var
+  I, J, Q: Integer;
+  R, T: TDigits;
+begin
+  Result := nil;
+  SetLength(Result, Integer(Length(X)));
+  R := nil;
+  T := nil;
+  for I := Integer(Length(X)) - 1 downto 0 do
+  begin
+    SetLength(T, Integer(Length(R)) + 1);
+    T[0] := X[I];
+    for J := 0 to Integer(Length(R)) - 1 do
+      T[J + 1] := R[J];
+    R := Trimmed(T);
+    Q := 0;
+    while MagCompare(R, Y) >= 0 do
+    begin
+      R := MagSub(R, Y);
+      Inc(Q);
+    end;
+    Result[I] := Byte(Q);
+  end;
+  ARemainder := R;
+  Result := Trimmed(Result);
+end;
+
+function ExactAdd(const A, B: TExact): TExact;
+var
+  X, Y: TDigits;
+begin
+  Result.Scale := A.Scale;
+  if B.Scale > Result.Scale then
+    Result.Scale := B.Scale;
+  X := Shifted(A, Result.Scale);
+  Y := Shifted(B, Result.Scale);
+  if A.Negative = B.Negative then
+  begin
+    Result.Digits := MagAdd(X, Y);
+    Result.Negative := A.Negative;
+  end
+  else if MagCompare(X, Y) >= 0 then
+  begin
+    Result.Digits := MagSub(X, Y);
+    Result.Negative := A.Negative;
+  end
+  else
+  begin
+    Result.Digits := MagSub(Y, X);
+    Result.Negative := B.Negative;
+  end;
+  if Integer(Length(Result.Digits)) = 0 then
+    Result.Negative := False;
+end;
+
+function ExactNegated(const A: TExact): TExact;
+begin
+  Result := A;
+  Result.Negative := not A.Negative and (Integer(Length(A.Digits)) > 0);
+end;
+
+function ExactSub(const A, B: TExact): TExact;
+begin
+  Result := ExactAdd(A, ExactNegated(B));
+end;
+
+function ExactMul(const A, B: TExact): TExact;
+begin
+  Result.Digits := MagMul(A.Digits, B.Digits);
+  Result.Scale := A.Scale + B.Scale;
+  Result.Negative := (A.Negative <> B.Negative) and (Integer(Length(Result.Digits)) > 0);
+end;
+
+{ A without trailing zeros, also of the integer part (the scale may become
+  negative), as BigDecimal.stripTrailingZeros. }
+function Stripped(const A: TExact): TExact;
+var
+  N: Integer;
+begin
+  Result.Negative := A.Negative;
+  Result.Scale := A.Scale;
+  N := 0;
+  while (N < Integer(Length(A.Digits))) and (A.Digits[N] = 0) do
+  begin
+    Inc(N);
+    Dec(Result.Scale);
+  end;
+  Result.Digits := Copy(A.Digits, N, Integer(Length(A.Digits)) - N);
+end;
+
+{ A div B as Saxon computes it (XPathDivideScale); B must not be 0. }
+function ExactDiv(const A, B: TExact): TExact;
+var
+  X, Y: TExact;
+  Remainder, One: TDigits;
+begin
+  X := Stripped(A);
+  Y := Stripped(B);
+  Result.Scale := XPathDivideScale;
+  if X.Scale > Y.Scale then
+    Inc(Result.Scale, X.Scale - Y.Scale);
+  Result.Digits := MagDiv(Shifted(X, Result.Scale + Y.Scale), Y.Digits, Remainder);
+  { half down: up only when the remainder is more than half the divisor }
+  if MagCompare(MagAdd(Remainder, Remainder), Y.Digits) > 0 then
+  begin
+    One := nil;
+    SetLength(One, 1);
+    One[0] := 1;
+    Result.Digits := MagAdd(Result.Digits, One);
+  end;
+  Result.Negative := (A.Negative <> B.Negative) and (Integer(Length(Result.Digits)) > 0);
+end;
+
+function ExactCompare(const A, B: TExact): Integer;
+var
+  D: TExact;
+begin
+  D := ExactSub(A, B);
+  if Integer(Length(D.Digits)) = 0 then
+    Result := 0
+  else if D.Negative then
+    Result := -1
+  else
+    Result := 1;
+end;
+
+{ -1, 0 or 1 by the sign of A. }
+function ExactSign(const A: TExact): Integer;
+begin
+  if Integer(Length(A.Digits)) = 0 then
+    Result := 0
+  else if A.Negative then
+    Result := -1
+  else
+    Result := 1;
+end;
+
+{ An Int64 as an exact number. }
+function ExactInt(AValue: Int64): TExact;
+begin
+  Result := ExactOf(TLandrixEInvoiceString(IntToStr(AValue)));
+end;
+
+{ True if the writers can format AValue: not NaN, not infinite, below
+  1e23 (the limit of LandrixXml, for every number of decimals).
+  DE: True, wenn die Writer AValue formatieren koennen: nicht NaN, nicht
+  unendlich, unter 1e23 (die Grenze von LandrixXml, fuer jede Zahl von
+  Nachkommastellen). }
+function NumberWritable(AValue: Double): Boolean;
+begin
+  try
+    Result := LandrixEInvoicePercentToLexical(AValue) <> '';
+  except
+    on ELandrixXmlError do
+      Result := False;
+  end;
+end;
+
+{ True for a NaN, by its bits (comparing a NaN differs between compilers).
+  DE: True fuer NaN, an den Bits (Vergleiche mit NaN fallen je Compiler
+  anders aus). }
+function IsNaN(AValue: Double): Boolean;
+begin
+  Result := ((PInt64(@AValue)^ shr 52) and $7FF = $7FF) and (PInt64(@AValue)^ and $FFFFFFFFFFFFF <> 0);
+end;
+
+type
+  { Raised where a rule formats a number the writers cannot format
+    (ReportUnwritableNumbers reports the number); the rule then holds. Only
+    this exception is caught: every other one, e.g. of a date outside
+    0001-9999, passes.
+    DE: Ausgeloest, wo eine Regel eine Zahl formatiert, die die Writer
+    nicht formatieren koennen (ReportUnwritableNumbers meldet die Zahl);
+    die Regel gilt dann als erfuellt. Nur diese Ausnahme wird abgefangen:
+    jede andere, z. B. eines Datums ausserhalb 0001-9999, geht weiter. }
+  EUnwritableNumber = class(Exception);
+
+{ AValue if the writers can format it, else EUnwritableNumber.
+  DE: AValue, wenn die Writer es formatieren koennen, sonst
+  EUnwritableNumber. }
+function Writable(AValue: Double): Double;
+begin
+  if not NumberWritable(AValue) then
+    raise EUnwritableNumber.Create('number cannot be formatted');
+  Result := AValue;
+end;
+
+{ The payment terms text as written (LandrixEInvoicePaymentTermsText);
+  EUnwritableNumber when a cash discount percentage of the levels of
+  PaymentTermsType cannot be formatted.
+  DE: Der Text der Zahlungsbedingungen, wie er geschrieben wird;
+  EUnwritableNumber, wenn ein Skontoprozentsatz der Stufen von
+  PaymentTermsType nicht formatiert werden kann. }
+function TermsText(AInvoice: TLandrixInvoice): TLandrixEInvoiceString;
+begin
+  if AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3] then
+    Writable(AInvoice.PaymentTermCashDiscount1Percent);
+  if AInvoice.PaymentTermsType in [iptt_CashDiscount2, iptt_CashDiscount3] then
+    Writable(AInvoice.PaymentTermCashDiscount2Percent);
+  if AInvoice.PaymentTermsType = iptt_CashDiscount3 then
+    Writable(AInvoice.PaymentTermCashDiscount3Percent);
+  Result := LandrixEInvoicePaymentTermsText(AInvoice);
+end;
+
+{ The rate as written (two decimals), exact; EUnwritableNumber for a rate
+  the writers cannot format.
+  DE: Der Satz, wie er geschrieben wird (zwei Nachkommastellen), genau;
+  EUnwritableNumber fuer einen Satz, den die Writer nicht formatieren
+  koennen. }
+function RateExact(AValue: Double): TExact;
+begin
+  Result := ExactOf(LandrixEInvoicePercentToLexical(Writable(AValue)));
+end;
+
+{ True if the magnitude of the tax amount ATaxCents lies within AWidth
+  (exclusive, in cents) of |ATaxableCents| x ARate / 100 rounded half up to
+  cents (XPath round; the rate keeps its sign): with X the unrounded amount
+  and T the magnitude of the tax amount, round(X) lies within T - W .. T + W
+  (W = AWidth - 1, integers) exactly when T - W - 0.5 <= X < T + W + 0.5.
+  Exact for any size.
+  DE: True, wenn der Steuerbetrag ATaxCents als Betrag innerhalb von AWidth
+  (echt, in Cent) um |ATaxableCents| x ARate / 100 liegt, halb aufwaerts
+  auf Cent gerundet (XPath round; der Satz behaelt sein Vorzeichen): mit X
+  dem ungerundeten Betrag und T dem Betrag des Steuerbetrags liegt round(X)
+  genau dann in T - W .. T + W (W = AWidth - 1, ganze Zahlen), wenn
+  T - W - 0,5 <= X < T + W + 0,5. Genau fuer jede Groesse. }
+function TaxWithin(ATaxableCents: Int64; const ARate: TExact; ATaxCents: Int64; AWidth: Integer): Boolean;
+var
+  X, T, Half: TExact;
+begin
+  X := ExactMul(ExactInt(Abs(ATaxableCents)), ARate);
+  { the rate is a percentage: / 100 }
+  Inc(X.Scale, 2);
+  T := ExactInt(Abs(ATaxCents));
+  Half := ExactAdd(ExactInt(AWidth - 1), ExactOf('0.5'));
+  Result := (ExactCompare(X, ExactSub(T, Half)) >= 0) and (ExactCompare(X, ExactAdd(T, Half)) < 0);
+end;
+
+function AmountExact(AValue: Currency): TExact;
+begin
+  Result := ExactOf(LandrixEInvoiceAmountToLexical(AValue));
+end;
+
+function PriceExact(AValue: Double): TExact;
+begin
+  Result := ExactOf(LandrixEInvoicePriceToLexical(Writable(AValue)));
+end;
+
 { --- calculation rules ---------------------------------------------------------- }
 
-{ An amount as written, in cents (LandrixEInvoiceAmountToLexical).
-  DE: Ein Betrag, wie er geschrieben wird, in Cent. }
+{ An amount as written, in cents (LandrixEInvoiceAmountToLexical); from
+  the raw Int64 of the Currency (ten thousandths), so the whole Currency
+  range fits.
+  DE: Ein Betrag, wie er geschrieben wird, in Cent; aus dem rohen Int64
+  der Currency (Zehntausendstel), damit der ganze Currency-Bereich passt. }
 function Cents(AValue: Currency): Int64;
+var
+  Amount: Currency;
 begin
-  Result := Trunc(CentAmount(AValue) * 100);
+  Amount := CentAmount(AValue);
+  Result := PInt64(@Amount)^ div 100;
 end;
 
 { Third-party payments that the target writes: XRechnung UBL invoices
@@ -1746,26 +2178,30 @@ end;
 { BR-CO-17 for one VAT breakdown: with a rate that rounds to 0 the tax
   amount rounds to 0; otherwise it lies within 1 of the taxable amount x
   rate / 100 rounded to cents (XPath round: half up), strictly in UBL,
-  inclusively in CII.
+  inclusively in CII. The rate as written (two decimals), exact for any
+  size.
   DE: BR-CO-17 fuer eine Steueraufschluesselung: bei einem Satz, der auf 0
   rundet, rundet der Steuerbetrag auf 0; sonst liegt er innerhalb von 1
   um Bemessungsgrundlage x Satz / 100, auf Cent gerundet (XPath round:
-  halb aufwaerts), in UBL echt, in CII einschliesslich. }
+  halb aufwaerts), in UBL echt, in CII einschliesslich. Der Satz, wie er
+  geschrieben wird (zwei Nachkommastellen), genau fuer jede Groesse. }
 function TaxAmountWrong(ATax: TLandrixInvoiceTaxAmount; AStrict: Boolean): Boolean;
 var
-  Tax, Expected: Int64;
+  Tax: Int64;
+  Rate: TExact;
 begin
   Tax := Cents(ATax.TaxAmount);
-  if Trunc(Abs(ATax.TaxPercent) + 0.5) = 0 then
+  Rate := RateExact(ATax.TaxPercent);
+  { round(rate) = 0 for -0.5 <= rate < 0.5 (half up) }
+  if (ExactCompare(Rate, ExactOf('-0.5')) >= 0) and (ExactCompare(Rate, ExactOf('0.5')) < 0) then
   begin
     Result := (Tax < -50) or (Tax >= 50);
     Exit;
   end;
-  Expected := Trunc(Abs(Cents(ATax.TaxableAmount)) * ATax.TaxPercent / 100 + 0.5);
   if AStrict then
-    Result := not ((Abs(Tax) - 100 < Expected) and (Abs(Tax) + 100 > Expected))
+    Result := not TaxWithin(Cents(ATax.TaxableAmount), Rate, Tax, 100)
   else
-    Result := not ((Abs(Tax) - 100 <= Expected) and (Abs(Tax) + 100 >= Expected));
+    Result := not TaxWithin(Cents(ATax.TaxableAmount), Rate, Tax, 101);
 end;
 
 { The calculation rules on the totals as written.
@@ -1860,17 +2296,17 @@ type
   TTaxUseKinds = set of TTaxUseKind;
 
   { One VAT category as written: of an invoice line, a document level
-    allowance or charge, or a VAT breakdown; amounts in cents, the rate in
-    hundredths of a percent.
+    allowance or charge, or a VAT breakdown; amounts in cents, the rate
+    exact as written (two decimals, any size).
     DE: Eine Umsatzsteuerkategorie, wie sie geschrieben wird: einer
     Rechnungsposition, eines Nachlasses oder Zuschlags der Dokumentebene
-    oder einer Steueraufschluesselung; Betraege in Cent, der Satz in
-    Hundertstel Prozent. }
+    oder einer Steueraufschluesselung; Betraege in Cent, der Satz genau so,
+    wie er geschrieben wird (zwei Nachkommastellen, beliebig gross). }
   TTaxUse = record
     Kind: TTaxUseKind;
     Code: TLandrixEInvoiceString;
     HasRate: Boolean;
-    Rate: Int64;
+    Rate: TExact;
     Amount: Int64;
     TaxAmount: Int64;
     Exemption: Boolean;
@@ -1892,20 +2328,6 @@ const
     'reverse charge', 'intra-community supply', 'export outside the EU', 'not subject to VAT',
     'IGIC (Canary Islands)', 'IPSI (Ceuta and Melilla)');
 
-{ The rate as written (two decimals), in hundredths of a percent.
-  DE: Der Satz, wie er geschrieben wird (zwei Nachkommastellen), in
-  Hundertstel Prozent. }
-function RateHundredths(AValue: Double): Int64;
-var
-  Value: Currency;
-  Rounded: Boolean;
-begin
-  if LandrixEInvoiceTryLexicalToCurrency(LandrixEInvoicePercentToLexical(AValue), Value, Rounded) then
-    Result := Trunc(Value * 100)
-  else
-    Result := 0;
-end;
-
 procedure AddTaxUse(var AUses: TTaxUses; AKind: TTaxUseKind; const ACode: TLandrixEInvoiceString;
   AHasRate: Boolean; ARate: Double; AAmount: Int64);
 begin
@@ -1914,7 +2336,10 @@ begin
   AUses.Items[AUses.Count].Kind := AKind;
   AUses.Items[AUses.Count].Code := ACode;
   AUses.Items[AUses.Count].HasRate := AHasRate;
-  AUses.Items[AUses.Count].Rate := RateHundredths(ARate);
+  if AHasRate then
+    AUses.Items[AUses.Count].Rate := RateExact(ARate)
+  else
+    AUses.Items[AUses.Count].Rate := ExactOf('0');
   AUses.Items[AUses.Count].Amount := AAmount;
   AUses.Items[AUses.Count].TaxAmount := 0;
   AUses.Items[AUses.Count].Exemption := False;
@@ -2013,8 +2438,8 @@ end;
   tells whether one exists. DE: BR-xx-08: Positionen (UBL: nur oberste
   Ebene) und Nachlaesse und Zuschlaege der Dokumentebene mit ACode (und
   ARate, wenn AByRate), netto in Cent; AFound sagt, ob es eine gibt. }
-function TaxUseNet(const AUses: TTaxUses; const ACode: TLandrixEInvoiceString; AByRate: Boolean; ARate: Int64;
-  ALineKinds: TTaxUseKinds; out AFound: Boolean): Int64;
+function TaxUseNet(const AUses: TTaxUses; const ACode: TLandrixEInvoiceString; AByRate: Boolean;
+  const ARate: TExact; ALineKinds: TTaxUseKinds; out AFound: Boolean): Int64;
 var
   I: Integer;
   U: TTaxUse;
@@ -2024,7 +2449,7 @@ begin
   for I := 0 to AUses.Count - 1 do
   begin
     U := AUses.Items[I];
-    if (U.Code <> ACode) or (AByRate and (not U.HasRate or (U.Rate <> ARate))) then
+    if (U.Code <> ACode) or (AByRate and (not U.HasRate or (ExactCompare(U.Rate, ARate) <> 0))) then
       Continue;
     if U.Kind in ALineKinds then
       Inc(Result, U.Amount)
@@ -2040,19 +2465,13 @@ end;
 
 { BR-S-09 (and BR-AF-09, BR-AG-09 in UBL): the tax amount lies strictly
   within 1 of taxable amount x rate / 100, rounded half up to cents
-  (exactly, in integers).
+  (exactly, for any size).
   DE: BR-S-09 (und BR-AF-09, BR-AG-09 in UBL): der Steuerbetrag liegt echt
   innerhalb von 1 um Bemessungsgrundlage x Satz / 100, halb aufwaerts auf
-  Cent gerundet (genau, in ganzen Zahlen). }
+  Cent gerundet (genau, fuer jede Groesse). }
 function BreakdownTaxWrong(const AUse: TTaxUse): Boolean;
-var
-  Product, Expected: Int64;
 begin
-  Product := Abs(AUse.Amount) * AUse.Rate + 5000;
-  Expected := Product div 10000;
-  if (Product < 0) and (Product mod 10000 <> 0) then
-    Dec(Expected);
-  Result := not ((Abs(AUse.TaxAmount) - 100 < Expected) and (Abs(AUse.TaxAmount) + 100 > Expected));
+  Result := not TaxWithin(AUse.Amount, AUse.Rate, AUse.TaxAmount, 100);
 end;
 
 { BR-xx-02 to 04: the seller and buyer identifiers each group needs (S, Z,
@@ -2097,13 +2516,13 @@ begin
   else
     case AGroup of
       vg_S:
-        Result := AUse.Rate <= 0;
+        Result := ExactSign(AUse.Rate) <= 0;
       vg_AF:
-        Result := (AUse.Rate < 0) or ((AUse.Rate = 0) and (ASpec.Target.Syntax = esy_CII));
+        Result := (ExactSign(AUse.Rate) < 0) or ((ExactSign(AUse.Rate) = 0) and (ASpec.Target.Syntax = esy_CII));
       vg_AG:
-        Result := AUse.Rate < 0;
+        Result := ExactSign(AUse.Rate) < 0;
     else
-      Result := AUse.Rate <> 0;
+      Result := ExactSign(AUse.Rate) <> 0;
     end;
 end;
 
@@ -2619,7 +3038,7 @@ begin
     Result := not (AInvoice.InvoiceDueDate > 0) and not Present(AInvoice.PaymentTermNetNote) and
       not (AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3])
   else
-    Result := not Present(LandrixEInvoicePaymentTermsText(AInvoice)) and
+    Result := not Present(TermsText(AInvoice)) and
       not ((AInvoice.InvoiceDueDate > 0) and not ((AInvoice.InvoiceTypeCode = itc_CreditNote) and
         Forbidden(ASpec, LandrixEInvoiceRuleCreditNoteDueDate)));
 end;
@@ -3276,306 +3695,6 @@ end;
   LX-CC-Regeln behalten die Bedingungen von XRechnung-for-Delphi: ein Ziel,
   das nicht geschrieben werden kann (leerer Eintrag), scheitert an
   Zahlungen Dritter und Lieferdaten je Position. }
-{ --- exact decimals ------------------------------------------------------------- }
-
-type
-  { A decimal number as XPath computes with it (xs:decimal): the digits,
-    least significant first, times 10^-Scale. }
-  TDigits = array of Byte;
-  TExact = record
-    Negative: Boolean;
-    Scale: Integer;
-    Digits: TDigits;
-  end;
-
-const
-  { Saxon divides xs:decimal values without trailing zeros (integer part
-    included) to 18 decimals plus the excess of the dividend's scale over
-    the divisor's, rounded half down. }
-  XPathDivideScale = 18;
-
-function Trimmed(const ADigits: TDigits): TDigits;
-var
-  N: Integer;
-begin
-  N := Integer(Length(ADigits));
-  while (N > 0) and (ADigits[N - 1] = 0) do
-    Dec(N);
-  Result := Copy(ADigits, 0, N);
-end;
-
-{ A lexical decimal as the mappers write it ('-12.3400'). }
-function ExactOf(const AText: TLandrixEInvoiceString): TExact;
-var
-  I, N: Integer;
-  C: TLandrixEInvoiceChar;
-begin
-  Result.Negative := False;
-  Result.Scale := 0;
-  SetLength(Result.Digits, Integer(Length(AText)));
-  N := 0;
-  for I := Integer(Length(AText)) downto 1 do
-  begin
-    C := AText[I];
-    if (C >= '0') and (C <= '9') then
-    begin
-      Result.Digits[N] := Byte(Ord(C) - Ord('0'));
-      Inc(N);
-    end
-    else if C = '.' then
-      Result.Scale := N
-    else if C = '-' then
-      Result.Negative := True;
-  end;
-  SetLength(Result.Digits, N);
-  Result.Digits := Trimmed(Result.Digits);
-  if Integer(Length(Result.Digits)) = 0 then
-    Result.Negative := False;
-end;
-
-{ The magnitude of A times 10^(AScale - A.Scale); AScale >= A.Scale. }
-function Shifted(const A: TExact; AScale: Integer): TDigits;
-var
-  I, Shift: Integer;
-begin
-  Shift := AScale - A.Scale;
-  Result := nil;
-  SetLength(Result, Integer(Length(A.Digits)) + Shift);
-  for I := 0 to Shift - 1 do
-    Result[I] := 0;
-  for I := 0 to Integer(Length(A.Digits)) - 1 do
-    Result[I + Shift] := A.Digits[I];
-  Result := Trimmed(Result);
-end;
-
-function MagCompare(const X, Y: TDigits): Integer;
-var
-  I: Integer;
-begin
-  Result := Integer(Length(X)) - Integer(Length(Y));
-  I := Integer(Length(X)) - 1;
-  while (Result = 0) and (I >= 0) do
-  begin
-    Result := Integer(X[I]) - Integer(Y[I]);
-    Dec(I);
-  end;
-end;
-
-function MagAdd(const X, Y: TDigits): TDigits;
-var
-  I, N, D, Carry: Integer;
-begin
-  N := Integer(Length(X));
-  if Integer(Length(Y)) > N then
-    N := Integer(Length(Y));
-  Result := nil;
-  SetLength(Result, N + 1);
-  Carry := 0;
-  for I := 0 to N do
-  begin
-    D := Carry;
-    if I < Integer(Length(X)) then
-      Inc(D, X[I]);
-    if I < Integer(Length(Y)) then
-      Inc(D, Y[I]);
-    Result[I] := Byte(D mod 10);
-    Carry := D div 10;
-  end;
-  Result := Trimmed(Result);
-end;
-
-{ X - Y for X >= Y. }
-function MagSub(const X, Y: TDigits): TDigits;
-var
-  I, D, Borrow: Integer;
-begin
-  Result := nil;
-  SetLength(Result, Integer(Length(X)));
-  Borrow := 0;
-  for I := 0 to Integer(Length(X)) - 1 do
-  begin
-    D := Integer(X[I]) - Borrow;
-    if I < Integer(Length(Y)) then
-      Dec(D, Y[I]);
-    if D < 0 then
-    begin
-      Inc(D, 10);
-      Borrow := 1;
-    end
-    else
-      Borrow := 0;
-    Result[I] := Byte(D);
-  end;
-  Result := Trimmed(Result);
-end;
-
-function MagMul(const X, Y: TDigits): TDigits;
-var
-  I, J, D, Carry: Integer;
-begin
-  Result := nil;
-  SetLength(Result, Integer(Length(X)) + Integer(Length(Y)) + 1);
-  for I := 0 to Integer(Length(Result)) - 1 do
-    Result[I] := 0;
-  for I := 0 to Integer(Length(X)) - 1 do
-  begin
-    Carry := 0;
-    for J := 0 to Integer(Length(Y)) - 1 do
-    begin
-      D := Integer(Result[I + J]) + Integer(X[I]) * Integer(Y[J]) + Carry;
-      Result[I + J] := Byte(D mod 10);
-      Carry := D div 10;
-    end;
-    J := I + Integer(Length(Y));
-    while Carry > 0 do
-    begin
-      D := Result[J] + Carry;
-      Result[J] := Byte(D mod 10);
-      Carry := D div 10;
-      Inc(J);
-    end;
-  end;
-  Result := Trimmed(Result);
-end;
-
-{ X div Y for Y > 0, by long division; ARemainder is X mod Y. }
-function MagDiv(const X, Y: TDigits; out ARemainder: TDigits): TDigits;
-var
-  I, J, Q: Integer;
-  R, T: TDigits;
-begin
-  Result := nil;
-  SetLength(Result, Integer(Length(X)));
-  R := nil;
-  T := nil;
-  for I := Integer(Length(X)) - 1 downto 0 do
-  begin
-    SetLength(T, Integer(Length(R)) + 1);
-    T[0] := X[I];
-    for J := 0 to Integer(Length(R)) - 1 do
-      T[J + 1] := R[J];
-    R := Trimmed(T);
-    Q := 0;
-    while MagCompare(R, Y) >= 0 do
-    begin
-      R := MagSub(R, Y);
-      Inc(Q);
-    end;
-    Result[I] := Byte(Q);
-  end;
-  ARemainder := R;
-  Result := Trimmed(Result);
-end;
-
-function ExactAdd(const A, B: TExact): TExact;
-var
-  X, Y: TDigits;
-begin
-  Result.Scale := A.Scale;
-  if B.Scale > Result.Scale then
-    Result.Scale := B.Scale;
-  X := Shifted(A, Result.Scale);
-  Y := Shifted(B, Result.Scale);
-  if A.Negative = B.Negative then
-  begin
-    Result.Digits := MagAdd(X, Y);
-    Result.Negative := A.Negative;
-  end
-  else if MagCompare(X, Y) >= 0 then
-  begin
-    Result.Digits := MagSub(X, Y);
-    Result.Negative := A.Negative;
-  end
-  else
-  begin
-    Result.Digits := MagSub(Y, X);
-    Result.Negative := B.Negative;
-  end;
-  if Integer(Length(Result.Digits)) = 0 then
-    Result.Negative := False;
-end;
-
-function ExactNegated(const A: TExact): TExact;
-begin
-  Result := A;
-  Result.Negative := not A.Negative and (Integer(Length(A.Digits)) > 0);
-end;
-
-function ExactSub(const A, B: TExact): TExact;
-begin
-  Result := ExactAdd(A, ExactNegated(B));
-end;
-
-function ExactMul(const A, B: TExact): TExact;
-begin
-  Result.Digits := MagMul(A.Digits, B.Digits);
-  Result.Scale := A.Scale + B.Scale;
-  Result.Negative := (A.Negative <> B.Negative) and (Integer(Length(Result.Digits)) > 0);
-end;
-
-{ A without trailing zeros, also of the integer part (the scale may become
-  negative), as BigDecimal.stripTrailingZeros. }
-function Stripped(const A: TExact): TExact;
-var
-  N: Integer;
-begin
-  Result.Negative := A.Negative;
-  Result.Scale := A.Scale;
-  N := 0;
-  while (N < Integer(Length(A.Digits))) and (A.Digits[N] = 0) do
-  begin
-    Inc(N);
-    Dec(Result.Scale);
-  end;
-  Result.Digits := Copy(A.Digits, N, Integer(Length(A.Digits)) - N);
-end;
-
-{ A div B as Saxon computes it (XPathDivideScale); B must not be 0. }
-function ExactDiv(const A, B: TExact): TExact;
-var
-  X, Y: TExact;
-  Remainder, One: TDigits;
-begin
-  X := Stripped(A);
-  Y := Stripped(B);
-  Result.Scale := XPathDivideScale;
-  if X.Scale > Y.Scale then
-    Inc(Result.Scale, X.Scale - Y.Scale);
-  Result.Digits := MagDiv(Shifted(X, Result.Scale + Y.Scale), Y.Digits, Remainder);
-  { half down: up only when the remainder is more than half the divisor }
-  if MagCompare(MagAdd(Remainder, Remainder), Y.Digits) > 0 then
-  begin
-    One := nil;
-    SetLength(One, 1);
-    One[0] := 1;
-    Result.Digits := MagAdd(Result.Digits, One);
-  end;
-  Result.Negative := (A.Negative <> B.Negative) and (Integer(Length(Result.Digits)) > 0);
-end;
-
-function ExactCompare(const A, B: TExact): Integer;
-var
-  D: TExact;
-begin
-  D := ExactSub(A, B);
-  if Integer(Length(D.Digits)) = 0 then
-    Result := 0
-  else if D.Negative then
-    Result := -1
-  else
-    Result := 1;
-end;
-
-function AmountExact(AValue: Currency): TExact;
-begin
-  Result := ExactOf(LandrixEInvoiceAmountToLexical(AValue));
-end;
-
-function PriceExact(AValue: Double): TExact;
-begin
-  Result := ExactOf(LandrixEInvoicePriceToLexical(AValue));
-end;
-
 { --- Peppol rules ---------------------------------------------------------------- }
 
 { u:slack of the schematron: AExp - ASlack <= AVal <= AExp + ASlack.
@@ -3622,7 +3741,7 @@ begin
       if HasPercent and HasBase then
       begin
         Expected := ExactDiv(ExactMul(AmountExact(AItem.BaseAmount),
-          ExactOf(LandrixEInvoiceDecimalToLexical(AItem.MultiplierFactorNumeric, APercentDecimals))), ExactOf('100'));
+          ExactOf(LandrixEInvoiceDecimalToLexical(Writable(AItem.MultiplierFactorNumeric), APercentDecimals))), ExactOf('100'));
         Result := not WithinSlack(AmountExact(AItem.Amount), Expected, ASlack);
       end;
     cr_PeppolR041:
@@ -3799,7 +3918,7 @@ begin
         Base := ExactOf('1');
         if ALine.BaseQuantity <> 0 then
         begin
-          Value := ExactOf(LandrixEInvoiceBaseQuantityToLexical(ALine.BaseQuantity));
+          Value := ExactOf(LandrixEInvoiceBaseQuantityToLexical(Writable(ALine.BaseQuantity)));
           if Length(Value.Digits) > 0 then
             Base := Value;
         end;
@@ -3810,13 +3929,13 @@ begin
             Charges := ExactAdd(Charges, AmountExact(ALine.AllowanceCharges[I].Amount))
           else
             Allowances := ExactAdd(Allowances, AmountExact(ALine.AllowanceCharges[I].Amount));
-        Value := ExactSub(ExactAdd(ExactMul(ExactOf(LandrixEInvoiceQuantityToLexical(ALine.Quantity)),
+        Value := ExactSub(ExactAdd(ExactMul(ExactOf(LandrixEInvoiceQuantityToLexical(Writable(ALine.Quantity))),
           ExactDiv(PriceExact(ALine.NetPriceAmount), Base)), Charges), Allowances);
         Result := not WithinSlack(AmountExact(ALine.LineAmount), Value, ASlack);
       end;
     cr_PeppolR121:
       Result := (ALine.BaseQuantity <> 0) and
-        (ExactCompare(ExactOf(LandrixEInvoiceBaseQuantityToLexical(ALine.BaseQuantity)), ExactOf('0')) <= 0);
+        (ExactCompare(ExactOf(LandrixEInvoiceBaseQuantityToLexical(Writable(ALine.BaseQuantity))), ExactOf('0')) <= 0);
     cr_PeppolR130:
       begin
         BaseUnit := WrittenCode(LandrixEInvoiceUnitCodeToStr(ALine.BaseQuantityUnitCode),
@@ -4035,7 +4154,7 @@ begin
       da der Text jede Zeile mit LF abschliesst und # im freien Text
       ersetzt. }
     cr_BRDE18:
-      Result := not LandrixEInvoiceCashDiscountTextValid(LandrixEInvoicePaymentTermsText(AInvoice));
+      Result := not LandrixEInvoiceCashDiscountTextValid(TermsText(AInvoice));
     cr_BRDE22:
       Result := DuplicateFilename(AInvoice);
     cr_BRDE23b:
@@ -4089,6 +4208,132 @@ begin
   end;
 end;
 
+{ --- numbers no writer can write ----------------------------------------------- }
+
+type
+  { What the walk found. DE: Was der Durchgang gefunden hat. }
+  TUnwritable = record
+    Count: Integer;
+    NaN: Boolean;
+  end;
+
+procedure ReportNumber(AValue: Double; const ATerms: string; const AWhat: TLandrixEInvoiceString;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; var AFound: TUnwritable);
+var
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  if NumberWritable(AValue) then
+    Exit;
+  Inc(AFound.Count);
+  if IsNaN(AValue) then
+    AFound.NaN := True;
+  if ADiagnostics = nil then
+    Exit;
+  D := ADiagnostics.AddDiagnostic(edk_ConversionFailed, TLandrixEInvoiceString(ATerms), 0, 0, 0,
+    AWhat + ' cannot be written (NaN, infinite or 1e23 and above); the rules that cannot judge it are skipped');
+  D.Severity := eds_Error;
+end;
+
+{ The percentage of each allowance or charge, and its rate on document
+  level except for category O (the line level has no rate in the syntaxes).
+  DE: Der Prozentsatz jedes Nachlasses oder Zuschlags und sein Satz auf
+  Dokumentebene ausser bei Kategorie O (die Positionsebene hat in den
+  Syntaxen keinen Satz). }
+procedure ReportAllowanceNumbers(AItems: TLandrixInvoiceAllowanceCharges; AOnLine: Boolean;
+  const AWhere: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; var AFound: TUnwritable);
+var
+  I: TLandrixEInvoiceListIndex;
+  Item: TLandrixInvoiceAllowanceCharge;
+  Kind: TLandrixEInvoiceString;
+  Terms: string;
+begin
+  for I := 0 to AItems.Count - 1 do
+  begin
+    Item := AItems[I];
+    if Item.ChargeIndicator then
+    begin
+      Kind := 'charge';
+      if AOnLine then
+        Terms := 'BT-143'
+      else
+        Terms := 'BT-101';
+    end
+    else
+    begin
+      Kind := 'allowance';
+      if AOnLine then
+        Terms := 'BT-138'
+      else
+        Terms := 'BT-94';
+    end;
+    ReportNumber(Item.MultiplierFactorNumeric, Terms, 'The percentage of ' + Kind + ' ' +
+      TLandrixEInvoiceString(IntToStr(I + 1)) + AWhere, ADiagnostics, AFound);
+    if AOnLine or (Item.TaxCategory = idtfcc_O_ServicesOutsideScopeOfTax) then
+      Continue;
+    if Item.ChargeIndicator then
+      Terms := 'BT-103'
+    else
+      Terms := 'BT-96';
+    ReportNumber(Item.TaxPercent, Terms, 'The VAT rate of ' + Kind + ' ' + TLandrixEInvoiceString(IntToStr(I + 1)) +
+      AWhere, ADiagnostics, AFound);
+  end;
+end;
+
+procedure ReportLineNumbers(ALines: TLandrixInvoiceLines; ADiagnostics: TLandrixEInvoiceDiagnostics;
+  var AFound: TUnwritable);
+var
+  I: TLandrixEInvoiceListIndex;
+  Line: TLandrixInvoiceLine;
+  Where: TLandrixEInvoiceString;
+begin
+  for I := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[I];
+    Where := ' of invoice line ''' + Line.ID + '''';
+    ReportNumber(Line.Quantity, 'BT-129', 'The quantity' + Where, ADiagnostics, AFound);
+    { category O: no rate written. DE: Kategorie O: kein Satz geschrieben. }
+    if Line.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax then
+      ReportNumber(Line.TaxPercent, 'BT-152', 'The VAT rate' + Where, ADiagnostics, AFound);
+    ReportNumber(Line.GrossPriceAmount, 'BT-148', 'The gross price' + Where, ADiagnostics, AFound);
+    { the discount only with a gross price, as the writers
+      DE: der Rabatt nur mit Bruttopreis, wie bei den Writern }
+    if not IsNaN(Line.GrossPriceAmount) and (Line.GrossPriceAmount <> 0) then
+      ReportNumber(Line.DiscountOnTheGrossPrice, 'BT-147', 'The price discount' + Where, ADiagnostics, AFound);
+    ReportNumber(Line.NetPriceAmount, 'BT-146', 'The net price' + Where, ADiagnostics, AFound);
+    ReportNumber(Line.BaseQuantity, 'BT-149', 'The price base quantity' + Where, ADiagnostics, AFound);
+    ReportAllowanceNumbers(Line.AllowanceCharges, True, Where, ADiagnostics, AFound);
+    ReportLineNumbers(Line.SubInvoiceLines, ADiagnostics, AFound);
+  end;
+end;
+
+{ Reports every number of AInvoice that the writers write but cannot
+  format (one edk_ConversionFailed error each). A cash discount level
+  counts up to the level of PaymentTermsType.
+  DE: Meldet jede Zahl von AInvoice, die die Writer schreiben, aber nicht
+  formatieren koennen (je ein Fehler edk_ConversionFailed). Eine
+  Skontostufe zaehlt bis zur Stufe von PaymentTermsType. }
+function ReportUnwritableNumbers(AInvoice: TLandrixInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics): TUnwritable;
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  Result.Count := 0;
+  Result.NaN := False;
+  ReportLineNumbers(AInvoice.InvoiceLines, ADiagnostics, Result);
+  ReportAllowanceNumbers(AInvoice.AllowanceCharges, False, '', ADiagnostics, Result);
+  for I := 0 to AInvoice.TaxAmountSubtotals.Count - 1 do
+    ReportNumber(AInvoice.TaxAmountSubtotals[I].TaxPercent, 'BT-119', 'The VAT rate of VAT breakdown ' +
+      TLandrixEInvoiceString(IntToStr(I + 1)), ADiagnostics, Result);
+  if AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3] then
+    ReportNumber(AInvoice.PaymentTermCashDiscount1Percent, 'BT-20', 'The percentage of cash discount 1',
+      ADiagnostics, Result);
+  if AInvoice.PaymentTermsType in [iptt_CashDiscount2, iptt_CashDiscount3] then
+    ReportNumber(AInvoice.PaymentTermCashDiscount2Percent, 'BT-20', 'The percentage of cash discount 2',
+      ADiagnostics, Result);
+  if AInvoice.PaymentTermsType = iptt_CashDiscount3 then
+    ReportNumber(AInvoice.PaymentTermCashDiscount3Percent, 'BT-20', 'The percentage of cash discount 3',
+      ADiagnostics, Result);
+end;
+
 procedure AddViolation(ADiagnostics: TLandrixEInvoiceDiagnostics; const AID, ATerms, AMessage: string;
   ASeverity: TLandrixEInvoiceDiagnosticSeverity);
 var
@@ -4102,12 +4347,30 @@ begin
   D.RuleID := TLandrixEInvoiceString(AID);
 end;
 
-{ Runs rule AIndex if it applies; False and a diagnostic on a violation. }
+{ Violated; a rule that cannot judge a number the writers cannot format
+  holds (EUnwritableNumber).
+  DE: Violated; eine Regel, die eine Zahl nicht beurteilen kann, die die
+  Writer nicht formatieren koennen, gilt als erfuellt
+  (EUnwritableNumber). }
+function ViolatedWritable(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+begin
+  try
+    Result := Violated(AIndex, AInvoice, ASpec);
+  except
+    on EUnwritableNumber do
+      Result := False;
+  end;
+end;
+
+{ Runs rule AIndex if it applies; False and a diagnostic on a violation.
+  DE: Fuehrt die Regel AIndex aus, wenn sie gilt; False und eine Meldung
+  bei einem Verstoss. }
 function Run(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 begin
   Result := True;
-  if not Applies(CheckRows[AIndex], ASpec) or not Violated(AIndex, AInvoice, ASpec) then
+  if not Applies(CheckRows[AIndex], ASpec) or not ViolatedWritable(AIndex, AInvoice, ASpec) then
     Exit;
   Result := False;
   AddViolation(ADiagnostics, CheckRows[AIndex].ID, CheckRows[AIndex].Terms, CheckRows[AIndex].Message,
@@ -4132,6 +4395,24 @@ begin
   AddViolation(ADiagnostics, VatRuleID(AGroup, ANumber), Terms, Message, eds_Error);
 end;
 
+{ Collects the VAT uses; False if a rate the writers cannot format stops
+  it (EUnwritableNumber), then the VAT rules are skipped (they compare
+  rates).
+  DE: Sammelt die Steuerverwendungen; False, wenn ein Satz, den die Writer
+  nicht formatieren koennen, das verhindert (EUnwritableNumber); dann
+  entfallen die Steuerregeln (sie vergleichen Saetze). }
+function TryCollectTaxUses(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
+  out AUses: TTaxUses): Boolean;
+begin
+  Result := True;
+  try
+    CollectTaxUses(AInvoice, ASpec, AUses);
+  except
+    on EUnwritableNumber do
+      Result := False;
+  end;
+end;
+
 { --- public -------------------------------------------------------------------- }
 
 function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
@@ -4142,8 +4423,17 @@ var
   N: Integer;
   TaxUses: TTaxUses;
   Flat: TLandrixInvoice;
+  Found: TUnwritable;
 begin
-  Result := 0;
+  { numbers the writers write but cannot format: errors; the rules that
+    cannot judge them hold, with a NaN no rule runs
+    DE: Zahlen, die die Writer nicht formatieren koennen: Fehler; die
+    Regeln, die sie nicht beurteilen koennen, gelten als erfuellt, bei NaN
+    laeuft keine Regel }
+  Found := ReportUnwritableNumbers(AInvoice, ADiagnostics);
+  Result := Found.Count;
+  if Found.NaN then
+    Exit;
   { checked as written: sub lines the target does not write nested are
     flat (the writer reports that) }
   Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
@@ -4154,11 +4444,11 @@ begin
       if not CheckRows[I].Legacy and not Run(I, AInvoice, ASpec, ADiagnostics) and
          (CheckRows[I].Severity = eds_Error) then
         Inc(Result);
-    CollectTaxUses(AInvoice, ASpec, TaxUses);
-    for G := Low(TVatGroup) to High(TVatGroup) do
-      for N := 0 to VatGroupLast[G] do
-        if not RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics) then
-          Inc(Result);
+    if TryCollectTaxUses(AInvoice, ASpec, TaxUses) then
+      for G := Low(TVatGroup) to High(TVatGroup) do
+        for N := 0 to VatGroupLast[G] do
+          if not RunVat(G, N, AInvoice, ASpec, TaxUses, ADiagnostics) then
+            Inc(Result);
     Inc(Result, LandrixEInvoiceCheckPeppolInvoice(AInvoice, ASpec, ADiagnostics));
   finally
     Flat.Free;
@@ -4175,6 +4465,7 @@ var
   Found: Boolean;
   Flat, Written: TLandrixInvoice;
   Rows, LegacyRows: Integer;
+  Unwritable: TUnwritable;
 begin
   Result := True;
   Found := False;
@@ -4190,6 +4481,7 @@ begin
       if CheckRows[I].Legacy then
         Inc(LegacyRows);
     end;
+  Unwritable := ReportUnwritableNumbers(AInvoice, nil);
   Flat := nil;
   if (Rows = 0) or (LegacyRows < Rows) then
     Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
@@ -4202,6 +4494,8 @@ begin
       if TLandrixEInvoiceString(CheckRows[I].ID) = ARuleID then
       begin
         Found := True;
+        if Unwritable.NaN then
+          Continue;
         if CheckRows[I].Legacy then
         begin
           if not Run(I, AInvoice, ASpec, ADiagnostics) then
@@ -4216,11 +4510,12 @@ begin
       for N := 0 to VatGroupLast[G] do
         if TLandrixEInvoiceString(VatRuleID(G, N)) = ARuleID then
         begin
-          CollectTaxUses(Written, ASpec, TaxUses);
-          Result := RunVat(G, N, Written, ASpec, TaxUses, ADiagnostics);
+          if not Unwritable.NaN and TryCollectTaxUses(Written, ASpec, TaxUses) then
+            Result := RunVat(G, N, Written, ASpec, TaxUses, ADiagnostics);
           Exit;
         end;
-    Result := LandrixEInvoiceCheckPeppolRule(Written, ASpec, ARuleID, ADiagnostics, Found);
+    Result := LandrixEInvoiceCheckPeppolRule(Written, ASpec, ARuleID, ADiagnostics, Unwritable.NaN,
+      Found);
     if Found then
       Exit;
   finally

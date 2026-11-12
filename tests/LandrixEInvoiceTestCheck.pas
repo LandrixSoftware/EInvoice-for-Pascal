@@ -1334,6 +1334,164 @@ begin
   end;
 end;
 
+{ A number no writer can write (NaN, infinite, 1e23 and above) is one
+  error of its own, the rules that need it are skipped, nothing raises; a
+  VAT rate is compared exactly at any size (no silent 0 above the Currency
+  range, no Int64 overflow of taxable amount x rate). }
+procedure TestUnwritableNumbers;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Big, NaN: Double;
+  K: TTargetKind;
+  I: Integer;
+begin
+  Big := 1;
+  for I := 1 to 24 do
+    Big := Big * 10;
+  PInt64(@NaN)^ := $7FF8000000000000;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceLines[0].TaxPercent := Big;
+    Invoice.TaxAmountSubtotals[0].TaxPercent := Big;
+    for K := tk_XRUBL to High(TTargetKind) do
+    begin
+      D.Clear;
+      CheckEquals(2, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D), 'huge rates: two errors, target ' +
+        IntToStr(Ord(K)) + ': ' + string(D.ToText));
+      CheckEquals(2, D.CountOf(edk_ConversionFailed), 'huge rates reported, target ' + IntToStr(Ord(K)));
+    end;
+    D.Clear;
+    LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D);
+    CheckEqualsInvoiceStr('BT-152', D[0].Path, 'line rate: business term');
+    CheckEqualsInvoiceStr('BT-119', D[1].Path, 'breakdown rate: business term');
+    Check(D[0].Severity = eds_Error, 'an error');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-05', nil), 'BR-S-05 skipped');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 skipped');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceLines[0].Quantity := NaN;
+    Invoice.InvoiceLines[0].NetPriceAmount := NaN;
+    Invoice.InvoiceLines[0].BaseQuantity := Big;
+    Invoice.PaymentTermsType := iptt_CashDiscount1;
+    Invoice.PaymentTermCashDiscount1Percent := -Big;
+    for K := tk_XRUBL to High(TTargetKind) do
+    begin
+      D.Clear;
+      CheckEquals(4, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D), 'NaN and huge: four errors, target ' +
+        IntToStr(Ord(K)) + ': ' + string(D.ToText));
+    end;
+    CheckEqualsInvoiceStr('BT-129', D[0].Path, 'quantity: business term');
+    CheckEqualsInvoiceStr('BT-20', D[3].Path, 'cash discount: business term');
+  finally
+    Invoice.Free;
+  end;
+  { a huge cash discount percentage alone (no NaN): the rules run, those
+    with the payment terms text (BR-DE-18, BR-CO-25, DE-R-018) hold }
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.PaymentTermsType := iptt_CashDiscount1;
+    Invoice.PaymentTermCashDiscount1Days := 10;
+    Invoice.PaymentTermCashDiscount1Percent := Big;
+    for K := tk_XRUBL to High(TTargetKind) do
+    begin
+      D.Clear;
+      LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D);
+      CheckEquals(1, D.CountOf(edk_ConversionFailed), 'huge cash discount, target ' + IntToStr(Ord(K)) + ': ' +
+        string(D.ToText));
+    end;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-18', nil), 'BR-DE-18 holds');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-25', nil), 'BR-CO-25 holds');
+  finally
+    Invoice.Free;
+  end;
+  { numbers the writers do not write are not reported: the rate of a
+    category O line, a cash discount level beyond PaymentTermsType, a price
+    discount without gross price }
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceLines[0].TaxCategory := idtfcc_O_ServicesOutsideScopeOfTax;
+    Invoice.InvoiceLines[0].TaxPercent := NaN;
+    Invoice.PaymentTermsType := iptt_CashDiscount1;
+    Invoice.PaymentTermCashDiscount2Percent := NaN;
+    Invoice.InvoiceLines[0].GrossPriceAmount := 0;
+    Invoice.InvoiceLines[0].DiscountOnTheGrossPrice := NaN;
+    for K := tk_XRUBL to High(TTargetKind) do
+    begin
+      D.Clear;
+      LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D);
+      CheckEquals(0, D.CountOf(edk_ConversionFailed), 'not written, not reported, target ' + IntToStr(Ord(K)) +
+        ': ' + string(D.ToText));
+    end;
+  finally
+    Invoice.Free;
+  end;
+  { rates the Currency type cannot hold: exact, BR-S-05 and BR-S-09 hold }
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Big := 1;
+    for I := 1 to 15 do
+      Big := Big * 10;
+    Invoice.InvoiceLines[0].TaxPercent := Big;
+    Invoice.TaxAmountSubtotals[0].TaxPercent := Big;
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := CentsValue(1);
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 100000000000;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-05', nil), 'BR-S-05 with rate 1e15');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-09', nil), 'BR-S-09 with rate 1e15');
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 100000000002;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-09', nil), 'BR-S-09 off by 2');
+    { taxable amount x rate beyond Int64 }
+    Invoice.InvoiceLines[0].TaxPercent := 19;
+    Invoice.TaxAmountSubtotals[0].TaxPercent := 19;
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := 900000000000000;
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 171000000000000;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-09', nil), 'BR-S-09 with 9e14');
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 171000000000001;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-09', nil), 'BR-S-09 with 9e14, off by 1');
+    { the rounding edge: 0.10 at 5 % is 0.005, rounded half up 0.01; 0.09
+      is 0.0045, rounded 0.00 }
+    Invoice.TaxAmountSubtotals[0].TaxPercent := 5;
+    Invoice.InvoiceLines[0].TaxPercent := 5;
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := CentsValue(10);
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 1;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-09', nil), 'BR-S-09 1.00 for 0.01');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 UBL 1.00 for 0.01');
+    Invoice.TaxAmountSubtotals[0].TaxAmount := CentsValue(101);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-09', nil), 'BR-S-09 1.01 for 0.01');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-17', nil), 'BR-CO-17 CII 1.01 for 0.01');
+    Invoice.TaxAmountSubtotals[0].TaxAmount := CentsValue(102);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-17', nil), 'BR-CO-17 CII 1.02 for 0.01');
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := CentsValue(9);
+    Invoice.TaxAmountSubtotals[0].TaxAmount := 1;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-09', nil), 'BR-S-09 1.00 for 0.00');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 UBL 1.00 for 0.00');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-17', nil), 'BR-CO-17 CII 1.00 for 0.00');
+    { a rate of -0.5 rounds to 0 (XPath round: half up), -0.51 does not }
+    Invoice.TaxAmountSubtotals[0].TaxPercent := -0.5;
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := 100;
+    Invoice.TaxAmountSubtotals[0].TaxAmount := CentsValue(49);
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 rate -0.5 rounds to 0');
+    Invoice.TaxAmountSubtotals[0].TaxPercent := -51 / 100;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 rate -0.51: 0.49 for -0.51');
+    Invoice.TaxAmountSubtotals[0].TaxAmount := CentsValue(48);
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 rate -0.51: 0.48 for -0.51');
+    Invoice.TaxAmountSubtotals[0].TaxAmount := CentsValue(151);
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 rate -0.51: 1.51 for -0.51');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { Third-party payments: where the target writes them the amount due
   includes them (BR-DEX-09, BR-FXEXT-CO-16) and BR-CO-16 gives way; where
   they are left out BR-CO-16 fails. EXTENDED allows 0.01 per amount
@@ -2285,6 +2443,7 @@ begin
   RegisterTest('Check.CheckUBL', TestCheckUBL);
   RegisterTest('Check.SEPAIdentifiers', TestSEPAIdentifiers);
   RegisterTest('Check.TaxTolerance', TestTaxTolerance);
+  RegisterTest('Check.UnwritableNumbers', TestUnwritableNumbers);
   RegisterTest('Check.Totals', TestTotals);
   RegisterTest('Check.VatCategories', TestVatCategories);
   RegisterTest('Check.VatSyntaxes', TestVatSyntaxes);

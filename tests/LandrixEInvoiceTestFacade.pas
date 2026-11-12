@@ -272,6 +272,7 @@ var
   Xml: TLandrixXmlUtf8;
   Doc: TLandrixEInvoiceDocument;
   Detached: TLandrixInvoice;
+  P: Integer;
 begin
   try
     TLandrixEInvoice.LoadFromUtf8('<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">' +
@@ -315,6 +316,18 @@ begin
   try
     Check(Doc.CII = nil, 'syntax model freed');
     CheckEquals(0, Doc.Diagnostics.CountOf(edk_RuleViolation), 'checked on read: ' + string(Doc.Diagnostics.ToText));
+  finally
+    Doc.Free;
+  end;
+  { a VAT rate no writer can write: checking on read reports it, no
+    exception }
+  P := Pos(TLandrixXmlUtf8('<ram:RateApplicablePercent>19.00'), Xml);
+  Check(P > 0, 'rate written');
+  Insert(TLandrixXmlUtf8('0000000000000000000000'), Xml, P + Length('<ram:RateApplicablePercent>19'));
+  Doc := TLandrixEInvoice.LoadFromUtf8(Xml, [eio_CheckOnRead]);
+  try
+    CheckEquals(1, Doc.Diagnostics.CountOf(edk_ConversionFailed), 'huge rate reported: ' +
+      string(Doc.Diagnostics.ToText));
   finally
     Doc.Free;
   end;
