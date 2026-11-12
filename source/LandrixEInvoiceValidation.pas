@@ -101,6 +101,33 @@ type
     Verarbeitungsfehler). }
   TLandrixEInvoiceFindingStep = (efs_None, efs_Wellformedness, efs_XmlSchema, efs_Schematron);
 
+  { The kind of a registered KoSIT configuration, declared by the caller
+    (never guessed from its name); it decides the precedence when several
+    configurations match a document.
+    DE: Die Art einer registrierten KoSIT-Konfiguration, vom Aufrufer
+    angegeben (nie aus ihrem Namen geraten); sie entscheidet den Vorrang,
+    wenn mehrere Konfigurationen zu einem Dokument passen. }
+  TLandrixEInvoiceConfigurationKind = (eck_Other, eck_XRechnung, eck_ZUGFeRD, eck_PeppolBIS);
+
+  { How the KoSIT configuration of a validation was chosen. ecc_None: no
+    KoSIT run (no configuration, or a document that is not well-formed:
+    the first registered configuration reports that). ecc_Fixed:
+    Options.Configuration. ecc_OnlyMatch: the one registered configuration
+    with exactly one matching scenario. ecc_Precedence: several had one,
+    the precedence decided (eck_ZUGFeRD, eck_PeppolBIS, eck_XRechnung,
+    eck_Other; then the order of registration). ecc_NoMatch: none had
+    exactly one, rejected as KoSIT does without a scenario.
+    DE: Wie die KoSIT-Konfiguration einer Pruefung gewaehlt wurde.
+    ecc_None: kein KoSIT-Lauf (keine Konfiguration, oder ein nicht
+    wohlgeformtes Dokument: das meldet die erste registrierte
+    Konfiguration). ecc_Fixed: Options.Configuration. ecc_OnlyMatch: die
+    eine registrierte Konfiguration mit genau einem passenden Szenario.
+    ecc_Precedence: mehrere hatten eines, der Vorrang entschied
+    (eck_ZUGFeRD, eck_PeppolBIS, eck_XRechnung, eck_Other; dann die
+    Reihenfolge der Registrierung). ecc_NoMatch: keine hatte genau eines,
+    abgelehnt wie bei KoSIT ohne Szenario. }
+  TLandrixEInvoiceConfigurationChoice = (ecc_None, ecc_Fixed, ecc_OnlyMatch, ecc_Precedence, ecc_NoMatch);
+
   { One finding. RuleID: the KoSIT code (cvc-..., generic-error or the id
     of the assert or report), the rule identifier of the own rule check
     (e.g. BR-DE-15), for reading the kind of the diagnostic (e.g.
@@ -166,6 +193,10 @@ type
     FFindings: TObjectList;
     FScenarioName: TLandrixEInvoiceString;
     FConfigurationName: TLandrixEInvoiceString;
+    FConfigurationKind: TLandrixEInvoiceConfigurationKind;
+    FConfigurationChoice: TLandrixEInvoiceConfigurationChoice;
+    FCandidateCount: Integer;
+    FCandidateKinds: set of TLandrixEInvoiceConfigurationKind;
     FInfo: TLandrixEInvoiceDocumentInfo;
     FPdf: TLandrixEInvoicePdfCheckResult;
     function GetStatus(APart: TLandrixEInvoiceValidationPart): TLandrixEInvoicePartStatus;
@@ -211,6 +242,19 @@ type
       DE: Der Name der KoSIT-Konfiguration, die lief (ihr scenarios/name,
       wie er zur Zeit des Laufs war), '' ohne KoSIT-Lauf. }
     property ConfigurationName: TLandrixEInvoiceString read FConfigurationName;
+    { The kind of the chosen registered configuration; eck_Other for
+      Options.Configuration and without a choice.
+      DE: Die Art der gewaehlten registrierten Konfiguration; eck_Other
+      fuer Options.Configuration und ohne Wahl. }
+    property ConfigurationKind: TLandrixEInvoiceConfigurationKind read FConfigurationKind;
+    { How the configuration was chosen. DE: Wie die Konfiguration gewaehlt
+      wurde. }
+    property ConfigurationChoice: TLandrixEInvoiceConfigurationChoice read FConfigurationChoice;
+    { The registered configurations with exactly one matching scenario (0
+      without a choice among them).
+      DE: Die registrierten Konfigurationen mit genau einem passenden
+      Szenario (0 ohne Wahl unter ihnen). }
+    property CandidateCount: Integer read FCandidateCount;
     { What reading found out (syntax, BT-24, specification); empty when the
       document could not be read, except for a PDF: Source eso_Pdf and
       PdfAttachmentName are always set (Pdf has the details).
@@ -236,15 +280,39 @@ type
   private
     FConfiguration: TLandrixEInvoiceValidator;
     FModelCheck: Boolean;
+    FConfigurations: TObjectList;
+    FKinds: array of TLandrixEInvoiceConfigurationKind;
+    function GetConfigurationCount: Integer;
   public
     constructor Create;
-    { The KoSIT configuration to run, loaded and owned by the caller; nil
-      (the default): no KoSIT run, the verdict is ev_Incomplete (for a PDF
-      ev_Rejected if level 2 or 3 failed).
+    destructor Destroy; override;
+    { Registers a loaded KoSIT configuration (owned by the caller) with its
+      kind, for the choice per document when Configuration is nil: the
+      configuration with exactly one matching scenario runs; with several,
+      the precedence of the kind decides (see ecc_Precedence). A
+      configuration registered twice counts twice.
+      DE: Registriert eine geladene KoSIT-Konfiguration (vom Aufrufer
+      besessen) mit ihrer Art, fuer die Wahl je Dokument, wenn
+      Configuration nil ist: die Konfiguration mit genau einem passenden
+      Szenario laeuft; bei mehreren entscheidet der Vorrang der Art (siehe
+      ecc_Precedence). Eine zweimal registrierte Konfiguration zaehlt
+      zweimal. }
+    procedure AddConfiguration(AConfiguration: TLandrixEInvoiceValidator; AKind: TLandrixEInvoiceConfigurationKind);
+    { Removes every registered configuration (they are not freed).
+      DE: Entfernt jede registrierte Konfiguration (sie werden nicht
+      freigegeben). }
+    procedure ClearConfigurations;
+    { The number of registered configurations. DE: Die Zahl der
+      registrierten Konfigurationen. }
+    property ConfigurationCount: Integer read GetConfigurationCount;
+    { The KoSIT configuration to run, loaded and owned by the caller; it
+      wins over the registered ones. nil (the default) and none registered:
+      no KoSIT run, the verdict is ev_Incomplete (for a PDF ev_Rejected if
+      level 2 or 3 failed).
       DE: Die KoSIT-Konfiguration, die laufen soll, vom Aufrufer geladen
-      und besessen; nil (Vorgabe): kein KoSIT-Lauf, das Urteil ist
-      ev_Incomplete (bei einem PDF ev_Rejected, wenn Ebene 2 oder 3
-      fehlschlug). }
+      und besessen; sie hat Vorrang vor den registrierten. nil (Vorgabe)
+      und keine registriert: kein KoSIT-Lauf, das Urteil ist ev_Incomplete
+      (bei einem PDF ev_Rejected, wenn Ebene 2 oder 3 fehlschlug). }
     property Configuration: TLandrixEInvoiceValidator read FConfiguration write FConfiguration;
     { Run the own rule check (default True).
       DE: Die eigene Regelpruefung ausfuehren (Vorgabe True). }
@@ -256,7 +324,13 @@ type
   TLandrixEInvoiceDocumentValidator = class(TObject)
   private
     FOptions: TLandrixEInvoiceValidationOptions;
-    procedure RunKosit(AData: TStream; AResult: TLandrixEInvoiceDocumentValidation; out AWellFormed: Boolean);
+    procedure RunKosit(AConfiguration: TLandrixEInvoiceValidator; AData: TStream;
+      AResult: TLandrixEInvoiceDocumentValidation; out AWellFormed: Boolean);
+    function ChooseConfiguration(AData: TStream; AResult: TLandrixEInvoiceDocumentValidation;
+      out AWellFormed: Boolean): TLandrixEInvoiceValidator;
+    function RunChosen(AData: TStream; AResult: TLandrixEInvoiceDocumentValidation;
+      out AWellFormed: Boolean): Boolean;
+    procedure CheckKind(AResult: TLandrixEInvoiceDocumentValidation; AKositEnd: Integer);
     procedure ValidatePdf(AData: TMemoryStream; AResult: TLandrixEInvoiceDocumentValidation);
     procedure ReadAndCheck(AData: TMemoryStream; AResult: TLandrixEInvoiceDocumentValidation;
       APdfChecker: TLandrixEInvoicePdfChecker);
@@ -311,6 +385,7 @@ type
 implementation
 
 uses
+  LandrixEInvoiceSpecs,
   LandrixEInvoiceCheck,
   LandrixEInvoicePdf;
 
@@ -364,6 +439,10 @@ begin
   FFindings.Clear;
   FScenarioName := '';
   FConfigurationName := '';
+  FConfigurationKind := eck_Other;
+  FConfigurationChoice := ecc_None;
+  FCandidateCount := 0;
+  FCandidateKinds := [];
   FPdf.Free;
   FPdf := nil;
   Finalize(FInfo);
@@ -434,6 +513,35 @@ constructor TLandrixEInvoiceValidationOptions.Create;
 begin
   inherited Create;
   FModelCheck := True;
+  { not owned: the caller frees the configurations }
+  FConfigurations := TObjectList.Create(False);
+end;
+
+destructor TLandrixEInvoiceValidationOptions.Destroy;
+begin
+  FConfigurations.Free;
+  inherited Destroy;
+end;
+
+procedure TLandrixEInvoiceValidationOptions.AddConfiguration(AConfiguration: TLandrixEInvoiceValidator;
+  AKind: TLandrixEInvoiceConfigurationKind);
+begin
+  if AConfiguration = nil then
+    raise ELandrixEInvoiceError.Create('AddConfiguration: no configuration');
+  SetLength(FKinds, Integer(FConfigurations.Count) + 1);
+  FKinds[Integer(FConfigurations.Count)] := AKind;
+  FConfigurations.Add(AConfiguration);
+end;
+
+procedure TLandrixEInvoiceValidationOptions.ClearConfigurations;
+begin
+  FConfigurations.Clear;
+  FKinds := nil;
+end;
+
+function TLandrixEInvoiceValidationOptions.GetConfigurationCount: Integer;
+begin
+  Result := Integer(FConfigurations.Count);
 end;
 
 { --- TLandrixEInvoiceDocumentValidator ----------------------------------- }
@@ -469,6 +577,7 @@ var
   Data: TMemoryStream;
   Count: Int64;
   WellFormed: Boolean;
+  KositEnd: Integer;
 begin
   AResult.Clear;
   Count := 0;
@@ -476,9 +585,18 @@ begin
     Count := AStream.Size - AStream.Position;
   if (AStream = nil) or (Count > MaxInt) then
   begin
-    { no stream or more than 2 GB: the engine reports it without reading }
+    { no stream or more than 2 GB: the engine reports it without reading
+      (a registered configuration too, without a choice) }
     if FOptions.Configuration <> nil then
-      RunKosit(AStream, AResult, WellFormed)
+    begin
+      AResult.FConfigurationChoice := ecc_Fixed;
+      RunKosit(FOptions.Configuration, AStream, AResult, WellFormed);
+    end
+    else if FOptions.ConfigurationCount > 0 then
+    begin
+      RunKosit(TLandrixEInvoiceValidator(FOptions.FConfigurations[0]), AStream, AResult, WellFormed);
+      AResult.FConfigurationName := '';
+    end
     else
     begin
       if AStream = nil then
@@ -501,11 +619,13 @@ begin
     else
     begin
       { XML: the KoSIT run decides; without it there is no verdict }
-      WellFormed := True;
-      if FOptions.Configuration <> nil then
-        RunKosit(Data, AResult, WellFormed);
+      RunChosen(Data, AResult, WellFormed);
+      KositEnd := AResult.FindingCount;
       if WellFormed then
+      begin
         ReadAndCheck(Data, AResult, nil);
+        CheckKind(AResult, KositEnd);
+      end;
     end;
   finally
     Data.Free;
@@ -517,8 +637,8 @@ end;
   reports it), adds its findings, sets the KoSIT status and the verdict to
   its assessment. AWellFormed: False if KoSIT found the document not
   well-formed. }
-procedure TLandrixEInvoiceDocumentValidator.RunKosit(AData: TStream; AResult: TLandrixEInvoiceDocumentValidation;
-  out AWellFormed: Boolean);
+procedure TLandrixEInvoiceDocumentValidator.RunKosit(AConfiguration: TLandrixEInvoiceValidator; AData: TStream;
+  AResult: TLandrixEInvoiceDocumentValidation; out AWellFormed: Boolean);
 var
   K: TLandrixEInvoiceValidationResult;
   M: TLandrixEInvoiceValidationMessage;
@@ -526,9 +646,9 @@ var
 begin
   K := TLandrixEInvoiceValidationResult.Create;
   try
-    FOptions.Configuration.ValidateStream(AData, K);
+    AConfiguration.ValidateStream(AData, K);
     AResult.FScenarioName := K.ScenarioName;
-    AResult.FConfigurationName := FOptions.Configuration.Name;
+    AResult.FConfigurationName := AConfiguration.Name;
     AWellFormed := True;
     for I := 0 to K.MessageCount - 1 do
     begin
@@ -562,6 +682,169 @@ begin
   finally
     K.Free;
   end;
+end;
+
+const
+  { The precedence among several candidates: the specific schema first.
+    DE: Der Vorrang unter mehreren Kandidaten: das spezifische Schema
+    zuerst. }
+  KindRank: array[TLandrixEInvoiceConfigurationKind] of Integer = (3, 2, 0, 1);
+  KindTexts: array[TLandrixEInvoiceConfigurationKind] of string = ('other', 'XRechnung', 'ZUGFeRD',
+    'Peppol BIS');
+
+{ The configuration for AData (read from its position; the position is
+  restored): Options.Configuration (ecc_Fixed), else the registered
+  configuration with exactly one matching scenario, by precedence among
+  several (ecc_OnlyMatch, ecc_Precedence); nil without one (ecc_None, or
+  ecc_NoMatch when none matches). AWellFormed False: the document is not
+  well-formed (no choice, ecc_None).
+  DE: Die Konfiguration fuer AData (gelesen ab seiner Position; die
+  Position wird wiederhergestellt): Options.Configuration (ecc_Fixed),
+  sonst die registrierte Konfiguration mit genau einem passenden Szenario,
+  unter mehreren nach Vorrang (ecc_OnlyMatch, ecc_Precedence); nil ohne
+  eine (ecc_None, oder ecc_NoMatch, wenn keine passt). AWellFormed False:
+  das Dokument ist nicht wohlgeformt (keine Wahl, ecc_None). }
+function TLandrixEInvoiceDocumentValidator.ChooseConfiguration(AData: TStream;
+  AResult: TLandrixEInvoiceDocumentValidation; out AWellFormed: Boolean): TLandrixEInvoiceValidator;
+var
+  I, N, Best: Integer;
+  Start: Int64;
+begin
+  AWellFormed := True;
+  Result := FOptions.Configuration;
+  if Result <> nil then
+  begin
+    AResult.FConfigurationChoice := ecc_Fixed;
+    Exit;
+  end;
+  if FOptions.ConfigurationCount = 0 then
+    Exit;
+  Start := AData.Position;
+  Best := -1;
+  for I := 0 to FOptions.ConfigurationCount - 1 do
+  begin
+    AData.Position := Start;
+    N := TLandrixEInvoiceValidator(FOptions.FConfigurations[I]).CountMatches(AData);
+    if N < 0 then
+    begin
+      AWellFormed := False;
+      Break;
+    end;
+    if N = 1 then
+    begin
+      Inc(AResult.FCandidateCount);
+      Include(AResult.FCandidateKinds, FOptions.FKinds[I]);
+      if (Best < 0) or (KindRank[FOptions.FKinds[I]] < KindRank[FOptions.FKinds[Best]]) then
+        Best := I;
+    end;
+  end;
+  AData.Position := Start;
+  if not AWellFormed then
+  begin
+    AResult.FCandidateCount := 0;
+    AResult.FCandidateKinds := [];
+    Exit;
+  end;
+  if Best < 0 then
+  begin
+    AResult.FConfigurationChoice := ecc_NoMatch;
+    Exit;
+  end;
+  Result := TLandrixEInvoiceValidator(FOptions.FConfigurations[Best]);
+  AResult.FConfigurationKind := FOptions.FKinds[Best];
+  if AResult.FCandidateCount = 1 then
+    AResult.FConfigurationChoice := ecc_OnlyMatch
+  else
+    AResult.FConfigurationChoice := ecc_Precedence;
+end;
+
+{ Chooses the configuration and runs it on AData; True if KoSIT decided
+  the verdict (a run, or no registered configuration matches). A document
+  that is not well-formed runs the first registered configuration, which
+  reports it, without a configuration name. No candidate is rejected as
+  KoSIT rejects a document without a scenario.
+  DE: Waehlt die Konfiguration und laesst sie auf AData laufen; True, wenn
+  KoSIT das Urteil bestimmt hat (ein Lauf, oder keine registrierte
+  Konfiguration passt). Ein nicht wohlgeformtes Dokument laeuft durch die
+  erste registrierte Konfiguration, die es meldet, ohne
+  Konfigurationsnamen. Kein Kandidat wird abgelehnt, wie KoSIT ein
+  Dokument ohne Szenario ablehnt. }
+function TLandrixEInvoiceDocumentValidator.RunChosen(AData: TStream; AResult: TLandrixEInvoiceDocumentValidation;
+  out AWellFormed: Boolean): Boolean;
+var
+  Configuration: TLandrixEInvoiceValidator;
+begin
+  Result := True;
+  Configuration := ChooseConfiguration(AData, AResult, AWellFormed);
+  if not AWellFormed then
+  begin
+    RunKosit(TLandrixEInvoiceValidator(FOptions.FConfigurations[0]), AData, AResult, AWellFormed);
+    AResult.FConfigurationName := '';
+  end
+  else if Configuration <> nil then
+    RunKosit(Configuration, AData, AResult, AWellFormed)
+  else if AResult.FConfigurationChoice = ecc_NoMatch then
+  begin
+    { as KoSIT without a scenario: rejected }
+    AResult.AddFinding(evp_KoSIT, '', eds_Error, '', 0, 0,
+      'No registered configuration has exactly one scenario that matches the document');
+    AResult.FStatus[evp_KoSIT] := evr_Failed;
+    AResult.FVerdict := ev_Rejected;
+  end
+  else
+    Result := False;
+end;
+
+{ A warning after the KoSIT findings (at AKositEnd) when the chosen
+  registered configuration is of another kind than the specification read
+  from the document (BT-24), e.g. XRechnung for a Factur-X document because
+  no ZUGFeRD configuration is registered; the verdict stays.
+  DE: Eine Warnung nach den KoSIT-Befunden (an AKositEnd), wenn die
+  gewaehlte registrierte Konfiguration von anderer Art ist als die aus dem
+  Dokument gelesene Spezifikation (BT-24), z. B. XRechnung fuer ein
+  Factur-X-Dokument, weil keine ZUGFeRD-Konfiguration registriert ist; das
+  Urteil bleibt. A configuration of kind eck_Other gets no warning: its
+  kind is unknown, and it never wins over a declared kind.
+  DE: Eine Konfiguration der Art eck_Other bekommt keine Warnung: ihre Art
+  ist unbekannt, und sie gewinnt nie gegen eine angegebene Art. }
+procedure TLandrixEInvoiceDocumentValidator.CheckKind(AResult: TLandrixEInvoiceDocumentValidation;
+  AKositEnd: Integer);
+var
+  Expected: TLandrixEInvoiceConfigurationKind;
+  Registered: Boolean;
+  I: Integer;
+  Text: string;
+begin
+  if not (AResult.FConfigurationChoice in [ecc_OnlyMatch, ecc_Precedence]) or not AResult.FInfo.SpecFound or
+     (AResult.FConfigurationKind = eck_Other) then
+    Exit;
+  case AResult.FInfo.Spec.Target.Standard of
+    est_XRechnung:
+      Expected := eck_XRechnung;
+    est_FacturX:
+      Expected := eck_ZUGFeRD;
+    est_PeppolBIS:
+      Expected := eck_PeppolBIS;
+  else
+    Exit;
+  end;
+  if Expected = AResult.FConfigurationKind then
+    Exit;
+  Registered := False;
+  for I := 0 to FOptions.ConfigurationCount - 1 do
+    if FOptions.FKinds[I] = Expected then
+      Registered := True;
+  Text := 'The document is ' + string(LandrixEInvoiceTargetToStr(AResult.FInfo.Spec.Target)) + ', a ' +
+    KindTexts[Expected] + ' document, but the ' + KindTexts[AResult.FConfigurationKind] + ' configuration ran: ';
+  if Expected in AResult.FCandidateKinds then
+    Text := Text + 'the ' + KindTexts[Expected] + ' configuration matched too, the precedence chose ' +
+      KindTexts[AResult.FConfigurationKind]
+  else if Registered then
+    Text := Text + 'the ' + KindTexts[Expected] + ' configuration has not exactly one matching scenario'
+  else
+    Text := Text + 'no ' + KindTexts[Expected] + ' configuration is registered';
+  AResult.AddFinding(evp_KoSIT, '', eds_Warning, '', 0, 0, TLandrixEInvoiceString(Text));
+  AResult.FFindings.Move(AResult.FindingCount - 1, AKositEnd);
 end;
 
 function PartStatusOf(AStatus: TLandrixEInvoicePdfLevelStatus): TLandrixEInvoicePartStatus;
@@ -605,9 +888,11 @@ var
   D: TLandrixEInvoiceDiagnostics;
   First, J: Integer;
   I: TLandrixEInvoiceListIndex;
-  WellFormed, Metadata: Boolean;
+  WellFormed, Metadata, KositRan: Boolean;
+  KositEnd: Integer;
   Embedding, Meta, Kosit: TLandrixEInvoicePartStatus;
 begin
+  KositRan := False;
   Pdf := TLandrixEInvoicePdfCheckResult.Create;
   AResult.FPdf := Pdf;
   Checker := TLandrixEInvoicePdfChecker.Create;
@@ -616,11 +901,13 @@ begin
     { the embedded invoice, if level 2 found one with bytes }
     if (Pdf.HybridKind <> ehk_None) and (Pdf.Invoice.Size > 0) then
     begin
-      WellFormed := True;
-      if FOptions.Configuration <> nil then
-        RunKosit(Pdf.Invoice, AResult, WellFormed);
+      KositRan := RunChosen(Pdf.Invoice, AResult, WellFormed);
+      KositEnd := AResult.FindingCount;
       if WellFormed then
+      begin
         ReadAndCheck(Pdf.Invoice, AResult, Checker);
+        CheckKind(AResult, KositEnd);
+      end;
     end;
   finally
     Checker.Free;
@@ -651,7 +938,7 @@ begin
   AResult.FStatus[evp_PdfMetadata] := Meta;
   Kosit := AResult.FStatus[evp_KoSIT];
   if (Embedding = evr_Failed) or (Meta = evr_Failed) or
-     ((FOptions.Configuration <> nil) and (AResult.FVerdict = ev_Rejected)) then
+     (KositRan and (AResult.FVerdict = ev_Rejected)) then
     AResult.FVerdict := ev_Rejected
   else if (Embedding <> evr_Passed) or (Meta <> evr_Passed) or (Kosit <> evr_Passed) then
     AResult.FVerdict := ev_Incomplete

@@ -56,6 +56,16 @@ locations in the readable form /rsm:CrossIndustryInvoice/ram:x[1]; the
 oracle writes them as SchXslt does.
 --corpus all runs every corpus; --update then needs all of them to be clean.
 
+--corpus auto checks the choice among several configurations
+(TLandrixEInvoiceDocumentValidator with registered configurations): the
+documents of the corpora suite, peppol and zugferd (without the unit test
+fragments and the outputs; copied with a prefix to build/kosit-oracle/auto/)
+run through each of the three configurations, in KoSIT and in the probe with
+-matches; a configuration is a candidate where KoSIT chose a scenario and
+where the probe counts exactly one match, and these must agree. The script
+then lists the documents with several candidates and the configuration the
+precedence picks (ZUGFeRD, Peppol BIS, XRechnung). It is not part of all.
+
 Known differences are listed in tools/kosit/kosit-exceptions.txt
 ("file<TAB>difference line", '*' in the file name for any text, each with a
 reason); an unused line is an error.
@@ -366,6 +376,89 @@ def load_exceptions():
     return items
 
 
+# the configurations of --corpus auto in the order of precedence
+AUTO_CONFIGS = [("zugferd", CONFIG_ZF), ("peppol", CONFIG_BIS), ("xrechnung", CONFIG)]
+
+
+def check_auto(args):
+    """--corpus auto: the candidates of KoSIT and of the probe agree."""
+    for path in (PEPPOL_EXAMPLES, ZF_EXAMPLES):
+        if not os.path.isdir(path):
+            sys.exit("missing examples: run tools/testdata/sync-local.py")
+    docs = os.path.join(OUT, "auto")
+    if not args.keep or not os.path.isdir(docs):
+        if os.path.isdir(docs):
+            shutil.rmtree(docs)
+        os.makedirs(docs)
+        sources = [("suite", INSTANCES), ("peppol", PEPPOL_EXAMPLES), ("zugferd", ZF_EXAMPLES)]
+        mutants = os.path.join(OUT, "mutants")
+        make_mutants(mutants)
+        sources.append(("suite-m", mutants))
+        mutants = os.path.join(OUT, "peppol-mutants")
+        make_mutants(mutants, PEPPOL_MUTANTS, PEPPOL_EXAMPLES)
+        sources.append(("peppol-m", mutants))
+        mutants = os.path.join(OUT, "zugferd-mutants")
+        make_mutants(mutants, ZF_MUTANTS, ZF_EXAMPLES)
+        sources.append(("zugferd-m", mutants))
+        sources += [(os.path.basename(d), d) for d in CII_EXAMPLES if os.path.isdir(d)]
+        for prefix, folder in sources:
+            for f in glob.glob(os.path.join(folder, "*.xml")):
+                shutil.copyfile(f, os.path.join(docs, prefix + "_" + os.path.basename(f)))
+    files = sorted(glob.glob(os.path.join(docs, "*.xml")))
+    candidates = collections.defaultdict(list)
+    unexpected = 0
+    for kind, config in AUTO_CONFIGS:
+        reports = os.path.join(OUT, "auto-" + kind)
+        if not args.keep or not os.path.isdir(reports):
+            if os.path.isdir(reports):
+                shutil.rmtree(reports)
+            run_kosit(find_java(args.java), config, files, reports)
+        out = subprocess.run([args.probe, os.path.join(config, "scenarios.xml"), LOCAL] + probe_args(config) +
+                             ["-matches", docs], capture_output=True, text=True, encoding="ascii",
+                             errors="replace")
+        if out.returncode != 0:
+            sys.exit("probe failed: " + out.stdout + out.stderr)
+        matches = {}
+        current = None
+        for line in out.stdout.splitlines():
+            if line.startswith("## "):
+                current = line[3:]
+            elif line.startswith("matches "):
+                matches[current] = int(line[8:])
+            elif line.startswith("exception "):
+                print("  %s\t%s: probe %s" % (current, kind, line))
+                unexpected += 1
+        for f in files:
+            name = os.path.basename(f)
+            report = os.path.join(reports, name[:-4] + "-report.xml")
+            # without a fallback scenario (ZUGFeRD) KoSIT writes no report
+            # when no scenario matches
+            theirs = os.path.isfile(report) and kosit_result(report)[0] != "scenario none"
+            if name not in matches:
+                print("  %s\t%s: no count from the probe" % (name, kind))
+                unexpected += 1
+                continue
+            mine = matches[name] == 1
+            if theirs != mine:
+                print("  %s\t%s: KoSIT %s, probe %s matches" % (name, kind, "chose a scenario" if theirs else
+                                                                "chose none", matches.get(name)))
+                unexpected += 1
+            if theirs:
+                candidates[name].append(kind)
+    by_set = collections.Counter(tuple(c) for c in candidates.values())
+    none = len(files) - len(candidates)
+    print("candidates per document (%d documents, %d without a candidate):" % (len(files), none))
+    for kinds, count in sorted(by_set.items(), key=lambda x: (-len(x[0]), x[0])):
+        print("  %-28s %5d  -> %s" % ("+".join(kinds), count, kinds[0]))
+    several = sorted(n for n, c in candidates.items() if len(c) > 1)
+    for name in several[:20]:
+        print("  several: %s (%s)" % (name, "+".join(candidates[name])))
+    if len(several) > 20:
+        print("  ... %d more with several candidates" % (len(several) - 20))
+    print("no unexpected difference" if unexpected == 0 else "%d unexpected difference(s)" % unexpected)
+    return 1 if unexpected or not files else 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--probe", default=os.path.join(REPO, "build", "fpc322-win64",
@@ -373,7 +466,7 @@ def main():
     ap.add_argument("--java")
     ap.add_argument("--keep", action="store_true", help="reuse the KoSIT reports in build/kosit-oracle")
     ap.add_argument("--update", action="store_true", help="rewrite tests/data/kosit-expected.txt")
-    ap.add_argument("--corpus", choices=("suite", "generated", "outputs", "peppol", "zugferd", "all"),
+    ap.add_argument("--corpus", choices=("suite", "generated", "outputs", "peppol", "zugferd", "all", "auto"),
                     default="suite")
     ap.add_argument("--toolchain", default="fpc322-linux",
                     help="whose outputs the corpora outputs, peppol and zugferd take")
@@ -382,6 +475,8 @@ def main():
         sys.exit("missing tests/data/local/kosit: run tools/testdata/sync-local.py")
     if not os.path.isfile(args.probe):
         sys.exit("probe missing: ./tools/build.ps1 fpc322-win64 -Program tools/kosit/ValidatorProbe.dpr -NoRun")
+    if args.corpus == "auto":
+        return check_auto(args)
     runs = []
     if args.corpus in ("suite", "all"):
         mutants = os.path.join(OUT, "mutants")

@@ -107,6 +107,10 @@ const
     'en16931', 'extended', 'xrechnung');
   HybridKindNames: array[TLandrixEInvoicePdfHybridKind] of TLandrixXmlUtf8 = ('none', 'facturX', 'xrechnung',
     'zugferd20', 'zugferd10');
+  ChoiceNames: array[TLandrixEInvoiceConfigurationChoice] of TLandrixXmlUtf8 = ('', 'fixed', 'onlyMatch',
+    'precedence', 'noMatch');
+  KindNames: array[TLandrixEInvoiceConfigurationKind] of TLandrixXmlUtf8 = ('other', 'xrechnung', 'zugferd',
+    'peppolBIS');
 
 { An attribute with a value from outside (cleaned); omitted when empty. }
 procedure TextAttribute(W: TLandrixXmlWriter; const AName: TLandrixXmlUtf8; const AValue: TLandrixEInvoiceString;
@@ -181,6 +185,12 @@ begin
     begin
       TextAttribute(W, 'configuration', AResult.ConfigurationName, Sanitized);
       TextAttribute(W, 'scenario', AResult.ScenarioName, Sanitized);
+      if AResult.ConfigurationChoice <> ecc_None then
+        W.AttributeUtf8('configurationChoice', ChoiceNames[AResult.ConfigurationChoice]);
+      if AResult.ConfigurationChoice in [ecc_OnlyMatch, ecc_Precedence] then
+        W.AttributeUtf8('configurationKind', KindNames[AResult.ConfigurationKind]);
+      if AResult.ConfigurationChoice in [ecc_OnlyMatch, ecc_Precedence, ecc_NoMatch] then
+        W.Attribute('candidates', IntToStr(AResult.CandidateCount));
     end;
     SanitizedAttribute(W, Sanitized);
     W.EndElement;

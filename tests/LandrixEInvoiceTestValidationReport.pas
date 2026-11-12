@@ -77,6 +77,9 @@ const
   HtmlNs = 'http://www.w3.org/1999/xhtml';
   VerdictClassTokens: array[TLandrixEInvoiceVerdict] of string = ('verdict v-accepted', 'verdict v-rejected',
     'verdict v-incomplete');
+  ChoiceTokens: array[TLandrixEInvoiceConfigurationChoice] of string = ('', 'fixed', 'onlyMatch', 'precedence',
+    'noMatch');
+  KindTokens: array[TLandrixEInvoiceConfigurationKind] of string = ('other', 'xrechnung', 'zugferd', 'peppolBIS');
   StatusClassTokens: array[TLandrixEInvoicePartStatus] of string = ('s-notrun', 's-passed', 's-failed',
     's-incomplete');
   SeverityClassTokens: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('sev-info', 'sev-warning',
@@ -396,6 +399,20 @@ begin
         begin
           CheckEqualsStr(PartTokens[P], Attr(Part, 'name'), AName + ': report part');
           CheckEqualsStr(StatusTokens[AResult.Status[P]], Attr(Part, 'status'), AName + ': status ' + PartTokens[P]);
+          if P = evp_KoSIT then
+          begin
+            CheckEqualsStr(ChoiceTokens[AResult.ConfigurationChoice], Attr(Part, 'configurationChoice'),
+              AName + ': report configuration choice');
+            if AResult.ConfigurationChoice in [ecc_OnlyMatch, ecc_Precedence] then
+              CheckEqualsStr(KindTokens[AResult.ConfigurationKind], Attr(Part, 'configurationKind'),
+                AName + ': report configuration kind')
+            else
+              CheckEqualsStr('', Attr(Part, 'configurationKind'), AName + ': no configuration kind');
+            if AResult.ConfigurationChoice in [ecc_OnlyMatch, ecc_Precedence, ecc_NoMatch] then
+              CheckEqualsStr(IntToStr(AResult.CandidateCount), Attr(Part, 'candidates'), AName + ': report candidates')
+            else
+              CheckEqualsStr('', Attr(Part, 'candidates'), AName + ': no candidates');
+          end;
           Part := Part.NextSiblingElement;
         end;
     end;

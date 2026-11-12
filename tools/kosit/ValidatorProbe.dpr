@@ -3,7 +3,7 @@ program ValidatorProbe;
 { Validates XML files with LandrixEInvoiceValidator and a KoSIT validator
   configuration; used by tools/kosit/kosit-oracle.py, which compares the
   output with the reports of the KoSIT validator.
-  Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... <file or folder>...
+  Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] <file or folder>...
   The rule folder is tests/data/local/kosit as tools/testdata/sync-local.py
   fills it: the LandrixXML rule files in rules/rules (en16931-ubl.xml,
   en16931-cii.xml, xrechnung-ubl.xml, xrechnung-cii.xml) for the XRechnung
@@ -19,6 +19,10 @@ program ValidatorProbe;
     msg <step> <code> <level> <effective level> <line>:<column> <location>
     processing-error <text>
     accepted | rejected
+  With -matches (for the files after it) only the number of matching
+  scenarios (TLandrixEInvoiceValidator.CountMatches, -1: not well-formed):
+    ## <file name>
+    matches <n>
   step is wf, xsd or sch<n>; a file that raises prints "exception <class>
   <message>". Exit code 0 unless the configuration does not load. }
 
@@ -55,6 +59,27 @@ begin
       Result := Result + '?';
 end;
 
+var
+  MatchesOnly: Boolean = False;
+
+procedure ProbeMatches(V: TLandrixEInvoiceValidator; const AFileName: string);
+var
+  F: TFileStream;
+begin
+  WriteLn('## ' + ExtractFileName(AFileName));
+  try
+    F := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    try
+      WriteLn('matches ' + IntToStr(V.CountMatches(F)));
+    finally
+      F.Free;
+    end;
+  except
+    on E: Exception do
+      WriteLn('exception ' + E.ClassName + ' ' + StringReplace(E.Message, #10, ' ', [rfReplaceAll]));
+  end;
+end;
+
 procedure Probe(V: TLandrixEInvoiceValidator; const AFileName: string);
 var
   R: TLandrixEInvoiceValidationResult;
@@ -62,6 +87,11 @@ var
   I: Integer;
   Step: string;
 begin
+  if MatchesOnly then
+  begin
+    ProbeMatches(V, AFileName);
+    Exit;
+  end;
   WriteLn('## ' + ExtractFileName(AFileName));
   R := TLandrixEInvoiceValidationResult.Create;
   try
@@ -140,7 +170,7 @@ var
 begin
   if ParamCount < 3 then
   begin
-    WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... <file or folder>...');
+    WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] <file or folder>...');
     ExitCode := 2;
     Exit;
   end;
@@ -166,6 +196,8 @@ begin
       { a mapping replaces the built-in one of the same name }
       if Pos('=', Arg) > 0 then
         V.RuleFiles.Values[Copy(Arg, 1, Pos('=', Arg) - 1)] := Copy(Arg, Pos('=', Arg) + 1, MaxInt)
+      else if Arg = '-matches' then
+        MatchesOnly := True
       else
       begin
         ProbeAll(V, Arg);
@@ -174,7 +206,7 @@ begin
     end;
     if Paths = 0 then
     begin
-      WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... <file or folder>...');
+      WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] <file or folder>...');
       ExitCode := 2;
     end;
   finally

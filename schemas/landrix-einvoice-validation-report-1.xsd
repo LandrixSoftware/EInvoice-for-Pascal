@@ -117,6 +117,13 @@
     <xs:attribute name="status" type="r:Status" use="required"/>
     <xs:attribute name="configuration" type="xs:string"/>
     <xs:attribute name="scenario" type="xs:string"/>
+    <!-- kosit only: how the configuration was chosen (absent without a
+         choice); configurationKind for onlyMatch and precedence, candidates
+         (registered configurations with exactly one matching scenario) for
+         onlyMatch, precedence and noMatch -->
+    <xs:attribute name="configurationChoice" type="r:ConfigurationChoice"/>
+    <xs:attribute name="configurationKind" type="r:ConfigurationKind"/>
+    <xs:attribute name="candidates" type="xs:nonNegativeInteger"/>
     <xs:attribute name="sanitized" type="xs:boolean"/>
     <xs:anyAttribute namespace="##any" processContents="lax"/>
   </xs:complexType>
@@ -201,6 +208,24 @@
       <xs:enumeration value="pdfEmbedding"/>
       <xs:enumeration value="pdfMetadata"/>
       <xs:enumeration value="pdfA"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ConfigurationChoice">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fixed"/>
+      <xs:enumeration value="onlyMatch"/>
+      <xs:enumeration value="precedence"/>
+      <xs:enumeration value="noMatch"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ConfigurationKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="other"/>
+      <xs:enumeration value="xrechnung"/>
+      <xs:enumeration value="zugferd"/>
+      <xs:enumeration value="peppolBIS"/>
     </xs:restriction>
   </xs:simpleType>
 

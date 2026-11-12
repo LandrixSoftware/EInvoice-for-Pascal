@@ -256,6 +256,18 @@ type
       nutzen sie nicht). Nichts mehr da, kein Stream oder mehr als 2 GB:
       ein Wohlgeformtheitsfehler. }
     function ValidateStream(AStream: TStream; AResult: TLandrixEInvoiceValidationResult): Boolean;
+    { The number of scenarios whose match expression holds for the document
+      in AStream, read from its position to the end (an expression that
+      raises does not match); -1 if the document is not well-formed (also
+      no stream or more than 2 GB). Only the match expressions run, no XML
+      schema and no Schematron: for choosing among several configurations.
+      DE: Die Zahl der Szenarien, deren match-Ausdruck fuer das Dokument in
+      AStream gilt, gelesen ab seiner Position bis zum Ende (ein Ausdruck,
+      der eine Ausnahme ausloest, passt nicht); -1, wenn das Dokument nicht
+      wohlgeformt ist (auch kein Stream oder mehr als 2 GB). Es laufen nur
+      die match-Ausdruecke, kein XML-Schema und kein Schematron: fuer die
+      Wahl unter mehreren Konfigurationen. }
+    function CountMatches(AStream: TStream): Integer;
     { the name of the configuration (scenarios/name).
       DE: der Name der Konfiguration (scenarios/name). }
     property Name: TLandrixEInvoiceString read FName;
@@ -717,6 +729,81 @@ begin
   end;
 end;
 
+{ The scenarios of AValidator whose match holds on ATree, as KoSIT
+  evaluates them (an expression that raises does not match); AScenario is
+  the last of them.
+  DE: Die Szenarien von AValidator, deren match auf ATree gilt, wie KoSIT
+  sie auswertet (ein Ausdruck, der eine Ausnahme ausloest, passt nicht);
+  AScenario ist das letzte davon. }
+function MatchScenarios(AValidator: TLandrixEInvoiceValidator; ATree: TLandrixXmlXPathTree;
+  out AScenario: TLandrixEInvoiceValidationScenario): Integer;
+var
+  Evaluator: TLandrixXmlXPathEvaluator;
+  Candidate: TLandrixEInvoiceValidationScenario;
+  I: Integer;
+begin
+  Result := 0;
+  AScenario := nil;
+  Evaluator := TLandrixXmlXPathEvaluator.Create(ATree);
+  try
+    for I := 0 to AValidator.ScenarioCount - 1 do
+    begin
+      Candidate := AValidator.Scenarios[I];
+      try
+        if Evaluator.EvaluateBoolean(Candidate.FMatch, 0) then
+        begin
+          Inc(Result);
+          AScenario := Candidate;
+        end;
+      except
+        { as KoSIT: an expression that raises does not match }
+        on ELandrixXmlError do ;
+      end;
+    end;
+  finally
+    Evaluator.Free;
+  end;
+end;
+
+function TLandrixEInvoiceValidator.CountMatches(AStream: TStream): Integer;
+var
+  Data: TMemoryStream;
+  Count: Int64;
+  Reader: TLandrixXmlReader;
+  Tree: TLandrixXmlXPathTree;
+  Scenario: TLandrixEInvoiceValidationScenario;
+begin
+  Result := -1;
+  if AStream = nil then
+    Exit;
+  Count := AStream.Size - AStream.Position;
+  if Count > MaxInt then
+    Exit;
+  Data := TMemoryStream.Create;
+  Tree := TLandrixXmlXPathTree.Create;
+  try
+    { CopyFrom with 0 copies the whole stream: only when bytes are left }
+    if Count > 0 then
+      Data.CopyFrom(AStream, Count);
+    try
+      Reader := TLandrixXmlReader.Create;
+      try
+        Reader.LoadFromBuffer(Data.Memory^, Integer(Data.Size));
+        Tree.LoadFromReader(Reader);
+      finally
+        Reader.Free;
+      end;
+    except
+      on ELandrixXmlError do
+        Exit;
+    end;
+    Result := MatchScenarios(Self, Tree, Scenario);
+  finally
+    Tree.Free;
+    Data.Free;
+  end;
+end;
+
 { The run on the file AFileName, or on AData when it is not nil (both
   passes, scenario and Schematron on the tree and the XML schema, read the
   same bytes). }
@@ -725,8 +812,7 @@ function TLandrixEInvoiceValidator.DoValidate(const AFileName: string; AData: TM
 var
   Reader: TLandrixXmlReader;
   Tree: TLandrixXmlXPathTree;
-  Evaluator: TLandrixXmlXPathEvaluator;
-  Scenario, Candidate: TLandrixEInvoiceValidationScenario;
+  Scenario: TLandrixEInvoiceValidationScenario;
   XsdValidator: TLandrixXmlXsdValidator;
   XsdError: TLandrixXmlXsdValidationError;
   SchValidator: TLandrixXmlSchematronValidator;
@@ -767,25 +853,7 @@ begin
         Exit;
       end;
     end;
-    Evaluator := TLandrixXmlXPathEvaluator.Create(Tree);
-    try
-      for I := 0 to Integer(FScenarios.Count) - 1 do
-      begin
-        Candidate := Scenarios[I];
-        try
-          if Evaluator.EvaluateBoolean(Candidate.FMatch, 0) then
-          begin
-            Inc(AResult.FMatchCount);
-            Scenario := Candidate;
-          end;
-        except
-          { as KoSIT: an expression that raises does not match }
-          on ELandrixXmlError do ;
-        end;
-      end;
-    finally
-      Evaluator.Free;
-    end;
+    AResult.FMatchCount := MatchScenarios(Self, Tree, Scenario);
     { as KoSIT: none or several matching scenarios mean no scenario }
     if AResult.FMatchCount <> 1 then
       Scenario := nil;

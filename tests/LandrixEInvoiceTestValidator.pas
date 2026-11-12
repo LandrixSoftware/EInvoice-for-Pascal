@@ -1110,6 +1110,258 @@ begin
   end;
 end;
 
+{ A configuration of the test data with RuleFiles for test.xsl. }
+function LoadTestConfiguration(const AFile: string): TLandrixEInvoiceValidator;
+begin
+  Result := TLandrixEInvoiceValidator.Create;
+  try
+    Result.LoadConfiguration(DataDir + AFile);
+    Result.RuleFiles.Values['test.xsl'] := DataDir + 'test.sch';
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+procedure CheckChoice(R: TLandrixEInvoiceDocumentValidation; AChoice: TLandrixEInvoiceConfigurationChoice;
+  AKind: TLandrixEInvoiceConfigurationKind; ACandidates: Integer; const AConfiguration, AName: string);
+begin
+  CheckEquals(Ord(AChoice), Ord(R.ConfigurationChoice), AName + ': choice');
+  CheckEquals(Ord(AKind), Ord(R.ConfigurationKind), AName + ': kind');
+  CheckEquals(ACandidates, R.CandidateCount, AName + ': candidates');
+  CheckEqualsStr(AConfiguration, string(R.ConfigurationName), AName + ': configuration');
+  CheckValidationReport(R, AName);
+end;
+
+{ The configuration chosen per document among registered ones: the one
+  with exactly one matching scenario, by precedence among several (also
+  against the order of registration), no candidate as KoSIT without a
+  scenario, a document that is not well-formed without a choice,
+  Options.Configuration first; the reports name the choice; a warning when
+  the kind does not fit the specification read. Test configurations: V
+  (scenarios.xml) matches kind a and f once and b twice, U
+  (scenarios-unnamed.xml) a and b once, Any (scenarios-any.xml) every
+  document. }
+procedure TestConfigurationChoice;
+var
+  V, U, AnyCfg: TLandrixEInvoiceValidator;
+  DV: TLandrixEInvoiceDocumentValidator;
+  R: TLandrixEInvoiceDocumentValidation;
+  S: TMemoryStream;
+  Xml: TLandrixXmlUtf8;
+  Html: TLandrixXmlUtf8;
+  I, Warning: Integer;
+begin
+  V := LoadTestConfiguration('scenarios.xml');
+  U := LoadTestConfiguration('scenarios-unnamed.xml');
+  AnyCfg := LoadTestConfiguration('scenarios-any.xml');
+  DV := TLandrixEInvoiceDocumentValidator.Create;
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  try
+    CheckEquals(0, DV.Options.ConfigurationCount, 'none registered');
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    DV.Options.AddConfiguration(U, eck_ZUGFeRD);
+    CheckEquals(2, DV.Options.ConfigurationCount, 'two registered');
+    CheckEquals(-1, V.CountMatches(nil), 'CountMatches without stream');
+    { a: both match once, ZUGFeRD before XRechnung }
+    CheckEquals(Ord(ev_Accepted), Ord(DV.ValidateFile(DataDir + 'doc-a-5.xml', R)), 'precedence verdict');
+    CheckChoice(R, ecc_Precedence, eck_ZUGFeRD, 2, string(U.Name), 'precedence');
+    Xml := ReportUtf8(R, '');
+    Check(Pos(TLandrixXmlUtf8('configurationChoice="precedence" configurationKind="zugferd" candidates="2"'),
+      Xml) > 0, 'precedence in the report');
+    Html := HtmlUtf8(R, '', eln_English);
+    Check(Pos(TLandrixXmlUtf8('automatically, by precedence among 2 matching configurations (ZUGFeRD)'), Html) > 0,
+      'precedence on the page');
+    Html := HtmlUtf8(R, '', eln_German);
+    Check(Pos(TLandrixXmlUtf8('automatisch, nach Vorrang unter 2 passenden Konfigurationen (ZUGFeRD)'), Html) > 0,
+      'precedence on the German page');
+    { the order of registration does not decide between kinds }
+    DV.Options.ClearConfigurations;
+    CheckEquals(0, DV.Options.ConfigurationCount, 'cleared');
+    DV.Options.AddConfiguration(U, eck_ZUGFeRD);
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    DV.ValidateFile(DataDir + 'doc-a-5.xml', R);
+    CheckChoice(R, ecc_Precedence, eck_ZUGFeRD, 2, string(U.Name), 'precedence, other order');
+    { f: only V matches }
+    DV.ValidateFile(DataDir + 'doc-f-5.xml', R);
+    CheckChoice(R, ecc_OnlyMatch, eck_XRechnung, 1, string(V.Name), 'only match');
+    CheckEqualsStr('Test fallback', string(R.ScenarioName), 'only match: scenario');
+    { b: two scenarios of V match, V is no candidate }
+    DV.ValidateFile(DataDir + 'doc-b-5.xml', R);
+    CheckChoice(R, ecc_OnlyMatch, eck_ZUGFeRD, 1, string(U.Name), 'two scenarios are no candidate');
+    { x: none matches, rejected as KoSIT without a scenario }
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateFile(DataDir + 'doc-x-5.xml', R)), 'no match verdict');
+    CheckChoice(R, ecc_NoMatch, eck_Other, 0, '', 'no match');
+    CheckEquals(Ord(evr_Failed), Ord(R.Status[evp_KoSIT]), 'no match: KoSIT failed');
+    CheckEqualsStr('kosit::error', Copy(Findings(R), 1, 12), 'no match: finding');
+    Html := HtmlUtf8(R, '', eln_English);
+    Check(Pos(TLandrixXmlUtf8('no registered configuration has exactly one matching scenario'), Html) > 0,
+      'no match on the page');
+    { not well-formed: the first registered configuration reports it }
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateFile(DataDir + 'doc-broken.xml', R)), 'broken verdict');
+    CheckChoice(R, ecc_None, eck_Other, 0, '', 'broken');
+    CheckEquals(Ord(efs_Wellformedness), Ord(R[0].Step), 'broken: well-formedness');
+    { the same kind twice: the order of registration }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(V, eck_Other);
+    DV.Options.AddConfiguration(U, eck_Other);
+    DV.ValidateFile(DataDir + 'doc-a-5.xml', R);
+    CheckChoice(R, ecc_Precedence, eck_Other, 2, string(V.Name), 'same kind: first registered');
+    { Options.Configuration wins }
+    DV.Options.Configuration := U;
+    DV.ValidateFile(DataDir + 'doc-f-5.xml', R);
+    CheckChoice(R, ecc_Fixed, eck_Other, 0, string(U.Name), 'fixed');
+    Xml := ReportUtf8(R, '');
+    Check(Pos(TLandrixXmlUtf8('configurationChoice="fixed"'), Xml) > 0, 'fixed in the report');
+    Check(Pos(TLandrixXmlUtf8('candidates'), Xml) = 0, 'fixed: no candidates in the report');
+    DV.Options.Configuration := nil;
+    { the kind does not fit the specification read: a warning after the
+      KoSIT findings }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(AnyCfg, eck_ZUGFeRD);
+    S := InvoiceStream(True);
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_OnlyMatch, eck_ZUGFeRD, 1, string(AnyCfg.Name), 'kind warning');
+    Warning := -1;
+    for I := 0 to R.FindingCount - 1 do
+      if (R[I].Part = evp_KoSIT) and (R[I].Severity = eds_Warning) and
+         (Pos('no XRechnung configuration is registered', string(R[I].Text)) > 0) then
+        Warning := I;
+    Check(Warning >= 0, 'kind warning: ' + Findings(R));
+    for I := 0 to Warning - 1 do
+      Check(R[I].Part = evp_KoSIT, 'kind warning after the KoSIT findings');
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    S := InvoiceStream(True);
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    Warning := -1;
+    for I := 0 to R.FindingCount - 1 do
+      if Pos('the XRechnung configuration has not exactly one matching scenario', string(R[I].Text)) > 0 then
+        Warning := I;
+    Check(Warning >= 0, 'kind warning, XRechnung registered: ' + Findings(R));
+    { the expected kind matched too but lost on precedence }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(AnyCfg, eck_XRechnung);
+    DV.Options.AddConfiguration(AnyCfg, eck_ZUGFeRD);
+    S := InvoiceStream(True);
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_Precedence, eck_ZUGFeRD, 2, string(AnyCfg.Name), 'lost on precedence');
+    Warning := -1;
+    for I := 0 to R.FindingCount - 1 do
+      if Pos('the XRechnung configuration matched too, the precedence chose ZUGFeRD', string(R[I].Text)) > 0 then
+        Warning := I;
+    Check(Warning >= 0, 'lost on precedence: warning ' + Findings(R));
+    { a configuration of kind other gets no warning }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(AnyCfg, eck_Other);
+    S := InvoiceStream(True);
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_OnlyMatch, eck_Other, 1, string(AnyCfg.Name), 'kind other');
+    for I := 0 to R.FindingCount - 1 do
+      Check(not ((R[I].Part = evp_KoSIT) and (R[I].Severity = eds_Warning) and
+        (Pos('configuration ran', string(R[I].Text)) > 0)), 'kind other: no warning');
+    { Peppol BIS before XRechnung }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    DV.Options.AddConfiguration(U, eck_PeppolBIS);
+    DV.ValidateFile(DataDir + 'doc-a-5.xml', R);
+    CheckChoice(R, ecc_Precedence, eck_PeppolBIS, 2, string(U.Name), 'Peppol before XRechnung');
+    { b matches V twice; registered twice it is still no candidate }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    DV.Options.AddConfiguration(V, eck_ZUGFeRD);
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateFile(DataDir + 'doc-b-5.xml', R)), 'several everywhere: verdict');
+    CheckChoice(R, ecc_NoMatch, eck_Other, 0, '', 'several everywhere');
+    { the same configuration twice counts twice }
+    DV.ValidateFile(DataDir + 'doc-a-5.xml', R);
+    CheckChoice(R, ecc_Precedence, eck_ZUGFeRD, 2, string(V.Name), 'registered twice');
+    { no stream: the first registered configuration reports it, no choice }
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(nil, R)), 'nil stream: verdict');
+    CheckChoice(R, ecc_None, eck_Other, 0, '', 'nil stream');
+    CheckEquals(Ord(efs_Wellformedness), Ord(R[0].Step), 'nil stream: well-formedness');
+    { a stream read from a position after a prefix: the position is kept for
+      the run }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    S := BytesStream(AnsiString('prefix<?xml version="1.0" encoding="UTF-8"?>' +
+      '<doc xmlns="urn:landrix:test:validator" kind="f"><v>5</v></doc>'));
+    try
+      S.Position := 6;
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_OnlyMatch, eck_XRechnung, 1, string(V.Name), 'position 6');
+    CheckEqualsStr('Test fallback', string(R.ScenarioName), 'position 6: scenario');
+    { a PDF: the embedded invoice chooses }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(AnyCfg, eck_ZUGFeRD);
+    S := BytesStream(XRechnungPdf(True, True));
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_OnlyMatch, eck_ZUGFeRD, 1, string(AnyCfg.Name), 'PDF');
+    Check(R.Status[evp_KoSIT] <> evr_NotRun, 'PDF: KoSIT ran');
+    { a PDF without a candidate: rejected }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    S := BytesStream(XRechnungPdf(True, True));
+    try
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(S, R)), 'PDF no match: verdict');
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_NoMatch, eck_Other, 0, '', 'PDF no match');
+    CheckEquals(Ord(evr_Failed), Ord(R.Status[evp_KoSIT]), 'PDF no match: KoSIT failed');
+    { the matching does not move the stream for the run }
+    DV.Options.ClearConfigurations;
+    DV.Options.AddConfiguration(V, eck_XRechnung);
+    S := BytesStream(AnsiString('<?xml version="1.0" encoding="UTF-8"?>' +
+      '<doc xmlns="urn:landrix:test:validator" kind="f"><v>5</v></doc>'));
+    try
+      S.Position := 0;
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_OnlyMatch, eck_XRechnung, 1, string(V.Name), 'stream');
+    { the PDF with a configuration given by the caller: its verdict as
+      before }
+    DV.Options.Configuration := AnyCfg;
+    S := BytesStream(XRechnungPdf(True, True));
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckChoice(R, ecc_Fixed, eck_Other, 0, string(AnyCfg.Name), 'PDF fixed');
+    DV.Options.Configuration := nil;
+  finally
+    R.Free;
+    DV.Free;
+    AnyCfg.Free;
+    U.Free;
+    V.Free;
+  end;
+end;
+
 { Over the local PDF corpus without KoSIT: the PDF findings are those of
   the PDF checker, each in a part that ran; rejected exactly when level 2
   or 3 failed, never accepted. }
@@ -1564,6 +1816,7 @@ begin
   RegisterTest('Validation.PdfCorpus', TestDocumentPdfCorpus);
   RegisterTest('Validation.KositSuite', TestDocumentKositSuite);
   RegisterTest('Validation.PdfKosit', TestDocumentPdfKosit);
+  RegisterTest('Validation.ConfigurationChoice', TestConfigurationChoice);
   RegisterTest('Validation.Report', TestDocumentReport);
   RegisterTest('Validation.ReportSanitize', TestDocumentReportSanitize);
   RegisterTest('Validation.ReportSchema', TestReportSchema);

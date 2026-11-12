@@ -402,6 +402,18 @@ Supported invoice standards are documented per release.
   field of the model: the page must change in the elements marked with that field, in its section; exceptions in
   `tools/render/render-exceptions.txt`), `Render.Golden` (pages in `tests/data/render/`) and `Render.Corpus` (every
   local golden, CII, UBL and sweep file in both languages, read back as XML).
+- `LandrixEInvoiceValidation` chooses the KoSIT configuration per document among registered ones
+  (`Options.AddConfiguration(Configuration, Kind)`, `ClearConfigurations`, `ConfigurationCount`; kinds
+  `TLandrixEInvoiceConfigurationKind`): a configuration is a candidate when exactly one of its scenarios matches
+  (`TLandrixEInvoiceValidator.CountMatches`, match expressions only); with several candidates the kind decides
+  (ZUGFeRD, Peppol BIS, XRechnung, other; then the order of registration), so a Factur-X EN16931 (Comfort) CII
+  document runs the ZUGFeRD configuration instead of the generic EN16931 scenario of the XRechnung one. Inside a
+  configuration KoSIT's rule stays (several matching scenarios: none). No candidate is rejected as KoSIT does
+  without a scenario; a warning tells when the chosen kind does not fit the specification read (BT-24).
+  `Options.Configuration` still wins. The result names the choice (`ConfigurationChoice`, `ConfigurationKind`,
+  `CandidateCount`), the XML report in optional attributes of the KoSIT part (`configurationChoice`,
+  `configurationKind`, `candidates`), the HTML page in its details. `tools/kosit/kosit-oracle.py --corpus auto`
+  compares the candidates with the KoSIT validator over the local corpora (probe option `-matches`).
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111

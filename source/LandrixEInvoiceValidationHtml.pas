@@ -91,7 +91,7 @@ uses
 type
   TLabel = (lbTitle, lbVerdict, lbDocument, lbName, lbSource, lbRootName, lbSyntax, lbCustomizationId,
     lbProfileId, lbSpecification, lbLibraryRelease, lbUsesExtension, lbYes, lbNo, lbParts, lbPart, lbStatus,
-    lbDetails, lbConfiguration, lbScenario, lbPdf, lbHybridKind, lbFactsChecked, lbProfile, lbPdfVersion,
+    lbDetails, lbConfiguration, lbScenario, lbChoice, lbPdf, lbHybridKind, lbFactsChecked, lbProfile, lbPdfVersion,
     lbCatalogVersion, lbInvoiceFile, lbInvoicePath, lbRelationship, lbXmpDocumentType, lbXmpDocumentFileName,
     lbXmpVersion, lbXmpConformanceLevel, lbXmpPdfA, lbFindings, lbSeverity, lbRule, lbStep, lbPosition,
     lbLocation, lbText, lbNoFindings, lbErrors, lbWarnings, lbInfos, lbError1, lbWarning1, lbInfo1,
@@ -104,7 +104,7 @@ const
     ('Validation report', 'Verdict', 'Document', 'Name', 'Source', 'Root element', 'Syntax',
      'Specification identifier (BT-24)', 'Business process (BT-23)', 'Specification', 'Library release',
      'Uses the extension', 'yes', 'no', 'Parts', 'Part', 'Status', 'Details', 'Configuration', 'Scenario',
-     'PDF', 'Hybrid kind', 'Facts checked', 'Profile', 'PDF version', 'Catalog version', 'Invoice file',
+     'Chosen', 'PDF', 'Hybrid kind', 'Facts checked', 'Profile', 'PDF version', 'Catalog version', 'Invoice file',
      'Place in the PDF', 'Relationship (/AFRelationship)', 'XMP document type', 'XMP file name', 'XMP version',
      'XMP conformance level', 'PDF/A claimed by the XMP', 'Findings', 'Severity', 'Rule', 'Step', 'Position',
      'Location', 'Text', 'No findings.', 'errors', 'warnings', 'infos', 'error', 'warning', 'info', 'predicted',
@@ -115,7 +115,7 @@ const
     ('Pr&#252;fbericht', 'Urteil', 'Dokument', 'Name', 'Herkunft', 'Wurzelelement', 'Syntax',
      'Spezifikationskennung (BT-24)', 'Gesch&#228;ftsprozess (BT-23)', 'Spezifikation', 'Stand der Bibliothek',
      'Nutzt die Extension', 'ja', 'nein', 'Teile', 'Teil', 'Status', 'Einzelheiten', 'Konfiguration', 'Szenario',
-     'PDF', 'Hybridart', 'Fakten gepr&#252;ft', 'Profil', 'PDF-Version', 'Katalog-Version', 'Rechnungsdatei',
+     'Gew&#228;hlt', 'PDF', 'Hybridart', 'Fakten gepr&#252;ft', 'Profil', 'PDF-Version', 'Katalog-Version', 'Rechnungsdatei',
      'Ort im PDF', 'Beziehung (/AFRelationship)', 'XMP-Dokumentart', 'XMP-Dateiname', 'XMP-Version',
      'XMP-Konformit&#228;tsstufe', 'PDF/A laut XMP', 'Befunde', 'Schweregrad', 'Regel', 'Schritt', 'Position',
      'Ort', 'Text', 'Keine Befunde.', 'Fehler', 'Warnungen', 'Hinweise', 'Fehler', 'Warnung', 'Hinweis',
@@ -133,6 +133,20 @@ const
      'PDF/A (level 1)'),
     ('Lesen', 'KoSIT', 'Regelpr&#252;fung (Vorhersage)', 'PDF-Einbettung (Ebene 2)',
      'PDF-Metadaten, XMP (Ebene 3)', 'PDF/A (Ebene 1)'));
+  { How the configuration was chosen; precedence: text, number of
+    candidates, ChoiceTail.
+    DE: Wie die Konfiguration gewaehlt wurde; Vorrang: Text, Zahl der
+    Kandidaten, ChoiceTail. }
+  ChoiceLabels: array[TLandrixEInvoiceReportLanguage, TLandrixEInvoiceConfigurationChoice] of AnsiString = (
+    ('', 'given by the caller', 'automatically, the only matching configuration',
+     'automatically, by precedence among ', 'no registered configuration has exactly one matching scenario'),
+    ('', 'vom Aufrufer vorgegeben', 'automatisch, die einzige passende Konfiguration',
+     'automatisch, nach Vorrang unter ', 'keine registrierte Konfiguration hat genau ein passendes Szenario'));
+  ChoiceTail: array[TLandrixEInvoiceReportLanguage] of AnsiString = (' matching configurations',
+    ' passenden Konfigurationen');
+  KindLabels: array[TLandrixEInvoiceReportLanguage, TLandrixEInvoiceConfigurationKind] of AnsiString = (
+    ('other', 'XRechnung', 'ZUGFeRD', 'Peppol BIS'),
+    ('andere', 'XRechnung', 'ZUGFeRD', 'Peppol BIS'));
   StatusLabels: array[TLandrixEInvoiceReportLanguage, TLandrixEInvoicePartStatus] of AnsiString = (
     ('not run', 'passed', 'failed', 'incomplete'),
     ('nicht gelaufen', 'bestanden', 'fehlgeschlagen', 'unvollst&#228;ndig'));
@@ -306,6 +320,23 @@ begin
         P.Lbl(lbScenario);
         P.Raw(': ');
         P.Text(AResult.ScenarioName);
+      end;
+      { an automatic choice; a configuration given by the caller is not
+        mentioned (the page stays as before) }
+      if AResult.ConfigurationChoice in [ecc_OnlyMatch, ecc_Precedence, ecc_NoMatch] then
+      begin
+        if (AResult.ConfigurationName <> '') or (AResult.ScenarioName <> '') then
+          P.Raw('<br/>');
+        P.Lbl(lbChoice);
+        P.Raw(': ');
+        P.Raw(ChoiceLabels[P.Language, AResult.ConfigurationChoice]);
+        if AResult.ConfigurationChoice = ecc_Precedence then
+        begin
+          P.Int(AResult.CandidateCount);
+          P.Raw(ChoiceTail[P.Language]);
+        end;
+        if AResult.ConfigurationChoice <> ecc_NoMatch then
+          P.Raw(' (' + KindLabels[P.Language, AResult.ConfigurationKind] + ')');
       end;
     end;
     P.Raw('</td></tr>'#10);
