@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Pr&#252;fbericht: invoice.pdf</title>
+<style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;margin:2em auto;max-width:72em;padding:0 1em;color:#1a1a1a;background:#fff;line-height:1.4}h1{font-size:1.6em;margin:0 0 .3em}h2{font-size:1.2em;margin:1.6em 0 .5em;border-bottom:1px solid #ccc}table{border-collapse:collapse;width:100%}th,td{text-align:left;vertical-align:top;padding:.3em .6em;border-bottom:1px solid #e3e3e3}table.facts th{width:18em;font-weight:600}.document{font-size:1.1em;margin:0 0 .5em;word-break:break-all}.verdict{display:inline-block;padding:.3em .8em;border-radius:.3em;font-weight:700}.v-accepted{background:#dff3e2;color:#14532d}.v-rejected{background:#fde2e1;color:#7f1d1d}.v-incomplete{background:#fff3cd;color:#713f12}.s-passed{color:#15803d}.s-failed{color:#b91c1c;font-weight:600}.s-incomplete{color:#a16207;font-weight:600}.s-notrun{color:#6b7280}td.sev-error{color:#b91c1c;font-weight:600}td.sev-warning{color:#a16207}td.sev-info{color:#374151}tr.predicted td{font-style:italic;color:#4b5563}td.text{white-space:pre-wrap}td.loc{font-family:ui-monospace,Consolas,monospace;font-size:.9em;word-break:break-all}.note,footer{color:#6b7280;font-size:.9em}footer{margin-top:2em}@media print{body{margin:0;max-width:none}.verdict{border:1px solid #888}}</style>
+</head>
+<body>
+<header><h1>Pr&#252;fbericht</h1>
+<p class="document">invoice.pdf</p>
+<p class="verdict v-rejected">Urteil: Abgelehnt</p></header>
+<section><h2>Dokument</h2>
+<table class="facts">
+<tr><th>Herkunft</th><td>PDF (hybride Rechnung)</td></tr>
+<tr><th>Wurzelelement</th><td>CrossIndustryInvoice</td></tr>
+<tr><th>Syntax</th><td>CII</td></tr>
+<tr><th>Spezifikationskennung (BT-24)</th><td>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</td></tr>
+<tr><th>Gesch&#228;ftsprozess (BT-23)</th><td>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</td></tr>
+<tr><th>Spezifikation</th><td>XRechnung 3.0 (CII)</td></tr>
+<tr><th>Stand der Bibliothek</th><td>3.0.2</td></tr>
+</table></section>
+<section><h2>Teile</h2>
+<table class="parts"><thead><tr><th>Teil</th><th>Status</th><th>Einzelheiten</th></tr></thead><tbody>
+<tr><td>Lesen</td><td class="s-passed">bestanden</td><td></td></tr>
+<tr><td>KoSIT</td><td class="s-notrun">nicht gelaufen</td><td></td></tr>
+<tr><td>Regelpr&#252;fung (Vorhersage)</td><td class="s-failed">fehlgeschlagen</td><td></td></tr>
+<tr><td>PDF-Einbettung (Ebene 2)</td><td class="s-passed">bestanden</td><td></td></tr>
+<tr><td>PDF-Metadaten, XMP (Ebene 3)</td><td class="s-failed">fehlgeschlagen</td><td></td></tr>
+<tr><td>PDF/A (Ebene 1)</td><td class="s-notrun">nicht gelaufen</td><td></td></tr>
+</tbody></table></section>
+<section><h2>PDF</h2>
+<table class="facts">
+<tr><th>Hybridart</th><td>XRechnung</td></tr>
+<tr><th>Fakten gepr&#252;ft</th><td>ja</td></tr>
+<tr><th>Profil</th><td>XRECHNUNG</td></tr>
+<tr><th>PDF-Version</th><td>1.7</td></tr>
+<tr><th>Rechnungsdatei</th><td>xrechnung.xml</td></tr>
+<tr><th>Ort im PDF</th><td>/Root/Names/EmbeddedFiles/Names[1]</td></tr>
+<tr><th>Beziehung (/AFRelationship)</th><td>Alternative</td></tr>
+</table></section>
+<section><h2>Befunde</h2>
+<p class="counts">1 Fehler, 0 Warnungen, 0 Hinweise, 1 vorhergesagt</p>
+<table class="findings"><thead><tr><th>Teil</th><th>Schweregrad</th><th>Regel</th><th>Position</th><th>Ort</th><th>Text</th></tr></thead><tbody>
+<tr><td>PDF-Metadaten, XMP (Ebene 3)</td><td class="sev-error">Fehler</td><td>LX-PDF-11</td><td></td><td class="loc">/Root/Metadata</td><td class="text">The PDF has no XMP metadata (/Metadata of the catalog)</td></tr>
+<tr class="predicted"><td>Regelpr&#252;fung (Vorhersage)</td><td class="sev-error">Fehler (vorhergesagt)</td><td>BR-DE-15</td><td></td><td class="loc">BT-10</td><td class="text">the buyer reference (BT-10) shall be provided</td></tr>
+</tbody></table>
+<p class="note">Vorhergesagt: Die eigene Regelpr&#252;fung der Bibliothek sagt voraus, was KoSIT melden w&#252;rde. Sie entscheidet nicht &#252;ber das Urteil und z&#228;hlt nicht zu Fehlern, Warnungen und Hinweisen.</p>
+</section>
+<footer><p>Erstellt mit EInvoice-for-Pascal @VERSION@</p></footer>
+</body>
+</html>

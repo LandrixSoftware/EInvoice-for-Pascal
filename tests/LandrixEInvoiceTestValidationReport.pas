@@ -27,7 +27,18 @@ interface
 uses
   LandrixXmlBase,
   LandrixEInvoiceTypes,
-  LandrixEInvoiceValidation;
+  LandrixEInvoiceValidation,
+  LandrixEInvoiceValidationHtml;
+
+{ The HTML page of AResult with ADocumentName in ALanguage as UTF-8. }
+function HtmlUtf8(AResult: TLandrixEInvoiceDocumentValidation; const ADocumentName: TLandrixEInvoiceString;
+  ALanguage: TLandrixEInvoiceReportLanguage): TLandrixXmlUtf8;
+{ Writes the HTML page of AResult in ALanguage and reads it back as XML:
+  verdict, statuses and one row per finding (predicted, severity, rule,
+  location, text) as in AResult; no script and nothing loaded from
+  elsewhere. }
+procedure CheckValidationHtml(AResult: TLandrixEInvoiceDocumentValidation; ALanguage: TLandrixEInvoiceReportLanguage;
+  const AName: string);
 
 { The report of AResult with ADocumentName as UTF-8. }
 function ReportUtf8(AResult: TLandrixEInvoiceDocumentValidation;
@@ -36,11 +47,12 @@ function ReportUtf8(AResult: TLandrixEInvoiceDocumentValidation;
 function ReportSchemaErrors(const AXml: TLandrixXmlUtf8): string;
 { Writes the report of AResult, checks it against the schema and reads it
   back: verdict, statuses, findings (part, rule, severity, step, predicted,
-  line, location, text) and counts as in AResult. }
+  line, location, text) and counts as in AResult; the same for the HTML
+  page in both languages (CheckValidationHtml). }
 procedure CheckValidationReport(AResult: TLandrixEInvoiceDocumentValidation; const AName: string);
 { AXml equals the golden report AFile in tests/data/validation-report/ (with
   @VERSION@ for the library version); on a difference the report is written
-  to reports/ next to the test program. }
+  to reports/ next to the test program. Also for HTML pages. }
 procedure CheckGoldenReport(const AXml: TLandrixXmlUtf8; const AFile: string);
 
 implementation
@@ -57,6 +69,15 @@ uses
   LandrixEInvoice,
   LandrixEInvoiceValidationReport,
   LandrixEInvoiceTestFramework;
+
+const
+  HtmlNs = 'http://www.w3.org/1999/xhtml';
+  VerdictClassTokens: array[TLandrixEInvoiceVerdict] of string = ('verdict v-accepted', 'verdict v-rejected',
+    'verdict v-incomplete');
+  StatusClassTokens: array[TLandrixEInvoicePartStatus] of string = ('s-notrun', 's-passed', 's-failed',
+    's-incomplete');
+  SeverityClassTokens: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('sev-info', 'sev-warning',
+    'sev-error');
 
 const
   ReportNs = 'urn:landrix:einvoice:validation-report:1';
@@ -201,6 +222,147 @@ begin
   CheckEqualsStr(IntToStr(Predicted), Attr(N, 'predicted'), AName + ': predicted');
 end;
 
+function HtmlUtf8(AResult: TLandrixEInvoiceDocumentValidation; const ADocumentName: TLandrixEInvoiceString;
+  ALanguage: TLandrixEInvoiceReportLanguage): TLandrixXmlUtf8;
+var
+  W: TLandrixEInvoiceValidationHtmlWriter;
+  S: TMemoryStream;
+begin
+  W := TLandrixEInvoiceValidationHtmlWriter.Create;
+  S := TMemoryStream.Create;
+  try
+    W.DocumentName := ADocumentName;
+    W.Language := ALanguage;
+    W.WriteToStream(AResult, S);
+    Result := '';
+    SetLength(Result, Integer(S.Size));
+    if S.Size > 0 then
+      Move(S.Memory^, PAnsiChar(Result)^, Integer(S.Size));
+  finally
+    S.Free;
+    W.Free;
+  end;
+end;
+
+{ the first element ALocal below AParent (depth first) whose class is
+  AClass ('' for any), nil if there is none }
+function FindElement(AParent: TLandrixXmlNode; const ALocal, AClass: string): TLandrixXmlNode;
+var
+  N: TLandrixXmlNode;
+begin
+  Result := nil;
+  N := AParent.FirstChildElement;
+  while (N <> nil) and (Result = nil) do
+  begin
+    if (N.LocalName = ALocal) and ((AClass = '') or (Attr(N, 'class') = AClass)) then
+      Result := N
+    else
+      Result := FindElement(N, ALocal, AClass);
+    N := N.NextSiblingElement;
+  end;
+end;
+
+{ the I-th child element ALocal of AParent (from 0), nil if there is none }
+function NthChild(AParent: TLandrixXmlNode; const ALocal: string; I: Integer): TLandrixXmlNode;
+begin
+  Result := AParent.FirstChildElement;
+  while Result <> nil do
+  begin
+    if Result.LocalName = ALocal then
+    begin
+      if I = 0 then
+        Exit;
+      Dec(I);
+    end;
+    Result := Result.NextSiblingElement;
+  end;
+end;
+
+procedure CheckValidationHtml(AResult: TLandrixEInvoiceDocumentValidation; ALanguage: TLandrixEInvoiceReportLanguage;
+  const AName: string);
+var
+  Html: TLandrixXmlUtf8;
+  Doc: TLandrixXmlDocument;
+  Root, N, Body, Row, Cell: TLandrixXmlNode;
+  P: TLandrixEInvoiceValidationPart;
+  I: Integer;
+  What: string;
+  Finding: TLandrixEInvoiceFinding;
+  Sanitized: Boolean;
+begin
+  Html := HtmlUtf8(AResult, '', ALanguage);
+  What := AName + ' (HTML ' + IntToStr(Ord(ALanguage)) + ')';
+  Check(Pos(TLandrixXmlUtf8('<script'), Html) = 0, What + ': no script');
+  Check(Pos(TLandrixXmlUtf8(' src='), Html) = 0, What + ': nothing loaded');
+  Check(Pos(TLandrixXmlUtf8(' href='), Html) = 0, What + ': no links');
+  Check(Pos(TLandrixXmlUtf8('url('), Html) = 0, What + ': no CSS resources');
+  Doc := TLandrixXmlDocument.Create;
+  try
+    Doc.LoadFromUtf8(Html);
+    Root := Doc.Root;
+    CheckEqualsStr(HtmlNs, Root.NamespaceUri, What + ': XHTML namespace');
+    N := FindElement(Root, 'p', VerdictClassTokens[AResult.Verdict]);
+    Check(N <> nil, What + ': verdict');
+    N := FindElement(Root, 'table', 'parts');
+    Check(N <> nil, What + ': parts');
+    if N <> nil then
+    begin
+      Body := FindElement(N, 'tbody', '');
+      Check(Body <> nil, What + ': parts body');
+      if Body <> nil then
+      begin
+        for P := Low(TLandrixEInvoiceValidationPart) to High(TLandrixEInvoiceValidationPart) do
+        begin
+          Row := NthChild(Body, 'tr', Ord(P));
+          Cell := nil;
+          if Row <> nil then
+            Cell := NthChild(Row, 'td', 1);
+          Check(Cell <> nil, What + ': part row ' + IntToStr(Ord(P)));
+          if Cell <> nil then
+            CheckEqualsStr(StatusClassTokens[AResult.Status[P]], Attr(Cell, 'class'),
+              What + ': status ' + IntToStr(Ord(P)));
+        end;
+        Check(NthChild(Body, 'tr', 6) = nil, What + ': six parts');
+      end;
+    end;
+    Check((FindElement(Root, 'h2', '') <> nil), What + ': sections');
+    N := FindElement(Root, 'table', 'findings');
+    Check((N <> nil) = (AResult.FindingCount > 0), What + ': findings table');
+    if N <> nil then
+      Body := FindElement(N, 'tbody', '')
+    else
+      Body := nil;
+    Check((N = nil) or (Body <> nil), What + ': findings body');
+    if Body <> nil then
+    begin
+      Sanitized := Pos(TLandrixXmlUtf8('<footer><p class="note">'), Html) > 0;
+      for I := 0 to AResult.FindingCount - 1 do
+      begin
+        Row := NthChild(Body, 'tr', I);
+        Check((Row <> nil) and (NthChild(Row, 'td', 5) <> nil), What + ': finding row ' + IntToStr(I));
+        if (Row = nil) or (NthChild(Row, 'td', 5) = nil) then
+          Break;
+        Finding := AResult[I];
+        Check(Finding.Predicted = (Attr(Row, 'class') = 'predicted'), What + ': predicted ' + IntToStr(I));
+        CheckEqualsStr(SeverityClassTokens[Finding.Severity], Attr(NthChild(Row, 'td', 1), 'class'),
+          What + ': severity ' + IntToStr(I));
+        if not Sanitized then
+        begin
+          Cell := NthChild(Row, 'td', 2);
+          Check(Cell.TextW = Finding.RuleID, What + ': rule ' + IntToStr(I));
+          Cell := NthChild(Row, 'td', 4);
+          Check(Cell.TextW = Finding.Location, What + ': location ' + IntToStr(I));
+          Cell := NthChild(Row, 'td', 5);
+          Check(Cell.TextW = Finding.Text, What + ': text ' + IntToStr(I));
+        end;
+      end;
+      Check(NthChild(Body, 'tr', AResult.FindingCount) = nil, What + ': one row per finding');
+    end;
+  finally
+    Doc.Free;
+  end;
+end;
+
 procedure CheckValidationReport(AResult: TLandrixEInvoiceDocumentValidation; const AName: string);
 var
   Xml: TLandrixXmlUtf8;
@@ -242,6 +404,8 @@ begin
   finally
     Doc.Free;
   end;
+  CheckValidationHtml(AResult, eln_English, AName);
+  CheckValidationHtml(AResult, eln_German, AName);
 end;
 
 function ReadFileBytes(const AFileName: string): AnsiString;

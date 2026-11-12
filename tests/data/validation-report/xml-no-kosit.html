@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Validation report: invoice.xml</title>
+<style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;margin:2em auto;max-width:72em;padding:0 1em;color:#1a1a1a;background:#fff;line-height:1.4}h1{font-size:1.6em;margin:0 0 .3em}h2{font-size:1.2em;margin:1.6em 0 .5em;border-bottom:1px solid #ccc}table{border-collapse:collapse;width:100%}th,td{text-align:left;vertical-align:top;padding:.3em .6em;border-bottom:1px solid #e3e3e3}table.facts th{width:18em;font-weight:600}.document{font-size:1.1em;margin:0 0 .5em;word-break:break-all}.verdict{display:inline-block;padding:.3em .8em;border-radius:.3em;font-weight:700}.v-accepted{background:#dff3e2;color:#14532d}.v-rejected{background:#fde2e1;color:#7f1d1d}.v-incomplete{background:#fff3cd;color:#713f12}.s-passed{color:#15803d}.s-failed{color:#b91c1c;font-weight:600}.s-incomplete{color:#a16207;font-weight:600}.s-notrun{color:#6b7280}td.sev-error{color:#b91c1c;font-weight:600}td.sev-warning{color:#a16207}td.sev-info{color:#374151}tr.predicted td{font-style:italic;color:#4b5563}td.text{white-space:pre-wrap}td.loc{font-family:ui-monospace,Consolas,monospace;font-size:.9em;word-break:break-all}.note,footer{color:#6b7280;font-size:.9em}footer{margin-top:2em}@media print{body{margin:0;max-width:none}.verdict{border:1px solid #888}}</style>
+</head>
+<body>
+<header><h1>Validation report</h1>
+<p class="document">invoice.xml</p>
+<p class="verdict v-incomplete">Verdict: Incomplete</p></header>
+<section><h2>Document</h2>
+<table class="facts">
+<tr><th>Source</th><td>XML</td></tr>
+<tr><th>Root element</th><td>Invoice</td></tr>
+<tr><th>Syntax</th><td>UBL</td></tr>
+<tr><th>Specification identifier (BT-24)</th><td>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</td></tr>
+<tr><th>Business process (BT-23)</th><td>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</td></tr>
+<tr><th>Specification</th><td>XRechnung 3.0 (UBL)</td></tr>
+<tr><th>Library release</th><td>3.0.2</td></tr>
+</table></section>
+<section><h2>Parts</h2>
+<table class="parts"><thead><tr><th>Part</th><th>Status</th><th>Details</th></tr></thead><tbody>
+<tr><td>Reading</td><td class="s-passed">passed</td><td></td></tr>
+<tr><td>KoSIT</td><td class="s-notrun">not run</td><td></td></tr>
+<tr><td>Rule check (prediction)</td><td class="s-failed">failed</td><td></td></tr>
+<tr><td>PDF embedding (level 2)</td><td class="s-notrun">not run</td><td></td></tr>
+<tr><td>PDF metadata, XMP (level 3)</td><td class="s-notrun">not run</td><td></td></tr>
+<tr><td>PDF/A (level 1)</td><td class="s-notrun">not run</td><td></td></tr>
+</tbody></table></section>
+<section><h2>Findings</h2>
+<p class="counts">0 errors, 0 warnings, 0 infos, 1 predicted</p>
+<table class="findings"><thead><tr><th>Part</th><th>Severity</th><th>Rule</th><th>Position</th><th>Location</th><th>Text</th></tr></thead><tbody>
+<tr class="predicted"><td>Rule check (prediction)</td><td class="sev-error">error (predicted)</td><td>BR-DE-15</td><td></td><td class="loc">BT-10</td><td class="text">the buyer reference (BT-10) shall be provided</td></tr>
+</tbody></table>
+<p class="note">Predicted: the library's own rule check predicts what KoSIT would report. It does not decide the verdict and is not counted with the errors, warnings and infos.</p>
+</section>
+<footer><p>Written by EInvoice-for-Pascal @VERSION@</p></footer>
+</body>
+</html>

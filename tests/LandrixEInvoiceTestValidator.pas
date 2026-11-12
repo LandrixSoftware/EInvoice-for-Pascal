@@ -64,6 +64,7 @@ uses
   LandrixEInvoiceValidator,
   LandrixEInvoiceValidation,
   LandrixEInvoiceValidationReport,
+  LandrixEInvoiceValidationHtml,
   LandrixEInvoicePdfCheck,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestCheck,
@@ -1287,9 +1288,11 @@ begin
       S.Free;
     end;
     CheckGoldenReport(ReportUtf8(R, 'invoice.xml'), 'xml-no-kosit.xml');
+    CheckGoldenReport(HtmlUtf8(R, 'invoice.xml', eln_English), 'xml-no-kosit.html');
     { a PDF without XMP: level 3 fails, line and column in the XMP packet }
     ValidateBytes(DV, XRechnungPdf(False, False), R);
     CheckGoldenReport(ReportUtf8(R, 'invoice.pdf'), 'pdf-no-xmp.xml');
+    CheckGoldenReport(HtmlUtf8(R, 'invoice.pdf', eln_German), 'pdf-no-xmp.html');
     { an embedded invoice that is not well-formed: BR-HYBRID-12 counts its
       line in the invoice }
     ValidateBytes(DV, BuildHybridPdf('xrechnung.xml', '<a>'#10'<b></a>', TLandrixEInvoiceTargets.XRechnung('3.0',
@@ -1380,6 +1383,82 @@ begin
   end;
 end;
 
+{ The HTML page: written at the stream position, the same into a file, no
+  result raises; text from outside is escaped. CheckStatus and the corpus
+  tests read every other page back (CheckValidationHtml). }
+procedure TestDocumentHtml;
+var
+  DV: TLandrixEInvoiceDocumentValidator;
+  R: TLandrixEInvoiceDocumentValidation;
+  W: TLandrixEInvoiceValidationHtmlWriter;
+  S: TMemoryStream;
+  Html: TLandrixXmlUtf8;
+  Written: AnsiString;
+  FileName: string;
+  Raised: Boolean;
+begin
+  DV := TLandrixEInvoiceDocumentValidator.Create;
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  W := TLandrixEInvoiceValidationHtmlWriter.Create;
+  try
+    CheckEquals(Ord(eln_English), Ord(W.Language), 'English by default');
+    CheckValidationHtml(R, eln_English, 'new result');
+    Html := HtmlUtf8(R, '', eln_English);
+    Check(Pos(TLandrixXmlUtf8('<p>No findings.</p>'), Html) > 0, 'no findings');
+    Check(Pos(TLandrixXmlUtf8('<p class="document">'), Html) = 0, 'no document name');
+    ValidateBytes(DV, XRechnungPdf(False, False), R);
+    Html := HtmlUtf8(R, 'invoice.pdf', eln_German);
+    S := BytesStream('junk');
+    try
+      S.Position := 4;
+      W.DocumentName := 'invoice.pdf';
+      W.Language := eln_German;
+      W.WriteToStream(R, S);
+      CheckEquals(4 + Length(Html), Integer(S.Size), 'page written at the position');
+      Written := '';
+      SetLength(Written, Integer(S.Size) - 4);
+      Move((PAnsiChar(S.Memory) + 4)^, PAnsiChar(Written)^, Length(Written));
+      Check(Written = AnsiString(Html), 'page bytes in the stream');
+      FileName := ExtractFilePath(ParamStr(0)) + 'validation-report-test.html';
+      W.SaveToFile(R, FileName);
+      S.LoadFromFile(FileName);
+      DeleteFile(FileName);
+      CheckEquals(Length(Html), Integer(S.Size), 'page file size');
+      Written := '';
+      SetLength(Written, Integer(S.Size));
+      Move(S.Memory^, PAnsiChar(Written)^, Length(Written));
+      Check(Written = AnsiString(Html), 'page file bytes');
+      S.Clear;
+      Raised := False;
+      try
+        W.WriteToStream(nil, S);
+      except
+        on ELandrixEInvoiceError do
+          Raised := True;
+      end;
+      Check(Raised, 'no result raises');
+      CheckEquals(0, Integer(S.Size), 'no result: nothing written');
+    finally
+      S.Free;
+    end;
+    { one error: singular; a CR stays a CR }
+    Html := HtmlUtf8(R, 'a'#13#10'b', eln_English);
+    Check(Pos(TLandrixXmlUtf8('<p class="counts">1 error, 0 warnings, 0 infos, 1 predicted</p>'), Html) > 0,
+      'singular count');
+    Check(Pos(TLandrixXmlUtf8('<p class="document">a&#13;'#10'b</p>'), Html) > 0, 'CR as a reference');
+    { markup in a name is text }
+    Html := HtmlUtf8(R, '<b>a & "c"</b>', eln_English);
+    Check(Pos(TLandrixXmlUtf8('<title>Validation report: &lt;b&gt;a &amp; &quot;c&quot;&lt;/b&gt;</title>'), Html) > 0,
+      'name escaped in the title');
+    Check(Pos(TLandrixXmlUtf8('<p class="document">&lt;b&gt;a &amp; &quot;c&quot;&lt;/b&gt;</p>'), Html) > 0,
+      'name escaped');
+  finally
+    W.Free;
+    R.Free;
+    DV.Free;
+  end;
+end;
+
 { Characters XML does not allow, here in the names of a PDF, become U+FFFD;
   the report stays valid and says so. }
 procedure TestDocumentReportSanitize;
@@ -1405,6 +1484,13 @@ begin
     Check(Pos(TLandrixXmlUtf8('invoiceFileName="x') + Fffd + TLandrixXmlUtf8('.xml"'), Xml) > 0,
       'file name sanitized');
     Check(Pos(TLandrixXmlUtf8('sanitized="true"'), Xml) > 0, 'marked sanitized');
+    Xml := HtmlUtf8(R, 'a'#11'b.pdf', eln_English);
+    Check(Pos(TLandrixXmlUtf8('<p class="document">a') + Fffd + TLandrixXmlUtf8('b.pdf</p>'), Xml) > 0,
+      'HTML: document name sanitized');
+    Check(Pos(TLandrixXmlUtf8('replaced by U+FFFD.'), Xml) > 0, 'HTML: says so');
+    Xml := HtmlUtf8(R, 'a.pdf', eln_German);
+    Check(Pos(TLandrixXmlUtf8('x') + Fffd + TLandrixXmlUtf8('.xml'), Xml) > 0, 'HTML: file name sanitized');
+    Check(Pos(TLandrixXmlUtf8('durch U+FFFD ersetzt.'), Xml) > 0, 'HTML: says so in German');
     CheckValidationReport(R, 'control character');
     { UTF-16: U+FFFE and a high surrogate without its partner }
     ValidateBytes(DV, BuildHybridPdf(Bytes([$FE, $FF, $FF, $FE, $D8, $00, $00, Ord('.'), $00, Ord('x'), $00, Ord('m'),
@@ -1470,6 +1556,7 @@ begin
   RegisterTest('Validation.Report', TestDocumentReport);
   RegisterTest('Validation.ReportSanitize', TestDocumentReportSanitize);
   RegisterTest('Validation.ReportSchema', TestReportSchema);
+  RegisterTest('Validation.Html', TestDocumentHtml);
 end;
 
 procedure RegisterLast;

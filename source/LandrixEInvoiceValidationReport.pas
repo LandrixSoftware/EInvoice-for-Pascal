@@ -75,6 +75,17 @@ type
     property DocumentName: TLandrixEInvoiceString read FDocumentName write FDocumentName;
   end;
 
+{ S with every character XML 1.0 does not allow (control characters other
+  than TAB, LF, CR; U+FFFE, U+FFFF; a surrogate without its partner)
+  replaced by U+FFFD; ASanitized becomes True if one was replaced. Also
+  used by the HTML report (LandrixEInvoiceValidationHtml).
+  DE: S, in dem jedes Zeichen, das XML 1.0 nicht erlaubt
+  (Steuerzeichen ausser TAB, LF, CR; U+FFFE, U+FFFF; ein Surrogat ohne
+  Partner), durch U+FFFD ersetzt ist; ASanitized wird True, wenn eines
+  ersetzt wurde. Auch fuer den HTML-Bericht
+  (LandrixEInvoiceValidationHtml). }
+function LandrixEInvoiceReportSanitize(const S: TLandrixEInvoiceString; var ASanitized: Boolean): TLandrixEInvoiceString;
+
 implementation
 
 uses
@@ -106,14 +117,7 @@ const
   HybridKindNames: array[TLandrixEInvoicePdfHybridKind] of TLandrixXmlUtf8 = ('none', 'facturX', 'xrechnung',
     'zugferd20', 'zugferd10');
 
-{ S with every character XML 1.0 does not allow (control characters other
-  than TAB, LF, CR; U+FFFE, U+FFFF; a surrogate without its partner)
-  replaced by U+FFFD; ASanitized becomes True if one was replaced.
-  DE: S, in dem jedes Zeichen, das XML 1.0 nicht erlaubt
-  (Steuerzeichen ausser TAB, LF, CR; U+FFFE, U+FFFF; ein Surrogat ohne
-  Partner), durch U+FFFD ersetzt ist; ASanitized wird True, wenn eines
-  ersetzt wurde. }
-function Clean(const S: TLandrixEInvoiceString; var ASanitized: Boolean): TLandrixEInvoiceString;
+function LandrixEInvoiceReportSanitize(const S: TLandrixEInvoiceString; var ASanitized: Boolean): TLandrixEInvoiceString;
 var
   I, N: Integer;
   C: Cardinal;
@@ -144,7 +148,7 @@ procedure TextAttribute(W: TLandrixXmlWriter; const AName: TLandrixXmlUtf8; cons
   var ASanitized: Boolean);
 begin
   if AValue <> '' then
-    W.AttributeUtf8(AName, LandrixEInvoiceStringToUtf8(Clean(AValue, ASanitized)));
+    W.AttributeUtf8(AName, LandrixEInvoiceStringToUtf8(LandrixEInvoiceReportSanitize(AValue, ASanitized)));
 end;
 
 { An attribute with one of the fixed tokens; omitted when empty. }
@@ -296,8 +300,8 @@ begin
       else
         W.AttributeUtf8('positionIn', 'invoice');
     end;
-    Location := Clean(F.Location, Sanitized);
-    Text := Clean(F.Text, Sanitized);
+    Location := LandrixEInvoiceReportSanitize(F.Location, Sanitized);
+    Text := LandrixEInvoiceReportSanitize(F.Text, Sanitized);
     SanitizedAttribute(W, Sanitized);
     if Location <> '' then
       W.ElementUtf8('location', LandrixEInvoiceStringToUtf8(Location));

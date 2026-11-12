@@ -363,6 +363,13 @@ Supported invoice standards are documented per release.
   `Step` of a finding (KoSIT well-formedness, XML schema or Schematron). Every report written by the tests is
   checked against the schema and read back; tests `Validation.Report` (golden reports in
   `tests/data/validation-report/`), `Validation.ReportSanitize` and `Validation.ReportSchema`.
+- Validation report as HTML: internal unit `LandrixEInvoiceValidationHtml` with
+  `TLandrixEInvoiceValidationHtmlWriter` (`DocumentName`, `Language`, `WriteToStream`, `SaveToFile`) writes one
+  self-contained page (CSS inline, no script, nothing loaded from elsewhere; also well-formed XML) with the verdict,
+  the document, the parts, the PDF facts and the findings. Labels in English or German
+  (`TLandrixEInvoiceReportLanguage`: `eln_English`, `eln_German`). The sanitizing of the XML report is shared as
+  `LandrixEInvoiceReportSanitize`. Every page of the validation tests is read back in both languages; test
+  `Validation.Html` and golden pages in `tests/data/validation-report/`.
 - Peppol rules in `LandrixEInvoiceCheck` for XRechnung and Peppol (the rules the XRechnung
   schematron contains as well): PEPPOL-EN16931-R005, R040 to R042 (allowance and charge
   percentage, base amount and amount), R046 (net price), R053 to R055 (VAT totals), R110, R111
