@@ -2300,14 +2300,17 @@ end;
 
 { BG-10 payee and BG-11 tax representative: the first identifier (with or
   without scheme), name, address, VAT identifier (scheme VAT), legal
-  registration with scheme, contact. An identifier with scheme SEPA is the
-  creditor identifier BT-90, which the EN 16931 UBL binding also allows in
-  the payee; it goes to the seller like there.
+  registration with scheme, contact. An identifier with scheme SEPA of the
+  payee is the creditor identifier BT-90, which the EN 16931 UBL binding
+  allows there; it goes to the seller like there. The binding has no
+  creditor identifier in the tax representative: one there is reported.
   DE: BG-10 Zahlungsempfaenger und BG-11 Steuervertreter: die erste
   Kennung (mit oder ohne Schema), Name, Anschrift, USt-IdNr. (Schema VAT),
-  Registernummer mit Schema, Kontakt. Eine Kennung mit Schema SEPA ist die
-  Glaeubiger-ID BT-90, die die UBL-Bindung von EN 16931 auch beim
-  Zahlungsempfaenger erlaubt; sie kommt wie dort zum Verkaeufer. }
+  Registernummer mit Schema, Kontakt. Eine Kennung mit Schema SEPA beim
+  Zahlungsempfaenger ist die Glaeubiger-ID BT-90, die die UBL-Bindung von
+  EN 16931 dort erlaubt; sie kommt wie dort zum Verkaeufer. Beim
+  Steuervertreter kennt die Bindung keine Glaeubiger-ID: eine dort wird
+  gemeldet. }
 procedure TUBLReadMapper.ReadFurtherParty(AParty: TLandrixInvoiceParty; ASource: TLandrixUBLParty;
   const APath: TLandrixEInvoiceString);
 var
@@ -2319,7 +2322,8 @@ begin
   for I := 0 to ASource.PartyIdentification.Count - 1 do
   begin
     ID := ASource.PartyIdentification[I].ID;
-    if SameAscii(ID.SchemeID, 'SEPA') and (FInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier = '') then
+    if SameAscii(ID.SchemeID, 'SEPA') and (AParty = FInvoice.PayeeParty) and
+       (FInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier = '') then
       FInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := ID.Value
     else if (AParty.Identifier = '') and not SameAscii(ID.SchemeID, 'SEPA') then
     begin

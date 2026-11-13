@@ -1038,7 +1038,9 @@ begin
 end;
 
 { BR-17 compares the payee with the seller as each syntax writes them: CII
-  with the seller name (BT-27), UBL with the trading name (cac:PartyName). }
+  with the seller name (BT-27), UBL with the trading name (cac:PartyName)
+  and the identifiers it writes (not the one it leaves out beside a global
+  identifier). }
 procedure TestPayeeLikeSeller;
 var
   Invoice: TLandrixInvoice;
@@ -1063,6 +1065,12 @@ begin
     Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-17', nil), 'CII: same ram:ID');
     Invoice.PayeeParty.IdentifierSchemeID := '0088';
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-17', nil), 'CII: payee ram:GlobalID not compared');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-17', nil), 'UBL: same seller identifier');
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '4000001000005';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-17', nil),
+      'UBL: the seller identifier beside a global one is not written');
+    Invoice.PayeeParty.Identifier := '4000001000005';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-17', nil), 'UBL: same global identifier');
   finally
     Invoice.Free;
   end;
@@ -1117,18 +1125,23 @@ begin
 end;
 
 { Sub lines are invoice lines in CII only: a sub line without item name
-  violates BR-25 there; a UBL cac:SubInvoiceLine is outside the EN 16931
-  rules. }
+  violates BR-25 there; a UBL cac:SubInvoiceLine is outside the line rules
+  but BR-54, whose context //cac:AdditionalItemProperty reaches it. }
 procedure TestSubLines;
 var
   Invoice: TLandrixInvoice;
+  Sub: TLandrixInvoiceLine;
 begin
   Invoice := TLandrixInvoice.Create;
   try
     FillComplete(Invoice);
-    Invoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine.ID := '1.1';
+    Sub := Invoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
+    Sub.ID := '1.1';
     Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-25', nil), 'CII sub line without name');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-25', nil), 'UBL sub line not checked');
+    Sub.ItemAttributes.AddItemAttribute.Name := 'Colour';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-54', nil), 'UBL sub line attribute without value');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-54', nil), 'CII sub line attribute without value');
   finally
     Invoice.Free;
   end;

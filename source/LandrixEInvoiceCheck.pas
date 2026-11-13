@@ -1448,13 +1448,14 @@ begin
   end;
 end;
 
-{ Sub lines are checked in CII only: there they are invoice lines
-  (ram:IncludedSupplyChainTradeLineItem); a UBL cac:SubInvoiceLine is not
-  in the context of the EN 16931 rules (a group sub line has no quantity).
-  DE: Unterpositionen werden nur in CII geprueft: dort sind sie
-  Rechnungspositionen (ram:IncludedSupplyChainTradeLineItem); eine
-  UBL-cac:SubInvoiceLine liegt nicht im Kontext der EN-16931-Regeln (eine
-  Gruppen-Unterposition hat keine Menge). }
+{ Sub lines with ASubLines: in CII every line rule checks them, there they
+  are invoice lines (ram:IncludedSupplyChainTradeLineItem); a UBL
+  cac:SubInvoiceLine is in the context of BR-54 only (a group sub line has
+  no quantity).
+  DE: Unterpositionen mit ASubLines: in CII prueft sie jede
+  Positionsregel, dort sind sie Rechnungspositionen
+  (ram:IncludedSupplyChainTradeLineItem); eine UBL-cac:SubInvoiceLine liegt
+  nur im Kontext von BR-54 (eine Gruppen-Unterposition hat keine Menge). }
 function AnyLineViolated(AIndex: TCheckRuleIndex; ALines: TLandrixInvoiceLines; ASubLines: Boolean): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
@@ -1520,20 +1521,27 @@ end;
 
 { BR-17: the payee needs a name and must not repeat the seller. UBL
   compares with the trading name (cac:PartyName) and the party
-  identifiers; the creditor identifier BT-90 is one of the payee's there,
+  identifiers as written (without the identifier the target leaves out
+  beside a global one, LandrixEInvoiceRuleSellerIDWithGlobalID); the
+  creditor identifier BT-90 is one of the payee's there,
   CII with the seller name (BT-27), the identifier ram:ID
   (a payee identifier with scheme is written as ram:GlobalID and not
   compared) and the legal registration.
   DE: BR-17: Der Zahlungsempfaenger braucht einen Namen und darf den
   Verkaeufer nicht wiederholen. UBL vergleicht mit dem Handelsnamen
-  (cac:PartyName) und den Parteikennungen; die Glaeubiger-ID BT-90 gehoert
+  (cac:PartyName) und den Parteikennungen, wie sie geschrieben werden (ohne
+  die Kennung, die das Ziel neben einer globalen weglaesst,
+  LandrixEInvoiceRuleSellerIDWithGlobalID); die Glaeubiger-ID BT-90 gehoert
   dort zu denen des Zahlungsempfaengers, CII mit dem Verkaeufernamen
   (BT-27), der Kennung ram:ID (eine Kennung des Zahlungsempfaengers mit
   Schema wird als ram:GlobalID geschrieben und nicht verglichen) und der
   Registernummer. }
-function SellerIdentifier(const AID: TLandrixEInvoiceString; ASeller: TLandrixInvoiceAccountingParty): Boolean;
+function SellerIdentifier(const AID: TLandrixEInvoiceString; ASeller: TLandrixInvoiceAccountingParty;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
 begin
-  Result := Present(AID) and ((AID = ASeller.IdentifierSellerBuyer) or (AID = ASeller.GlobalIdentifierSellerBuyer));
+  Result := Present(AID) and ((AID = ASeller.GlobalIdentifierSellerBuyer) or ((AID = ASeller.IdentifierSellerBuyer) and
+    not (Present(ASeller.GlobalIdentifierSellerBuyer) and
+    (LandrixEInvoiceRuleLevel(ASpec, LandrixEInvoiceRuleSellerIDWithGlobalID) = erl_Forbidden))));
 end;
 
 function PayeeViolated(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
@@ -1551,7 +1559,8 @@ begin
     Exit;
   if ASpec.Target.Syntax = esy_UBL then
     Result := (Present(Seller.Name) and (Payee.Name = Seller.Name)) or
-      SellerIdentifier(Payee.Identifier, Seller) or SellerIdentifier(Seller.BankAssignedCreditorIdentifier, Seller)
+      SellerIdentifier(Payee.Identifier, Seller, ASpec) or
+      SellerIdentifier(Seller.BankAssignedCreditorIdentifier, Seller, ASpec)
   else
     Result := (Payee.Name = Seller.RegistrationName) or
       (Present(Payee.Identifier) and not Present(Payee.IdentifierSchemeID) and
@@ -4076,7 +4085,16 @@ begin
       Result := PartySet(TaxRepresentative) and not AddressSet(TaxRepresentative.Address);
     cr_BR20:
       Result := AddressSet(TaxRepresentative.Address) and not Present(TaxRepresentative.Address.CountryCode);
-    cr_BR21, cr_BR23, cr_BR25, cr_BR27, cr_BR28, cr_BR30, cr_BR42, cr_BR44, cr_BR54, cr_BR64, cr_BR65:
+    { CII writes sub lines as lines, every line rule sees them; in UBL only
+      BR-54 (context //cac:AdditionalItemProperty) reaches cac:SubInvoiceLine,
+      the other contexts are cac:InvoiceLine and cac:CreditNoteLine
+      DE: CII schreibt Unterpositionen als Positionen, jede Positionsregel
+      sieht sie; in UBL erreicht nur BR-54 (Kontext
+      //cac:AdditionalItemProperty) cac:SubInvoiceLine, die anderen
+      Kontexte sind cac:InvoiceLine und cac:CreditNoteLine }
+    cr_BR54:
+      Result := AnyLineViolated(AIndex, AInvoice.InvoiceLines, True);
+    cr_BR21, cr_BR23, cr_BR25, cr_BR27, cr_BR28, cr_BR30, cr_BR42, cr_BR44, cr_BR64, cr_BR65:
       Result := AnyLineViolated(AIndex, AInvoice.InvoiceLines, ASpec.Target.Syntax = esy_CII);
     cr_BR29:
       Result := PeriodReversed(AInvoice.InvoicePeriodStartDate, AInvoice.InvoicePeriodEndDate);

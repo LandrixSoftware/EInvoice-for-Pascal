@@ -998,7 +998,8 @@ end;
 
 { BT-90 may sit in the payee (EN 16931 UBL binding, XRechnung example
   direct-debit-bt-90-payee): it goes to the seller, the other identifier is
-  BT-60, nothing is lost. }
+  BT-60, nothing is lost. A SEPA identifier of the tax representative is no
+  BT-90: reported, the seller keeps the payee's. }
 procedure TestPayeeCreditorIdentifier;
 const
   Xml =
@@ -1009,6 +1010,14 @@ const
     '<cac:PartyIdentification><cbc:ID schemeID="SEPA">DE98ZZZ09999999999</cbc:ID></cac:PartyIdentification>' +
     '<cac:PartyIdentification><cbc:ID>601234567</cbc:ID></cac:PartyIdentification>' +
     '<cac:PartyName><cbc:Name>Payee</cbc:Name></cac:PartyName></cac:PayeeParty>' +
+    '</Invoice>';
+  WithRepresentative =
+    '<Invoice ' + Ns + '>' +
+    '<cbc:CustomizationID>urn:cen.eu:en16931:2017</cbc:CustomizationID>' +
+    '<cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>' +
+    '<cac:TaxRepresentativeParty>' +
+    '<cac:PartyIdentification><cbc:ID schemeID="SEPA">DE11ZZZ00000000001</cbc:ID></cac:PartyIdentification>' +
+    '<cac:PartyName><cbc:Name>Representative</cbc:Name></cac:PartyName></cac:TaxRepresentativeParty>' +
     '</Invoice>';
 var
   UBL: TLandrixUBLInvoice;
@@ -1029,6 +1038,18 @@ begin
     CheckEqualsInvoiceStr('601234567', Invoice.PayeeParty.Identifier, 'BT-60');
     CheckEqualsInvoiceStr('', Invoice.PayeeParty.IdentifierSchemeID, 'BT-60 without scheme');
     CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
+    Invoice.Clear;
+    D.Clear;
+    UBL := ReadUBLInvoice(WithRepresentative, D);
+    try
+      LandrixEInvoiceUBLInvoiceToInvoice(UBL, Invoice, D);
+    finally
+      UBL.Free;
+    end;
+    CheckEqualsInvoiceStr('', Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier,
+      'no BT-90 from the tax representative');
+    CheckEqualsInvoiceStr('', Invoice.TaxRepresentativeParty.Identifier, 'not an identifier of the representative');
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'the SEPA identifier reported: ' + string(D.ToText));
   finally
     Invoice.Free;
     D.Free;

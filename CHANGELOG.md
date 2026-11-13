@@ -405,6 +405,11 @@ Supported invoice standards are documented per release.
 - The invoice page titles a credit note (BT-3 = 381) "Credit note" / "Gutschrift"; the VAT columns of allowances
   and charges on line level appear only when an item has a category or a rate. German names for 42 common charge
   reasons (UNTDID 7161, e.g. FC "Fracht") in `tools/codelists/names-de.json`; the others stay English.
+- The UBL reader takes a SEPA creditor identifier only from the payee as BT-90 (the EN 16931 UBL binding allows it
+  there); one in the tax representative is reported instead of moving to the seller.
+- Rule check: BR-54 also checks UBL sub lines (its context `//cac:AdditionalItemProperty` reaches
+  `cac:SubInvoiceLine`, the other line rules do not); BR-17 in UBL compares the payee only with the seller
+  identifiers that are written, not with one the target leaves out beside a global identifier.
 - `TLandrixInvoiceAllowanceCharge.TaxExemptionReason` and `TaxExemptionReasonCode` (BT-173, BT-174: VAT exemption
   reason and code of a document level allowance or charge, Factur-X EXTENDED only): the CII reader takes them over
   instead of reporting them as not mapped, the CII writer writes them in EXTENDED; other targets report them
