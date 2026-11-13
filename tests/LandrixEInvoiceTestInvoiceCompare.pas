@@ -645,6 +645,10 @@ begin
     Diff(ADiffs, APath + 'TaxCategory (BT-95/BT-102)', IntToStr(Ord(A.TaxCategory)), IntToStr(Ord(B.TaxCategory)));
   if A.TaxCategoryOther <> B.TaxCategoryOther then
     Diff(ADiffs, APath + 'TaxCategoryOther', '"' + string(A.TaxCategoryOther) + '"', '"' + string(B.TaxCategoryOther) + '"');
+  if A.TaxExemptionReason <> B.TaxExemptionReason then
+    Diff(ADiffs, APath + 'TaxExemptionReason (BT-173)', '"' + string(A.TaxExemptionReason) + '"', '"' + string(B.TaxExemptionReason) + '"');
+  if A.TaxExemptionReasonCode <> B.TaxExemptionReasonCode then
+    Diff(ADiffs, APath + 'TaxExemptionReasonCode (BT-174)', '"' + string(A.TaxExemptionReasonCode) + '"', '"' + string(B.TaxExemptionReasonCode) + '"');
 end;
 
 procedure DumpAllowanceChargeFields(A: TLandrixInvoiceAllowanceCharge; const APath: string; ALines: TStrings);
@@ -673,6 +677,10 @@ begin
     ALines.Add(APath + 'TaxCategory (BT-95/BT-102) = ' + IntToStr(Ord(A.TaxCategory)));
   if A.TaxCategoryOther <> '' then
     ALines.Add(APath + 'TaxCategoryOther = ' + '"' + string(A.TaxCategoryOther) + '"');
+  if A.TaxExemptionReason <> '' then
+    ALines.Add(APath + 'TaxExemptionReason (BT-173) = ' + '"' + string(A.TaxExemptionReason) + '"');
+  if A.TaxExemptionReasonCode <> '' then
+    ALines.Add(APath + 'TaxExemptionReasonCode (BT-174) = ' + '"' + string(A.TaxExemptionReasonCode) + '"');
 end;
 
 procedure CompareAttachmentFields(A, B: TLandrixInvoiceAttachment; const APath: string; ADiffs: TStrings);
@@ -1404,133 +1412,139 @@ begin
   AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxPercent := 223.5;
   AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
   AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f225';
-  AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate := 40226;
-  AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate := 40227;
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := 'f226';
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := 'f227';
+  AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate := 40228;
+  AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate := 40229;
   AInvoice.InvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode := 'f229';
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ListID := 'f230';
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID := 'f231';
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName := 'f232';
-  AInvoice.InvoiceLines[0].OriginTradeCountry := 'f233';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode := 'f231';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ListID := 'f232';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID := 'f233';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName := 'f234';
+  AInvoice.InvoiceLines[0].OriginTradeCountry := 'f235';
   AInvoice.InvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].ItemAttributes[0].Name := 'f235';
-  AInvoice.InvoiceLines[0].ItemAttributes[0].Value := 'f236';
-  AInvoice.InvoiceLines[0].DeliveryNoteNumber := 'f237';
-  AInvoice.InvoiceLines[0].DeliveryNoteLineID := 'f238';
-  AInvoice.InvoiceLines[0].DeliveryNoteDate := 40239;
-  AInvoice.InvoiceLines[0].ActualDeliveryDate := 40240;
+  AInvoice.InvoiceLines[0].ItemAttributes[0].Name := 'f237';
+  AInvoice.InvoiceLines[0].ItemAttributes[0].Value := 'f238';
+  AInvoice.InvoiceLines[0].DeliveryNoteNumber := 'f239';
+  AInvoice.InvoiceLines[0].DeliveryNoteLineID := 'f240';
+  AInvoice.InvoiceLines[0].DeliveryNoteDate := 40241;
+  AInvoice.InvoiceLines[0].ActualDeliveryDate := 40242;
   AInvoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID := 'f242';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN := 'f243';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier := 'f244';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID := 'f245';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note := 'f246';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier := 'f247';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID := 'f248';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name := 'f249';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description := 'f250';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity := 251.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID := 'f244';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN := 'f245';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier := 'f246';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID := 'f247';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note := 'f248';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier := 'f249';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID := 'f250';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name := 'f251';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description := 'f252';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity := 253.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther := 'f253';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification := 'f254';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification := 'f255';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber := 'f256';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderDate.SetValue(40257);
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference := 'f258';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference := 'f259';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent := 260.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther := 'f255';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification := 'f256';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification := 'f257';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber := 'f258';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderDate.SetValue(40259);
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference := 'f260';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference := 'f261';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent := 262.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther := 'f262';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason := 'f263';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount := 264.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice := 265.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount := 266.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity := 267.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther := 'f264';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason := 'f265';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount := 266.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice := 267.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount := 268.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity := 269.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther := 'f269';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount := 270;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther := 'f271';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount := 272;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f274';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f276';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f276';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason := 'f277';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := 278;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 279.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount := 280;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := 281.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f278';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason := 'f279';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := 280;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 281.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount := 282;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := 283.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f283';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate := 40284;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate := 40285;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f285';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := 'f286';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := 'f287';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate := 40288;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate := 40289;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode := 'f287';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID := 'f288';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := 'f289';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := 'f290';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry := 'f291';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode := 'f291';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID := 'f292';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := 'f293';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := 'f294';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry := 'f295';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name := 'f293';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value := 'f294';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber := 'f295';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID := 'f296';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate := 40297;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate := 40298;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name := 'f297';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value := 'f298';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber := 'f299';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID := 'f300';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate := 40301;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate := 40302;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther := 'f301';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther := 'f305';
   AInvoice.InvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[0].LineStatusReasonCodeOther := 'f303';
+  AInvoice.InvoiceLines[0].LineStatusReasonCodeOther := 'f307';
   AInvoice.Attachments.AddAttachment(TLandrixInvoiceAttachmentType(1));
-  AInvoice.Attachments[0].ID := 'f305';
-  AInvoice.Attachments[0].DocumentDescription := 'f306';
-  AInvoice.Attachments[0].Filename := 'f307';
+  AInvoice.Attachments[0].ID := 'f309';
+  AInvoice.Attachments[0].DocumentDescription := 'f310';
+  AInvoice.Attachments[0].Filename := 'f311';
   AInvoice.Attachments[0].TypeCode := TLandrixInvoiceAttachmentTypeCode(1 mod (Ord(High(TLandrixInvoiceAttachmentTypeCode)) + 1));
-  AInvoice.Attachments[0].TypeCodeOther := 'f309';
+  AInvoice.Attachments[0].TypeCodeOther := 'f313';
   AInvoice.Attachments[0].AttachmentType := TLandrixInvoiceAttachmentType(1 mod (Ord(High(TLandrixInvoiceAttachmentType)) + 1));
-  AInvoice.Attachments[0].AttachmentTypeOther := 'f311';
+  AInvoice.Attachments[0].AttachmentTypeOther := 'f315';
   AppendData(AInvoice.Attachments[0].Data, 3);
-  AInvoice.Attachments[0].ExternalReference := 'f313';
-  AInvoice.Attachments[0].SchemeID := 'f314';
+  AInvoice.Attachments[0].ExternalReference := 'f317';
+  AInvoice.Attachments[0].SchemeID := 'f318';
   AInvoice.PrepaidPayments.AddPrepaidPayment;
-  AInvoice.PrepaidPayments[0].ID := 'f316';
-  AInvoice.PrepaidPayments[0].PaidAmount := 317;
-  AInvoice.PrepaidPayments[0].PaidAmountCurrencyID := 'f318';
-  AInvoice.PrepaidPayments[0].InstructionID := 'f319';
+  AInvoice.PrepaidPayments[0].ID := 'f320';
+  AInvoice.PrepaidPayments[0].PaidAmount := 321;
+  AInvoice.PrepaidPayments[0].PaidAmountCurrencyID := 'f322';
+  AInvoice.PrepaidPayments[0].InstructionID := 'f323';
   AInvoice.AllowanceCharges.AddAllowanceCharge;
   AInvoice.AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther := 'f323';
+  AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther := 'f327';
   AInvoice.AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.AllowanceCharges[0].ReasonCodeChargeOther := 'f325';
-  AInvoice.AllowanceCharges[0].Reason := 'f326';
-  AInvoice.AllowanceCharges[0].BaseAmount := 327;
-  AInvoice.AllowanceCharges[0].MultiplierFactorNumeric := 328.5;
-  AInvoice.AllowanceCharges[0].Amount := 329;
-  AInvoice.AllowanceCharges[0].TaxPercent := 330.5;
+  AInvoice.AllowanceCharges[0].ReasonCodeChargeOther := 'f329';
+  AInvoice.AllowanceCharges[0].Reason := 'f330';
+  AInvoice.AllowanceCharges[0].BaseAmount := 331;
+  AInvoice.AllowanceCharges[0].MultiplierFactorNumeric := 332.5;
+  AInvoice.AllowanceCharges[0].Amount := 333;
+  AInvoice.AllowanceCharges[0].TaxPercent := 334.5;
   AInvoice.AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.AllowanceCharges[0].TaxCategoryOther := 'f332';
+  AInvoice.AllowanceCharges[0].TaxCategoryOther := 'f336';
+  AInvoice.AllowanceCharges[0].TaxExemptionReason := 'f337';
+  AInvoice.AllowanceCharges[0].TaxExemptionReasonCode := 'f338';
   AInvoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference;
-  AInvoice.PrecedingInvoiceReferences[0].ID := 'f334';
-  AInvoice.PrecedingInvoiceReferences[0].IssueDate := 40335;
-  AInvoice.TaxAmountTotal := 336;
-  AInvoice.TaxAmountTotalInTaxCurrency.SetValue(337);
+  AInvoice.PrecedingInvoiceReferences[0].ID := 'f340';
+  AInvoice.PrecedingInvoiceReferences[0].IssueDate := 40341;
+  AInvoice.TaxAmountTotal := 342;
+  AInvoice.TaxAmountTotalInTaxCurrency.SetValue(343);
   AInvoice.TaxAmountSubtotals.AddTaxAmount;
-  AInvoice.TaxAmountSubtotals[0].TaxableAmount := 339;
-  AInvoice.TaxAmountSubtotals[0].TaxAmount := 340;
-  AInvoice.TaxAmountSubtotals[0].TaxPercent := 341.5;
+  AInvoice.TaxAmountSubtotals[0].TaxableAmount := 345;
+  AInvoice.TaxAmountSubtotals[0].TaxAmount := 346;
+  AInvoice.TaxAmountSubtotals[0].TaxPercent := 347.5;
   AInvoice.TaxAmountSubtotals[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.TaxAmountSubtotals[0].TaxCategoryOther := 'f343';
-  AInvoice.TaxAmountSubtotals[0].TaxExemptionReason := 'f344';
-  AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := 'f345';
-  AInvoice.LineAmount := 346;
-  AInvoice.TaxExclusiveAmount := 347;
-  AInvoice.TaxInclusiveAmount := 348;
-  AInvoice.AllowanceTotalAmount := 349;
-  AInvoice.ChargeTotalAmount := 350;
-  AInvoice.PrepaidAmount := 351;
-  AInvoice.PayableRoundingAmount := 352;
-  AInvoice.PayableAmount := 353;
+  AInvoice.TaxAmountSubtotals[0].TaxCategoryOther := 'f349';
+  AInvoice.TaxAmountSubtotals[0].TaxExemptionReason := 'f350';
+  AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := 'f351';
+  AInvoice.LineAmount := 352;
+  AInvoice.TaxExclusiveAmount := 353;
+  AInvoice.TaxInclusiveAmount := 354;
+  AInvoice.AllowanceTotalAmount := 355;
+  AInvoice.ChargeTotalAmount := 356;
+  AInvoice.PrepaidAmount := 357;
+  AInvoice.PayableRoundingAmount := 358;
+  AInvoice.PayableAmount := 359;
 end;
 
 procedure Mutate1(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string);
@@ -2603,640 +2617,670 @@ begin
       end;
     213:
       begin
+        APath := 'InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    214:
+      begin
+        APath := 'InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    215:
+      begin
         APath := 'InvoiceLines[0].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate + 1;
       end;
-    214:
+    216:
       begin
         APath := 'InvoiceLines[0].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate + 1;
       end;
-    215:
+    217:
       begin
         APath := 'InvoiceLines[0].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[0].ItemClassifications.AddItemClassification;
       end;
-    216:
+    218:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode + 'x';
       end;
-    217:
+    219:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ListID := AInvoice.InvoiceLines[0].ItemClassifications[0].ListID + 'x';
       end;
-    218:
+    220:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID + 'x';
       end;
-    219:
+    221:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName + 'x';
       end;
-    220:
+    222:
       begin
         APath := 'InvoiceLines[0].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[0].OriginTradeCountry := AInvoice.InvoiceLines[0].OriginTradeCountry + 'x';
       end;
-    221:
+    223:
       begin
         APath := 'InvoiceLines[0].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[0].ItemAttributes.AddItemAttribute;
       end;
-    222:
+    224:
       begin
         APath := 'InvoiceLines[0].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[0].ItemAttributes[0].Name := AInvoice.InvoiceLines[0].ItemAttributes[0].Name + 'x';
       end;
-    223:
+    225:
       begin
         APath := 'InvoiceLines[0].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[0].ItemAttributes[0].Value := AInvoice.InvoiceLines[0].ItemAttributes[0].Value + 'x';
       end;
-    224:
+    226:
       begin
         APath := 'InvoiceLines[0].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[0].DeliveryNoteNumber := AInvoice.InvoiceLines[0].DeliveryNoteNumber + 'x';
       end;
-    225:
+    227:
       begin
         APath := 'InvoiceLines[0].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[0].DeliveryNoteLineID := AInvoice.InvoiceLines[0].DeliveryNoteLineID + 'x';
       end;
-    226:
+    228:
       begin
         APath := 'InvoiceLines[0].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[0].DeliveryNoteDate := AInvoice.InvoiceLines[0].DeliveryNoteDate + 1;
       end;
-    227:
+    229:
       begin
         APath := 'InvoiceLines[0].ActualDeliveryDate';
         AInvoice.InvoiceLines[0].ActualDeliveryDate := AInvoice.InvoiceLines[0].ActualDeliveryDate + 1;
       end;
-    228:
+    230:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
       end;
-    229:
+    231:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ID (BT-126)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID + 'x';
       end;
-    230:
+    232:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN (BT-157)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN := AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN + 'x';
       end;
-    231:
+    233:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier (BT-157)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier := AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier + 'x';
       end;
-    232:
+    234:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID (BT-157-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID + 'x';
       end;
-    233:
+    235:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Note (BT-127)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note + 'x';
       end;
-    234:
+    236:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier (BT-128)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier + 'x';
       end;
-    235:
+    237:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID (BT-128-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID + 'x';
       end;
-    236:
+    238:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Name (BT-153)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name + 'x';
       end;
-    237:
+    239:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Description (BT-154)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description + 'x';
       end;
-    238:
+    240:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Quantity (BT-129)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity + 1;
       end;
-    239:
+    241:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].UnitCode (BT-130)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    240:
+    242:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther + 'x';
       end;
-    241:
+    243:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification (BT-155)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification := AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification + 'x';
       end;
-    242:
+    244:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification (BT-156)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification + 'x';
       end;
-    243:
+    245:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OrderNumber (BT-X-21)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber := AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber + 'x';
       end;
-    244:
+    246:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OrderDate (BT-X-22)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderDate.Clear;
       end;
-    245:
+    247:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OrderLineReference (BT-132)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference := AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference + 'x';
       end;
-    246:
+    248:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference (BT-133)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference + 'x';
       end;
-    247:
+    249:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxPercent (BT-152)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent + 1;
       end;
-    248:
+    250:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxCategory (BT-151)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    249:
+    251:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther + 'x';
       end;
-    250:
+    252:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason + 'x';
       end;
-    251:
+    253:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount (BT-148/BG-29)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount + 1;
       end;
-    252:
+    254:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice (BT-147)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice + 1;
       end;
-    253:
+    255:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount (BT-146)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount + 1;
       end;
-    254:
+    256:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BaseQuantity (BT-149)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity + 1;
       end;
-    255:
+    257:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode (BT-150)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    256:
+    258:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther + 'x';
       end;
-    257:
+    259:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].LineAmount (BT-131)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount + 1;
       end;
-    258:
+    260:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges (BG-27/BT-136/BT-140/BG-28/BT-141/BT-145).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
       end;
-    259:
+    261:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator := not AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator;
       end;
-    260:
+    262:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    261:
+    263:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    262:
+    264:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    263:
+    265:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    264:
+    266:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason + 'x';
       end;
-    265:
+    267:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount + 1;
       end;
-    266:
+    268:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    267:
+    269:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount + 1;
       end;
-    268:
+    270:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent + 1;
       end;
-    269:
+    271:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    270:
+    272:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    271:
+    273:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    274:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    275:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate + 1;
       end;
-    272:
+    276:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate + 1;
       end;
-    273:
+    277:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
       end;
-    274:
+    278:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode + 'x';
       end;
-    275:
+    279:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID + 'x';
       end;
-    276:
+    280:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID + 'x';
       end;
-    277:
+    281:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName + 'x';
       end;
-    278:
+    282:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry := AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry + 'x';
       end;
-    279:
+    283:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
       end;
-    280:
+    284:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name + 'x';
       end;
-    281:
+    285:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value + 'x';
       end;
-    282:
+    286:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber + 'x';
       end;
-    283:
+    287:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID + 'x';
       end;
-    284:
+    288:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate + 1;
       end;
-    285:
+    289:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate + 1;
       end;
-    286:
+    290:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
       end;
-    287:
+    291:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    288:
+    292:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther + 'x';
       end;
-    289:
+    293:
       begin
         APath := 'InvoiceLines[0].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[0].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    290:
+    294:
       begin
         APath := 'InvoiceLines[0].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[0].LineStatusReasonCodeOther := AInvoice.InvoiceLines[0].LineStatusReasonCodeOther + 'x';
       end;
-    291:
+    295:
       begin
         APath := 'Attachments (BG-24).Count';
         AInvoice.Attachments.AddAttachment(TLandrixInvoiceAttachmentType(1));
       end;
-    292:
+    296:
       begin
         APath := 'Attachments[0].ID (BT-122)';
         AInvoice.Attachments[0].ID := AInvoice.Attachments[0].ID + 'x';
       end;
-    293:
+    297:
       begin
         APath := 'Attachments[0].DocumentDescription (BT-123)';
         AInvoice.Attachments[0].DocumentDescription := AInvoice.Attachments[0].DocumentDescription + 'x';
       end;
-    294:
+    298:
       begin
         APath := 'Attachments[0].Filename (BT-125-2)';
         AInvoice.Attachments[0].Filename := AInvoice.Attachments[0].Filename + 'x';
       end;
-    295:
+    299:
       begin
         APath := 'Attachments[0].TypeCode (BT-17/BT-18/BT-122)';
         AInvoice.Attachments[0].TypeCode := TLandrixInvoiceAttachmentTypeCode((Ord(AInvoice.Attachments[0].TypeCode) + 1) mod (Ord(High(TLandrixInvoiceAttachmentTypeCode)) + 1));
       end;
-    296:
+    300:
       begin
         APath := 'Attachments[0].TypeCodeOther';
         AInvoice.Attachments[0].TypeCodeOther := AInvoice.Attachments[0].TypeCodeOther + 'x';
       end;
-    297:
+    301:
       begin
         APath := 'Attachments[0].AttachmentType (BT-125-1)';
         AInvoice.Attachments[0].AttachmentType := TLandrixInvoiceAttachmentType((Ord(AInvoice.Attachments[0].AttachmentType) + 1) mod (Ord(High(TLandrixInvoiceAttachmentType)) + 1));
       end;
-    298:
+    302:
       begin
         APath := 'Attachments[0].AttachmentTypeOther';
         AInvoice.Attachments[0].AttachmentTypeOther := AInvoice.Attachments[0].AttachmentTypeOther + 'x';
       end;
-    299:
+    303:
       begin
         APath := 'Attachments[0].Data (BT-125)';
         AppendData(AInvoice.Attachments[0].Data, 1);
       end;
-    300:
+    304:
       begin
         APath := 'Attachments[0].ExternalReference (BT-124)';
         AInvoice.Attachments[0].ExternalReference := AInvoice.Attachments[0].ExternalReference + 'x';
       end;
-    301:
+    305:
       begin
         APath := 'Attachments[0].SchemeID (BT-18-1)';
         AInvoice.Attachments[0].SchemeID := AInvoice.Attachments[0].SchemeID + 'x';
       end;
-    302:
+    306:
       begin
         APath := 'PrepaidPayments (BG-DEX-09).Count';
         AInvoice.PrepaidPayments.AddPrepaidPayment;
       end;
-    303:
+    307:
       begin
         APath := 'PrepaidPayments[0].ID (BT-DEX-001)';
         AInvoice.PrepaidPayments[0].ID := AInvoice.PrepaidPayments[0].ID + 'x';
       end;
-    304:
+    308:
       begin
         APath := 'PrepaidPayments[0].PaidAmount (BT-DEX-002)';
         AInvoice.PrepaidPayments[0].PaidAmount := AInvoice.PrepaidPayments[0].PaidAmount + 1;
       end;
-    305:
+    309:
       begin
         APath := 'PrepaidPayments[0].PaidAmountCurrencyID (BT-DEX-002)';
         AInvoice.PrepaidPayments[0].PaidAmountCurrencyID := AInvoice.PrepaidPayments[0].PaidAmountCurrencyID + 'x';
       end;
-    306:
+    310:
       begin
         APath := 'PrepaidPayments[0].InstructionID (BT-DEX-003)';
         AInvoice.PrepaidPayments[0].InstructionID := AInvoice.PrepaidPayments[0].InstructionID + 'x';
       end;
-    307:
+    311:
       begin
         APath := 'AllowanceCharges (BG-20/BG-21).Count';
         AInvoice.AllowanceCharges.AddAllowanceCharge;
       end;
-    308:
+    312:
       begin
         APath := 'AllowanceCharges[0].ChargeIndicator';
         AInvoice.AllowanceCharges[0].ChargeIndicator := not AInvoice.AllowanceCharges[0].ChargeIndicator;
       end;
-    309:
+    313:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    310:
+    314:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    311:
+    315:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    312:
+    316:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    313:
+    317:
       begin
         APath := 'AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.AllowanceCharges[0].Reason := AInvoice.AllowanceCharges[0].Reason + 'x';
       end;
-    314:
+    318:
       begin
         APath := 'AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.AllowanceCharges[0].BaseAmount := AInvoice.AllowanceCharges[0].BaseAmount + 1;
       end;
-    315:
+    319:
       begin
         APath := 'AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    316:
+    320:
       begin
         APath := 'AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.AllowanceCharges[0].Amount := AInvoice.AllowanceCharges[0].Amount + 1;
       end;
-    317:
+    321:
       begin
         APath := 'AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.AllowanceCharges[0].TaxPercent := AInvoice.AllowanceCharges[0].TaxPercent + 1;
       end;
-    318:
+    322:
       begin
         APath := 'AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    319:
+    323:
       begin
         APath := 'AllowanceCharges[0].TaxCategoryOther';
         AInvoice.AllowanceCharges[0].TaxCategoryOther := AInvoice.AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    320:
+    324:
+      begin
+        APath := 'AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.AllowanceCharges[0].TaxExemptionReason := AInvoice.AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    325:
+      begin
+        APath := 'AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    326:
       begin
         APath := 'PrecedingInvoiceReferences (BG-3).Count';
         AInvoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference;
       end;
-    321:
+    327:
       begin
         APath := 'PrecedingInvoiceReferences[0].ID (BT-25)';
         AInvoice.PrecedingInvoiceReferences[0].ID := AInvoice.PrecedingInvoiceReferences[0].ID + 'x';
       end;
-    322:
+    328:
       begin
         APath := 'PrecedingInvoiceReferences[0].IssueDate (BT-26)';
         AInvoice.PrecedingInvoiceReferences[0].IssueDate := AInvoice.PrecedingInvoiceReferences[0].IssueDate + 1;
       end;
-    323:
+    329:
       begin
         APath := 'TaxAmountTotal (BT-110)';
         AInvoice.TaxAmountTotal := AInvoice.TaxAmountTotal + 1;
       end;
-    324:
+    330:
       begin
         APath := 'TaxAmountTotalInTaxCurrency (BT-111/BT-6)';
         AInvoice.TaxAmountTotalInTaxCurrency.Clear;
       end;
-    325:
+    331:
       begin
         APath := 'TaxAmountSubtotals (BG-23).Count';
         AInvoice.TaxAmountSubtotals.AddTaxAmount;
       end;
-    326:
+    332:
       begin
         APath := 'TaxAmountSubtotals[0].TaxableAmount (BT-116)';
         AInvoice.TaxAmountSubtotals[0].TaxableAmount := AInvoice.TaxAmountSubtotals[0].TaxableAmount + 1;
       end;
-    327:
+    333:
       begin
         APath := 'TaxAmountSubtotals[0].TaxAmount (BT-117)';
         AInvoice.TaxAmountSubtotals[0].TaxAmount := AInvoice.TaxAmountSubtotals[0].TaxAmount + 1;
       end;
-    328:
+    334:
       begin
         APath := 'TaxAmountSubtotals[0].TaxPercent (BT-119)';
         AInvoice.TaxAmountSubtotals[0].TaxPercent := AInvoice.TaxAmountSubtotals[0].TaxPercent + 1;
       end;
-    329:
+    335:
       begin
         APath := 'TaxAmountSubtotals[0].TaxCategory (BT-118)';
         AInvoice.TaxAmountSubtotals[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.TaxAmountSubtotals[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    330:
+    336:
       begin
         APath := 'TaxAmountSubtotals[0].TaxCategoryOther';
         AInvoice.TaxAmountSubtotals[0].TaxCategoryOther := AInvoice.TaxAmountSubtotals[0].TaxCategoryOther + 'x';
       end;
-    331:
+    337:
       begin
         APath := 'TaxAmountSubtotals[0].TaxExemptionReason (BT-120)';
         AInvoice.TaxAmountSubtotals[0].TaxExemptionReason := AInvoice.TaxAmountSubtotals[0].TaxExemptionReason + 'x';
       end;
-    332:
+    338:
       begin
         APath := 'TaxAmountSubtotals[0].TaxExemptionReasonCode (BT-121)';
         AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode + 'x';
       end;
-    333:
+    339:
       begin
         APath := 'LineAmount (BT-106)';
         AInvoice.LineAmount := AInvoice.LineAmount + 1;
       end;
-    334:
+    340:
       begin
         APath := 'TaxExclusiveAmount (BT-109)';
         AInvoice.TaxExclusiveAmount := AInvoice.TaxExclusiveAmount + 1;
       end;
-    335:
+    341:
       begin
         APath := 'TaxInclusiveAmount (BT-112)';
         AInvoice.TaxInclusiveAmount := AInvoice.TaxInclusiveAmount + 1;
       end;
-    336:
+    342:
       begin
         APath := 'AllowanceTotalAmount (BT-107)';
         AInvoice.AllowanceTotalAmount := AInvoice.AllowanceTotalAmount + 1;
       end;
-    337:
+    343:
       begin
         APath := 'ChargeTotalAmount (BT-108)';
         AInvoice.ChargeTotalAmount := AInvoice.ChargeTotalAmount + 1;
       end;
-    338:
+    344:
       begin
         APath := 'PrepaidAmount (BT-113)';
         AInvoice.PrepaidAmount := AInvoice.PrepaidAmount + 1;
       end;
-    339:
+    345:
       begin
         APath := 'PayableRoundingAmount (BT-114)';
         AInvoice.PayableRoundingAmount := AInvoice.PayableRoundingAmount + 1;
       end;
-    340:
+    346:
       begin
         APath := 'PayableAmount (BT-115/BT-112/BT-113/BT-114/BT-DEX-002)';
         AInvoice.PayableAmount := AInvoice.PayableAmount + 1;
@@ -3248,763 +3292,791 @@ end;
 
 procedure Fill2(AInvoice: TLandrixInvoice);
 begin
-  AInvoice.ProfileID := 'f354';
+  AInvoice.ProfileID := 'f360';
   AInvoice.TestIndicator.SetValue(True);
-  AInvoice.InvoiceNumber := 'f356';
-  AInvoice.DocumentName := 'f357';
-  AInvoice.InvoiceIssueDate := 40358;
-  AInvoice.InvoiceDueDate := 40359;
-  AInvoice.InvoicePeriodStartDate := 40360;
-  AInvoice.InvoicePeriodEndDate := 40361;
+  AInvoice.InvoiceNumber := 'f362';
+  AInvoice.DocumentName := 'f363';
+  AInvoice.InvoiceIssueDate := 40364;
+  AInvoice.InvoiceDueDate := 40365;
+  AInvoice.InvoicePeriodStartDate := 40366;
+  AInvoice.InvoicePeriodEndDate := 40367;
   AInvoice.InvoiceTypeCode := TLandrixInvoiceTypeCode(1 mod (Ord(High(TLandrixInvoiceTypeCode)) + 1));
-  AInvoice.InvoiceTypeCodeOther := 'f363';
-  AInvoice.InvoiceCurrencyCode := 'f364';
-  AInvoice.TaxCurrencyCode := 'f365';
-  AInvoice.TaxPointDate.SetValue(40366);
-  AInvoice.TaxPointDateCode := 'f367';
-  AInvoice.BuyerReference := 'f368';
+  AInvoice.InvoiceTypeCodeOther := 'f369';
+  AInvoice.InvoiceCurrencyCode := 'f370';
+  AInvoice.TaxCurrencyCode := 'f371';
+  AInvoice.TaxPointDate.SetValue(40372);
+  AInvoice.TaxPointDateCode := 'f373';
+  AInvoice.BuyerReference := 'f374';
   AInvoice.Notes.AddNote;
-  AInvoice.Notes[0].Content := 'f370';
+  AInvoice.Notes[0].Content := 'f376';
   AInvoice.Notes[0].SubjectCode := TLandrixInvoiceNoteSubjectCode(1 mod (Ord(High(TLandrixInvoiceNoteSubjectCode)) + 1));
-  AInvoice.Notes[0].SubjectCodeOther := 'f372';
+  AInvoice.Notes[0].SubjectCodeOther := 'f378';
   AInvoice.Notes.AddNote;
-  AInvoice.Notes[1].Content := 'f373';
+  AInvoice.Notes[1].Content := 'f379';
   AInvoice.Notes[1].SubjectCode := TLandrixInvoiceNoteSubjectCode(1 mod (Ord(High(TLandrixInvoiceNoteSubjectCode)) + 1));
-  AInvoice.Notes[1].SubjectCodeOther := 'f375';
-  AInvoice.SellerOrderReference := 'f376';
-  AInvoice.SellerOrderReferenceDate.SetValue(40377);
-  AInvoice.PurchaseOrderReference := 'f378';
-  AInvoice.PurchaseOrderReferenceDate.SetValue(40379);
-  AInvoice.ProjectReference := 'f380';
-  AInvoice.ReceiptDocumentReference := 'f381';
-  AInvoice.ContractDocumentReference := 'f382';
-  AInvoice.DeliveryReceiptNumber := 'f383';
-  AInvoice.DeliveryReceiptDate := 40384;
-  AInvoice.DeliveryReceiptNumberExtended := 'f385';
-  AInvoice.DeliveryReceiptDateExtended := 40386;
-  AInvoice.BuyerAccountingReference := 'f387';
-  AInvoice.AccountingSupplierParty.Name := 'f389';
-  AInvoice.AccountingSupplierParty.RegistrationName := 'f390';
-  AInvoice.AccountingSupplierParty.CompanyID := 'f391';
-  AInvoice.AccountingSupplierParty.CompanyIDSchemeID := 'f392';
-  AInvoice.AccountingSupplierParty.Address.StreetName := 'f394';
-  AInvoice.AccountingSupplierParty.Address.AdditionalStreetName := 'f395';
-  AInvoice.AccountingSupplierParty.Address.City := 'f396';
-  AInvoice.AccountingSupplierParty.Address.PostalZone := 'f397';
-  AInvoice.AccountingSupplierParty.Address.CountrySubentity := 'f398';
-  AInvoice.AccountingSupplierParty.Address.AddressLine := 'f399';
-  AInvoice.AccountingSupplierParty.Address.CountryCode := 'f400';
-  AInvoice.AccountingSupplierParty.IdentifierSellerBuyer := 'f401';
-  AInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := 'f402';
-  AInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := 'f403';
-  AInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := 'f404';
-  AInvoice.AccountingSupplierParty.VATCompanyID := 'f405';
-  AInvoice.AccountingSupplierParty.VATCompanyNumber := 'f406';
-  AInvoice.AccountingSupplierParty.ContactName := 'f407';
-  AInvoice.AccountingSupplierParty.ContactDepartment := 'f408';
-  AInvoice.AccountingSupplierParty.ContactTelephone := 'f409';
-  AInvoice.AccountingSupplierParty.ContactElectronicMail := 'f410';
-  AInvoice.AccountingSupplierParty.AdditionalLegalInformationSeller := 'f411';
-  AInvoice.AccountingSupplierParty.ElectronicAddressSellerBuyer := 'f412';
-  AInvoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'f413';
-  AInvoice.AccountingCustomerParty.Name := 'f415';
-  AInvoice.AccountingCustomerParty.RegistrationName := 'f416';
-  AInvoice.AccountingCustomerParty.CompanyID := 'f417';
-  AInvoice.AccountingCustomerParty.CompanyIDSchemeID := 'f418';
-  AInvoice.AccountingCustomerParty.Address.StreetName := 'f420';
-  AInvoice.AccountingCustomerParty.Address.AdditionalStreetName := 'f421';
-  AInvoice.AccountingCustomerParty.Address.City := 'f422';
-  AInvoice.AccountingCustomerParty.Address.PostalZone := 'f423';
-  AInvoice.AccountingCustomerParty.Address.CountrySubentity := 'f424';
-  AInvoice.AccountingCustomerParty.Address.AddressLine := 'f425';
-  AInvoice.AccountingCustomerParty.Address.CountryCode := 'f426';
-  AInvoice.AccountingCustomerParty.IdentifierSellerBuyer := 'f427';
-  AInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyer := 'f428';
-  AInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyerSchemeID := 'f429';
-  AInvoice.AccountingCustomerParty.BankAssignedCreditorIdentifier := 'f430';
-  AInvoice.AccountingCustomerParty.VATCompanyID := 'f431';
-  AInvoice.AccountingCustomerParty.VATCompanyNumber := 'f432';
-  AInvoice.AccountingCustomerParty.ContactName := 'f433';
-  AInvoice.AccountingCustomerParty.ContactDepartment := 'f434';
-  AInvoice.AccountingCustomerParty.ContactTelephone := 'f435';
-  AInvoice.AccountingCustomerParty.ContactElectronicMail := 'f436';
-  AInvoice.AccountingCustomerParty.AdditionalLegalInformationSeller := 'f437';
-  AInvoice.AccountingCustomerParty.ElectronicAddressSellerBuyer := 'f438';
-  AInvoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := 'f439';
-  AInvoice.DeliveryInformation.Name := 'f441';
-  AInvoice.DeliveryInformation.LocationIdentifier := 'f442';
-  AInvoice.DeliveryInformation.LocationIdentifierSchemeID := 'f443';
-  AInvoice.DeliveryInformation.Address.StreetName := 'f445';
-  AInvoice.DeliveryInformation.Address.AdditionalStreetName := 'f446';
-  AInvoice.DeliveryInformation.Address.City := 'f447';
-  AInvoice.DeliveryInformation.Address.PostalZone := 'f448';
-  AInvoice.DeliveryInformation.Address.CountrySubentity := 'f449';
-  AInvoice.DeliveryInformation.Address.AddressLine := 'f450';
-  AInvoice.DeliveryInformation.Address.CountryCode := 'f451';
-  AInvoice.DeliveryInformation.ActualDeliveryDate := 40452;
-  AInvoice.DeliveryInformation.ContactName := 'f453';
-  AInvoice.DeliveryInformation.ContactTelephone := 'f454';
-  AInvoice.DeliveryInformation.ContactElectronicMail := 'f455';
-  AInvoice.PayeeParty.Name := 'f457';
-  AInvoice.PayeeParty.Identifier := 'f458';
-  AInvoice.PayeeParty.IdentifierSchemeID := 'f459';
-  AInvoice.PayeeParty.CompanyID := 'f460';
-  AInvoice.PayeeParty.CompanyIDSchemeID := 'f461';
-  AInvoice.PayeeParty.VATCompanyID := 'f462';
-  AInvoice.PayeeParty.Address.StreetName := 'f464';
-  AInvoice.PayeeParty.Address.AdditionalStreetName := 'f465';
-  AInvoice.PayeeParty.Address.City := 'f466';
-  AInvoice.PayeeParty.Address.PostalZone := 'f467';
-  AInvoice.PayeeParty.Address.CountrySubentity := 'f468';
-  AInvoice.PayeeParty.Address.AddressLine := 'f469';
-  AInvoice.PayeeParty.Address.CountryCode := 'f470';
-  AInvoice.PayeeParty.ContactName := 'f471';
-  AInvoice.PayeeParty.ContactDepartment := 'f472';
-  AInvoice.PayeeParty.ContactTelephone := 'f473';
-  AInvoice.PayeeParty.ContactElectronicMail := 'f474';
-  AInvoice.TaxRepresentativeParty.Name := 'f476';
-  AInvoice.TaxRepresentativeParty.Identifier := 'f477';
-  AInvoice.TaxRepresentativeParty.IdentifierSchemeID := 'f478';
-  AInvoice.TaxRepresentativeParty.CompanyID := 'f479';
-  AInvoice.TaxRepresentativeParty.CompanyIDSchemeID := 'f480';
-  AInvoice.TaxRepresentativeParty.VATCompanyID := 'f481';
-  AInvoice.TaxRepresentativeParty.Address.StreetName := 'f483';
-  AInvoice.TaxRepresentativeParty.Address.AdditionalStreetName := 'f484';
-  AInvoice.TaxRepresentativeParty.Address.City := 'f485';
-  AInvoice.TaxRepresentativeParty.Address.PostalZone := 'f486';
-  AInvoice.TaxRepresentativeParty.Address.CountrySubentity := 'f487';
-  AInvoice.TaxRepresentativeParty.Address.AddressLine := 'f488';
-  AInvoice.TaxRepresentativeParty.Address.CountryCode := 'f489';
-  AInvoice.TaxRepresentativeParty.ContactName := 'f490';
-  AInvoice.TaxRepresentativeParty.ContactDepartment := 'f491';
-  AInvoice.TaxRepresentativeParty.ContactTelephone := 'f492';
-  AInvoice.TaxRepresentativeParty.ContactElectronicMail := 'f493';
-  AInvoice.InvoiceeParty.Name := 'f495';
-  AInvoice.InvoiceeParty.Identifier := 'f496';
-  AInvoice.InvoiceeParty.IdentifierSchemeID := 'f497';
-  AInvoice.InvoiceeParty.CompanyID := 'f498';
-  AInvoice.InvoiceeParty.CompanyIDSchemeID := 'f499';
-  AInvoice.InvoiceeParty.VATCompanyID := 'f500';
-  AInvoice.InvoiceeParty.Address.StreetName := 'f502';
-  AInvoice.InvoiceeParty.Address.AdditionalStreetName := 'f503';
-  AInvoice.InvoiceeParty.Address.City := 'f504';
-  AInvoice.InvoiceeParty.Address.PostalZone := 'f505';
-  AInvoice.InvoiceeParty.Address.CountrySubentity := 'f506';
-  AInvoice.InvoiceeParty.Address.AddressLine := 'f507';
-  AInvoice.InvoiceeParty.Address.CountryCode := 'f508';
-  AInvoice.InvoiceeParty.ContactName := 'f509';
-  AInvoice.InvoiceeParty.ContactDepartment := 'f510';
-  AInvoice.InvoiceeParty.ContactTelephone := 'f511';
-  AInvoice.InvoiceeParty.ContactElectronicMail := 'f512';
-  AInvoice.PaymentID := 'f513';
+  AInvoice.Notes[1].SubjectCodeOther := 'f381';
+  AInvoice.SellerOrderReference := 'f382';
+  AInvoice.SellerOrderReferenceDate.SetValue(40383);
+  AInvoice.PurchaseOrderReference := 'f384';
+  AInvoice.PurchaseOrderReferenceDate.SetValue(40385);
+  AInvoice.ProjectReference := 'f386';
+  AInvoice.ReceiptDocumentReference := 'f387';
+  AInvoice.ContractDocumentReference := 'f388';
+  AInvoice.DeliveryReceiptNumber := 'f389';
+  AInvoice.DeliveryReceiptDate := 40390;
+  AInvoice.DeliveryReceiptNumberExtended := 'f391';
+  AInvoice.DeliveryReceiptDateExtended := 40392;
+  AInvoice.BuyerAccountingReference := 'f393';
+  AInvoice.AccountingSupplierParty.Name := 'f395';
+  AInvoice.AccountingSupplierParty.RegistrationName := 'f396';
+  AInvoice.AccountingSupplierParty.CompanyID := 'f397';
+  AInvoice.AccountingSupplierParty.CompanyIDSchemeID := 'f398';
+  AInvoice.AccountingSupplierParty.Address.StreetName := 'f400';
+  AInvoice.AccountingSupplierParty.Address.AdditionalStreetName := 'f401';
+  AInvoice.AccountingSupplierParty.Address.City := 'f402';
+  AInvoice.AccountingSupplierParty.Address.PostalZone := 'f403';
+  AInvoice.AccountingSupplierParty.Address.CountrySubentity := 'f404';
+  AInvoice.AccountingSupplierParty.Address.AddressLine := 'f405';
+  AInvoice.AccountingSupplierParty.Address.CountryCode := 'f406';
+  AInvoice.AccountingSupplierParty.IdentifierSellerBuyer := 'f407';
+  AInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := 'f408';
+  AInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := 'f409';
+  AInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := 'f410';
+  AInvoice.AccountingSupplierParty.VATCompanyID := 'f411';
+  AInvoice.AccountingSupplierParty.VATCompanyNumber := 'f412';
+  AInvoice.AccountingSupplierParty.ContactName := 'f413';
+  AInvoice.AccountingSupplierParty.ContactDepartment := 'f414';
+  AInvoice.AccountingSupplierParty.ContactTelephone := 'f415';
+  AInvoice.AccountingSupplierParty.ContactElectronicMail := 'f416';
+  AInvoice.AccountingSupplierParty.AdditionalLegalInformationSeller := 'f417';
+  AInvoice.AccountingSupplierParty.ElectronicAddressSellerBuyer := 'f418';
+  AInvoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'f419';
+  AInvoice.AccountingCustomerParty.Name := 'f421';
+  AInvoice.AccountingCustomerParty.RegistrationName := 'f422';
+  AInvoice.AccountingCustomerParty.CompanyID := 'f423';
+  AInvoice.AccountingCustomerParty.CompanyIDSchemeID := 'f424';
+  AInvoice.AccountingCustomerParty.Address.StreetName := 'f426';
+  AInvoice.AccountingCustomerParty.Address.AdditionalStreetName := 'f427';
+  AInvoice.AccountingCustomerParty.Address.City := 'f428';
+  AInvoice.AccountingCustomerParty.Address.PostalZone := 'f429';
+  AInvoice.AccountingCustomerParty.Address.CountrySubentity := 'f430';
+  AInvoice.AccountingCustomerParty.Address.AddressLine := 'f431';
+  AInvoice.AccountingCustomerParty.Address.CountryCode := 'f432';
+  AInvoice.AccountingCustomerParty.IdentifierSellerBuyer := 'f433';
+  AInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyer := 'f434';
+  AInvoice.AccountingCustomerParty.GlobalIdentifierSellerBuyerSchemeID := 'f435';
+  AInvoice.AccountingCustomerParty.BankAssignedCreditorIdentifier := 'f436';
+  AInvoice.AccountingCustomerParty.VATCompanyID := 'f437';
+  AInvoice.AccountingCustomerParty.VATCompanyNumber := 'f438';
+  AInvoice.AccountingCustomerParty.ContactName := 'f439';
+  AInvoice.AccountingCustomerParty.ContactDepartment := 'f440';
+  AInvoice.AccountingCustomerParty.ContactTelephone := 'f441';
+  AInvoice.AccountingCustomerParty.ContactElectronicMail := 'f442';
+  AInvoice.AccountingCustomerParty.AdditionalLegalInformationSeller := 'f443';
+  AInvoice.AccountingCustomerParty.ElectronicAddressSellerBuyer := 'f444';
+  AInvoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := 'f445';
+  AInvoice.DeliveryInformation.Name := 'f447';
+  AInvoice.DeliveryInformation.LocationIdentifier := 'f448';
+  AInvoice.DeliveryInformation.LocationIdentifierSchemeID := 'f449';
+  AInvoice.DeliveryInformation.Address.StreetName := 'f451';
+  AInvoice.DeliveryInformation.Address.AdditionalStreetName := 'f452';
+  AInvoice.DeliveryInformation.Address.City := 'f453';
+  AInvoice.DeliveryInformation.Address.PostalZone := 'f454';
+  AInvoice.DeliveryInformation.Address.CountrySubentity := 'f455';
+  AInvoice.DeliveryInformation.Address.AddressLine := 'f456';
+  AInvoice.DeliveryInformation.Address.CountryCode := 'f457';
+  AInvoice.DeliveryInformation.ActualDeliveryDate := 40458;
+  AInvoice.DeliveryInformation.ContactName := 'f459';
+  AInvoice.DeliveryInformation.ContactTelephone := 'f460';
+  AInvoice.DeliveryInformation.ContactElectronicMail := 'f461';
+  AInvoice.PayeeParty.Name := 'f463';
+  AInvoice.PayeeParty.Identifier := 'f464';
+  AInvoice.PayeeParty.IdentifierSchemeID := 'f465';
+  AInvoice.PayeeParty.CompanyID := 'f466';
+  AInvoice.PayeeParty.CompanyIDSchemeID := 'f467';
+  AInvoice.PayeeParty.VATCompanyID := 'f468';
+  AInvoice.PayeeParty.Address.StreetName := 'f470';
+  AInvoice.PayeeParty.Address.AdditionalStreetName := 'f471';
+  AInvoice.PayeeParty.Address.City := 'f472';
+  AInvoice.PayeeParty.Address.PostalZone := 'f473';
+  AInvoice.PayeeParty.Address.CountrySubentity := 'f474';
+  AInvoice.PayeeParty.Address.AddressLine := 'f475';
+  AInvoice.PayeeParty.Address.CountryCode := 'f476';
+  AInvoice.PayeeParty.ContactName := 'f477';
+  AInvoice.PayeeParty.ContactDepartment := 'f478';
+  AInvoice.PayeeParty.ContactTelephone := 'f479';
+  AInvoice.PayeeParty.ContactElectronicMail := 'f480';
+  AInvoice.TaxRepresentativeParty.Name := 'f482';
+  AInvoice.TaxRepresentativeParty.Identifier := 'f483';
+  AInvoice.TaxRepresentativeParty.IdentifierSchemeID := 'f484';
+  AInvoice.TaxRepresentativeParty.CompanyID := 'f485';
+  AInvoice.TaxRepresentativeParty.CompanyIDSchemeID := 'f486';
+  AInvoice.TaxRepresentativeParty.VATCompanyID := 'f487';
+  AInvoice.TaxRepresentativeParty.Address.StreetName := 'f489';
+  AInvoice.TaxRepresentativeParty.Address.AdditionalStreetName := 'f490';
+  AInvoice.TaxRepresentativeParty.Address.City := 'f491';
+  AInvoice.TaxRepresentativeParty.Address.PostalZone := 'f492';
+  AInvoice.TaxRepresentativeParty.Address.CountrySubentity := 'f493';
+  AInvoice.TaxRepresentativeParty.Address.AddressLine := 'f494';
+  AInvoice.TaxRepresentativeParty.Address.CountryCode := 'f495';
+  AInvoice.TaxRepresentativeParty.ContactName := 'f496';
+  AInvoice.TaxRepresentativeParty.ContactDepartment := 'f497';
+  AInvoice.TaxRepresentativeParty.ContactTelephone := 'f498';
+  AInvoice.TaxRepresentativeParty.ContactElectronicMail := 'f499';
+  AInvoice.InvoiceeParty.Name := 'f501';
+  AInvoice.InvoiceeParty.Identifier := 'f502';
+  AInvoice.InvoiceeParty.IdentifierSchemeID := 'f503';
+  AInvoice.InvoiceeParty.CompanyID := 'f504';
+  AInvoice.InvoiceeParty.CompanyIDSchemeID := 'f505';
+  AInvoice.InvoiceeParty.VATCompanyID := 'f506';
+  AInvoice.InvoiceeParty.Address.StreetName := 'f508';
+  AInvoice.InvoiceeParty.Address.AdditionalStreetName := 'f509';
+  AInvoice.InvoiceeParty.Address.City := 'f510';
+  AInvoice.InvoiceeParty.Address.PostalZone := 'f511';
+  AInvoice.InvoiceeParty.Address.CountrySubentity := 'f512';
+  AInvoice.InvoiceeParty.Address.AddressLine := 'f513';
+  AInvoice.InvoiceeParty.Address.CountryCode := 'f514';
+  AInvoice.InvoiceeParty.ContactName := 'f515';
+  AInvoice.InvoiceeParty.ContactDepartment := 'f516';
+  AInvoice.InvoiceeParty.ContactTelephone := 'f517';
+  AInvoice.InvoiceeParty.ContactElectronicMail := 'f518';
+  AInvoice.PaymentID := 'f519';
   AInvoice.PaymentTypes.AddPaymentType;
   AInvoice.PaymentTypes[0].PaymentMeansCode := TLandrixInvoicePaymentMeansCode(1 mod (Ord(High(TLandrixInvoicePaymentMeansCode)) + 1));
-  AInvoice.PaymentTypes[0].PaymentMeansCodeOther := 'f516';
-  AInvoice.PaymentTypes[0].PaymentMeansInformation := 'f517';
-  AInvoice.PaymentTypes[0].FinancialAccount := 'f518';
-  AInvoice.PaymentTypes[0].FinancialAccountName := 'f519';
-  AInvoice.PaymentTypes[0].FinancialInstitutionBranch := 'f520';
+  AInvoice.PaymentTypes[0].PaymentMeansCodeOther := 'f522';
+  AInvoice.PaymentTypes[0].PaymentMeansInformation := 'f523';
+  AInvoice.PaymentTypes[0].FinancialAccount := 'f524';
+  AInvoice.PaymentTypes[0].FinancialAccountName := 'f525';
+  AInvoice.PaymentTypes[0].FinancialInstitutionBranch := 'f526';
   AInvoice.PaymentTypes.AddPaymentType;
   AInvoice.PaymentTypes[1].PaymentMeansCode := TLandrixInvoicePaymentMeansCode(1 mod (Ord(High(TLandrixInvoicePaymentMeansCode)) + 1));
-  AInvoice.PaymentTypes[1].PaymentMeansCodeOther := 'f522';
-  AInvoice.PaymentTypes[1].PaymentMeansInformation := 'f523';
-  AInvoice.PaymentTypes[1].FinancialAccount := 'f524';
-  AInvoice.PaymentTypes[1].FinancialAccountName := 'f525';
-  AInvoice.PaymentTypes[1].FinancialInstitutionBranch := 'f526';
-  AInvoice.PaymentMandateID := 'f527';
+  AInvoice.PaymentTypes[1].PaymentMeansCodeOther := 'f528';
+  AInvoice.PaymentTypes[1].PaymentMeansInformation := 'f529';
+  AInvoice.PaymentTypes[1].FinancialAccount := 'f530';
+  AInvoice.PaymentTypes[1].FinancialAccountName := 'f531';
+  AInvoice.PaymentTypes[1].FinancialInstitutionBranch := 'f532';
+  AInvoice.PaymentMandateID := 'f533';
   AInvoice.PaymentTermsType := TLandrixInvoicePaymentTermsType(1 mod (Ord(High(TLandrixInvoicePaymentTermsType)) + 1));
-  AInvoice.PaymentTermNetNote := 'f529';
-  AInvoice.PaymentTermCashDiscount1Days := 530;
-  AInvoice.PaymentTermCashDiscount1Percent := 531.5;
-  AInvoice.PaymentTermCashDiscount1Base := 532;
-  AInvoice.PaymentTermCashDiscount1ActualAmount := 533;
-  AInvoice.PaymentTermCashDiscount2Days := 534;
-  AInvoice.PaymentTermCashDiscount2Percent := 535.5;
-  AInvoice.PaymentTermCashDiscount2Base := 536;
-  AInvoice.PaymentTermCashDiscount2ActualAmount := 537;
-  AInvoice.PaymentTermCashDiscount3Days := 538;
-  AInvoice.PaymentTermCashDiscount3Percent := 539.5;
-  AInvoice.PaymentTermCashDiscount3Base := 540;
-  AInvoice.PaymentTermCashDiscount3ActualAmount := 541;
-  AInvoice.PaymentTermCashDiscount1Note := 'f542';
-  AInvoice.PaymentTermCashDiscount2Note := 'f543';
-  AInvoice.PaymentTermCashDiscount3Note := 'f544';
+  AInvoice.PaymentTermNetNote := 'f535';
+  AInvoice.PaymentTermCashDiscount1Days := 536;
+  AInvoice.PaymentTermCashDiscount1Percent := 537.5;
+  AInvoice.PaymentTermCashDiscount1Base := 538;
+  AInvoice.PaymentTermCashDiscount1ActualAmount := 539;
+  AInvoice.PaymentTermCashDiscount2Days := 540;
+  AInvoice.PaymentTermCashDiscount2Percent := 541.5;
+  AInvoice.PaymentTermCashDiscount2Base := 542;
+  AInvoice.PaymentTermCashDiscount2ActualAmount := 543;
+  AInvoice.PaymentTermCashDiscount3Days := 544;
+  AInvoice.PaymentTermCashDiscount3Percent := 545.5;
+  AInvoice.PaymentTermCashDiscount3Base := 546;
+  AInvoice.PaymentTermCashDiscount3ActualAmount := 547;
+  AInvoice.PaymentTermCashDiscount1Note := 'f548';
+  AInvoice.PaymentTermCashDiscount2Note := 'f549';
+  AInvoice.PaymentTermCashDiscount3Note := 'f550';
   AInvoice.InvoiceLines.AddInvoiceLine;
-  AInvoice.InvoiceLines[0].ID := 'f546';
-  AInvoice.InvoiceLines[0].GlobalID_EAN_GTIN := 'f547';
-  AInvoice.InvoiceLines[0].StandardItemIdentifier := 'f548';
-  AInvoice.InvoiceLines[0].StandardItemIdentifierSchemeID := 'f549';
-  AInvoice.InvoiceLines[0].Note := 'f550';
-  AInvoice.InvoiceLines[0].ObjectIdentifier := 'f551';
-  AInvoice.InvoiceLines[0].ObjectIdentifierSchemeID := 'f552';
-  AInvoice.InvoiceLines[0].Name := 'f553';
-  AInvoice.InvoiceLines[0].Description := 'f554';
-  AInvoice.InvoiceLines[0].Quantity := 555.5;
+  AInvoice.InvoiceLines[0].ID := 'f552';
+  AInvoice.InvoiceLines[0].GlobalID_EAN_GTIN := 'f553';
+  AInvoice.InvoiceLines[0].StandardItemIdentifier := 'f554';
+  AInvoice.InvoiceLines[0].StandardItemIdentifierSchemeID := 'f555';
+  AInvoice.InvoiceLines[0].Note := 'f556';
+  AInvoice.InvoiceLines[0].ObjectIdentifier := 'f557';
+  AInvoice.InvoiceLines[0].ObjectIdentifierSchemeID := 'f558';
+  AInvoice.InvoiceLines[0].Name := 'f559';
+  AInvoice.InvoiceLines[0].Description := 'f560';
+  AInvoice.InvoiceLines[0].Quantity := 561.5;
   AInvoice.InvoiceLines[0].UnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].UnitCodeOther := 'f557';
-  AInvoice.InvoiceLines[0].SellersItemIdentification := 'f558';
-  AInvoice.InvoiceLines[0].BuyersItemIdentification := 'f559';
-  AInvoice.InvoiceLines[0].OrderNumber := 'f560';
-  AInvoice.InvoiceLines[0].OrderDate.SetValue(40561);
-  AInvoice.InvoiceLines[0].OrderLineReference := 'f562';
-  AInvoice.InvoiceLines[0].BuyerAccountingReference := 'f563';
-  AInvoice.InvoiceLines[0].TaxPercent := 564.5;
+  AInvoice.InvoiceLines[0].UnitCodeOther := 'f563';
+  AInvoice.InvoiceLines[0].SellersItemIdentification := 'f564';
+  AInvoice.InvoiceLines[0].BuyersItemIdentification := 'f565';
+  AInvoice.InvoiceLines[0].OrderNumber := 'f566';
+  AInvoice.InvoiceLines[0].OrderDate.SetValue(40567);
+  AInvoice.InvoiceLines[0].OrderLineReference := 'f568';
+  AInvoice.InvoiceLines[0].BuyerAccountingReference := 'f569';
+  AInvoice.InvoiceLines[0].TaxPercent := 570.5;
   AInvoice.InvoiceLines[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].TaxCategoryOther := 'f566';
-  AInvoice.InvoiceLines[0].TaxExemptionReason := 'f567';
-  AInvoice.InvoiceLines[0].GrossPriceAmount := 568.5;
-  AInvoice.InvoiceLines[0].DiscountOnTheGrossPrice := 569.5;
-  AInvoice.InvoiceLines[0].NetPriceAmount := 570.5;
-  AInvoice.InvoiceLines[0].BaseQuantity := 571.5;
+  AInvoice.InvoiceLines[0].TaxCategoryOther := 'f572';
+  AInvoice.InvoiceLines[0].TaxExemptionReason := 'f573';
+  AInvoice.InvoiceLines[0].GrossPriceAmount := 574.5;
+  AInvoice.InvoiceLines[0].DiscountOnTheGrossPrice := 575.5;
+  AInvoice.InvoiceLines[0].NetPriceAmount := 576.5;
+  AInvoice.InvoiceLines[0].BaseQuantity := 577.5;
   AInvoice.InvoiceLines[0].BaseQuantityUnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].BaseQuantityUnitCodeOther := 'f573';
-  AInvoice.InvoiceLines[0].LineAmount := 574;
+  AInvoice.InvoiceLines[0].BaseQuantityUnitCodeOther := 'f579';
+  AInvoice.InvoiceLines[0].LineAmount := 580;
   AInvoice.InvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[0].AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.InvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f578';
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f584';
   AInvoice.InvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f580';
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].Reason := 'f581';
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].BaseAmount := 582;
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 583.5;
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].Amount := 584;
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxPercent := 585.5;
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f586';
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].Reason := 'f587';
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].BaseAmount := 588;
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 589.5;
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].Amount := 590;
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxPercent := 591.5;
   AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f587';
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f593';
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := 'f594';
+  AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := 'f595';
   AInvoice.InvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[0].AllowanceCharges[1].ChargeIndicator := True;
   AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f590';
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f598';
   AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := 'f592';
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].Reason := 'f593';
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].BaseAmount := 594;
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := 595.5;
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].Amount := 596;
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxPercent := 597.5;
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := 'f600';
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].Reason := 'f601';
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].BaseAmount := 602;
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := 603.5;
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].Amount := 604;
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxPercent := 605.5;
   AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := 'f599';
-  AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate := 40600;
-  AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate := 40601;
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := 'f607';
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxExemptionReason := 'f608';
+  AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode := 'f609';
+  AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate := 40610;
+  AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate := 40611;
   AInvoice.InvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode := 'f603';
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ListID := 'f604';
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID := 'f605';
-  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName := 'f606';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode := 'f613';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ListID := 'f614';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID := 'f615';
+  AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName := 'f616';
   AInvoice.InvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].ItemClassifications[1].ClassCode := 'f607';
-  AInvoice.InvoiceLines[0].ItemClassifications[1].ListID := 'f608';
-  AInvoice.InvoiceLines[0].ItemClassifications[1].ListVersionID := 'f609';
-  AInvoice.InvoiceLines[0].ItemClassifications[1].ClassificationName := 'f610';
-  AInvoice.InvoiceLines[0].OriginTradeCountry := 'f611';
+  AInvoice.InvoiceLines[0].ItemClassifications[1].ClassCode := 'f617';
+  AInvoice.InvoiceLines[0].ItemClassifications[1].ListID := 'f618';
+  AInvoice.InvoiceLines[0].ItemClassifications[1].ListVersionID := 'f619';
+  AInvoice.InvoiceLines[0].ItemClassifications[1].ClassificationName := 'f620';
+  AInvoice.InvoiceLines[0].OriginTradeCountry := 'f621';
   AInvoice.InvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].ItemAttributes[0].Name := 'f613';
-  AInvoice.InvoiceLines[0].ItemAttributes[0].Value := 'f614';
+  AInvoice.InvoiceLines[0].ItemAttributes[0].Name := 'f623';
+  AInvoice.InvoiceLines[0].ItemAttributes[0].Value := 'f624';
   AInvoice.InvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].ItemAttributes[1].Name := 'f615';
-  AInvoice.InvoiceLines[0].ItemAttributes[1].Value := 'f616';
-  AInvoice.InvoiceLines[0].DeliveryNoteNumber := 'f617';
-  AInvoice.InvoiceLines[0].DeliveryNoteLineID := 'f618';
-  AInvoice.InvoiceLines[0].DeliveryNoteDate := 40619;
-  AInvoice.InvoiceLines[0].ActualDeliveryDate := 40620;
+  AInvoice.InvoiceLines[0].ItemAttributes[1].Name := 'f625';
+  AInvoice.InvoiceLines[0].ItemAttributes[1].Value := 'f626';
+  AInvoice.InvoiceLines[0].DeliveryNoteNumber := 'f627';
+  AInvoice.InvoiceLines[0].DeliveryNoteLineID := 'f628';
+  AInvoice.InvoiceLines[0].DeliveryNoteDate := 40629;
+  AInvoice.InvoiceLines[0].ActualDeliveryDate := 40630;
   AInvoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID := 'f622';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN := 'f623';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier := 'f624';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID := 'f625';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note := 'f626';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier := 'f627';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID := 'f628';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name := 'f629';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description := 'f630';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity := 631.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID := 'f632';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN := 'f633';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier := 'f634';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID := 'f635';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note := 'f636';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier := 'f637';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID := 'f638';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name := 'f639';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description := 'f640';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity := 641.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther := 'f633';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification := 'f634';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification := 'f635';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber := 'f636';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderDate.SetValue(40637);
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference := 'f638';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference := 'f639';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent := 640.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther := 'f643';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification := 'f644';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification := 'f645';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber := 'f646';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderDate.SetValue(40647);
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference := 'f648';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference := 'f649';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent := 650.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther := 'f642';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason := 'f643';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount := 644.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice := 645.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount := 646.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity := 647.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther := 'f652';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason := 'f653';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount := 654.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice := 655.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount := 656.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity := 657.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther := 'f649';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount := 650;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther := 'f659';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount := 660;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f654';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f664';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f656';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason := 'f657';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := 658;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 659.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount := 660;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := 661.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f666';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason := 'f667';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := 668;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 669.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount := 670;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := 671.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f663';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f673';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := 'f674';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := 'f675';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator := True;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f666';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f678';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := 'f668';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Reason := 'f669';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount := 670;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := 671.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Amount := 672;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent := 673.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := 'f680';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Reason := 'f681';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount := 682;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := 683.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Amount := 684;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent := 685.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := 'f675';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate := 40676;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate := 40677;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := 'f687';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason := 'f688';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode := 'f689';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate := 40690;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate := 40691;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode := 'f679';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID := 'f680';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := 'f681';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := 'f682';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode := 'f693';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID := 'f694';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := 'f695';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := 'f696';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassCode := 'f683';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListID := 'f684';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListVersionID := 'f685';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassificationName := 'f686';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry := 'f687';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassCode := 'f697';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListID := 'f698';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListVersionID := 'f699';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassificationName := 'f700';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry := 'f701';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name := 'f689';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value := 'f690';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name := 'f703';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value := 'f704';
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Name := 'f691';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Value := 'f692';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber := 'f693';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID := 'f694';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate := 40695;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate := 40696;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Name := 'f705';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Value := 'f706';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber := 'f707';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID := 'f708';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate := 40709;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate := 40710;
   AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther := 'f699';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther := 'f713';
   AInvoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ID := 'f700';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].GlobalID_EAN_GTIN := 'f701';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifier := 'f702';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifierSchemeID := 'f703';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Note := 'f704';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifier := 'f705';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifierSchemeID := 'f706';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Name := 'f707';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Description := 'f708';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Quantity := 709.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ID := 'f714';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].GlobalID_EAN_GTIN := 'f715';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifier := 'f716';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifierSchemeID := 'f717';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Note := 'f718';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifier := 'f719';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifierSchemeID := 'f720';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Name := 'f721';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Description := 'f722';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].Quantity := 723.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].UnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].UnitCodeOther := 'f711';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].SellersItemIdentification := 'f712';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyersItemIdentification := 'f713';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderNumber := 'f714';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderDate.SetValue(40715);
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderLineReference := 'f716';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyerAccountingReference := 'f717';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxPercent := 718.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].UnitCodeOther := 'f725';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].SellersItemIdentification := 'f726';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyersItemIdentification := 'f727';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderNumber := 'f728';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderDate.SetValue(40729);
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderLineReference := 'f730';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyerAccountingReference := 'f731';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxPercent := 732.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxCategoryOther := 'f720';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxExemptionReason := 'f721';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].GrossPriceAmount := 722.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DiscountOnTheGrossPrice := 723.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].NetPriceAmount := 724.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantity := 725.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxCategoryOther := 'f734';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxExemptionReason := 'f735';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].GrossPriceAmount := 736.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DiscountOnTheGrossPrice := 737.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].NetPriceAmount := 738.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantity := 739.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCodeOther := 'f727';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineAmount := 728;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCodeOther := 'f741';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineAmount := 742;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f732';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f746';
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := 'f734';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Reason := 'f735';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount := 736;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := 737.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Amount := 738;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent := 739.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := 'f748';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Reason := 'f749';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount := 750;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := 751.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Amount := 752;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent := 753.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := 'f741';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := 'f755';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason := 'f756';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode := 'f757';
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator := True;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f744';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f760';
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := 'f746';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Reason := 'f747';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount := 748;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := 749.5;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Amount := 750;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent := 751.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := 'f762';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Reason := 'f763';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount := 764;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := 765.5;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Amount := 766;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent := 767.5;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := 'f753';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodStartDate := 40754;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodEndDate := 40755;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := 'f769';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason := 'f770';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode := 'f771';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodStartDate := 40772;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodEndDate := 40773;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassCode := 'f757';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListID := 'f758';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListVersionID := 'f759';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassificationName := 'f760';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassCode := 'f775';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListID := 'f776';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListVersionID := 'f777';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassificationName := 'f778';
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassCode := 'f761';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListID := 'f762';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListVersionID := 'f763';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassificationName := 'f764';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OriginTradeCountry := 'f765';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassCode := 'f779';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListID := 'f780';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListVersionID := 'f781';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassificationName := 'f782';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].OriginTradeCountry := 'f783';
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Name := 'f767';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Value := 'f768';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Name := 'f785';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Value := 'f786';
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Name := 'f769';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Value := 'f770';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteNumber := 'f771';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteLineID := 'f772';
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteDate := 40773;
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ActualDeliveryDate := 40774;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Name := 'f787';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Value := 'f788';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteNumber := 'f789';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteLineID := 'f790';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteDate := 40791;
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].ActualDeliveryDate := 40792;
   AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCodeOther := 'f777';
+  AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCodeOther := 'f795';
   AInvoice.InvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[0].LineStatusReasonCodeOther := 'f779';
+  AInvoice.InvoiceLines[0].LineStatusReasonCodeOther := 'f797';
   AInvoice.InvoiceLines.AddInvoiceLine;
-  AInvoice.InvoiceLines[1].ID := 'f780';
-  AInvoice.InvoiceLines[1].GlobalID_EAN_GTIN := 'f781';
-  AInvoice.InvoiceLines[1].StandardItemIdentifier := 'f782';
-  AInvoice.InvoiceLines[1].StandardItemIdentifierSchemeID := 'f783';
-  AInvoice.InvoiceLines[1].Note := 'f784';
-  AInvoice.InvoiceLines[1].ObjectIdentifier := 'f785';
-  AInvoice.InvoiceLines[1].ObjectIdentifierSchemeID := 'f786';
-  AInvoice.InvoiceLines[1].Name := 'f787';
-  AInvoice.InvoiceLines[1].Description := 'f788';
-  AInvoice.InvoiceLines[1].Quantity := 789.5;
+  AInvoice.InvoiceLines[1].ID := 'f798';
+  AInvoice.InvoiceLines[1].GlobalID_EAN_GTIN := 'f799';
+  AInvoice.InvoiceLines[1].StandardItemIdentifier := 'f800';
+  AInvoice.InvoiceLines[1].StandardItemIdentifierSchemeID := 'f801';
+  AInvoice.InvoiceLines[1].Note := 'f802';
+  AInvoice.InvoiceLines[1].ObjectIdentifier := 'f803';
+  AInvoice.InvoiceLines[1].ObjectIdentifierSchemeID := 'f804';
+  AInvoice.InvoiceLines[1].Name := 'f805';
+  AInvoice.InvoiceLines[1].Description := 'f806';
+  AInvoice.InvoiceLines[1].Quantity := 807.5;
   AInvoice.InvoiceLines[1].UnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[1].UnitCodeOther := 'f791';
-  AInvoice.InvoiceLines[1].SellersItemIdentification := 'f792';
-  AInvoice.InvoiceLines[1].BuyersItemIdentification := 'f793';
-  AInvoice.InvoiceLines[1].OrderNumber := 'f794';
-  AInvoice.InvoiceLines[1].OrderDate.SetValue(40795);
-  AInvoice.InvoiceLines[1].OrderLineReference := 'f796';
-  AInvoice.InvoiceLines[1].BuyerAccountingReference := 'f797';
-  AInvoice.InvoiceLines[1].TaxPercent := 798.5;
+  AInvoice.InvoiceLines[1].UnitCodeOther := 'f809';
+  AInvoice.InvoiceLines[1].SellersItemIdentification := 'f810';
+  AInvoice.InvoiceLines[1].BuyersItemIdentification := 'f811';
+  AInvoice.InvoiceLines[1].OrderNumber := 'f812';
+  AInvoice.InvoiceLines[1].OrderDate.SetValue(40813);
+  AInvoice.InvoiceLines[1].OrderLineReference := 'f814';
+  AInvoice.InvoiceLines[1].BuyerAccountingReference := 'f815';
+  AInvoice.InvoiceLines[1].TaxPercent := 816.5;
   AInvoice.InvoiceLines[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].TaxCategoryOther := 'f800';
-  AInvoice.InvoiceLines[1].TaxExemptionReason := 'f801';
-  AInvoice.InvoiceLines[1].GrossPriceAmount := 802.5;
-  AInvoice.InvoiceLines[1].DiscountOnTheGrossPrice := 803.5;
-  AInvoice.InvoiceLines[1].NetPriceAmount := 804.5;
-  AInvoice.InvoiceLines[1].BaseQuantity := 805.5;
+  AInvoice.InvoiceLines[1].TaxCategoryOther := 'f818';
+  AInvoice.InvoiceLines[1].TaxExemptionReason := 'f819';
+  AInvoice.InvoiceLines[1].GrossPriceAmount := 820.5;
+  AInvoice.InvoiceLines[1].DiscountOnTheGrossPrice := 821.5;
+  AInvoice.InvoiceLines[1].NetPriceAmount := 822.5;
+  AInvoice.InvoiceLines[1].BaseQuantity := 823.5;
   AInvoice.InvoiceLines[1].BaseQuantityUnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[1].BaseQuantityUnitCodeOther := 'f807';
-  AInvoice.InvoiceLines[1].LineAmount := 808;
+  AInvoice.InvoiceLines[1].BaseQuantityUnitCodeOther := 'f825';
+  AInvoice.InvoiceLines[1].LineAmount := 826;
   AInvoice.InvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[1].AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f812';
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f830';
   AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := 'f814';
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].Reason := 'f815';
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].BaseAmount := 816;
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := 817.5;
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].Amount := 818;
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxPercent := 819.5;
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := 'f832';
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].Reason := 'f833';
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].BaseAmount := 834;
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := 835.5;
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].Amount := 836;
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxPercent := 837.5;
   AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := 'f821';
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := 'f839';
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxExemptionReason := 'f840';
+  AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode := 'f841';
   AInvoice.InvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[1].AllowanceCharges[1].ChargeIndicator := True;
   AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f824';
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f844';
   AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := 'f826';
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].Reason := 'f827';
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].BaseAmount := 828;
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := 829.5;
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].Amount := 830;
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxPercent := 831.5;
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := 'f846';
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].Reason := 'f847';
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].BaseAmount := 848;
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := 849.5;
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].Amount := 850;
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxPercent := 851.5;
   AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := 'f833';
-  AInvoice.InvoiceLines[1].InvoiceLinePeriodStartDate := 40834;
-  AInvoice.InvoiceLines[1].InvoiceLinePeriodEndDate := 40835;
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := 'f853';
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxExemptionReason := 'f854';
+  AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode := 'f855';
+  AInvoice.InvoiceLines[1].InvoiceLinePeriodStartDate := 40856;
+  AInvoice.InvoiceLines[1].InvoiceLinePeriodEndDate := 40857;
   AInvoice.InvoiceLines[1].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[1].ItemClassifications[0].ClassCode := 'f837';
-  AInvoice.InvoiceLines[1].ItemClassifications[0].ListID := 'f838';
-  AInvoice.InvoiceLines[1].ItemClassifications[0].ListVersionID := 'f839';
-  AInvoice.InvoiceLines[1].ItemClassifications[0].ClassificationName := 'f840';
+  AInvoice.InvoiceLines[1].ItemClassifications[0].ClassCode := 'f859';
+  AInvoice.InvoiceLines[1].ItemClassifications[0].ListID := 'f860';
+  AInvoice.InvoiceLines[1].ItemClassifications[0].ListVersionID := 'f861';
+  AInvoice.InvoiceLines[1].ItemClassifications[0].ClassificationName := 'f862';
   AInvoice.InvoiceLines[1].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[1].ItemClassifications[1].ClassCode := 'f841';
-  AInvoice.InvoiceLines[1].ItemClassifications[1].ListID := 'f842';
-  AInvoice.InvoiceLines[1].ItemClassifications[1].ListVersionID := 'f843';
-  AInvoice.InvoiceLines[1].ItemClassifications[1].ClassificationName := 'f844';
-  AInvoice.InvoiceLines[1].OriginTradeCountry := 'f845';
+  AInvoice.InvoiceLines[1].ItemClassifications[1].ClassCode := 'f863';
+  AInvoice.InvoiceLines[1].ItemClassifications[1].ListID := 'f864';
+  AInvoice.InvoiceLines[1].ItemClassifications[1].ListVersionID := 'f865';
+  AInvoice.InvoiceLines[1].ItemClassifications[1].ClassificationName := 'f866';
+  AInvoice.InvoiceLines[1].OriginTradeCountry := 'f867';
   AInvoice.InvoiceLines[1].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[1].ItemAttributes[0].Name := 'f847';
-  AInvoice.InvoiceLines[1].ItemAttributes[0].Value := 'f848';
+  AInvoice.InvoiceLines[1].ItemAttributes[0].Name := 'f869';
+  AInvoice.InvoiceLines[1].ItemAttributes[0].Value := 'f870';
   AInvoice.InvoiceLines[1].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[1].ItemAttributes[1].Name := 'f849';
-  AInvoice.InvoiceLines[1].ItemAttributes[1].Value := 'f850';
-  AInvoice.InvoiceLines[1].DeliveryNoteNumber := 'f851';
-  AInvoice.InvoiceLines[1].DeliveryNoteLineID := 'f852';
-  AInvoice.InvoiceLines[1].DeliveryNoteDate := 40853;
-  AInvoice.InvoiceLines[1].ActualDeliveryDate := 40854;
+  AInvoice.InvoiceLines[1].ItemAttributes[1].Name := 'f871';
+  AInvoice.InvoiceLines[1].ItemAttributes[1].Value := 'f872';
+  AInvoice.InvoiceLines[1].DeliveryNoteNumber := 'f873';
+  AInvoice.InvoiceLines[1].DeliveryNoteLineID := 'f874';
+  AInvoice.InvoiceLines[1].DeliveryNoteDate := 40875;
+  AInvoice.InvoiceLines[1].ActualDeliveryDate := 40876;
   AInvoice.InvoiceLines[1].SubInvoiceLines.AddInvoiceLine;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ID := 'f856';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].GlobalID_EAN_GTIN := 'f857';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifier := 'f858';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifierSchemeID := 'f859';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Note := 'f860';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifier := 'f861';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifierSchemeID := 'f862';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Name := 'f863';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Description := 'f864';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Quantity := 865.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ID := 'f878';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].GlobalID_EAN_GTIN := 'f879';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifier := 'f880';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifierSchemeID := 'f881';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Note := 'f882';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifier := 'f883';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifierSchemeID := 'f884';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Name := 'f885';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Description := 'f886';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].Quantity := 887.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].UnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].UnitCodeOther := 'f867';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].SellersItemIdentification := 'f868';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyersItemIdentification := 'f869';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderNumber := 'f870';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderDate.SetValue(40871);
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderLineReference := 'f872';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyerAccountingReference := 'f873';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxPercent := 874.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].UnitCodeOther := 'f889';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].SellersItemIdentification := 'f890';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyersItemIdentification := 'f891';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderNumber := 'f892';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderDate.SetValue(40893);
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderLineReference := 'f894';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyerAccountingReference := 'f895';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxPercent := 896.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxCategoryOther := 'f876';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxExemptionReason := 'f877';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].GrossPriceAmount := 878.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DiscountOnTheGrossPrice := 879.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].NetPriceAmount := 880.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantity := 881.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxCategoryOther := 'f898';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxExemptionReason := 'f899';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].GrossPriceAmount := 900.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DiscountOnTheGrossPrice := 901.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].NetPriceAmount := 902.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantity := 903.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCodeOther := 'f883';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineAmount := 884;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCodeOther := 'f905';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineAmount := 906;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f888';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f910';
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f890';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Reason := 'f891';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := 892;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 893.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Amount := 894;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := 895.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := 'f912';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Reason := 'f913';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := 914;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := 915.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Amount := 916;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := 917.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f897';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := 'f919';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := 'f920';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := 'f921';
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator := True;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f900';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f924';
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := 'f902';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Reason := 'f903';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount := 904;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := 905.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Amount := 906;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent := 907.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := 'f926';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Reason := 'f927';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount := 928;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := 929.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Amount := 930;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent := 931.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := 'f909';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodStartDate := 40910;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodEndDate := 40911;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := 'f933';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason := 'f934';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode := 'f935';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodStartDate := 40936;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodEndDate := 40937;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassCode := 'f913';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListID := 'f914';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := 'f915';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := 'f916';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassCode := 'f939';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListID := 'f940';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := 'f941';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := 'f942';
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassCode := 'f917';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListID := 'f918';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListVersionID := 'f919';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassificationName := 'f920';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OriginTradeCountry := 'f921';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassCode := 'f943';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListID := 'f944';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListVersionID := 'f945';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassificationName := 'f946';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].OriginTradeCountry := 'f947';
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Name := 'f923';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Value := 'f924';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Name := 'f949';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Value := 'f950';
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Name := 'f925';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Value := 'f926';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteNumber := 'f927';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteLineID := 'f928';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteDate := 40929;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ActualDeliveryDate := 40930;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Name := 'f951';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Value := 'f952';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteNumber := 'f953';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteLineID := 'f954';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteDate := 40955;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].ActualDeliveryDate := 40956;
   AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCodeOther := 'f933';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCodeOther := 'f959';
   AInvoice.InvoiceLines[1].SubInvoiceLines.AddInvoiceLine;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ID := 'f934';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].GlobalID_EAN_GTIN := 'f935';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifier := 'f936';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifierSchemeID := 'f937';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Note := 'f938';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifier := 'f939';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifierSchemeID := 'f940';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Name := 'f941';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Description := 'f942';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Quantity := 943.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ID := 'f960';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].GlobalID_EAN_GTIN := 'f961';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifier := 'f962';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifierSchemeID := 'f963';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Note := 'f964';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifier := 'f965';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifierSchemeID := 'f966';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Name := 'f967';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Description := 'f968';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].Quantity := 969.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].UnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].UnitCodeOther := 'f945';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].SellersItemIdentification := 'f946';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyersItemIdentification := 'f947';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderNumber := 'f948';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderDate.SetValue(40949);
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderLineReference := 'f950';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyerAccountingReference := 'f951';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxPercent := 952.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].UnitCodeOther := 'f971';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].SellersItemIdentification := 'f972';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyersItemIdentification := 'f973';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderNumber := 'f974';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderDate.SetValue(40975);
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderLineReference := 'f976';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyerAccountingReference := 'f977';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxPercent := 978.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxCategoryOther := 'f954';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxExemptionReason := 'f955';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].GrossPriceAmount := 956.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DiscountOnTheGrossPrice := 957.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].NetPriceAmount := 958.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantity := 959.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxCategoryOther := 'f980';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxExemptionReason := 'f981';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].GrossPriceAmount := 982.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DiscountOnTheGrossPrice := 983.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].NetPriceAmount := 984.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantity := 985.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCode := TLandrixInvoiceUnitCode(1 mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCodeOther := 'f961';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineAmount := 962;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCodeOther := 'f987';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineAmount := 988;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f966';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := 'f992';
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := 'f968';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Reason := 'f969';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount := 970;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := 971.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Amount := 972;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent := 973.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := 'f994';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Reason := 'f995';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount := 996;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := 997.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Amount := 998;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent := 999.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := 'f975';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := 'f1001';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason := 'f1002';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode := 'f1003';
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator := True;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f978';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := 'f1006';
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := 'f980';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Reason := 'f981';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount := 982;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := 983.5;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Amount := 984;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent := 985.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := 'f1008';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Reason := 'f1009';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount := 1010;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := 1011.5;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Amount := 1012;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent := 1013.5;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := 'f987';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodStartDate := 40988;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodEndDate := 40989;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := 'f1015';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason := 'f1016';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode := 'f1017';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodStartDate := 41018;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodEndDate := 41019;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassCode := 'f991';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListID := 'f992';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListVersionID := 'f993';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassificationName := 'f994';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassCode := 'f1021';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListID := 'f1022';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListVersionID := 'f1023';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassificationName := 'f1024';
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications.AddItemClassification;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassCode := 'f995';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListID := 'f996';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListVersionID := 'f997';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassificationName := 'f998';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OriginTradeCountry := 'f999';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassCode := 'f1025';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListID := 'f1026';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListVersionID := 'f1027';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassificationName := 'f1028';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].OriginTradeCountry := 'f1029';
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Name := 'f1001';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Value := 'f1002';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Name := 'f1031';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Value := 'f1032';
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes.AddItemAttribute;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Name := 'f1003';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Value := 'f1004';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteNumber := 'f1005';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteLineID := 'f1006';
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteDate := 41007;
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ActualDeliveryDate := 41008;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Name := 'f1033';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Value := 'f1034';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteNumber := 'f1035';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteLineID := 'f1036';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteDate := 41037;
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].ActualDeliveryDate := 41038;
   AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCodeOther := 'f1011';
+  AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCodeOther := 'f1041';
   AInvoice.InvoiceLines[1].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode(1 mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
-  AInvoice.InvoiceLines[1].LineStatusReasonCodeOther := 'f1013';
+  AInvoice.InvoiceLines[1].LineStatusReasonCodeOther := 'f1043';
   AInvoice.Attachments.AddAttachment(TLandrixInvoiceAttachmentType(1));
-  AInvoice.Attachments[0].ID := 'f1015';
-  AInvoice.Attachments[0].DocumentDescription := 'f1016';
-  AInvoice.Attachments[0].Filename := 'f1017';
+  AInvoice.Attachments[0].ID := 'f1045';
+  AInvoice.Attachments[0].DocumentDescription := 'f1046';
+  AInvoice.Attachments[0].Filename := 'f1047';
   AInvoice.Attachments[0].TypeCode := TLandrixInvoiceAttachmentTypeCode(1 mod (Ord(High(TLandrixInvoiceAttachmentTypeCode)) + 1));
-  AInvoice.Attachments[0].TypeCodeOther := 'f1019';
+  AInvoice.Attachments[0].TypeCodeOther := 'f1049';
   AInvoice.Attachments[0].AttachmentType := TLandrixInvoiceAttachmentType(1 mod (Ord(High(TLandrixInvoiceAttachmentType)) + 1));
-  AInvoice.Attachments[0].AttachmentTypeOther := 'f1021';
+  AInvoice.Attachments[0].AttachmentTypeOther := 'f1051';
   AppendData(AInvoice.Attachments[0].Data, 3);
-  AInvoice.Attachments[0].ExternalReference := 'f1023';
-  AInvoice.Attachments[0].SchemeID := 'f1024';
+  AInvoice.Attachments[0].ExternalReference := 'f1053';
+  AInvoice.Attachments[0].SchemeID := 'f1054';
   AInvoice.Attachments.AddAttachment(TLandrixInvoiceAttachmentType(1));
-  AInvoice.Attachments[1].ID := 'f1025';
-  AInvoice.Attachments[1].DocumentDescription := 'f1026';
-  AInvoice.Attachments[1].Filename := 'f1027';
+  AInvoice.Attachments[1].ID := 'f1055';
+  AInvoice.Attachments[1].DocumentDescription := 'f1056';
+  AInvoice.Attachments[1].Filename := 'f1057';
   AInvoice.Attachments[1].TypeCode := TLandrixInvoiceAttachmentTypeCode(1 mod (Ord(High(TLandrixInvoiceAttachmentTypeCode)) + 1));
-  AInvoice.Attachments[1].TypeCodeOther := 'f1029';
+  AInvoice.Attachments[1].TypeCodeOther := 'f1059';
   AInvoice.Attachments[1].AttachmentType := TLandrixInvoiceAttachmentType(1 mod (Ord(High(TLandrixInvoiceAttachmentType)) + 1));
-  AInvoice.Attachments[1].AttachmentTypeOther := 'f1031';
+  AInvoice.Attachments[1].AttachmentTypeOther := 'f1061';
   AppendData(AInvoice.Attachments[1].Data, 3);
-  AInvoice.Attachments[1].ExternalReference := 'f1033';
-  AInvoice.Attachments[1].SchemeID := 'f1034';
+  AInvoice.Attachments[1].ExternalReference := 'f1063';
+  AInvoice.Attachments[1].SchemeID := 'f1064';
   AInvoice.PrepaidPayments.AddPrepaidPayment;
-  AInvoice.PrepaidPayments[0].ID := 'f1036';
-  AInvoice.PrepaidPayments[0].PaidAmount := 1037;
-  AInvoice.PrepaidPayments[0].PaidAmountCurrencyID := 'f1038';
-  AInvoice.PrepaidPayments[0].InstructionID := 'f1039';
+  AInvoice.PrepaidPayments[0].ID := 'f1066';
+  AInvoice.PrepaidPayments[0].PaidAmount := 1067;
+  AInvoice.PrepaidPayments[0].PaidAmountCurrencyID := 'f1068';
+  AInvoice.PrepaidPayments[0].InstructionID := 'f1069';
   AInvoice.PrepaidPayments.AddPrepaidPayment;
-  AInvoice.PrepaidPayments[1].ID := 'f1040';
-  AInvoice.PrepaidPayments[1].PaidAmount := 1041;
-  AInvoice.PrepaidPayments[1].PaidAmountCurrencyID := 'f1042';
-  AInvoice.PrepaidPayments[1].InstructionID := 'f1043';
+  AInvoice.PrepaidPayments[1].ID := 'f1070';
+  AInvoice.PrepaidPayments[1].PaidAmount := 1071;
+  AInvoice.PrepaidPayments[1].PaidAmountCurrencyID := 'f1072';
+  AInvoice.PrepaidPayments[1].InstructionID := 'f1073';
   AInvoice.AllowanceCharges.AddAllowanceCharge;
   AInvoice.AllowanceCharges[0].ChargeIndicator := True;
   AInvoice.AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther := 'f1047';
+  AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther := 'f1077';
   AInvoice.AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.AllowanceCharges[0].ReasonCodeChargeOther := 'f1049';
-  AInvoice.AllowanceCharges[0].Reason := 'f1050';
-  AInvoice.AllowanceCharges[0].BaseAmount := 1051;
-  AInvoice.AllowanceCharges[0].MultiplierFactorNumeric := 1052.5;
-  AInvoice.AllowanceCharges[0].Amount := 1053;
-  AInvoice.AllowanceCharges[0].TaxPercent := 1054.5;
+  AInvoice.AllowanceCharges[0].ReasonCodeChargeOther := 'f1079';
+  AInvoice.AllowanceCharges[0].Reason := 'f1080';
+  AInvoice.AllowanceCharges[0].BaseAmount := 1081;
+  AInvoice.AllowanceCharges[0].MultiplierFactorNumeric := 1082.5;
+  AInvoice.AllowanceCharges[0].Amount := 1083;
+  AInvoice.AllowanceCharges[0].TaxPercent := 1084.5;
   AInvoice.AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.AllowanceCharges[0].TaxCategoryOther := 'f1056';
+  AInvoice.AllowanceCharges[0].TaxCategoryOther := 'f1086';
+  AInvoice.AllowanceCharges[0].TaxExemptionReason := 'f1087';
+  AInvoice.AllowanceCharges[0].TaxExemptionReasonCode := 'f1088';
   AInvoice.AllowanceCharges.AddAllowanceCharge;
   AInvoice.AllowanceCharges[1].ChargeIndicator := True;
   AInvoice.AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode(1 mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
-  AInvoice.AllowanceCharges[1].ReasonCodeAllowanceOther := 'f1059';
+  AInvoice.AllowanceCharges[1].ReasonCodeAllowanceOther := 'f1091';
   AInvoice.AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode(1 mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
-  AInvoice.AllowanceCharges[1].ReasonCodeChargeOther := 'f1061';
-  AInvoice.AllowanceCharges[1].Reason := 'f1062';
-  AInvoice.AllowanceCharges[1].BaseAmount := 1063;
-  AInvoice.AllowanceCharges[1].MultiplierFactorNumeric := 1064.5;
-  AInvoice.AllowanceCharges[1].Amount := 1065;
-  AInvoice.AllowanceCharges[1].TaxPercent := 1066.5;
+  AInvoice.AllowanceCharges[1].ReasonCodeChargeOther := 'f1093';
+  AInvoice.AllowanceCharges[1].Reason := 'f1094';
+  AInvoice.AllowanceCharges[1].BaseAmount := 1095;
+  AInvoice.AllowanceCharges[1].MultiplierFactorNumeric := 1096.5;
+  AInvoice.AllowanceCharges[1].Amount := 1097;
+  AInvoice.AllowanceCharges[1].TaxPercent := 1098.5;
   AInvoice.AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.AllowanceCharges[1].TaxCategoryOther := 'f1068';
+  AInvoice.AllowanceCharges[1].TaxCategoryOther := 'f1100';
+  AInvoice.AllowanceCharges[1].TaxExemptionReason := 'f1101';
+  AInvoice.AllowanceCharges[1].TaxExemptionReasonCode := 'f1102';
   AInvoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference;
-  AInvoice.PrecedingInvoiceReferences[0].ID := 'f1070';
-  AInvoice.PrecedingInvoiceReferences[0].IssueDate := 41071;
+  AInvoice.PrecedingInvoiceReferences[0].ID := 'f1104';
+  AInvoice.PrecedingInvoiceReferences[0].IssueDate := 41105;
   AInvoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference;
-  AInvoice.PrecedingInvoiceReferences[1].ID := 'f1072';
-  AInvoice.PrecedingInvoiceReferences[1].IssueDate := 41073;
-  AInvoice.TaxAmountTotal := 1074;
-  AInvoice.TaxAmountTotalInTaxCurrency.SetValue(1075);
+  AInvoice.PrecedingInvoiceReferences[1].ID := 'f1106';
+  AInvoice.PrecedingInvoiceReferences[1].IssueDate := 41107;
+  AInvoice.TaxAmountTotal := 1108;
+  AInvoice.TaxAmountTotalInTaxCurrency.SetValue(1109);
   AInvoice.TaxAmountSubtotals.AddTaxAmount;
-  AInvoice.TaxAmountSubtotals[0].TaxableAmount := 1077;
-  AInvoice.TaxAmountSubtotals[0].TaxAmount := 1078;
-  AInvoice.TaxAmountSubtotals[0].TaxPercent := 1079.5;
+  AInvoice.TaxAmountSubtotals[0].TaxableAmount := 1111;
+  AInvoice.TaxAmountSubtotals[0].TaxAmount := 1112;
+  AInvoice.TaxAmountSubtotals[0].TaxPercent := 1113.5;
   AInvoice.TaxAmountSubtotals[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.TaxAmountSubtotals[0].TaxCategoryOther := 'f1081';
-  AInvoice.TaxAmountSubtotals[0].TaxExemptionReason := 'f1082';
-  AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := 'f1083';
+  AInvoice.TaxAmountSubtotals[0].TaxCategoryOther := 'f1115';
+  AInvoice.TaxAmountSubtotals[0].TaxExemptionReason := 'f1116';
+  AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := 'f1117';
   AInvoice.TaxAmountSubtotals.AddTaxAmount;
-  AInvoice.TaxAmountSubtotals[1].TaxableAmount := 1084;
-  AInvoice.TaxAmountSubtotals[1].TaxAmount := 1085;
-  AInvoice.TaxAmountSubtotals[1].TaxPercent := 1086.5;
+  AInvoice.TaxAmountSubtotals[1].TaxableAmount := 1118;
+  AInvoice.TaxAmountSubtotals[1].TaxAmount := 1119;
+  AInvoice.TaxAmountSubtotals[1].TaxPercent := 1120.5;
   AInvoice.TaxAmountSubtotals[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode(1 mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
-  AInvoice.TaxAmountSubtotals[1].TaxCategoryOther := 'f1088';
-  AInvoice.TaxAmountSubtotals[1].TaxExemptionReason := 'f1089';
-  AInvoice.TaxAmountSubtotals[1].TaxExemptionReasonCode := 'f1090';
-  AInvoice.LineAmount := 1091;
-  AInvoice.TaxExclusiveAmount := 1092;
-  AInvoice.TaxInclusiveAmount := 1093;
-  AInvoice.AllowanceTotalAmount := 1094;
-  AInvoice.ChargeTotalAmount := 1095;
-  AInvoice.PrepaidAmount := 1096;
-  AInvoice.PayableRoundingAmount := 1097;
-  AInvoice.PayableAmount := 1098;
+  AInvoice.TaxAmountSubtotals[1].TaxCategoryOther := 'f1122';
+  AInvoice.TaxAmountSubtotals[1].TaxExemptionReason := 'f1123';
+  AInvoice.TaxAmountSubtotals[1].TaxExemptionReasonCode := 'f1124';
+  AInvoice.LineAmount := 1125;
+  AInvoice.TaxExclusiveAmount := 1126;
+  AInvoice.TaxInclusiveAmount := 1127;
+  AInvoice.AllowanceTotalAmount := 1128;
+  AInvoice.ChargeTotalAmount := 1129;
+  AInvoice.PrepaidAmount := 1130;
+  AInvoice.PayableRoundingAmount := 1131;
+  AInvoice.PayableAmount := 1132;
 end;
 
 procedure Mutate2(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string);
@@ -5122,2555 +5194,2695 @@ begin
       end;
     222:
       begin
+        APath := 'InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    223:
+      begin
+        APath := 'InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    224:
+      begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].ChargeIndicator';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].ChargeIndicator := not AInvoice.InvoiceLines[0].AllowanceCharges[1].ChargeIndicator;
       end;
-    223:
+    225:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    224:
+    226:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther + 'x';
       end;
-    225:
+    227:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    226:
+    228:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := AInvoice.InvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther + 'x';
       end;
-    227:
+    229:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].Reason := AInvoice.InvoiceLines[0].AllowanceCharges[1].Reason + 'x';
       end;
-    228:
+    230:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].BaseAmount := AInvoice.InvoiceLines[0].AllowanceCharges[1].BaseAmount + 1;
       end;
-    229:
+    231:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := AInvoice.InvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric + 1;
       end;
-    230:
+    232:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].Amount := AInvoice.InvoiceLines[0].AllowanceCharges[1].Amount + 1;
       end;
-    231:
+    233:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxPercent := AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxPercent + 1;
       end;
-    232:
+    234:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    233:
+    235:
       begin
         APath := 'InvoiceLines[0].AllowanceCharges[1].TaxCategoryOther';
         AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxCategoryOther + 'x';
       end;
-    234:
+    236:
+      begin
+        APath := 'InvoiceLines[0].AllowanceCharges[1].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxExemptionReason := AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxExemptionReason + 'x';
+      end;
+    237:
+      begin
+        APath := 'InvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode + 'x';
+      end;
+    238:
       begin
         APath := 'InvoiceLines[0].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[0].InvoiceLinePeriodStartDate + 1;
       end;
-    235:
+    239:
       begin
         APath := 'InvoiceLines[0].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[0].InvoiceLinePeriodEndDate + 1;
       end;
-    236:
+    240:
       begin
         APath := 'InvoiceLines[0].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[0].ItemClassifications.AddItemClassification;
       end;
-    237:
+    241:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[0].ItemClassifications[0].ClassCode + 'x';
       end;
-    238:
+    242:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ListID := AInvoice.InvoiceLines[0].ItemClassifications[0].ListID + 'x';
       end;
-    239:
+    243:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[0].ItemClassifications[0].ListVersionID + 'x';
       end;
-    240:
+    244:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[0].ItemClassifications[0].ClassificationName + 'x';
       end;
-    241:
+    245:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[1].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].ItemClassifications[1].ClassCode := AInvoice.InvoiceLines[0].ItemClassifications[1].ClassCode + 'x';
       end;
-    242:
+    246:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[1].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].ItemClassifications[1].ListID := AInvoice.InvoiceLines[0].ItemClassifications[1].ListID + 'x';
       end;
-    243:
+    247:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[1].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].ItemClassifications[1].ListVersionID := AInvoice.InvoiceLines[0].ItemClassifications[1].ListVersionID + 'x';
       end;
-    244:
+    248:
       begin
         APath := 'InvoiceLines[0].ItemClassifications[1].ClassificationName';
         AInvoice.InvoiceLines[0].ItemClassifications[1].ClassificationName := AInvoice.InvoiceLines[0].ItemClassifications[1].ClassificationName + 'x';
       end;
-    245:
+    249:
       begin
         APath := 'InvoiceLines[0].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[0].OriginTradeCountry := AInvoice.InvoiceLines[0].OriginTradeCountry + 'x';
       end;
-    246:
+    250:
       begin
         APath := 'InvoiceLines[0].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[0].ItemAttributes.AddItemAttribute;
       end;
-    247:
+    251:
       begin
         APath := 'InvoiceLines[0].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[0].ItemAttributes[0].Name := AInvoice.InvoiceLines[0].ItemAttributes[0].Name + 'x';
       end;
-    248:
+    252:
       begin
         APath := 'InvoiceLines[0].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[0].ItemAttributes[0].Value := AInvoice.InvoiceLines[0].ItemAttributes[0].Value + 'x';
       end;
-    249:
+    253:
       begin
         APath := 'InvoiceLines[0].ItemAttributes[1].Name (BT-160)';
         AInvoice.InvoiceLines[0].ItemAttributes[1].Name := AInvoice.InvoiceLines[0].ItemAttributes[1].Name + 'x';
       end;
-    250:
+    254:
       begin
         APath := 'InvoiceLines[0].ItemAttributes[1].Value (BT-161)';
         AInvoice.InvoiceLines[0].ItemAttributes[1].Value := AInvoice.InvoiceLines[0].ItemAttributes[1].Value + 'x';
       end;
-    251:
+    255:
       begin
         APath := 'InvoiceLines[0].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[0].DeliveryNoteNumber := AInvoice.InvoiceLines[0].DeliveryNoteNumber + 'x';
       end;
-    252:
+    256:
       begin
         APath := 'InvoiceLines[0].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[0].DeliveryNoteLineID := AInvoice.InvoiceLines[0].DeliveryNoteLineID + 'x';
       end;
-    253:
+    257:
       begin
         APath := 'InvoiceLines[0].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[0].DeliveryNoteDate := AInvoice.InvoiceLines[0].DeliveryNoteDate + 1;
       end;
-    254:
+    258:
       begin
         APath := 'InvoiceLines[0].ActualDeliveryDate';
         AInvoice.InvoiceLines[0].ActualDeliveryDate := AInvoice.InvoiceLines[0].ActualDeliveryDate + 1;
       end;
-    255:
+    259:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
       end;
-    256:
+    260:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ID (BT-126)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ID + 'x';
       end;
-    257:
+    261:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN (BT-157)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN := AInvoice.InvoiceLines[0].SubInvoiceLines[0].GlobalID_EAN_GTIN + 'x';
       end;
-    258:
+    262:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier (BT-157)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier := AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifier + 'x';
       end;
-    259:
+    263:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID (BT-157-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].StandardItemIdentifierSchemeID + 'x';
       end;
-    260:
+    264:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Note (BT-127)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Note + 'x';
       end;
-    261:
+    265:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier (BT-128)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifier + 'x';
       end;
-    262:
+    266:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID (BT-128-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ObjectIdentifierSchemeID + 'x';
       end;
-    263:
+    267:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Name (BT-153)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Name + 'x';
       end;
-    264:
+    268:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Description (BT-154)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Description + 'x';
       end;
-    265:
+    269:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].Quantity (BT-129)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity := AInvoice.InvoiceLines[0].SubInvoiceLines[0].Quantity + 1;
       end;
-    266:
+    270:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].UnitCode (BT-130)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    267:
+    271:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].UnitCodeOther + 'x';
       end;
-    268:
+    272:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification (BT-155)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification := AInvoice.InvoiceLines[0].SubInvoiceLines[0].SellersItemIdentification + 'x';
       end;
-    269:
+    273:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification (BT-156)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyersItemIdentification + 'x';
       end;
-    270:
+    274:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OrderNumber (BT-X-21)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber := AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderNumber + 'x';
       end;
-    271:
+    275:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OrderDate (BT-X-22)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderDate.Clear;
       end;
-    272:
+    276:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OrderLineReference (BT-132)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference := AInvoice.InvoiceLines[0].SubInvoiceLines[0].OrderLineReference + 'x';
       end;
-    273:
+    277:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference (BT-133)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BuyerAccountingReference + 'x';
       end;
-    274:
+    278:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxPercent (BT-152)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxPercent + 1;
       end;
-    275:
+    279:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxCategory (BT-151)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    276:
+    280:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxCategoryOther + 'x';
       end;
-    277:
+    281:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].TaxExemptionReason + 'x';
       end;
-    278:
+    282:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount (BT-148/BG-29)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].GrossPriceAmount + 1;
       end;
-    279:
+    283:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice (BT-147)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DiscountOnTheGrossPrice + 1;
       end;
-    280:
+    284:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount (BT-146)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount + 1;
       end;
-    281:
+    285:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BaseQuantity (BT-149)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantity + 1;
       end;
-    282:
+    286:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode (BT-150)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    283:
+    287:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].BaseQuantityUnitCodeOther + 'x';
       end;
-    284:
+    288:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].LineAmount (BT-131)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineAmount + 1;
       end;
-    285:
+    289:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges (BG-27/BT-136/BT-140/BG-28/BT-141/BT-145).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
       end;
-    286:
+    290:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator := not AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator;
       end;
-    287:
+    291:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    288:
+    292:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    289:
+    293:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    290:
+    294:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    291:
+    295:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Reason + 'x';
       end;
-    292:
+    296:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount + 1;
       end;
-    293:
+    297:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    294:
+    298:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].Amount + 1;
       end;
-    295:
+    299:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent + 1;
       end;
-    296:
+    300:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    297:
+    301:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    298:
+    302:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    303:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    304:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator := not AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator;
       end;
-    299:
+    305:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    300:
+    306:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther + 'x';
       end;
-    301:
+    307:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    302:
+    308:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther + 'x';
       end;
-    303:
+    309:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Reason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Reason + 'x';
       end;
-    304:
+    310:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount + 1;
       end;
-    305:
+    311:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric + 1;
       end;
-    306:
+    312:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Amount := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].Amount + 1;
       end;
-    307:
+    313:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent + 1;
       end;
-    308:
+    314:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    309:
+    315:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther + 'x';
       end;
-    310:
+    316:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason + 'x';
+      end;
+    317:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode + 'x';
+      end;
+    318:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodStartDate + 1;
       end;
-    311:
+    319:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].InvoiceLinePeriodEndDate + 1;
       end;
-    312:
+    320:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
       end;
-    313:
+    321:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassCode + 'x';
       end;
-    314:
+    322:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListID + 'x';
       end;
-    315:
+    323:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ListVersionID + 'x';
       end;
-    316:
+    324:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[0].ClassificationName + 'x';
       end;
-    317:
+    325:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassCode := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassCode + 'x';
       end;
-    318:
+    326:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListID + 'x';
       end;
-    319:
+    327:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListVersionID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ListVersionID + 'x';
       end;
-    320:
+    328:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassificationName';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassificationName := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemClassifications[1].ClassificationName + 'x';
       end;
-    321:
+    329:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry := AInvoice.InvoiceLines[0].SubInvoiceLines[0].OriginTradeCountry + 'x';
       end;
-    322:
+    330:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
       end;
-    323:
+    331:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Name + 'x';
       end;
-    324:
+    332:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[0].Value + 'x';
       end;
-    325:
+    333:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Name (BT-160)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Name + 'x';
       end;
-    326:
+    334:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Value (BT-161)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Value := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ItemAttributes[1].Value + 'x';
       end;
-    327:
+    335:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteNumber + 'x';
       end;
-    328:
+    336:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteLineID + 'x';
       end;
-    329:
+    337:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].DeliveryNoteDate + 1;
       end;
-    330:
+    338:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate := AInvoice.InvoiceLines[0].SubInvoiceLines[0].ActualDeliveryDate + 1;
       end;
-    331:
+    339:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
       end;
-    332:
+    340:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    333:
+    341:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[0].LineStatusReasonCodeOther + 'x';
       end;
-    334:
+    342:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ID (BT-126)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ID + 'x';
       end;
-    335:
+    343:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].GlobalID_EAN_GTIN (BT-157)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].GlobalID_EAN_GTIN := AInvoice.InvoiceLines[0].SubInvoiceLines[1].GlobalID_EAN_GTIN + 'x';
       end;
-    336:
+    344:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifier (BT-157)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifier := AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifier + 'x';
       end;
-    337:
+    345:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifierSchemeID (BT-157-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifierSchemeID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].StandardItemIdentifierSchemeID + 'x';
       end;
-    338:
+    346:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].Note (BT-127)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].Note := AInvoice.InvoiceLines[0].SubInvoiceLines[1].Note + 'x';
       end;
-    339:
+    347:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifier (BT-128)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifier := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifier + 'x';
       end;
-    340:
+    348:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifierSchemeID (BT-128-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifierSchemeID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ObjectIdentifierSchemeID + 'x';
       end;
-    341:
+    349:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].Name (BT-153)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[1].Name + 'x';
       end;
-    342:
+    350:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].Description (BT-154)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].Description := AInvoice.InvoiceLines[0].SubInvoiceLines[1].Description + 'x';
       end;
-    343:
+    351:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].Quantity (BT-129)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].Quantity := AInvoice.InvoiceLines[0].SubInvoiceLines[1].Quantity + 1;
       end;
-    344:
+    352:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].UnitCode (BT-130)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].UnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].UnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    345:
+    353:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].UnitCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].UnitCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].UnitCodeOther + 'x';
       end;
-    346:
+    354:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].SellersItemIdentification (BT-155)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].SellersItemIdentification := AInvoice.InvoiceLines[0].SubInvoiceLines[1].SellersItemIdentification + 'x';
       end;
-    347:
+    355:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].BuyersItemIdentification (BT-156)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyersItemIdentification := AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyersItemIdentification + 'x';
       end;
-    348:
+    356:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].OrderNumber (BT-X-21)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderNumber := AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderNumber + 'x';
       end;
-    349:
+    357:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].OrderDate (BT-X-22)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderDate.Clear;
       end;
-    350:
+    358:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].OrderLineReference (BT-132)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderLineReference := AInvoice.InvoiceLines[0].SubInvoiceLines[1].OrderLineReference + 'x';
       end;
-    351:
+    359:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].BuyerAccountingReference (BT-133)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyerAccountingReference := AInvoice.InvoiceLines[0].SubInvoiceLines[1].BuyerAccountingReference + 'x';
       end;
-    352:
+    360:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].TaxPercent (BT-152)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxPercent + 1;
       end;
-    353:
+    361:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].TaxCategory (BT-151)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    354:
+    362:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxCategoryOther + 'x';
       end;
-    355:
+    363:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].TaxExemptionReason';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[1].TaxExemptionReason + 'x';
       end;
-    356:
+    364:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].GrossPriceAmount (BT-148/BG-29)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].GrossPriceAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[1].GrossPriceAmount + 1;
       end;
-    357:
+    365:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].DiscountOnTheGrossPrice (BT-147)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].DiscountOnTheGrossPrice := AInvoice.InvoiceLines[0].SubInvoiceLines[1].DiscountOnTheGrossPrice + 1;
       end;
-    358:
+    366:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].NetPriceAmount (BT-146)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].NetPriceAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[1].NetPriceAmount + 1;
       end;
-    359:
+    367:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].BaseQuantity (BT-149)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantity := AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantity + 1;
       end;
-    360:
+    368:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCode (BT-150)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    361:
+    369:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].BaseQuantityUnitCodeOther + 'x';
       end;
-    362:
+    370:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].LineAmount (BT-131)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineAmount + 1;
       end;
-    363:
+    371:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges (BG-27/BT-136/BT-140/BG-28/BT-141/BT-145).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
       end;
-    364:
+    372:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator := not AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator;
       end;
-    365:
+    373:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    366:
+    374:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    367:
+    375:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    368:
+    376:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    369:
+    377:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Reason := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Reason + 'x';
       end;
-    370:
+    378:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount + 1;
       end;
-    371:
+    379:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    372:
+    380:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Amount := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].Amount + 1;
       end;
-    373:
+    381:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent + 1;
       end;
-    374:
+    382:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    375:
+    383:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    376:
+    384:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    385:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    386:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator := not AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator;
       end;
-    377:
+    387:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    378:
+    388:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther + 'x';
       end;
-    379:
+    389:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    380:
+    390:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther + 'x';
       end;
-    381:
+    391:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Reason := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Reason + 'x';
       end;
-    382:
+    392:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount + 1;
       end;
-    383:
+    393:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric + 1;
       end;
-    384:
+    394:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Amount := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].Amount + 1;
       end;
-    385:
+    395:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent + 1;
       end;
-    386:
+    396:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    387:
+    397:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther + 'x';
       end;
-    388:
+    398:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason + 'x';
+      end;
+    399:
+      begin
+        APath := 'InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode := AInvoice.InvoiceLines[0].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode + 'x';
+      end;
+    400:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodStartDate + 1;
       end;
-    389:
+    401:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[0].SubInvoiceLines[1].InvoiceLinePeriodEndDate + 1;
       end;
-    390:
+    402:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications.AddItemClassification;
       end;
-    391:
+    403:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassCode + 'x';
       end;
-    392:
+    404:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListID + 'x';
       end;
-    393:
+    405:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ListVersionID + 'x';
       end;
-    394:
+    406:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[0].ClassificationName + 'x';
       end;
-    395:
+    407:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassCode (BT-158)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassCode := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassCode + 'x';
       end;
-    396:
+    408:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListID (BT-158-1)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListID + 'x';
       end;
-    397:
+    409:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListVersionID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ListVersionID + 'x';
       end;
-    398:
+    410:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassificationName';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassificationName := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemClassifications[1].ClassificationName + 'x';
       end;
-    399:
+    411:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].OriginTradeCountry := AInvoice.InvoiceLines[0].SubInvoiceLines[1].OriginTradeCountry + 'x';
       end;
-    400:
+    412:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes.AddItemAttribute;
       end;
-    401:
+    413:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Name + 'x';
       end;
-    402:
+    414:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Value := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[0].Value + 'x';
       end;
-    403:
+    415:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Name (BT-160)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Name := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Name + 'x';
       end;
-    404:
+    416:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Value (BT-161)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Value := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ItemAttributes[1].Value + 'x';
       end;
-    405:
+    417:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteNumber := AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteNumber + 'x';
       end;
-    406:
+    418:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteLineID := AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteLineID + 'x';
       end;
-    407:
+    419:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteDate := AInvoice.InvoiceLines[0].SubInvoiceLines[1].DeliveryNoteDate + 1;
       end;
-    408:
+    420:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].ActualDeliveryDate';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].ActualDeliveryDate := AInvoice.InvoiceLines[0].SubInvoiceLines[1].ActualDeliveryDate + 1;
       end;
-    409:
+    421:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].SubInvoiceLines.AddInvoiceLine;
       end;
-    410:
+    422:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    411:
+    423:
       begin
         APath := 'InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCodeOther := AInvoice.InvoiceLines[0].SubInvoiceLines[1].LineStatusReasonCodeOther + 'x';
       end;
-    412:
+    424:
       begin
         APath := 'InvoiceLines[0].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[0].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    413:
+    425:
       begin
         APath := 'InvoiceLines[0].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[0].LineStatusReasonCodeOther := AInvoice.InvoiceLines[0].LineStatusReasonCodeOther + 'x';
       end;
-    414:
+    426:
       begin
         APath := 'InvoiceLines[1].ID (BT-126)';
         AInvoice.InvoiceLines[1].ID := AInvoice.InvoiceLines[1].ID + 'x';
       end;
-    415:
+    427:
       begin
         APath := 'InvoiceLines[1].GlobalID_EAN_GTIN (BT-157)';
         AInvoice.InvoiceLines[1].GlobalID_EAN_GTIN := AInvoice.InvoiceLines[1].GlobalID_EAN_GTIN + 'x';
       end;
-    416:
+    428:
       begin
         APath := 'InvoiceLines[1].StandardItemIdentifier (BT-157)';
         AInvoice.InvoiceLines[1].StandardItemIdentifier := AInvoice.InvoiceLines[1].StandardItemIdentifier + 'x';
       end;
-    417:
+    429:
       begin
         APath := 'InvoiceLines[1].StandardItemIdentifierSchemeID (BT-157-1)';
         AInvoice.InvoiceLines[1].StandardItemIdentifierSchemeID := AInvoice.InvoiceLines[1].StandardItemIdentifierSchemeID + 'x';
       end;
-    418:
+    430:
       begin
         APath := 'InvoiceLines[1].Note (BT-127)';
         AInvoice.InvoiceLines[1].Note := AInvoice.InvoiceLines[1].Note + 'x';
       end;
-    419:
+    431:
       begin
         APath := 'InvoiceLines[1].ObjectIdentifier (BT-128)';
         AInvoice.InvoiceLines[1].ObjectIdentifier := AInvoice.InvoiceLines[1].ObjectIdentifier + 'x';
       end;
-    420:
+    432:
       begin
         APath := 'InvoiceLines[1].ObjectIdentifierSchemeID (BT-128-1)';
         AInvoice.InvoiceLines[1].ObjectIdentifierSchemeID := AInvoice.InvoiceLines[1].ObjectIdentifierSchemeID + 'x';
       end;
-    421:
+    433:
       begin
         APath := 'InvoiceLines[1].Name (BT-153)';
         AInvoice.InvoiceLines[1].Name := AInvoice.InvoiceLines[1].Name + 'x';
       end;
-    422:
+    434:
       begin
         APath := 'InvoiceLines[1].Description (BT-154)';
         AInvoice.InvoiceLines[1].Description := AInvoice.InvoiceLines[1].Description + 'x';
       end;
-    423:
+    435:
       begin
         APath := 'InvoiceLines[1].Quantity (BT-129)';
         AInvoice.InvoiceLines[1].Quantity := AInvoice.InvoiceLines[1].Quantity + 1;
       end;
-    424:
+    436:
       begin
         APath := 'InvoiceLines[1].UnitCode (BT-130)';
         AInvoice.InvoiceLines[1].UnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[1].UnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    425:
+    437:
       begin
         APath := 'InvoiceLines[1].UnitCodeOther';
         AInvoice.InvoiceLines[1].UnitCodeOther := AInvoice.InvoiceLines[1].UnitCodeOther + 'x';
       end;
-    426:
+    438:
       begin
         APath := 'InvoiceLines[1].SellersItemIdentification (BT-155)';
         AInvoice.InvoiceLines[1].SellersItemIdentification := AInvoice.InvoiceLines[1].SellersItemIdentification + 'x';
       end;
-    427:
+    439:
       begin
         APath := 'InvoiceLines[1].BuyersItemIdentification (BT-156)';
         AInvoice.InvoiceLines[1].BuyersItemIdentification := AInvoice.InvoiceLines[1].BuyersItemIdentification + 'x';
       end;
-    428:
+    440:
       begin
         APath := 'InvoiceLines[1].OrderNumber (BT-X-21)';
         AInvoice.InvoiceLines[1].OrderNumber := AInvoice.InvoiceLines[1].OrderNumber + 'x';
       end;
-    429:
+    441:
       begin
         APath := 'InvoiceLines[1].OrderDate (BT-X-22)';
         AInvoice.InvoiceLines[1].OrderDate.Clear;
       end;
-    430:
+    442:
       begin
         APath := 'InvoiceLines[1].OrderLineReference (BT-132)';
         AInvoice.InvoiceLines[1].OrderLineReference := AInvoice.InvoiceLines[1].OrderLineReference + 'x';
       end;
-    431:
+    443:
       begin
         APath := 'InvoiceLines[1].BuyerAccountingReference (BT-133)';
         AInvoice.InvoiceLines[1].BuyerAccountingReference := AInvoice.InvoiceLines[1].BuyerAccountingReference + 'x';
       end;
-    432:
+    444:
       begin
         APath := 'InvoiceLines[1].TaxPercent (BT-152)';
         AInvoice.InvoiceLines[1].TaxPercent := AInvoice.InvoiceLines[1].TaxPercent + 1;
       end;
-    433:
+    445:
       begin
         APath := 'InvoiceLines[1].TaxCategory (BT-151)';
         AInvoice.InvoiceLines[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    434:
+    446:
       begin
         APath := 'InvoiceLines[1].TaxCategoryOther';
         AInvoice.InvoiceLines[1].TaxCategoryOther := AInvoice.InvoiceLines[1].TaxCategoryOther + 'x';
       end;
-    435:
+    447:
       begin
         APath := 'InvoiceLines[1].TaxExemptionReason';
         AInvoice.InvoiceLines[1].TaxExemptionReason := AInvoice.InvoiceLines[1].TaxExemptionReason + 'x';
       end;
-    436:
+    448:
       begin
         APath := 'InvoiceLines[1].GrossPriceAmount (BT-148/BG-29)';
         AInvoice.InvoiceLines[1].GrossPriceAmount := AInvoice.InvoiceLines[1].GrossPriceAmount + 1;
       end;
-    437:
+    449:
       begin
         APath := 'InvoiceLines[1].DiscountOnTheGrossPrice (BT-147)';
         AInvoice.InvoiceLines[1].DiscountOnTheGrossPrice := AInvoice.InvoiceLines[1].DiscountOnTheGrossPrice + 1;
       end;
-    438:
+    450:
       begin
         APath := 'InvoiceLines[1].NetPriceAmount (BT-146)';
         AInvoice.InvoiceLines[1].NetPriceAmount := AInvoice.InvoiceLines[1].NetPriceAmount + 1;
       end;
-    439:
+    451:
       begin
         APath := 'InvoiceLines[1].BaseQuantity (BT-149)';
         AInvoice.InvoiceLines[1].BaseQuantity := AInvoice.InvoiceLines[1].BaseQuantity + 1;
       end;
-    440:
+    452:
       begin
         APath := 'InvoiceLines[1].BaseQuantityUnitCode (BT-150)';
         AInvoice.InvoiceLines[1].BaseQuantityUnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[1].BaseQuantityUnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    441:
+    453:
       begin
         APath := 'InvoiceLines[1].BaseQuantityUnitCodeOther';
         AInvoice.InvoiceLines[1].BaseQuantityUnitCodeOther := AInvoice.InvoiceLines[1].BaseQuantityUnitCodeOther + 'x';
       end;
-    442:
+    454:
       begin
         APath := 'InvoiceLines[1].LineAmount (BT-131)';
         AInvoice.InvoiceLines[1].LineAmount := AInvoice.InvoiceLines[1].LineAmount + 1;
       end;
-    443:
+    455:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges (BG-27/BT-136/BT-140/BG-28/BT-141/BT-145).Count';
         AInvoice.InvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
       end;
-    444:
+    456:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].ChargeIndicator';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].ChargeIndicator := not AInvoice.InvoiceLines[1].AllowanceCharges[0].ChargeIndicator;
       end;
-    445:
+    457:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    446:
+    458:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    447:
+    459:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    448:
+    460:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.InvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    449:
+    461:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].Reason := AInvoice.InvoiceLines[1].AllowanceCharges[0].Reason + 'x';
       end;
-    450:
+    462:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].BaseAmount := AInvoice.InvoiceLines[1].AllowanceCharges[0].BaseAmount + 1;
       end;
-    451:
+    463:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.InvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    452:
+    464:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].Amount := AInvoice.InvoiceLines[1].AllowanceCharges[0].Amount + 1;
       end;
-    453:
+    465:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxPercent := AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxPercent + 1;
       end;
-    454:
+    466:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    455:
+    467:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[0].TaxCategoryOther';
         AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    456:
+    468:
+      begin
+        APath := 'InvoiceLines[1].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    469:
+      begin
+        APath := 'InvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    470:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].ChargeIndicator';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].ChargeIndicator := not AInvoice.InvoiceLines[1].AllowanceCharges[1].ChargeIndicator;
       end;
-    457:
+    471:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    458:
+    472:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther + 'x';
       end;
-    459:
+    473:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    460:
+    474:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := AInvoice.InvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther + 'x';
       end;
-    461:
+    475:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].Reason := AInvoice.InvoiceLines[1].AllowanceCharges[1].Reason + 'x';
       end;
-    462:
+    476:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].BaseAmount := AInvoice.InvoiceLines[1].AllowanceCharges[1].BaseAmount + 1;
       end;
-    463:
+    477:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := AInvoice.InvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric + 1;
       end;
-    464:
+    478:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].Amount := AInvoice.InvoiceLines[1].AllowanceCharges[1].Amount + 1;
       end;
-    465:
+    479:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxPercent := AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxPercent + 1;
       end;
-    466:
+    480:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    467:
+    481:
       begin
         APath := 'InvoiceLines[1].AllowanceCharges[1].TaxCategoryOther';
         AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxCategoryOther + 'x';
       end;
-    468:
+    482:
+      begin
+        APath := 'InvoiceLines[1].AllowanceCharges[1].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxExemptionReason := AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxExemptionReason + 'x';
+      end;
+    483:
+      begin
+        APath := 'InvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode := AInvoice.InvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode + 'x';
+      end;
+    484:
       begin
         APath := 'InvoiceLines[1].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[1].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[1].InvoiceLinePeriodStartDate + 1;
       end;
-    469:
+    485:
       begin
         APath := 'InvoiceLines[1].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[1].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[1].InvoiceLinePeriodEndDate + 1;
       end;
-    470:
+    486:
       begin
         APath := 'InvoiceLines[1].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[1].ItemClassifications.AddItemClassification;
       end;
-    471:
+    487:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[1].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[1].ItemClassifications[0].ClassCode + 'x';
       end;
-    472:
+    488:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[1].ItemClassifications[0].ListID := AInvoice.InvoiceLines[1].ItemClassifications[0].ListID + 'x';
       end;
-    473:
+    489:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[1].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[1].ItemClassifications[0].ListVersionID + 'x';
       end;
-    474:
+    490:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[1].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[1].ItemClassifications[0].ClassificationName + 'x';
       end;
-    475:
+    491:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[1].ClassCode (BT-158)';
         AInvoice.InvoiceLines[1].ItemClassifications[1].ClassCode := AInvoice.InvoiceLines[1].ItemClassifications[1].ClassCode + 'x';
       end;
-    476:
+    492:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[1].ListID (BT-158-1)';
         AInvoice.InvoiceLines[1].ItemClassifications[1].ListID := AInvoice.InvoiceLines[1].ItemClassifications[1].ListID + 'x';
       end;
-    477:
+    493:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[1].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[1].ItemClassifications[1].ListVersionID := AInvoice.InvoiceLines[1].ItemClassifications[1].ListVersionID + 'x';
       end;
-    478:
+    494:
       begin
         APath := 'InvoiceLines[1].ItemClassifications[1].ClassificationName';
         AInvoice.InvoiceLines[1].ItemClassifications[1].ClassificationName := AInvoice.InvoiceLines[1].ItemClassifications[1].ClassificationName + 'x';
       end;
-    479:
+    495:
       begin
         APath := 'InvoiceLines[1].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[1].OriginTradeCountry := AInvoice.InvoiceLines[1].OriginTradeCountry + 'x';
       end;
-    480:
+    496:
       begin
         APath := 'InvoiceLines[1].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[1].ItemAttributes.AddItemAttribute;
       end;
-    481:
+    497:
       begin
         APath := 'InvoiceLines[1].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[1].ItemAttributes[0].Name := AInvoice.InvoiceLines[1].ItemAttributes[0].Name + 'x';
       end;
-    482:
+    498:
       begin
         APath := 'InvoiceLines[1].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[1].ItemAttributes[0].Value := AInvoice.InvoiceLines[1].ItemAttributes[0].Value + 'x';
       end;
-    483:
+    499:
       begin
         APath := 'InvoiceLines[1].ItemAttributes[1].Name (BT-160)';
         AInvoice.InvoiceLines[1].ItemAttributes[1].Name := AInvoice.InvoiceLines[1].ItemAttributes[1].Name + 'x';
       end;
-    484:
+    500:
       begin
         APath := 'InvoiceLines[1].ItemAttributes[1].Value (BT-161)';
         AInvoice.InvoiceLines[1].ItemAttributes[1].Value := AInvoice.InvoiceLines[1].ItemAttributes[1].Value + 'x';
       end;
-    485:
+    501:
       begin
         APath := 'InvoiceLines[1].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[1].DeliveryNoteNumber := AInvoice.InvoiceLines[1].DeliveryNoteNumber + 'x';
       end;
-    486:
+    502:
       begin
         APath := 'InvoiceLines[1].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[1].DeliveryNoteLineID := AInvoice.InvoiceLines[1].DeliveryNoteLineID + 'x';
       end;
-    487:
+    503:
       begin
         APath := 'InvoiceLines[1].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[1].DeliveryNoteDate := AInvoice.InvoiceLines[1].DeliveryNoteDate + 1;
       end;
-    488:
+    504:
       begin
         APath := 'InvoiceLines[1].ActualDeliveryDate';
         AInvoice.InvoiceLines[1].ActualDeliveryDate := AInvoice.InvoiceLines[1].ActualDeliveryDate + 1;
       end;
-    489:
+    505:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines.AddInvoiceLine;
       end;
-    490:
+    506:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ID (BT-126)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ID + 'x';
       end;
-    491:
+    507:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].GlobalID_EAN_GTIN (BT-157)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].GlobalID_EAN_GTIN := AInvoice.InvoiceLines[1].SubInvoiceLines[0].GlobalID_EAN_GTIN + 'x';
       end;
-    492:
+    508:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifier (BT-157)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifier := AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifier + 'x';
       end;
-    493:
+    509:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifierSchemeID (BT-157-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifierSchemeID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].StandardItemIdentifierSchemeID + 'x';
       end;
-    494:
+    510:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].Note (BT-127)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].Note := AInvoice.InvoiceLines[1].SubInvoiceLines[0].Note + 'x';
       end;
-    495:
+    511:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifier (BT-128)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifier := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifier + 'x';
       end;
-    496:
+    512:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifierSchemeID (BT-128-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifierSchemeID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ObjectIdentifierSchemeID + 'x';
       end;
-    497:
+    513:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].Name (BT-153)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].Name := AInvoice.InvoiceLines[1].SubInvoiceLines[0].Name + 'x';
       end;
-    498:
+    514:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].Description (BT-154)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].Description := AInvoice.InvoiceLines[1].SubInvoiceLines[0].Description + 'x';
       end;
-    499:
+    515:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].Quantity (BT-129)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].Quantity := AInvoice.InvoiceLines[1].SubInvoiceLines[0].Quantity + 1;
       end;
-    500:
+    516:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].UnitCode (BT-130)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].UnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].UnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    501:
+    517:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].UnitCodeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].UnitCodeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].UnitCodeOther + 'x';
       end;
-    502:
+    518:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].SellersItemIdentification (BT-155)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].SellersItemIdentification := AInvoice.InvoiceLines[1].SubInvoiceLines[0].SellersItemIdentification + 'x';
       end;
-    503:
+    519:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].BuyersItemIdentification (BT-156)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyersItemIdentification := AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyersItemIdentification + 'x';
       end;
-    504:
+    520:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].OrderNumber (BT-X-21)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderNumber := AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderNumber + 'x';
       end;
-    505:
+    521:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].OrderDate (BT-X-22)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderDate.Clear;
       end;
-    506:
+    522:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].OrderLineReference (BT-132)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderLineReference := AInvoice.InvoiceLines[1].SubInvoiceLines[0].OrderLineReference + 'x';
       end;
-    507:
+    523:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].BuyerAccountingReference (BT-133)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyerAccountingReference := AInvoice.InvoiceLines[1].SubInvoiceLines[0].BuyerAccountingReference + 'x';
       end;
-    508:
+    524:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].TaxPercent (BT-152)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxPercent := AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxPercent + 1;
       end;
-    509:
+    525:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].TaxCategory (BT-151)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    510:
+    526:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].TaxCategoryOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxCategoryOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxCategoryOther + 'x';
       end;
-    511:
+    527:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].TaxExemptionReason';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxExemptionReason := AInvoice.InvoiceLines[1].SubInvoiceLines[0].TaxExemptionReason + 'x';
       end;
-    512:
+    528:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].GrossPriceAmount (BT-148/BG-29)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].GrossPriceAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[0].GrossPriceAmount + 1;
       end;
-    513:
+    529:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].DiscountOnTheGrossPrice (BT-147)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].DiscountOnTheGrossPrice := AInvoice.InvoiceLines[1].SubInvoiceLines[0].DiscountOnTheGrossPrice + 1;
       end;
-    514:
+    530:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].NetPriceAmount (BT-146)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].NetPriceAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[0].NetPriceAmount + 1;
       end;
-    515:
+    531:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].BaseQuantity (BT-149)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantity := AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantity + 1;
       end;
-    516:
+    532:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCode (BT-150)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    517:
+    533:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCodeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCodeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].BaseQuantityUnitCodeOther + 'x';
       end;
-    518:
+    534:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].LineAmount (BT-131)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineAmount + 1;
       end;
-    519:
+    535:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges (BG-27/BT-136/BT-140/BG-28/BT-141/BT-145).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges.AddAllowanceCharge;
       end;
-    520:
+    536:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator := not AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ChargeIndicator;
       end;
-    521:
+    537:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    522:
+    538:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    523:
+    539:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    524:
+    540:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    525:
+    541:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Reason := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Reason + 'x';
       end;
-    526:
+    542:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].BaseAmount + 1;
       end;
-    527:
+    543:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    528:
+    544:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Amount := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].Amount + 1;
       end;
-    529:
+    545:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxPercent + 1;
       end;
-    530:
+    546:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    531:
+    547:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    532:
+    548:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    549:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    550:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator := not AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ChargeIndicator;
       end;
-    533:
+    551:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    534:
+    552:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeAllowanceOther + 'x';
       end;
-    535:
+    553:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    536:
+    554:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].ReasonCodeChargeOther + 'x';
       end;
-    537:
+    555:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Reason := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Reason + 'x';
       end;
-    538:
+    556:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].BaseAmount + 1;
       end;
-    539:
+    557:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].MultiplierFactorNumeric + 1;
       end;
-    540:
+    558:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Amount := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].Amount + 1;
       end;
-    541:
+    559:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxPercent + 1;
       end;
-    542:
+    560:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    543:
+    561:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxCategoryOther + 'x';
       end;
-    544:
+    562:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReason + 'x';
+      end;
+    563:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode := AInvoice.InvoiceLines[1].SubInvoiceLines[0].AllowanceCharges[1].TaxExemptionReasonCode + 'x';
+      end;
+    564:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodStartDate + 1;
       end;
-    545:
+    565:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[1].SubInvoiceLines[0].InvoiceLinePeriodEndDate + 1;
       end;
-    546:
+    566:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications.AddItemClassification;
       end;
-    547:
+    567:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassCode + 'x';
       end;
-    548:
+    568:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListID + 'x';
       end;
-    549:
+    569:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ListVersionID + 'x';
       end;
-    550:
+    570:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[0].ClassificationName + 'x';
       end;
-    551:
+    571:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassCode (BT-158)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassCode := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassCode + 'x';
       end;
-    552:
+    572:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListID (BT-158-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListID + 'x';
       end;
-    553:
+    573:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListVersionID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ListVersionID + 'x';
       end;
-    554:
+    574:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassificationName';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassificationName := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemClassifications[1].ClassificationName + 'x';
       end;
-    555:
+    575:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].OriginTradeCountry := AInvoice.InvoiceLines[1].SubInvoiceLines[0].OriginTradeCountry + 'x';
       end;
-    556:
+    576:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes.AddItemAttribute;
       end;
-    557:
+    577:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Name := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Name + 'x';
       end;
-    558:
+    578:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Value := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[0].Value + 'x';
       end;
-    559:
+    579:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Name (BT-160)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Name := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Name + 'x';
       end;
-    560:
+    580:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Value (BT-161)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Value := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ItemAttributes[1].Value + 'x';
       end;
-    561:
+    581:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteNumber := AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteNumber + 'x';
       end;
-    562:
+    582:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteLineID := AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteLineID + 'x';
       end;
-    563:
+    583:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteDate := AInvoice.InvoiceLines[1].SubInvoiceLines[0].DeliveryNoteDate + 1;
       end;
-    564:
+    584:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].ActualDeliveryDate';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].ActualDeliveryDate := AInvoice.InvoiceLines[1].SubInvoiceLines[0].ActualDeliveryDate + 1;
       end;
-    565:
+    585:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
       end;
-    566:
+    586:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    567:
+    587:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCodeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[0].LineStatusReasonCodeOther + 'x';
       end;
-    568:
+    588:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ID (BT-126)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ID + 'x';
       end;
-    569:
+    589:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].GlobalID_EAN_GTIN (BT-157)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].GlobalID_EAN_GTIN := AInvoice.InvoiceLines[1].SubInvoiceLines[1].GlobalID_EAN_GTIN + 'x';
       end;
-    570:
+    590:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifier (BT-157)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifier := AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifier + 'x';
       end;
-    571:
+    591:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifierSchemeID (BT-157-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifierSchemeID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].StandardItemIdentifierSchemeID + 'x';
       end;
-    572:
+    592:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].Note (BT-127)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].Note := AInvoice.InvoiceLines[1].SubInvoiceLines[1].Note + 'x';
       end;
-    573:
+    593:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifier (BT-128)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifier := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifier + 'x';
       end;
-    574:
+    594:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifierSchemeID (BT-128-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifierSchemeID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ObjectIdentifierSchemeID + 'x';
       end;
-    575:
+    595:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].Name (BT-153)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].Name := AInvoice.InvoiceLines[1].SubInvoiceLines[1].Name + 'x';
       end;
-    576:
+    596:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].Description (BT-154)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].Description := AInvoice.InvoiceLines[1].SubInvoiceLines[1].Description + 'x';
       end;
-    577:
+    597:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].Quantity (BT-129)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].Quantity := AInvoice.InvoiceLines[1].SubInvoiceLines[1].Quantity + 1;
       end;
-    578:
+    598:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].UnitCode (BT-130)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].UnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].UnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    579:
+    599:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].UnitCodeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].UnitCodeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].UnitCodeOther + 'x';
       end;
-    580:
+    600:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].SellersItemIdentification (BT-155)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].SellersItemIdentification := AInvoice.InvoiceLines[1].SubInvoiceLines[1].SellersItemIdentification + 'x';
       end;
-    581:
+    601:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].BuyersItemIdentification (BT-156)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyersItemIdentification := AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyersItemIdentification + 'x';
       end;
-    582:
+    602:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].OrderNumber (BT-X-21)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderNumber := AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderNumber + 'x';
       end;
-    583:
+    603:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].OrderDate (BT-X-22)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderDate.Clear;
       end;
-    584:
+    604:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].OrderLineReference (BT-132)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderLineReference := AInvoice.InvoiceLines[1].SubInvoiceLines[1].OrderLineReference + 'x';
       end;
-    585:
+    605:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].BuyerAccountingReference (BT-133)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyerAccountingReference := AInvoice.InvoiceLines[1].SubInvoiceLines[1].BuyerAccountingReference + 'x';
       end;
-    586:
+    606:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].TaxPercent (BT-152)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxPercent := AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxPercent + 1;
       end;
-    587:
+    607:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].TaxCategory (BT-151)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    588:
+    608:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].TaxCategoryOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxCategoryOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxCategoryOther + 'x';
       end;
-    589:
+    609:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].TaxExemptionReason';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxExemptionReason := AInvoice.InvoiceLines[1].SubInvoiceLines[1].TaxExemptionReason + 'x';
       end;
-    590:
+    610:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].GrossPriceAmount (BT-148/BG-29)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].GrossPriceAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[1].GrossPriceAmount + 1;
       end;
-    591:
+    611:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].DiscountOnTheGrossPrice (BT-147)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].DiscountOnTheGrossPrice := AInvoice.InvoiceLines[1].SubInvoiceLines[1].DiscountOnTheGrossPrice + 1;
       end;
-    592:
+    612:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].NetPriceAmount (BT-146)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].NetPriceAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[1].NetPriceAmount + 1;
       end;
-    593:
+    613:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].BaseQuantity (BT-149)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantity := AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantity + 1;
       end;
-    594:
+    614:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCode (BT-150)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCode := TLandrixInvoiceUnitCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCode) + 1) mod (Ord(High(TLandrixInvoiceUnitCode)) + 1));
       end;
-    595:
+    615:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCodeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCodeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].BaseQuantityUnitCodeOther + 'x';
       end;
-    596:
+    616:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].LineAmount (BT-131)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineAmount + 1;
       end;
-    597:
+    617:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges (BG-27/BT-136/BT-140/BG-28/BT-141/BT-145).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges.AddAllowanceCharge;
       end;
-    598:
+    618:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator := not AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ChargeIndicator;
       end;
-    599:
+    619:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    600:
+    620:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    601:
+    621:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    602:
+    622:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    603:
+    623:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Reason := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Reason + 'x';
       end;
-    604:
+    624:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].BaseAmount + 1;
       end;
-    605:
+    625:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    606:
+    626:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Amount := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].Amount + 1;
       end;
-    607:
+    627:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxPercent + 1;
       end;
-    608:
+    628:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    609:
+    629:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    610:
+    630:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    631:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    632:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator := not AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ChargeIndicator;
       end;
-    611:
+    633:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    612:
+    634:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeAllowanceOther + 'x';
       end;
-    613:
+    635:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    614:
+    636:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].ReasonCodeChargeOther + 'x';
       end;
-    615:
+    637:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Reason := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Reason + 'x';
       end;
-    616:
+    638:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].BaseAmount + 1;
       end;
-    617:
+    639:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].MultiplierFactorNumeric + 1;
       end;
-    618:
+    640:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Amount := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].Amount + 1;
       end;
-    619:
+    641:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent (BT-96/BT-103)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxPercent + 1;
       end;
-    620:
+    642:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory (BT-95/BT-102)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    621:
+    643:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxCategoryOther + 'x';
       end;
-    622:
+    644:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason (BT-173)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReason + 'x';
+      end;
+    645:
+      begin
+        APath := 'InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode (BT-174)';
+        AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode := AInvoice.InvoiceLines[1].SubInvoiceLines[1].AllowanceCharges[1].TaxExemptionReasonCode + 'x';
+      end;
+    646:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodStartDate (BT-134/BG-26)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodStartDate := AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodStartDate + 1;
       end;
-    623:
+    647:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodEndDate (BT-135/BG-26)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodEndDate := AInvoice.InvoiceLines[1].SubInvoiceLines[1].InvoiceLinePeriodEndDate + 1;
       end;
-    624:
+    648:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications (BT-158).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications.AddItemClassification;
       end;
-    625:
+    649:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassCode (BT-158)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassCode := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassCode + 'x';
       end;
-    626:
+    650:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListID (BT-158-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListID + 'x';
       end;
-    627:
+    651:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListVersionID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ListVersionID + 'x';
       end;
-    628:
+    652:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassificationName';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassificationName := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[0].ClassificationName + 'x';
       end;
-    629:
+    653:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassCode (BT-158)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassCode := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassCode + 'x';
       end;
-    630:
+    654:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListID (BT-158-1)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListID + 'x';
       end;
-    631:
+    655:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListVersionID (BT-158-2)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListVersionID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ListVersionID + 'x';
       end;
-    632:
+    656:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassificationName';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassificationName := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemClassifications[1].ClassificationName + 'x';
       end;
-    633:
+    657:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].OriginTradeCountry (BT-159)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].OriginTradeCountry := AInvoice.InvoiceLines[1].SubInvoiceLines[1].OriginTradeCountry + 'x';
       end;
-    634:
+    658:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemAttributes (BG-32/BT-160/BT-161).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes.AddItemAttribute;
       end;
-    635:
+    659:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Name (BT-160)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Name := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Name + 'x';
       end;
-    636:
+    660:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Value (BT-161)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Value := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[0].Value + 'x';
       end;
-    637:
+    661:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Name (BT-160)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Name := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Name + 'x';
       end;
-    638:
+    662:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Value (BT-161)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Value := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ItemAttributes[1].Value + 'x';
       end;
-    639:
+    663:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteNumber (BT-X-92)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteNumber := AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteNumber + 'x';
       end;
-    640:
+    664:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteLineID (BT-X-93)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteLineID := AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteLineID + 'x';
       end;
-    641:
+    665:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteDate (BT-X-94)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteDate := AInvoice.InvoiceLines[1].SubInvoiceLines[1].DeliveryNoteDate + 1;
       end;
-    642:
+    666:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].ActualDeliveryDate';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].ActualDeliveryDate := AInvoice.InvoiceLines[1].SubInvoiceLines[1].ActualDeliveryDate + 1;
       end;
-    643:
+    667:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].SubInvoiceLines (BT-106/BT-X-304).Count';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].SubInvoiceLines.AddInvoiceLine;
       end;
-    644:
+    668:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    645:
+    669:
       begin
         APath := 'InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCodeOther := AInvoice.InvoiceLines[1].SubInvoiceLines[1].LineStatusReasonCodeOther + 'x';
       end;
-    646:
+    670:
       begin
         APath := 'InvoiceLines[1].LineStatusReasonCode (BT-X-8)';
         AInvoice.InvoiceLines[1].LineStatusReasonCode := TLandrixInvoiceLineStatusReasonCode((Ord(AInvoice.InvoiceLines[1].LineStatusReasonCode) + 1) mod (Ord(High(TLandrixInvoiceLineStatusReasonCode)) + 1));
       end;
-    647:
+    671:
       begin
         APath := 'InvoiceLines[1].LineStatusReasonCodeOther';
         AInvoice.InvoiceLines[1].LineStatusReasonCodeOther := AInvoice.InvoiceLines[1].LineStatusReasonCodeOther + 'x';
       end;
-    648:
+    672:
       begin
         APath := 'Attachments (BG-24).Count';
         AInvoice.Attachments.AddAttachment(TLandrixInvoiceAttachmentType(1));
       end;
-    649:
+    673:
       begin
         APath := 'Attachments[0].ID (BT-122)';
         AInvoice.Attachments[0].ID := AInvoice.Attachments[0].ID + 'x';
       end;
-    650:
+    674:
       begin
         APath := 'Attachments[0].DocumentDescription (BT-123)';
         AInvoice.Attachments[0].DocumentDescription := AInvoice.Attachments[0].DocumentDescription + 'x';
       end;
-    651:
+    675:
       begin
         APath := 'Attachments[0].Filename (BT-125-2)';
         AInvoice.Attachments[0].Filename := AInvoice.Attachments[0].Filename + 'x';
       end;
-    652:
+    676:
       begin
         APath := 'Attachments[0].TypeCode (BT-17/BT-18/BT-122)';
         AInvoice.Attachments[0].TypeCode := TLandrixInvoiceAttachmentTypeCode((Ord(AInvoice.Attachments[0].TypeCode) + 1) mod (Ord(High(TLandrixInvoiceAttachmentTypeCode)) + 1));
       end;
-    653:
+    677:
       begin
         APath := 'Attachments[0].TypeCodeOther';
         AInvoice.Attachments[0].TypeCodeOther := AInvoice.Attachments[0].TypeCodeOther + 'x';
       end;
-    654:
+    678:
       begin
         APath := 'Attachments[0].AttachmentType (BT-125-1)';
         AInvoice.Attachments[0].AttachmentType := TLandrixInvoiceAttachmentType((Ord(AInvoice.Attachments[0].AttachmentType) + 1) mod (Ord(High(TLandrixInvoiceAttachmentType)) + 1));
       end;
-    655:
+    679:
       begin
         APath := 'Attachments[0].AttachmentTypeOther';
         AInvoice.Attachments[0].AttachmentTypeOther := AInvoice.Attachments[0].AttachmentTypeOther + 'x';
       end;
-    656:
+    680:
       begin
         APath := 'Attachments[0].Data (BT-125)';
         AppendData(AInvoice.Attachments[0].Data, 1);
       end;
-    657:
+    681:
       begin
         APath := 'Attachments[0].ExternalReference (BT-124)';
         AInvoice.Attachments[0].ExternalReference := AInvoice.Attachments[0].ExternalReference + 'x';
       end;
-    658:
+    682:
       begin
         APath := 'Attachments[0].SchemeID (BT-18-1)';
         AInvoice.Attachments[0].SchemeID := AInvoice.Attachments[0].SchemeID + 'x';
       end;
-    659:
+    683:
       begin
         APath := 'Attachments[1].ID (BT-122)';
         AInvoice.Attachments[1].ID := AInvoice.Attachments[1].ID + 'x';
       end;
-    660:
+    684:
       begin
         APath := 'Attachments[1].DocumentDescription (BT-123)';
         AInvoice.Attachments[1].DocumentDescription := AInvoice.Attachments[1].DocumentDescription + 'x';
       end;
-    661:
+    685:
       begin
         APath := 'Attachments[1].Filename (BT-125-2)';
         AInvoice.Attachments[1].Filename := AInvoice.Attachments[1].Filename + 'x';
       end;
-    662:
+    686:
       begin
         APath := 'Attachments[1].TypeCode (BT-17/BT-18/BT-122)';
         AInvoice.Attachments[1].TypeCode := TLandrixInvoiceAttachmentTypeCode((Ord(AInvoice.Attachments[1].TypeCode) + 1) mod (Ord(High(TLandrixInvoiceAttachmentTypeCode)) + 1));
       end;
-    663:
+    687:
       begin
         APath := 'Attachments[1].TypeCodeOther';
         AInvoice.Attachments[1].TypeCodeOther := AInvoice.Attachments[1].TypeCodeOther + 'x';
       end;
-    664:
+    688:
       begin
         APath := 'Attachments[1].AttachmentType (BT-125-1)';
         AInvoice.Attachments[1].AttachmentType := TLandrixInvoiceAttachmentType((Ord(AInvoice.Attachments[1].AttachmentType) + 1) mod (Ord(High(TLandrixInvoiceAttachmentType)) + 1));
       end;
-    665:
+    689:
       begin
         APath := 'Attachments[1].AttachmentTypeOther';
         AInvoice.Attachments[1].AttachmentTypeOther := AInvoice.Attachments[1].AttachmentTypeOther + 'x';
       end;
-    666:
+    690:
       begin
         APath := 'Attachments[1].Data (BT-125)';
         AppendData(AInvoice.Attachments[1].Data, 1);
       end;
-    667:
+    691:
       begin
         APath := 'Attachments[1].ExternalReference (BT-124)';
         AInvoice.Attachments[1].ExternalReference := AInvoice.Attachments[1].ExternalReference + 'x';
       end;
-    668:
+    692:
       begin
         APath := 'Attachments[1].SchemeID (BT-18-1)';
         AInvoice.Attachments[1].SchemeID := AInvoice.Attachments[1].SchemeID + 'x';
       end;
-    669:
+    693:
       begin
         APath := 'PrepaidPayments (BG-DEX-09).Count';
         AInvoice.PrepaidPayments.AddPrepaidPayment;
       end;
-    670:
+    694:
       begin
         APath := 'PrepaidPayments[0].ID (BT-DEX-001)';
         AInvoice.PrepaidPayments[0].ID := AInvoice.PrepaidPayments[0].ID + 'x';
       end;
-    671:
+    695:
       begin
         APath := 'PrepaidPayments[0].PaidAmount (BT-DEX-002)';
         AInvoice.PrepaidPayments[0].PaidAmount := AInvoice.PrepaidPayments[0].PaidAmount + 1;
       end;
-    672:
+    696:
       begin
         APath := 'PrepaidPayments[0].PaidAmountCurrencyID (BT-DEX-002)';
         AInvoice.PrepaidPayments[0].PaidAmountCurrencyID := AInvoice.PrepaidPayments[0].PaidAmountCurrencyID + 'x';
       end;
-    673:
+    697:
       begin
         APath := 'PrepaidPayments[0].InstructionID (BT-DEX-003)';
         AInvoice.PrepaidPayments[0].InstructionID := AInvoice.PrepaidPayments[0].InstructionID + 'x';
       end;
-    674:
+    698:
       begin
         APath := 'PrepaidPayments[1].ID (BT-DEX-001)';
         AInvoice.PrepaidPayments[1].ID := AInvoice.PrepaidPayments[1].ID + 'x';
       end;
-    675:
+    699:
       begin
         APath := 'PrepaidPayments[1].PaidAmount (BT-DEX-002)';
         AInvoice.PrepaidPayments[1].PaidAmount := AInvoice.PrepaidPayments[1].PaidAmount + 1;
       end;
-    676:
+    700:
       begin
         APath := 'PrepaidPayments[1].PaidAmountCurrencyID (BT-DEX-002)';
         AInvoice.PrepaidPayments[1].PaidAmountCurrencyID := AInvoice.PrepaidPayments[1].PaidAmountCurrencyID + 'x';
       end;
-    677:
+    701:
       begin
         APath := 'PrepaidPayments[1].InstructionID (BT-DEX-003)';
         AInvoice.PrepaidPayments[1].InstructionID := AInvoice.PrepaidPayments[1].InstructionID + 'x';
       end;
-    678:
+    702:
       begin
         APath := 'AllowanceCharges (BG-20/BG-21).Count';
         AInvoice.AllowanceCharges.AddAllowanceCharge;
       end;
-    679:
+    703:
       begin
         APath := 'AllowanceCharges[0].ChargeIndicator';
         AInvoice.AllowanceCharges[0].ChargeIndicator := not AInvoice.AllowanceCharges[0].ChargeIndicator;
       end;
-    680:
+    704:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.AllowanceCharges[0].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.AllowanceCharges[0].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    681:
+    705:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeAllowanceOther';
         AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther := AInvoice.AllowanceCharges[0].ReasonCodeAllowanceOther + 'x';
       end;
-    682:
+    706:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.AllowanceCharges[0].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.AllowanceCharges[0].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    683:
+    707:
       begin
         APath := 'AllowanceCharges[0].ReasonCodeChargeOther';
         AInvoice.AllowanceCharges[0].ReasonCodeChargeOther := AInvoice.AllowanceCharges[0].ReasonCodeChargeOther + 'x';
       end;
-    684:
+    708:
       begin
         APath := 'AllowanceCharges[0].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.AllowanceCharges[0].Reason := AInvoice.AllowanceCharges[0].Reason + 'x';
       end;
-    685:
+    709:
       begin
         APath := 'AllowanceCharges[0].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.AllowanceCharges[0].BaseAmount := AInvoice.AllowanceCharges[0].BaseAmount + 1;
       end;
-    686:
+    710:
       begin
         APath := 'AllowanceCharges[0].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.AllowanceCharges[0].MultiplierFactorNumeric := AInvoice.AllowanceCharges[0].MultiplierFactorNumeric + 1;
       end;
-    687:
+    711:
       begin
         APath := 'AllowanceCharges[0].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.AllowanceCharges[0].Amount := AInvoice.AllowanceCharges[0].Amount + 1;
       end;
-    688:
+    712:
       begin
         APath := 'AllowanceCharges[0].TaxPercent (BT-96/BT-103)';
         AInvoice.AllowanceCharges[0].TaxPercent := AInvoice.AllowanceCharges[0].TaxPercent + 1;
       end;
-    689:
+    713:
       begin
         APath := 'AllowanceCharges[0].TaxCategory (BT-95/BT-102)';
         AInvoice.AllowanceCharges[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.AllowanceCharges[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    690:
+    714:
       begin
         APath := 'AllowanceCharges[0].TaxCategoryOther';
         AInvoice.AllowanceCharges[0].TaxCategoryOther := AInvoice.AllowanceCharges[0].TaxCategoryOther + 'x';
       end;
-    691:
+    715:
+      begin
+        APath := 'AllowanceCharges[0].TaxExemptionReason (BT-173)';
+        AInvoice.AllowanceCharges[0].TaxExemptionReason := AInvoice.AllowanceCharges[0].TaxExemptionReason + 'x';
+      end;
+    716:
+      begin
+        APath := 'AllowanceCharges[0].TaxExemptionReasonCode (BT-174)';
+        AInvoice.AllowanceCharges[0].TaxExemptionReasonCode := AInvoice.AllowanceCharges[0].TaxExemptionReasonCode + 'x';
+      end;
+    717:
       begin
         APath := 'AllowanceCharges[1].ChargeIndicator';
         AInvoice.AllowanceCharges[1].ChargeIndicator := not AInvoice.AllowanceCharges[1].ChargeIndicator;
       end;
-    692:
+    718:
       begin
         APath := 'AllowanceCharges[1].ReasonCodeAllowance (BT-98/BT-140)';
         AInvoice.AllowanceCharges[1].ReasonCodeAllowance := TLandrixInvoiceAllowanceOrChargeIdentCode((Ord(AInvoice.AllowanceCharges[1].ReasonCodeAllowance) + 1) mod (Ord(High(TLandrixInvoiceAllowanceOrChargeIdentCode)) + 1));
       end;
-    693:
+    719:
       begin
         APath := 'AllowanceCharges[1].ReasonCodeAllowanceOther';
         AInvoice.AllowanceCharges[1].ReasonCodeAllowanceOther := AInvoice.AllowanceCharges[1].ReasonCodeAllowanceOther + 'x';
       end;
-    694:
+    720:
       begin
         APath := 'AllowanceCharges[1].ReasonCodeCharge (BT-105/BT-145)';
         AInvoice.AllowanceCharges[1].ReasonCodeCharge := TLandrixInvoiceSpecialServiceDescriptionCode((Ord(AInvoice.AllowanceCharges[1].ReasonCodeCharge) + 1) mod (Ord(High(TLandrixInvoiceSpecialServiceDescriptionCode)) + 1));
       end;
-    695:
+    721:
       begin
         APath := 'AllowanceCharges[1].ReasonCodeChargeOther';
         AInvoice.AllowanceCharges[1].ReasonCodeChargeOther := AInvoice.AllowanceCharges[1].ReasonCodeChargeOther + 'x';
       end;
-    696:
+    722:
       begin
         APath := 'AllowanceCharges[1].Reason (BT-97/BT-104/BT-139/BT-144)';
         AInvoice.AllowanceCharges[1].Reason := AInvoice.AllowanceCharges[1].Reason + 'x';
       end;
-    697:
+    723:
       begin
         APath := 'AllowanceCharges[1].BaseAmount (BT-93/BT-100/BT-137/BT-142)';
         AInvoice.AllowanceCharges[1].BaseAmount := AInvoice.AllowanceCharges[1].BaseAmount + 1;
       end;
-    698:
+    724:
       begin
         APath := 'AllowanceCharges[1].MultiplierFactorNumeric (BT-94/BT-101/BT-138/BT-143)';
         AInvoice.AllowanceCharges[1].MultiplierFactorNumeric := AInvoice.AllowanceCharges[1].MultiplierFactorNumeric + 1;
       end;
-    699:
+    725:
       begin
         APath := 'AllowanceCharges[1].Amount (BT-92/BT-99/BT-136/BT-141)';
         AInvoice.AllowanceCharges[1].Amount := AInvoice.AllowanceCharges[1].Amount + 1;
       end;
-    700:
+    726:
       begin
         APath := 'AllowanceCharges[1].TaxPercent (BT-96/BT-103)';
         AInvoice.AllowanceCharges[1].TaxPercent := AInvoice.AllowanceCharges[1].TaxPercent + 1;
       end;
-    701:
+    727:
       begin
         APath := 'AllowanceCharges[1].TaxCategory (BT-95/BT-102)';
         AInvoice.AllowanceCharges[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.AllowanceCharges[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    702:
+    728:
       begin
         APath := 'AllowanceCharges[1].TaxCategoryOther';
         AInvoice.AllowanceCharges[1].TaxCategoryOther := AInvoice.AllowanceCharges[1].TaxCategoryOther + 'x';
       end;
-    703:
+    729:
+      begin
+        APath := 'AllowanceCharges[1].TaxExemptionReason (BT-173)';
+        AInvoice.AllowanceCharges[1].TaxExemptionReason := AInvoice.AllowanceCharges[1].TaxExemptionReason + 'x';
+      end;
+    730:
+      begin
+        APath := 'AllowanceCharges[1].TaxExemptionReasonCode (BT-174)';
+        AInvoice.AllowanceCharges[1].TaxExemptionReasonCode := AInvoice.AllowanceCharges[1].TaxExemptionReasonCode + 'x';
+      end;
+    731:
       begin
         APath := 'PrecedingInvoiceReferences (BG-3).Count';
         AInvoice.PrecedingInvoiceReferences.AddPrecedingInvoiceReference;
       end;
-    704:
+    732:
       begin
         APath := 'PrecedingInvoiceReferences[0].ID (BT-25)';
         AInvoice.PrecedingInvoiceReferences[0].ID := AInvoice.PrecedingInvoiceReferences[0].ID + 'x';
       end;
-    705:
+    733:
       begin
         APath := 'PrecedingInvoiceReferences[0].IssueDate (BT-26)';
         AInvoice.PrecedingInvoiceReferences[0].IssueDate := AInvoice.PrecedingInvoiceReferences[0].IssueDate + 1;
       end;
-    706:
+    734:
       begin
         APath := 'PrecedingInvoiceReferences[1].ID (BT-25)';
         AInvoice.PrecedingInvoiceReferences[1].ID := AInvoice.PrecedingInvoiceReferences[1].ID + 'x';
       end;
-    707:
+    735:
       begin
         APath := 'PrecedingInvoiceReferences[1].IssueDate (BT-26)';
         AInvoice.PrecedingInvoiceReferences[1].IssueDate := AInvoice.PrecedingInvoiceReferences[1].IssueDate + 1;
       end;
-    708:
+    736:
       begin
         APath := 'TaxAmountTotal (BT-110)';
         AInvoice.TaxAmountTotal := AInvoice.TaxAmountTotal + 1;
       end;
-    709:
+    737:
       begin
         APath := 'TaxAmountTotalInTaxCurrency (BT-111/BT-6)';
         AInvoice.TaxAmountTotalInTaxCurrency.Clear;
       end;
-    710:
+    738:
       begin
         APath := 'TaxAmountSubtotals (BG-23).Count';
         AInvoice.TaxAmountSubtotals.AddTaxAmount;
       end;
-    711:
+    739:
       begin
         APath := 'TaxAmountSubtotals[0].TaxableAmount (BT-116)';
         AInvoice.TaxAmountSubtotals[0].TaxableAmount := AInvoice.TaxAmountSubtotals[0].TaxableAmount + 1;
       end;
-    712:
+    740:
       begin
         APath := 'TaxAmountSubtotals[0].TaxAmount (BT-117)';
         AInvoice.TaxAmountSubtotals[0].TaxAmount := AInvoice.TaxAmountSubtotals[0].TaxAmount + 1;
       end;
-    713:
+    741:
       begin
         APath := 'TaxAmountSubtotals[0].TaxPercent (BT-119)';
         AInvoice.TaxAmountSubtotals[0].TaxPercent := AInvoice.TaxAmountSubtotals[0].TaxPercent + 1;
       end;
-    714:
+    742:
       begin
         APath := 'TaxAmountSubtotals[0].TaxCategory (BT-118)';
         AInvoice.TaxAmountSubtotals[0].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.TaxAmountSubtotals[0].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    715:
+    743:
       begin
         APath := 'TaxAmountSubtotals[0].TaxCategoryOther';
         AInvoice.TaxAmountSubtotals[0].TaxCategoryOther := AInvoice.TaxAmountSubtotals[0].TaxCategoryOther + 'x';
       end;
-    716:
+    744:
       begin
         APath := 'TaxAmountSubtotals[0].TaxExemptionReason (BT-120)';
         AInvoice.TaxAmountSubtotals[0].TaxExemptionReason := AInvoice.TaxAmountSubtotals[0].TaxExemptionReason + 'x';
       end;
-    717:
+    745:
       begin
         APath := 'TaxAmountSubtotals[0].TaxExemptionReasonCode (BT-121)';
         AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := AInvoice.TaxAmountSubtotals[0].TaxExemptionReasonCode + 'x';
       end;
-    718:
+    746:
       begin
         APath := 'TaxAmountSubtotals[1].TaxableAmount (BT-116)';
         AInvoice.TaxAmountSubtotals[1].TaxableAmount := AInvoice.TaxAmountSubtotals[1].TaxableAmount + 1;
       end;
-    719:
+    747:
       begin
         APath := 'TaxAmountSubtotals[1].TaxAmount (BT-117)';
         AInvoice.TaxAmountSubtotals[1].TaxAmount := AInvoice.TaxAmountSubtotals[1].TaxAmount + 1;
       end;
-    720:
+    748:
       begin
         APath := 'TaxAmountSubtotals[1].TaxPercent (BT-119)';
         AInvoice.TaxAmountSubtotals[1].TaxPercent := AInvoice.TaxAmountSubtotals[1].TaxPercent + 1;
       end;
-    721:
+    749:
       begin
         APath := 'TaxAmountSubtotals[1].TaxCategory (BT-118)';
         AInvoice.TaxAmountSubtotals[1].TaxCategory := TLandrixInvoiceDutyTaxFeeCategoryCode((Ord(AInvoice.TaxAmountSubtotals[1].TaxCategory) + 1) mod (Ord(High(TLandrixInvoiceDutyTaxFeeCategoryCode)) + 1));
       end;
-    722:
+    750:
       begin
         APath := 'TaxAmountSubtotals[1].TaxCategoryOther';
         AInvoice.TaxAmountSubtotals[1].TaxCategoryOther := AInvoice.TaxAmountSubtotals[1].TaxCategoryOther + 'x';
       end;
-    723:
+    751:
       begin
         APath := 'TaxAmountSubtotals[1].TaxExemptionReason (BT-120)';
         AInvoice.TaxAmountSubtotals[1].TaxExemptionReason := AInvoice.TaxAmountSubtotals[1].TaxExemptionReason + 'x';
       end;
-    724:
+    752:
       begin
         APath := 'TaxAmountSubtotals[1].TaxExemptionReasonCode (BT-121)';
         AInvoice.TaxAmountSubtotals[1].TaxExemptionReasonCode := AInvoice.TaxAmountSubtotals[1].TaxExemptionReasonCode + 'x';
       end;
-    725:
+    753:
       begin
         APath := 'LineAmount (BT-106)';
         AInvoice.LineAmount := AInvoice.LineAmount + 1;
       end;
-    726:
+    754:
       begin
         APath := 'TaxExclusiveAmount (BT-109)';
         AInvoice.TaxExclusiveAmount := AInvoice.TaxExclusiveAmount + 1;
       end;
-    727:
+    755:
       begin
         APath := 'TaxInclusiveAmount (BT-112)';
         AInvoice.TaxInclusiveAmount := AInvoice.TaxInclusiveAmount + 1;
       end;
-    728:
+    756:
       begin
         APath := 'AllowanceTotalAmount (BT-107)';
         AInvoice.AllowanceTotalAmount := AInvoice.AllowanceTotalAmount + 1;
       end;
-    729:
+    757:
       begin
         APath := 'ChargeTotalAmount (BT-108)';
         AInvoice.ChargeTotalAmount := AInvoice.ChargeTotalAmount + 1;
       end;
-    730:
+    758:
       begin
         APath := 'PrepaidAmount (BT-113)';
         AInvoice.PrepaidAmount := AInvoice.PrepaidAmount + 1;
       end;
-    731:
+    759:
       begin
         APath := 'PayableRoundingAmount (BT-114)';
         AInvoice.PayableRoundingAmount := AInvoice.PayableRoundingAmount + 1;
       end;
-    732:
+    760:
       begin
         APath := 'PayableAmount (BT-115/BT-112/BT-113/BT-114/BT-DEX-002)';
         AInvoice.PayableAmount := AInvoice.PayableAmount + 1;
@@ -7699,9 +7911,9 @@ function InvoiceLeafCount(AItems: Integer): Integer;
 begin
   CheckItems(AItems);
   if AItems = 1 then
-    Result := 341
+    Result := 347
   else
-    Result := 733;
+    Result := 761;
 end;
 
 procedure MutateInvoiceLeaf(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string; AItems: Integer);

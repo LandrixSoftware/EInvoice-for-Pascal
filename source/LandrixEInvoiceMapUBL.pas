@@ -1383,6 +1383,11 @@ begin
     if Item.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax then
       Category.Percent := LandrixEInvoicePercentToLexical(Item.TaxPercent);
     Category.TaxScheme.ID.Value := 'VAT';
+    { BT-173/BT-174 only in Factur-X EXTENDED (CII): reported
+      DE: BT-173/BT-174 nur in Factur-X EXTENDED (CII): gemeldet }
+    if Present(Item.TaxExemptionReason) or Present(Item.TaxExemptionReasonCode) then
+      Permit(LandrixEInvoiceRuleAllowanceChargeTaxExemptionReason, FDoc.Path + '/cac:AllowanceCharge/cac:TaxCategory',
+        'VAT exemption reason of allowance or charge ' + TLandrixEInvoiceString(IntToStr(I + 1)));
   end;
 end;
 

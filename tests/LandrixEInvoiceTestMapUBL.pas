@@ -867,6 +867,9 @@ begin
     CheckEquals(0, CountKind(D, edk_NotAllowed, '/cac:AccountingCustomerParty/cac:Party/cac:Contact'),
       'department without person name is the contact point');
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:PaymentTerms/cbc:Note'), 'text of the discount level left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:AllowanceCharge/cac:TaxCategory'),
+      'exemption reason of the allowance left out');
+    Check(Pos('VATEX-EU-132', Text) = 0, 'no BT-174');
     Check(Pos('<cbc:TaxPointDate>2026-10-01</cbc:TaxPointDate>', Text) > 0, 'BT-7 written');
     Check(Pos('<cbc:ID>LOC-7</cbc:ID>', Text) > 0, 'BT-71 without scheme');
     Check(Pos('<cbc:TaxAmount currencyID="SEK">215.50</cbc:TaxAmount>', Text) > 0, 'BT-111 written');

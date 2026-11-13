@@ -500,6 +500,7 @@ var
   Line: TLandrixInvoiceLine;
   Attachment: TLandrixInvoiceAttachment;
   Subtotal: TLandrixInvoiceTaxAmount;
+  Allowance: TLandrixInvoiceAllowanceCharge;
 begin
   AInvoice.InvoiceNumber := 'R-2';
   AInvoice.InvoiceTypeCode := itc_CommercialInvoice;
@@ -559,6 +560,13 @@ begin
   Subtotal.TaxAmount := 0;
   Subtotal.TaxPercent := 7;
   Subtotal.TaxCategory := idtfcc_S_StandardRate;
+  { BT-173/BT-174: EXTENDED only }
+  Allowance := AInvoice.AllowanceCharges.AddAllowanceCharge;
+  Allowance.Amount := 5;
+  Allowance.Reason := 'Exempt discount';
+  Allowance.TaxCategory := idtfcc_E_ExemptFromTax;
+  Allowance.TaxExemptionReason := 'Exempt under article 132';
+  Allowance.TaxExemptionReasonCode := 'VATEX-EU-132';
   Line := AInvoice.InvoiceLines.AddInvoiceLine;
   Line.ID := '1';
   Line.Name := 'Item';
@@ -665,6 +673,9 @@ begin
     CheckEqualsInvoiceStr('0088', Back.InvoiceLines[0].StandardItemIdentifierSchemeID, 'BT-157-1');
     CheckEqualsInvoiceStr('', Back.InvoiceLines[0].GlobalID_EAN_GTIN, 'no GTIN for scheme 0088');
     Check(Back.InvoiceLines[0].OrderDate.Value = EncodeDate(2026, 9, 2), 'BT-X-22');
+    Check(Pos('<ram:ExemptionReason>Exempt under article 132</ram:ExemptionReason>', Xml) > 0, 'BT-173 written');
+    CheckEqualsInvoiceStr('Exempt under article 132', Back.AllowanceCharges[0].TaxExemptionReason, 'BT-173');
+    CheckEqualsInvoiceStr('VATEX-EU-132', Back.AllowanceCharges[0].TaxExemptionReasonCode, 'BT-174');
   finally
     Back.Free;
     Invoice.Free;
@@ -697,6 +708,9 @@ begin
       'tax representative contact left out');
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SpecifiedTradePaymentTerms/ram:Description'),
       'text of the discount level left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax'),
+      'exemption reason of the allowance left out');
+    Check(Pos('VATEX-EU-132', Xml) = 0, 'no BT-174');
     Check(Pos('RECHNUNG', Xml) = 0, 'no document name');
     Check(Pos('Invoicee', Xml) = 0, 'no invoicee');
     Check(Pos('Payee City', Xml) = 0, 'no payee address');

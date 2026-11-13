@@ -794,6 +794,51 @@ begin
   P.Pop;
 end;
 
+{ the VAT cells (category, rate) of the row of A
+  DE: die Steuerzellen (Kategorie, Satz) der Zeile von A }
+procedure WriteAllowanceTax(P: TPage; A: TLandrixInvoiceAllowanceCharge; ABase: TLandrixEInvoiceRenderField);
+const
+  T = erf_AllowanceCharges;
+var
+  Category: TLandrixEInvoiceString;
+  ShowRate: Boolean;
+
+  function F(ATemplate: TLandrixEInvoiceRenderField): TLandrixEInvoiceRenderField;
+  begin
+    Result := Like(ABase, T, ATemplate);
+  end;
+
+  function BT(ATemplate: TLandrixEInvoiceRenderField): TLandrixEInvoiceString;
+  begin
+    Result := AllowanceOrChargeTerm(LandrixEInvoiceRenderFieldBT(F(ATemplate)), A.ChargeIndicator);
+  end;
+
+begin
+  P.Raw('<td>');
+  P.Span(F(erf_AllowanceCharges_TaxCategory), P.Code(ecl_DutyTaxFeeCategoryCode,
+    LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(A.TaxCategory)), BT(erf_AllowanceCharges_TaxCategory));
+  P.Span(F(erf_AllowanceCharges_TaxCategoryOther), A.TaxCategoryOther, BT(erf_AllowanceCharges_TaxCategoryOther));
+  P.Raw('</td>');
+  { the rate as the writers write it: on document level for every
+    category but O (also an unknown one), on line level (no business
+    term) when a category is set; always when it is not 0
+    DE: der Satz, wie die Writer ihn schreiben: auf Belegebene fuer jede
+    Kategorie ausser O (auch eine unbekannte), auf Positionsebene (ohne
+    Geschaeftsbegriff), wenn eine Kategorie gesetzt ist; immer, wenn er
+    nicht 0 ist }
+  Category := LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(A.TaxCategory);
+  if Category = '' then
+    Category := A.TaxCategoryOther;
+  if ABase = erf_AllowanceCharges then
+    ShowRate := Category <> 'O'
+  else
+    ShowRate := Category <> '';
+  if ShowRate or (A.TaxPercent <> 0) then
+    P.Cell(F(erf_AllowanceCharges_TaxPercent), P.Percent(A.TaxPercent), BT(erf_AllowanceCharges_TaxPercent))
+  else
+    P.Cell(F(erf_AllowanceCharges_TaxPercent), '', BT(erf_AllowanceCharges_TaxPercent));
+end;
+
 { document level (ABase erf_AllowanceCharges) or line level
   (erf_InvoiceLines_AllowanceCharges); the terms of a row follow its kind
   DE: Belegebene (ABase erf_AllowanceCharges) oder Positionsebene
@@ -805,12 +850,37 @@ const
 var
   I: Integer;
   A: TLandrixInvoiceAllowanceCharge;
-  Kind, Category: TLandrixEInvoiceString;
-  ShowRate, HasTax: Boolean;
+  Kind: TLandrixEInvoiceString;
+  HasTax, HasExemption: Boolean;
 
   function F(ATemplate: TLandrixEInvoiceRenderField): TLandrixEInvoiceRenderField;
   begin
     Result := Like(ABase, T, ATemplate);
+  end;
+
+  { the columns: the VAT columns with HasTax, the exemption columns with
+    HasExemption }
+  function TableColumns: TFieldList;
+  var
+    N: Integer;
+  begin
+    Result := Columns([F(erf_AllowanceCharges_ChargeIndicator), F(erf_AllowanceCharges_ReasonCodeAllowance),
+      F(erf_AllowanceCharges_Reason), F(erf_AllowanceCharges_BaseAmount),
+      F(erf_AllowanceCharges_MultiplierFactorNumeric), F(erf_AllowanceCharges_Amount)]);
+    N := Integer(Length(Result));
+    if HasTax then
+    begin
+      SetLength(Result, N + 2);
+      Result[N] := F(erf_AllowanceCharges_TaxCategory);
+      Result[N + 1] := F(erf_AllowanceCharges_TaxPercent);
+      N := N + 2;
+    end;
+    if HasExemption then
+    begin
+      SetLength(Result, N + 2);
+      Result[N] := F(erf_AllowanceCharges_TaxExemptionReasonCode);
+      Result[N + 1] := F(erf_AllowanceCharges_TaxExemptionReason);
+    end;
   end;
 
   function BT(ATemplate: TLandrixEInvoiceRenderField): TLandrixEInvoiceString;
@@ -830,19 +900,19 @@ begin
   for I := 0 to Integer(AList.Count) - 1 do
     if (AList[I].TaxCategory <> idtfcc_None) or (AList[I].TaxCategoryOther <> '') or (AList[I].TaxPercent <> 0) then
       HasTax := True;
+  { the exemption columns (BT-173, BT-174, Factur-X EXTENDED) only when an
+    item has a reason or a code
+    DE: die Befreiungsspalten (BT-173, BT-174, Factur-X EXTENDED) nur, wenn
+    ein Eintrag einen Grund oder Code hat }
+  HasExemption := False;
+  for I := 0 to Integer(AList.Count) - 1 do
+    if (AList[I].TaxExemptionReason <> '') or (AList[I].TaxExemptionReasonCode <> '') then
+      HasExemption := True;
   { the code column holds the codes of allowances and of charges
     DE: die Code-Spalte enthaelt die Codes von Abschlaegen und Zuschlaegen }
   Kind := LandrixEInvoiceRenderFieldBT(F(erf_AllowanceCharges_ReasonCodeAllowance)) + '/' +
     LandrixEInvoiceRenderFieldBT(F(erf_AllowanceCharges_ReasonCodeCharge));
-  if HasTax then
-    P.OpenTable(Columns([F(erf_AllowanceCharges_ChargeIndicator), F(erf_AllowanceCharges_ReasonCodeAllowance),
-      F(erf_AllowanceCharges_Reason), F(erf_AllowanceCharges_BaseAmount),
-      F(erf_AllowanceCharges_MultiplierFactorNumeric), F(erf_AllowanceCharges_Amount),
-      F(erf_AllowanceCharges_TaxCategory), F(erf_AllowanceCharges_TaxPercent)]), Terms(['', Kind]))
-  else
-    P.OpenTable(Columns([F(erf_AllowanceCharges_ChargeIndicator), F(erf_AllowanceCharges_ReasonCodeAllowance),
-      F(erf_AllowanceCharges_Reason), F(erf_AllowanceCharges_BaseAmount),
-      F(erf_AllowanceCharges_MultiplierFactorNumeric), F(erf_AllowanceCharges_Amount)]), Terms(['', Kind]));
+  P.OpenTable(TableColumns, Terms(['', Kind]));
   for I := 0 to Integer(AList.Count) - 1 do
   begin
     A := AList[I];
@@ -875,34 +945,15 @@ begin
     P.Cell(F(erf_AllowanceCharges_MultiplierFactorNumeric), P.PercentIf(A.MultiplierFactorNumeric),
       BT(erf_AllowanceCharges_MultiplierFactorNumeric));
     P.Cell(F(erf_AllowanceCharges_Amount), P.Amount(A.Amount), BT(erf_AllowanceCharges_Amount));
-    if not HasTax then
+    if HasTax then
+      WriteAllowanceTax(P, A, ABase);
+    if HasExemption then
     begin
-      P.Raw('</tr>'#10);
-      Continue;
+      P.Cell(F(erf_AllowanceCharges_TaxExemptionReasonCode), P.Code(ecl_VATExemptionReasonCode,
+        A.TaxExemptionReasonCode), BT(erf_AllowanceCharges_TaxExemptionReasonCode));
+      P.Cell(F(erf_AllowanceCharges_TaxExemptionReason), A.TaxExemptionReason,
+        BT(erf_AllowanceCharges_TaxExemptionReason));
     end;
-    P.Raw('<td>');
-    P.Span(F(erf_AllowanceCharges_TaxCategory), P.Code(ecl_DutyTaxFeeCategoryCode,
-      LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(A.TaxCategory)), BT(erf_AllowanceCharges_TaxCategory));
-    P.Span(F(erf_AllowanceCharges_TaxCategoryOther), A.TaxCategoryOther, BT(erf_AllowanceCharges_TaxCategoryOther));
-    P.Raw('</td>');
-    { the rate as the writers write it: on document level for every
-      category but O (also an unknown one), on line level (no business
-      term) when a category is set; always when it is not 0
-      DE: der Satz, wie die Writer ihn schreiben: auf Belegebene fuer jede
-      Kategorie ausser O (auch eine unbekannte), auf Positionsebene (ohne
-      Geschaeftsbegriff), wenn eine Kategorie gesetzt ist; immer, wenn er
-      nicht 0 ist }
-    Category := LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(A.TaxCategory);
-    if Category = '' then
-      Category := A.TaxCategoryOther;
-    if ABase = erf_AllowanceCharges then
-      ShowRate := Category <> 'O'
-    else
-      ShowRate := Category <> '';
-    if ShowRate or (A.TaxPercent <> 0) then
-      P.Cell(F(erf_AllowanceCharges_TaxPercent), P.Percent(A.TaxPercent), BT(erf_AllowanceCharges_TaxPercent))
-    else
-      P.Cell(F(erf_AllowanceCharges_TaxPercent), '', BT(erf_AllowanceCharges_TaxPercent));
     P.Raw('</tr>'#10);
   end;
   P.CloseTable;

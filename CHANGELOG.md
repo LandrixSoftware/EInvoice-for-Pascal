@@ -405,6 +405,11 @@ Supported invoice standards are documented per release.
 - The invoice page titles a credit note (BT-3 = 381) "Credit note" / "Gutschrift"; the VAT columns of allowances
   and charges on line level appear only when an item has a category or a rate. German names for 42 common charge
   reasons (UNTDID 7161, e.g. FC "Fracht") in `tools/codelists/names-de.json`; the others stay English.
+- `TLandrixInvoiceAllowanceCharge.TaxExemptionReason` and `TaxExemptionReasonCode` (BT-173, BT-174: VAT exemption
+  reason and code of a document level allowance or charge, Factur-X EXTENDED only): the CII reader takes them over
+  instead of reporting them as not mapped, the CII writer writes them in EXTENDED; other targets report them
+  (writer rule `LandrixEInvoiceRuleAllowanceChargeTaxExemptionReason`). The invoice page shows them in two columns
+  of the allowance table when an item has them.
 - `Render.Mutations`, `Model.CompareComplete` and `Model.Assign` also run with two items in every list
   (`FillInvoiceAll`, `InvoiceLeafCount` and `MutateInvoiceLeaf` of the generated test unit take the number of items,
   1 or 2): a mutation of the second item must change exactly that item on the page (list items are told apart by

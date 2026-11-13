@@ -289,6 +289,15 @@ type
       TaxCategory den Wert idtfcc_None hat; ein gesetztes TaxCategory gewinnt beim
       Schreiben. }
     TaxCategoryOther: TLandrixEInvoiceString;
+    { BT-173 VAT exemption reason (document level, Factur-X EXTENDED only).
+      DE: BT-173 Grund der Steuerbefreiung (Dokumentebene, nur Factur-X
+      EXTENDED). }
+    TaxExemptionReason: TLandrixEInvoiceString;
+    { BT-174 VAT exemption reason code (VATEX, e.g. VATEX-EU-AE; document
+      level, Factur-X EXTENDED only).
+      DE: BT-174 Code des Befreiungsgrunds (VATEX, z. B. VATEX-EU-AE;
+      Dokumentebene, nur Factur-X EXTENDED). }
+    TaxExemptionReasonCode: TLandrixEInvoiceString;
     { Makes this object a deep copy of ASource (owned objects and lists are
       copied, not shared).
       DE: Macht dieses Objekt zu einer tiefen Kopie von ASource (eigene
@@ -2683,6 +2692,8 @@ begin
   TaxPercent := ASource.TaxPercent;
   TaxCategory := ASource.TaxCategory;
   TaxCategoryOther := ASource.TaxCategoryOther;
+  TaxExemptionReason := ASource.TaxExemptionReason;
+  TaxExemptionReasonCode := ASource.TaxExemptionReasonCode;
 end;
 
 procedure TLandrixInvoiceLineItemAttribute.Assign(ASource: TLandrixInvoiceLineItemAttribute);

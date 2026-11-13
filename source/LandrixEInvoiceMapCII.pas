@@ -1358,9 +1358,11 @@ begin
 end;
 
 { BG-20/BG-21 document level allowances and charges with their VAT
-  category (BT-95/BT-102, BT-96/BT-103; no rate for category O).
+  category (BT-95/BT-102, BT-96/BT-103; no rate for category O) and, in
+  Factur-X EXTENDED, the exemption reason (BT-173, BT-174).
   DE: BG-20/BG-21 Nachlaesse und Zuschlaege auf Dokumentebene mit ihrer
-  Steuerkategorie (BT-95/BT-102, BT-96/BT-103; kein Satz fuer Kategorie O). }
+  Steuerkategorie (BT-95/BT-102, BT-96/BT-103; kein Satz fuer Kategorie O)
+  und, in Factur-X EXTENDED, dem Befreiungsgrund (BT-173, BT-174). }
 procedure TCIIWriteMapper.MapAllowanceCharges;
 var
   I: TLandrixEInvoiceListIndex;
@@ -1387,6 +1389,14 @@ begin
       Item.TaxCategoryOther, Settlement + '/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax/ram:CategoryCode');
     if Item.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax then
       Charge.CategoryTradeTax.RateApplicablePercent := LandrixEInvoicePercentToLexical(Item.TaxPercent);
+    if (Present(Item.TaxExemptionReason) or Present(Item.TaxExemptionReasonCode)) and
+       Permit(LandrixEInvoiceRuleAllowanceChargeTaxExemptionReason,
+         Settlement + '/ram:SpecifiedTradeAllowanceCharge/ram:CategoryTradeTax',
+         'VAT exemption reason of allowance or charge ' + TLandrixEInvoiceString(IntToStr(I + 1))) then
+    begin
+      Charge.CategoryTradeTax.ExemptionReason := Txt(Item.TaxExemptionReason);
+      Charge.CategoryTradeTax.ExemptionReasonCode.Value := Item.TaxExemptionReasonCode;
+    end;
   end;
 end;
 
@@ -2197,10 +2207,14 @@ begin
     ReadTaxCategory(Tax.CategoryCode, APath + '/ram:CategoryTradeTax/ram:CategoryCode', AItem.TaxCategory,
       AItem.TaxCategoryOther);
     AItem.TaxPercent := Decimal(Tax.RateApplicablePercent, APath + '/ram:CategoryTradeTax/ram:RateApplicablePercent');
+    AItem.TaxExemptionReason := Tax.ExemptionReason;
+    AItem.TaxExemptionReasonCode := CodeValue(Tax.ExemptionReasonCode,
+      APath + '/ram:CategoryTradeTax/ram:ExemptionReasonCode');
     if (Tax.TypeCode <> '') and (Tax.TypeCode <> 'VAT') then
       NotMapped(APath + '/ram:CategoryTradeTax/ram:TypeCode', 'tax type ' + Tax.TypeCode);
     Tax.ListFilledChildren(FFilled);
-    Rest(APath + '/ram:CategoryTradeTax', ['ram:TypeCode', 'ram:CategoryCode', 'ram:RateApplicablePercent']);
+    Rest(APath + '/ram:CategoryTradeTax', ['ram:TypeCode', 'ram:CategoryCode', 'ram:RateApplicablePercent',
+      'ram:ExemptionReason', 'ram:ExemptionReasonCode']);
     ACharge.ListFilledChildren(FFilled);
     Rest(APath, ['ram:ChargeIndicator', 'ram:CalculationPercent', 'ram:BasisAmount', 'ram:ActualAmount',
       'ram:ReasonCode', 'ram:Reason', 'ram:CategoryTradeTax']);

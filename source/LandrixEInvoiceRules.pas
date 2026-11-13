@@ -105,6 +105,12 @@ const
   { VAT exemption reason on a line (CII ApplicableTradeTax/ExemptionReason).
     DE: Steuerbefreiungsgrund je Position (CII ApplicableTradeTax/ExemptionReason). }
   LandrixEInvoiceRuleLineTaxExemptionReason = 'Line.TaxExemptionReason';
+  { VAT exemption reason and code of a document level allowance or charge
+    (BT-173, BT-174; CII SpecifiedTradeAllowanceCharge/CategoryTradeTax).
+    DE: Steuerbefreiungsgrund und -code eines Nachlasses oder Zuschlags auf
+    Dokumentebene (BT-173, BT-174; CII
+    SpecifiedTradeAllowanceCharge/CategoryTradeTax). }
+  LandrixEInvoiceRuleAllowanceChargeTaxExemptionReason = 'AllowanceCharge.TaxExemptionReason';
   { Delivery date and delivery note on a line.
     DE: Lieferdatum und Lieferschein je Position. }
   LandrixEInvoiceRuleLineDelivery = 'Line.Delivery';
@@ -198,7 +204,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..36] of TLandrixEInvoiceRule = (
+  Rules: array[0..37] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules. Where the level is not
       erl_Allowed they are written flat (LandrixEInvoiceSubLines). }
@@ -221,6 +227,9 @@ const
     (Key: LandrixEInvoiceRuleLineTaxExemptionReason; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-96';
      Source: 'line exemption reason only in Factur-X EXTENDED'),
+    (Key: LandrixEInvoiceRuleAllowanceChargeTaxExemptionReason; Standards: AnyStandard; Syntaxes: AnySyntax;
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-173, BT-174';
+     Source: 'exemption reason of document level allowances and charges only in Factur-X EXTENDED'),
     (Key: LandrixEInvoiceRuleLineDelivery; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-85, BG-X-83, BT-X-92, BT-X-93, BT-X-94';
      Source: 'line delivery only in Factur-X EXTENDED'),
