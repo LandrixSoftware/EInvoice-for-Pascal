@@ -685,6 +685,17 @@ begin
     end;
     DeleteFile(FileName);
     CheckEqualsUtf8(PageOf(Inv, eln_English, False), FileHtml, 'file');
+
+    { a string: the characters the stream gets as UTF-8 }
+    CheckEqualsUtf8(PageOf(Inv, eln_English, False), LandrixEInvoiceStringToUtf8(W.WriteToString(Inv)), 'string');
+    Raised := False;
+    try
+      W.WriteToString(TLandrixEInvoiceDocument(nil));
+    except
+      on ELandrixEInvoiceError do
+        Raised := True;
+    end;
+    Check(Raised, 'string: nil document raises');
   finally
     Inv.Free;
     S.Free;

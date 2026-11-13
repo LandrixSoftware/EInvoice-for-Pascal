@@ -642,3 +642,10 @@ Supported invoice standards are documented per release.
   delivery note or despatch advice date only with its number) is an error of its own (`edk_ConversionFailed`, path = business term), and a NaN date always is and stops every rule.
   The rules that compare or format such a date hold (BR-29, BR-30, PEPPOL-EN16931-R110/R111, IS-R-008 to -010,
   GR-R-001-3).
+- The walk through the invoice moved from `LandrixEInvoiceRenderHtml` into the new internal unit
+  `LandrixEInvoiceRenderWalk`, to be shared by further output formats: `TLandrixEInvoiceRenderTarget` (abstract
+  receiver of the walk, one subclass per format; groups wait for their first value, so empty ones leave nothing) and
+  `TLandrixEInvoiceRenderWriter` (`DocumentName`, `Language`, `ShowBusinessTerms`, `WriteToStream`, `SaveToFile` and
+  the new `WriteToString`), from which `TLandrixEInvoiceRenderHtmlWriter` descends. The pages stay byte-identical
+  (checked on every local corpus document and every model mutation with one and two items per list, both languages,
+  with and without business terms).
