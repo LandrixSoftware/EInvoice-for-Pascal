@@ -553,9 +553,9 @@ Supported invoice standards are documented per release.
   `tools/render/md-exceptions.txt` (none).
 - Example `examples/Workbench`: a window in the spirit of the sample project of XRechnung-for-Delphi, native only
   (no Java, no validation service, no browser control). It creates the overall example with its options or one of
-  the 25 business cases for XRechnung UBL or CII, ZUGFeRD EN 16931 or EXTENDED or Peppol BIS, or opens an XML
+  25 cases (the business cases and their variants) for XRechnung UBL or CII, ZUGFeRD EN 16931 or EXTENDED or Peppol BIS, or opens an XML
   invoice or a ZUGFeRD / Factur-X PDF; it shows the XML, checks it with `TLandrixEInvoiceDocumentValidator` (the
-  library's own rules, and KoSIT with the configurations and rule files it finds or is given), reads it back and
+  library's own rules, and KoSIT with the folder of `addons/kosit/install-kosit.ps1` it finds or is given), reads it back and
   writes it again (byte comparison), shows the invoice as Markdown and opens the invoice and the check report as
   HTML in the default browser. Interface German (default) or English, the choice also sets the language of the
   invoice and the report. One unit for Delphi 6 to 13 (VCL, `.dfm`, `Workbench.dproj` with the search paths and
@@ -563,6 +563,17 @@ Supported invoice standards are documented per release.
   `tools/build.ps1` compiles it with Delphi without running it (the FPC toolchains have no LCL) and compiles every
   Delphi example in its own folder; `tools/check-forbidden.py` allows the GUI units in this example only. The single
   business cases of `LandrixEInvoiceExampleScenarios` are now in its interface.
+- `addons/kosit/install-kosit.ps1`: installs what the native KoSIT check needs, without Java, into one folder to
+  ship with an application: the KoSIT configurations XRechnung 3.0.2 (2026-08-31) and Peppol BIS Billing 3.0.21,
+  the ZUGFeRD 2.5.2 / Factur-X 1.09.2 configuration (2026-10-15), the LandrixXML rule files (from the submodule or
+  the LandrixXML release) and the Peppol Schematron 3.0.21 (OpenPEPPOL). Modules `xrechnung`, `bis`, `zugferd`;
+  every file pinned by URL and SHA-256 in `addons/kosit/kosit.json`; Windows PowerShell 5.1 or PowerShell 7.
+- Documentation: `docs/validation.md` (and German) on document validation, the KoSIT files, the rule file
+  mapping, the verdict, reports, HTML and Markdown rendering, what to ship and the licences of the KoSIT
+  material; these units are documented as a preview (marked `API: internal`, names may change before 1.0).
+  Getting started: syntaxes per standard, ZIP download without submodule, Delphi 6/7 search path, Workbench
+  setup, what to ship. Reading: the reading options; plain EN 16931 in CII is Factur-X EN 16931. README:
+  the syntax models as they are (CII EXTENDED, UBL positive list), the preview units.
 
 ### Changed
 - Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as

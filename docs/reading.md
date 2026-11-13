@@ -18,7 +18,13 @@ end;
 | `LoadFromUtf8(ABytes)` | XML as UTF-8 bytes. Never a PDF. |
 | `LoadFromText(AText)` | XML as decoded UTF-16 text. Never a PDF. |
 
-All take an optional `AOptions: TLandrixEInvoiceOptions = []`.
+All take an optional `AOptions: TLandrixEInvoiceOptions = []`. For reading:
+
+| Option | Effect |
+|---|---|
+| `eio_InvoiceOnly` | Keep only `Invoice`; the syntax model is freed after mapping. |
+| `eio_CheckOnRead` | Run the rule check of the detected specification and add its findings to `Diagnostics` (nothing when BT-24 is unknown). |
+| `eio_NoPdf` | Treat the input as XML; never look for a PDF. |
 
 ## The document
 
@@ -38,8 +44,9 @@ Invoice and syntax model are independent copies: changing one does not change th
 The specification is decided by BT-24 (`cbc:CustomizationID`,
 `ram:GuidelineSpecifiedDocumentContextParameter/ram:ID`), never by the content.
 `Info.SpecFound` is True when the library knows the identifier; `Info.Spec` is the entry
-then. An unknown identifier (e.g. XRechnung 2.x or plain EN 16931) is read anyway, with a
-warning, and `Info.SpecFound` is False. The ZUGFeRD identifiers `urn:zugferd.de:2p0:...`
+then. An unknown identifier (e.g. XRechnung 2.x, or plain EN 16931 in UBL) is read anyway,
+with a warning, and `Info.SpecFound` is False. In CII, plain EN 16931 (`urn:cen.eu:en16931:2017`)
+is the identifier of Factur-X EN 16931 and is recognised as such. The ZUGFeRD identifiers `urn:zugferd.de:2p0:...`
 that Factur-X accepts are recognised.
 
 ## Errors

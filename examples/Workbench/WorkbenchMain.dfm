@@ -221,7 +221,7 @@ object WorkbenchForm: TWorkbenchForm
         Left = 0
         Top = 0
         Width = 928
-        Height = 132
+        Height = 84
         Align = alTop
         BevelOuter = bvNone
         object lbKositConfig: TLabel
@@ -229,7 +229,7 @@ object WorkbenchForm: TWorkbenchForm
           Top = 8
           Width = 900
           Height = 15
-          Caption = 'Folder with the KoSIT configurations (validator-configuration-xrechnung, -bis, -zugferd; addons/java-tools/install-tools.ps1)'
+          Caption = 'KoSIT folder'
         end
         object edKositConfig: TEdit
           Left = 8
@@ -237,22 +237,9 @@ object WorkbenchForm: TWorkbenchForm
           Width = 700
           Height = 23
         end
-        object lbKositRules: TLabel
-          Left = 8
-          Top = 56
-          Width = 900
-          Height = 15
-          Caption = 'Folder with the LandrixXML rule files (rules/rules, peppol; tools/testdata/sync-local.py)'
-        end
-        object edKositRules: TEdit
-          Left = 8
-          Top = 74
-          Width = 700
-          Height = 23
-        end
         object btKositLoad: TButton
           Left = 8
-          Top = 103
+          Top = 55
           Width = 120
           Height = 25
           Caption = 'Load'

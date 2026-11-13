@@ -86,3 +86,13 @@ this repository: `tools/syntaxmodel/extract-xsd.py` downloads them from the KoSI
 configuration XRechnung 3.0.2 (https://github.com/itplr-kosit/validator-configuration-xrechnung,
 release v2026-08-31) and verifies them against the SHA-256 checksums in
 `tools/syntaxmodel/manifest.json`. The files remain under the terms of their publishers.
+
+## Validation configurations and rule files (not part of this repository)
+
+The native KoSIT check reads configuration and rule files that `addons/kosit/install-kosit.ps1`
+downloads (or copies from the LandrixXML submodule): the KoSIT validator configurations for
+XRechnung and Peppol BIS Billing (Apache License 2.0), the ZUGFeRD / Factur-X configuration
+(Apache License 2.0; schemas and Schematron under the terms of FeRD and FNFE-MPE), the EN 16931 and
+XRechnung rule files compiled by LandrixXML (EUPL-1.2 and Apache License 2.0; see their
+`NOTICE.md`) and the Peppol Schematron of OpenPEPPOL. An application that ships these files ships
+them under the terms of their publishers; see [docs/validation.md](docs/validation.md#what-to-ship).

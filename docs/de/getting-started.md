@@ -2,9 +2,10 @@
 
 [English](../getting-started.md)
 
-EInvoice for Pascal liest, schreibt und prüft elektronische Rechnungen: XRechnung, ZUGFeRD /
-Factur-X und Peppol BIS Billing, jeweils in beiden Syntaxen (UBL und UN/CEFACT CII). Eine
-Codebasis übersetzt mit Delphi 6 bis Delphi 13 und Free Pascal ab 3.2.2.
+EInvoice for Pascal liest, schreibt und prüft elektronische Rechnungen: XRechnung (UBL und
+UN/CEFACT CII), ZUGFeRD / Factur-X (CII) und Peppol BIS Billing (UBL). Eine Codebasis übersetzt
+mit Delphi 6 bis Delphi 13 und Free Pascal ab 3.2.2. Es gibt kein Package zu installieren: Die
+Units kommen in den Suchpfad.
 
 ## Einrichtung
 
@@ -14,15 +15,20 @@ Codebasis übersetzt mit Delphi 6 bis Delphi 13 und Free Pascal ab 3.2.2.
    git clone --recurse-submodules https://github.com/LandrixSoftware/EInvoice-for-Pascal.git
    ```
 
-   In einem bestehenden Klon: `git submodule update --init`.
+   In einem bestehenden Klon: `git submodule update --init`. Ein ZIP-Download von GitHub
+   enthält das Submodul nicht: dann
+   [LandrixXML for Pascal](https://github.com/landrix/LandrixXML-for-Pascal) in der Version, die
+   das Submodul nennt (`git submodule status` oder der Link auf GitHub), nach
+   `external/landrix-xml` laden.
 
 2. Zwei Ordner in den Suchpfad des Projekts aufnehmen:
 
    - `source`
    - `external/landrix-xml/source`
 
-   Delphi: *Projekt > Optionen > Delphi-Compiler > Suchpfad*. Lazarus: *Projekt >
-   Projekteinstellungen > Compilereinstellungen > Pfade > Andere Units*.
+   Delphi: *Projekt > Optionen > Delphi-Compiler > Suchpfad* (Delphi 6 und 7: *Projekt >
+   Optionen > Verzeichnisse/Bedingungen > Suchpfad* oder der Bibliothekspfad der IDE). Lazarus:
+   *Projekt > Projekteinstellungen > Compilereinstellungen > Pfade > Andere Units*.
 
 3. Free Pascal: im Delphi-Modus übersetzen (`{$MODE DELPHI}` im Programm oder `-Mdelphi`).
    Unter Unix `cwstring` als erste Unit des Programms aufnehmen, wenn es Text oder Dateinamen
@@ -101,10 +107,26 @@ Ausgabe.
 | [BusinessCases](../../examples/BusinessCases/BusinessCases.dpr) | 24 Geschäftsfälle für jedes passende Ziel (111 Dateien) |
 | [Workbench](../../examples/Workbench/Workbench.dpr) | Ein Fenster: Geschäftsfall erzeugen oder XML bzw. PDF öffnen, nativ prüfen (eigene Regeln, KoSIT), zurücklesen, als Text und HTML zeigen |
 
+Workbench: in Delphi `examples/Workbench/Workbench.dproj` öffnen (mit Delphi 13 angelegt; die
+Suchpfade sind gesetzt, das Programm landet in `build/Workbench/<Plattform>/<Konfiguration>`), mit
+Delphi 6 bis 12 `Workbench.dpr` mit den Suchpfaden `..\..\source`, `..\..\external\landrix-xml\source`
+und `..\BusinessCases`, mit Lazarus `Workbench.lpi`. Erzeugen, Öffnen, Regelprüfung und Anzeige
+funktionieren sofort. Für die KoSIT-Prüfung einmal `addons/kosit/install-kosit.ps1` ausführen:
+Die Workbench findet `addons/kosit` (oder einen Ordner `kosit` neben dem Programm) selbst; ohne
+ihn bleibt das Urteil unvollständig. Sie nutzt die Vorschau-Units aus
+[Validieren](validation.md).
+
+## Was ausgeliefert werden muss
+
+Lesen, Schreiben, Prüfen und Anzeigen brauchen zur Laufzeit nichts: keine DLL, kein MSXML, kein
+Java, keine Datendateien. Nur die KoSIT-Prüfung braucht ihren Konfigurationsordner; siehe
+[Was ausgeliefert werden muss](validation.md#was-ausgeliefert-werden-muss), auch zu den Lizenzen.
+
 ## Weiterlesen
 
 - [Schreiben](writing.md)
 - [Lesen](reading.md)
 - [Prüfen](checking.md)
+- [Rechnungen validieren und anzeigen](validation.md)
 - [Umstieg von XRechnung-for-Delphi](compat-xrechnung.md)
 - [Öffentliche API](../../README.md#public-api): welche Units stabil sind

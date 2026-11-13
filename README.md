@@ -20,8 +20,12 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
   - `TLandrixInvoice`: the semantic invoice model (business terms `BT-...` / `BG-...`),
     independent of the syntax. This is the model known as `TInvoice` from
     XRechnung-for-Delphi.
-  - `TLandrixCII...` and `TLandrixUBL...`: complete syntax models, generated from the
-    schemas, for everything the semantic model does not cover.
+  - `TLandrixCII...` and `TLandrixUBL...`: syntax models generated from the schemas, for
+    everything the semantic model does not cover: CII with everything Factur-X EXTENDED has,
+    UBL with the elements of EN 16931, XRechnung and Peppol (an extensible positive list).
+- Validation without Java: documents are checked against the official KoSIT configurations
+  (XML schema and Schematron) natively, with the same verdict as the KoSIT validator, and
+  invoices are shown as HTML or Markdown.
 - No dependency on MSXML or other XML libraries: XML is handled by
   [LandrixXML for Pascal](https://github.com/landrix/LandrixXML-for-Pascal),
   included as a Git submodule.
@@ -67,6 +71,8 @@ schema validation; see [Checking](docs/checking.md) for the details and the know
 - [Getting started](docs/getting-started.md) ([Deutsch](docs/de/getting-started.md)): setup,
   the three models, targets
 - [Writing](docs/writing.md), [Reading](docs/reading.md), [Checking](docs/checking.md)
+- [Validating and showing invoices](docs/validation.md): the KoSIT files, validation, reports,
+  HTML and Markdown, what to ship
 - [Moving from XRechnung-for-Delphi](docs/compat-xrechnung.md)
 - [Examples](examples/): console programs for Delphi (`.dpr`) and Lazarus (`.lpi`), including
   the 24 business cases of XRechnung-for-Delphi, and Workbench, a window (VCL and LCL) to create,
@@ -84,14 +90,18 @@ its level in a comment before its `unit` line (`API: stable` or `API: internal`)
   `LandrixEInvoiceSpecs`, `LandrixEInvoiceCII` and `LandrixEInvoiceUBL` (syntax models),
   `LandrixEInvoicePdf`, `LandrixEInvoiceCompatXRechnung`, `LandrixEInvoiceCompatXRechnungAdapter`,
   `LandrixEInvoiceCompatXRechnungPdf`.
+- **Preview** (marked `API: internal`, documented in [Validating](docs/validation.md); names may
+  still change before 1.0): `LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
+  `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceReportHtml`,
+  `LandrixEInvoiceRenderHtml`, `LandrixEInvoiceRenderMarkdown`.
 - **Internal** (may change in any release): `LandrixEInvoiceMapCII`, `LandrixEInvoiceMapUBL`,
-  `LandrixEInvoiceCheck`, `LandrixEInvoiceCheckPeppol`, `LandrixEInvoiceIdentifiers`, `LandrixEInvoiceValidator`,
-  `LandrixEInvoiceValidation`, `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceReportHtml`, `LandrixEInvoiceCodeNames`, `LandrixEInvoiceRenderLabels`,
-  `LandrixEInvoiceRender`, `LandrixEInvoiceRenderWalk`, `LandrixEInvoiceRenderHtml`, `LandrixEInvoiceRenderMarkdown`,
-  `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceSubLines`, `LandrixEInvoicePdfObjects`, `LandrixEInvoicePdfCheck`, `LandrixEInvoiceLexical`, `LandrixEInvoiceFiles`,
+  `LandrixEInvoiceCheck`, `LandrixEInvoiceCheckPeppol`, `LandrixEInvoiceIdentifiers`,
+  `LandrixEInvoiceCodeNames`, `LandrixEInvoiceRenderLabels`, `LandrixEInvoiceRender`,
+  `LandrixEInvoiceRenderWalk`, `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceSubLines`, `LandrixEInvoicePdfObjects`, `LandrixEInvoicePdfCheck`, `LandrixEInvoiceLexical`, `LandrixEInvoiceFiles`,
   `LandrixEInvoiceCIIProfiles`, `LandrixEInvoiceCIICodeRules`, and the
   readers and writers `LandrixEInvoiceCIIReader`, `LandrixEInvoiceCIIWriter`,
-  `LandrixEInvoiceUBLReader`, `LandrixEInvoiceUBLWriter`. What they offer is reachable through the facade.
+  `LandrixEInvoiceUBLReader`, `LandrixEInvoiceUBLWriter`. What they offer for reading, writing,
+  checking and calculating is reachable through the facade.
 
 ## Getting the sources
 

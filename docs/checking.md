@@ -26,7 +26,8 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
 
 The rule check predicts what the KoSIT validator would report for the written document. It
 does not replace the validator: schema and Schematron checks of the official configuration
-remain the reference. Not checked yet, among others: the other FX-SCH-A rules of the Factur-X
+remain the reference, and the library runs them too, without Java
+([Validating](validation.md)). Not checked yet, among others: the other FX-SCH-A rules of the Factur-X
 Schematron (cardinality, required attributes). The format rules
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN check sum), BR-DE-27, BR-DE-28 and BR-51 are checked; all of
 them are warnings except BR-51 in CII.
@@ -69,7 +70,8 @@ of an allowance or a charge (charge indicator `false` or `true`), the scheme, MI
 code or date format of a referenced document with type code 130, 50 or 916, the currency of a
 VAT total that equals the invoice or VAT accounting currency (a currency that is both counts for
 the invoice currency only, because the Schematron fires the first matching rule).
-`LandrixEInvoiceCheckCIICodeRule` checks a single identifier.
+(The internal unit `LandrixEInvoiceCIICodeRules` holds the table; its
+`LandrixEInvoiceCheckCIICodeRule` checks a single identifier.)
 
 The rules judge the invoice as it would be written. A VAT rate the invoice does not set is 0
 and is written as 0; lines, allowances and charges of category O are written without rate.

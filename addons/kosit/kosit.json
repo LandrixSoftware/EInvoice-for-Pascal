@@ -1,0 +1,67 @@
+{
+  "configurations": [
+    {
+      "module": "xrechnung",
+      "url": "https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v2026-08-31/xrechnung-3.0.2-validator-configuration-2026-08-31.zip",
+      "file": "xrechnung-3.0.2-validator-configuration-2026-08-31.zip",
+      "sha256": "2530cd107c414511c5d0462ec10f886910395abfca820db82e83d70bf01221a8",
+      "dir": "validator-configuration-xrechnung"
+    },
+    {
+      "module": "bis",
+      "url": "https://github.com/itplr-kosit/validator-configuration-bis/releases/download/release-3.0.21/validation-configuration-bis-3.0.21.zip",
+      "file": "validation-configuration-bis-3.0.21.zip",
+      "sha256": "399395de5f6240a76ccc5751e4ee9dd329e37f5f7cfe4ee5c93188294ce8cd68",
+      "dir": "validator-configuration-bis"
+    },
+    {
+      "module": "zugferd",
+      "url": "https://github.com/LandrixSoftware/validator-configuration-zugferd/releases/download/validation-configuration-zugferd-2.5.2/validation-configuration-zugferd-2.5.2-2026-10-15.zip",
+      "file": "validation-configuration-zugferd-2.5.2-2026-10-15.zip",
+      "sha256": "43487e76edad8b7276da8266f0b1473b597be23554d1ab7fb1c828a03036eafa",
+      "dir": "validator-configuration-zugferd"
+    }
+  ],
+  "rules": [
+    {
+      "modules": ["xrechnung", "bis"],
+      "file": "NOTICE.md",
+      "landrixxml": "tests/data/schematron/NOTICE.md",
+      "sha256": "44103ad8fd0c595f382c9c1df3287c2f29c9f74f0cbcea8927498ec81d570d17"
+    },
+    {
+      "modules": ["xrechnung", "bis"],
+      "file": "en16931-ubl.xml",
+      "landrixxml": "tests/data/schematron/rules/en16931-ubl.xml",
+      "sha256": "10156d9cf6de00dc01c9ea7744be8ab7a2eb4e43a200b0d1945e53da0bb4773e"
+    },
+    {
+      "modules": ["xrechnung"],
+      "file": "en16931-cii.xml",
+      "landrixxml": "tests/data/schematron/rules/en16931-cii.xml",
+      "sha256": "2f90f54ec243308cbf413424c03b6ef6991577698f2903d04c7cf7fe674072dc"
+    },
+    {
+      "modules": ["xrechnung"],
+      "file": "xrechnung-ubl.xml",
+      "landrixxml": "tests/data/schematron/rules/xrechnung-ubl.xml",
+      "sha256": "91bb42f04bec2487cb2fa3d6cacda4a8dcf076b94b57c0f977e15bcaaf093c4f"
+    },
+    {
+      "modules": ["xrechnung"],
+      "file": "xrechnung-cii.xml",
+      "landrixxml": "tests/data/schematron/rules/xrechnung-cii.xml",
+      "sha256": "309bb8e8ac86150338c9aa13f7e369936ee843dc6f7c8b9468efee9b30fc388b"
+    },
+    {
+      "modules": ["bis"],
+      "file": "PEPPOL-EN16931-UBL.sch",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/806866bd2bd91d7e9623b68f08164e8fbe9e67a0/rules/sch/PEPPOL-EN16931-UBL.sch",
+      "sha256": "62e5b67892f12755352d78b06f63229a02cc2eccc748677c56efbc8dbcb336e3"
+    }
+  ],
+  "landrixxml": {
+    "submodule": "external/landrix-xml",
+    "url": "https://raw.githubusercontent.com/landrix/LandrixXML-for-Pascal/v0.4.0/"
+  }
+}

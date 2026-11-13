@@ -33,7 +33,7 @@ Please:
 
 Changes affecting generated invoice XML should, where applicable, be tested against the official or commonly used validation tools for the respective invoice format (for example the KoSIT validator for XRechnung).
 
-Examples in `examples/<Name>/` are console programs that compile with every supported compiler; `tools/build.ps1` builds and runs them after the tests. A new example needs a `.dpr`, an `.lpi` and an entry in the example list of `tools/build.ps1`.
+Examples in `examples/<Name>/` are console programs that compile with every supported compiler; `tools/build.ps1` builds and runs them after the tests. A new example needs a `.dpr`, an `.lpi` and an entry in the example list of `tools/build.ps1`. The exception is `examples/Workbench`, a window for VCL and LCL from one unit (`.dfm` and `.lfm`, plus `Workbench.dproj`): `tools/build.ps1` only compiles it, with Delphi; build the Lazarus project with `lazbuild`.
 
 Generated units (syntax models, code lists) must not be edited by hand. Change the generator or its input under `tools/` and regenerate.
 

@@ -1,5 +1,9 @@
 # Java tools
 
+For applications: the native KoSIT check of the library needs no Java; its files come from
+[addons/kosit](../kosit/README.md) ([docs/validation.md](../../docs/validation.md)). The tools here
+serve the repository's own test scripts.
+
 Java-based tools around EInvoice-for-Pascal, qpdf for the PDF oracle and commonmark.js for the Markdown oracle. Only the scripts and the manifest are in the
 repository; the tools themselves are downloaded into this folder (git-ignored).
 

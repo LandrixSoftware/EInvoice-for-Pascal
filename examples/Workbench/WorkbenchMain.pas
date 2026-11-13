@@ -96,8 +96,6 @@ type
     pnKosit: TPanel;
     lbKositConfig: TLabel;
     edKositConfig: TEdit;
-    lbKositRules: TLabel;
-    edKositRules: TEdit;
     btKositLoad: TButton;
     mmKosit: TMemo;
     odOpen: TOpenDialog;
@@ -254,16 +252,16 @@ const
   StatusDE: array[TLandrixEInvoicePartStatus] of string = (
     'nicht gelaufen', 'bestanden', 'nicht bestanden', 'unvollst#andig');
 
-  { XSLT of a KoSIT configuration -> LandrixXML rule file below the rule
-    folder (the layout tools/testdata/sync-local.py writes to
-    tests/data/local/kosit, as in tools/kosit/ValidatorProbe.dpr) }
+  { XSLT of a KoSIT configuration -> rule file in the folder rules of the
+    KoSIT folder (the layout addons/kosit/install-kosit.ps1 writes; see
+    docs/validation.md) }
   RuleMap: array[0..5, 0..1] of string = (
-    ('EN16931-UBL-validation.xsl', 'rules/rules/en16931-ubl.xml'),
-    ('EN16931-CII-validation.xsl', 'rules/rules/en16931-cii.xml'),
-    ('XRechnung-UBL-validation.xsl', 'rules/rules/xrechnung-ubl.xml'),
-    ('XRechnung-CII-validation.xsl', 'rules/rules/xrechnung-cii.xml'),
-    ('CEN-EN16931-UBL.xslt', 'rules/rules/en16931-ubl.xml'),
-    ('PEPPOL-EN16931-UBL.xslt', 'peppol/PEPPOL-EN16931-UBL.sch'));
+    ('EN16931-UBL-validation.xsl', 'en16931-ubl.xml'),
+    ('EN16931-CII-validation.xsl', 'en16931-cii.xml'),
+    ('XRechnung-UBL-validation.xsl', 'xrechnung-ubl.xml'),
+    ('XRechnung-CII-validation.xsl', 'xrechnung-cii.xml'),
+    ('CEN-EN16931-UBL.xslt', 'en16931-ubl.xml'),
+    ('PEPPOL-EN16931-UBL.xslt', 'PEPPOL-EN16931-UBL.sch'));
 
 { Text conversions: TLandrixEInvoiceString is UTF-16 everywhere, the
   controls take string (UTF-8 under the LCL, ANSI under Delphi 6-2007). }
@@ -399,6 +397,16 @@ begin
     Result := 'invoice';
 end;
 
+{ True if AFolder holds at least one installed KoSIT configuration (the
+  ZUGFeRD module alone writes no folder rules). }
+function HasConfigurations(const AFolder: string): Boolean;
+begin
+  Result := (AFolder <> '') and
+    (FileExists(AFolder + 'validator-configuration-xrechnung' + PathDelim + 'scenarios.xml') or
+     FileExists(AFolder + 'validator-configuration-bis' + PathDelim + 'scenarios.xml') or
+     FileExists(AFolder + 'validator-configuration-zugferd' + PathDelim + 'scenarios.xml'));
+end;
+
 function Slashes(const S: string): string;
 begin
   Result := StringReplace(S, '/', PathDelim, [rfReplaceAll]);
@@ -436,18 +444,18 @@ begin
   pcMain.ActivePage := tsXml;
   sdSave.Options := sdSave.Options + [ofOverwritePrompt];
 
-  { the repository layout: configurations from
-    addons/java-tools/install-tools.ps1, rule files from
-    tools/testdata/sync-local.py }
-  edKositConfig.Text := FindUp('addons' + PathDelim + 'java-tools');
-  edKositRules.Text := FindUp('tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim + 'kosit');
-  if (edKositConfig.Text <> '') and (edKositRules.Text <> '') then
+  { the folder addons/kosit/install-kosit.ps1 fills: next to the program
+    (as an application would ship it) or in the repository }
+  edKositConfig.Text := FindUp('kosit');
+  if not HasConfigurations(edKositConfig.Text) then
+    edKositConfig.Text := FindUp('addons' + PathDelim + 'kosit');
+  if HasConfigurations(edKositConfig.Text) then
     LoadKosit
   else
-    mmKosit.Lines.Text := T('No KoSIT configuration set up: only the library''s own rules run, ' +
-      'the verdict stays INCOMPLETE. Enter both folders and click Load.',
-      'Keine KoSIT-Konfiguration eingerichtet: es laufen nur die eigenen Regeln der Bibliothek, ' +
-      'das Urteil bleibt UNVOLLST#ANDIG. Beide Ordner eintragen und Laden klicken.');
+    mmKosit.Lines.Text := T('No KoSIT folder found: only the library''s own rules run, the verdict stays ' +
+      'INCOMPLETE. Run addons/kosit/install-kosit.ps1, enter its folder and click Load.',
+      'Kein KoSIT-Ordner gefunden: es laufen nur die eigenen Regeln der Bibliothek, das Urteil bleibt ' +
+      'UNVOLLST#ANDIG. addons/kosit/install-kosit.ps1 ausf#uhren, dessen Ordner eintragen und Laden klicken.');
 end;
 
 procedure TWorkbenchForm.FormDestroy(Sender: TObject);
@@ -524,13 +532,10 @@ begin
   cbTerms.Caption := T('Business terms', 'Business Terms (BT)');
   tsCheck.Caption := T('Check', 'Pr#ufung');
   tsInvoice.Caption := T('Invoice', 'Rechnung');
-  lbKositConfig.Caption := T('Folder with the KoSIT configurations (validator-configuration-xrechnung, -bis, ' +
-    '-zugferd; addons/java-tools/install-tools.ps1)',
-    'Ordner mit den KoSIT-Konfigurationen (validator-configuration-xrechnung, -bis, -zugferd; ' +
-    'addons/java-tools/install-tools.ps1)');
-  lbKositRules.Caption := T('Folder with the LandrixXML rule files (rules/rules, peppol; ' +
-    'tools/testdata/sync-local.py)',
-    'Ordner mit den Regeldateien von LandrixXML (rules/rules, peppol; tools/testdata/sync-local.py)');
+  lbKositConfig.Caption := T('KoSIT folder (validator-configuration-xrechnung, -bis, -zugferd and rules; ' +
+    'filled by addons/kosit/install-kosit.ps1)',
+    'KoSIT-Ordner (validator-configuration-xrechnung, -bis, -zugferd und rules; ' +
+    'gef#ullt von addons/kosit/install-kosit.ps1)');
   btKositLoad.Caption := T('Load', 'Laden');
   odOpen.Filter := T('Invoices (*.xml;*.pdf)|*.xml;*.pdf|All files (*.*)|*.*',
     'Rechnungen (*.xml;*.pdf)|*.xml;*.pdf|Alle Dateien (*.*)|*.*');
@@ -1127,10 +1132,10 @@ begin
   Folder := IncludeTrailingPathDelimiter(AFolder);
   if not FileExists(Folder + 'scenarios.xml') then
   begin
-    mmKosit.Lines.Add(T('Not found: ', 'Nicht gefunden: ') + Folder + 'scenarios.xml');
+    mmKosit.Lines.Add(T('Not installed: ', 'Nicht installiert: ') + Folder);
     Exit;
   end;
-  Rules := IncludeTrailingPathDelimiter(Trim(edKositRules.Text));
+  Rules := IncludeTrailingPathDelimiter(Trim(edKositConfig.Text)) + 'rules' + PathDelim;
   V := TLandrixEInvoiceValidator.Create;
   try
     V.LoadConfiguration(Folder + 'scenarios.xml');

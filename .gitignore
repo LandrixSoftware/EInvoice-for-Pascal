@@ -110,6 +110,11 @@ addons/java-tools/*
 !addons/java-tools/install-tools.ps1
 !addons/java-tools/tools.json
 !addons/java-tools/README.md
+# KoSIT configurations and rule files (addons/kosit/install-kosit.ps1)
+addons/kosit/*
+!addons/kosit/install-kosit.ps1
+!addons/kosit/kosit.json
+!addons/kosit/README.md
 
 # Local backlog (never commit)
 BACKLOG.md

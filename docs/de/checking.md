@@ -28,7 +28,8 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
 
 Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dokument melden
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
-Konfiguration bleiben der Maßstab. Noch nicht geprüft werden unter anderem die übrigen
+Konfiguration bleiben der Maßstab, und die Bibliothek führt sie ebenfalls aus, ohne Java
+([Validieren](validation.md)). Noch nicht geprüft werden unter anderem die übrigen
 FX-SCH-A-Regeln des Factur-X-Schematrons (Kardinalität, Pflichtattribute). Die Formatregeln
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN-Prüfsumme), BR-DE-27, BR-DE-28 und BR-51 werden geprüft; bis
 auf BR-51 in CII sind alle Warnungen.
@@ -74,7 +75,8 @@ Zuschlags (Kennzeichen `false` oder `true`), das Schema, der MIME-Code, die Art 
 Datumsformat eines Referenzdokuments mit Art 130, 50 oder 916, die Währung eines Steuerbetrags,
 die der Rechnungs- oder Steuerwährung entspricht (eine Währung, die beides ist, zählt nur für die
 Rechnungswährung, weil das Schematron die erste passende Regel anwendet).
-`LandrixEInvoiceCheckCIICodeRule` prüft eine einzelne Kennung.
+(Die interne Unit `LandrixEInvoiceCIICodeRules` hält die Tabelle; ihr
+`LandrixEInvoiceCheckCIICodeRule` prüft eine einzelne Kennung.)
 
 Die Regeln beurteilen die Rechnung so, wie sie geschrieben würde. Ein Steuersatz, den die
 Rechnung nicht setzt, ist 0 und wird als 0 geschrieben; Positionen, Nachlässe und Zuschläge
