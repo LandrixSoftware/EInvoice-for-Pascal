@@ -200,6 +200,17 @@ begin
   CheckEqualsInvoiceStr('Koshering', LandrixEInvoiceCodeName(ecl_SpecialServiceDescriptionCode, 'KO', eln_German),
     'KO fallback');
   CheckEqualsInvoiceStr('percent weight', LandrixEInvoiceCodeName(ecl_UnitCode, '60', eln_German), 'fallback');
+  { English names the source cuts off or keeps in list form (names-en.json) }
+  CheckEqualsInvoiceStr('Promissory note signed by the debtor and endorsed by a third party',
+    LandrixEInvoiceCodeName(ecl_PaymentMeansCode, '63', eln_English), '63 en completed');
+  CheckEqualsInvoiceStr('ACH demand cash concentration/disbursement plus (CCD+) debit',
+    LandrixEInvoiceCodeName(ecl_PaymentMeansCode, '33', eln_English), '33 en completed');
+  CheckEqualsInvoiceStr('Netherlands', LandrixEInvoiceCodeName(ecl_CountryCode, 'NL', eln_English), 'NL en');
+  CheckEqualsInvoiceStr('minute', LandrixEInvoiceCodeName(ecl_UnitCode, 'MIN', eln_English), 'MIN en');
+  CheckEqualsInvoiceStr('minute [unit of angle]', LandrixEInvoiceCodeName(ecl_UnitCode, 'D61', eln_English),
+    'D61 en keeps its qualifier');
+  CheckEqualsInvoiceStr('Self-billed corrective invoice', LandrixEInvoiceCodeName(ecl_TypeCode, '471', eln_English),
+    '471 en');
   CheckEqualsInvoiceStr('', LandrixEInvoiceCodeName(ecl_UnitCode, 'NOPE', eln_English), 'unknown code');
   CheckEqualsInvoiceStr('', LandrixEInvoiceCodeName(ecl_UnitCode, '', eln_German), 'empty code');
   for T := Succ(Low(T)) to High(T) do

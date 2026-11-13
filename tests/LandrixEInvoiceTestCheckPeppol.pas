@@ -787,6 +787,27 @@ begin
   finally
     Invoice.Free;
   end;
+  { a date the writers cannot format: the rules that format it hold
+    (LandrixEInvoiceCheckInvoice reports the date) }
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Mutate(Invoice, 'IS-R-010');
+    Invoice.InvoiceDueDate := EncodeDate(9999, 12, 31) + 1;
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'IS-R-010', nil), 'IS-R-010: due date beyond 9999');
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'IS-R-009', nil), 'IS-R-009: due date beyond 9999');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Mutate(Invoice, 'GR-R-001-3');
+    Invoice.InvoiceIssueDate := EncodeDate(9999, 12, 31) + 1;
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'GR-R-001-3', nil), 'GR-R-001-3: issue date beyond 9999');
+  finally
+    Invoice.Free;
+  end;
 end;
 
 procedure Register;

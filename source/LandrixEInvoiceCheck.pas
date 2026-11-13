@@ -140,19 +140,22 @@ uses
 
 { Runs every rule that applies to ASpec (except the LX-CC compatibility
   rules) and adds one edk_RuleViolation per violation to ADiagnostics (nil:
-  discarded). A number the writers write but cannot format (NaN, infinite,
-  1e23 and above) is an error of its own (edk_ConversionFailed); a rule
-  that cannot judge it holds, with a NaN no rule runs (its comparisons
-  differ between compilers). Returns the number of errors (violations and
-  such numbers).
+  discarded). A number or date the writers write but cannot format (a
+  number NaN, infinite, 1e23 and above; a date NaN or outside 0001-9999) is
+  an error of its own (edk_ConversionFailed); a rule that cannot judge it
+  holds, with a NaN no rule runs (its comparisons differ between
+  compilers; a NaN date counts even where the writers would leave it out).
+  Returns the number of errors (violations and such values).
   DE: Fuehrt jede Regel aus, die fuer ASpec gilt (ausser den
   LX-CC-Kompatibilitaetsregeln), und fuegt je Verstoss ein
-  edk_RuleViolation an ADiagnostics an (nil: verworfen). Eine Zahl, die
-  kein Writer schreiben kann (NaN, unendlich, ab 1e23), ist ein eigener
-  Fehler (edk_ConversionFailed), sofern die Writer sie schreiben; eine
-  Regel, die sie nicht beurteilen kann, gilt als erfuellt, bei NaN laeuft
-  keine Regel (Vergleiche damit fallen je Compiler anders aus). Liefert die
-  Anzahl der Fehler (Verstoesse und solche Zahlen). }
+  edk_RuleViolation an ADiagnostics an (nil: verworfen). Eine Zahl oder ein
+  Datum, das kein Writer schreiben kann (Zahl: NaN, unendlich, ab 1e23;
+  Datum: NaN oder ausserhalb 0001-9999), ist ein eigener Fehler
+  (edk_ConversionFailed), sofern die Writer sie schreiben; eine Regel, die
+  sie nicht beurteilen kann, gilt als erfuellt, bei NaN laeuft keine Regel
+  (Vergleiche damit fallen je Compiler anders aus; ein NaN-Datum zaehlt
+  auch dort, wo die Writer es weglassen wuerden). Liefert die Anzahl der
+  Fehler (Verstoesse und solche Werte). }
 function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 
@@ -162,9 +165,9 @@ function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLa
   raises ELandrixEInvoiceError. ASpec may be the empty entry of
   LandrixEInvoiceFindSpec (a target without entry); the LX-CC rules apply
   to it as they did to the versions XRechnung-for-Delphi could not write,
-  the official rules do not. A rule that cannot judge a number the
+  the official rules do not. A rule that cannot judge a number or date the
   writers cannot format holds, with a NaN every rule holds
-  (LandrixEInvoiceCheckInvoice reports the number).
+  (LandrixEInvoiceCheckInvoice reports the value).
   DE: Prueft die eine Regel ARuleID (Gross- und Kleinschreibung zaehlt,
   z. B. 'LX-CC-04'). True, wenn sie erfuellt ist oder fuer ASpec nicht
   gilt; sonst False und ein edk_RuleViolation in ADiagnostics (nil:
@@ -172,9 +175,9 @@ function LandrixEInvoiceCheckInvoice(AInvoice: TLandrixInvoice; const ASpec: TLa
   ASpec darf der leere Eintrag von LandrixEInvoiceFindSpec sein (Ziel ohne
   Eintrag); die LX-CC-Regeln gelten dafuer, wie sie fuer die Versionen
   galten, die XRechnung-for-Delphi nicht schreiben konnte, die offiziellen
-  Regeln nicht. Eine Regel, die eine Zahl nicht beurteilen kann, die die
-  Writer nicht formatieren koennen, gilt als erfuellt, bei NaN jede Regel
-  (LandrixEInvoiceCheckInvoice meldet die Zahl). }
+  Regeln nicht. Eine Regel, die eine Zahl oder ein Datum nicht beurteilen
+  kann, das die Writer nicht formatieren koennen, gilt als erfuellt, bei
+  NaN jede Regel (LandrixEInvoiceCheckInvoice meldet den Wert). }
 function LandrixEInvoiceCheckRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 
@@ -1350,6 +1353,45 @@ begin
   Result := False;
 end;
 
+{ True for a NaN, by its bits (comparing a NaN differs between compilers).
+  DE: True fuer NaN, an den Bits (Vergleiche mit NaN fallen je Compiler
+  anders aus). }
+function IsNaN(AValue: Double): Boolean;
+begin
+  Result := ((PInt64(@AValue)^ shr 52) and $7FF = $7FF) and (PInt64(@AValue)^ and $FFFFFFFFFFFFF <> 0);
+end;
+
+type
+  { Raised where a rule formats a number or a date the writers cannot
+    format (ReportUnwritableValues reports the value); the rule then holds.
+    Only this exception is caught.
+    DE: Ausgeloest, wo eine Regel eine Zahl oder ein Datum formatiert, das
+    die Writer nicht formatieren koennen (ReportUnwritableValues meldet den
+    Wert); die Regel gilt dann als erfuellt. Nur diese Ausnahme wird
+    abgefangen. }
+  EUnwritableNumber = class(Exception);
+
+{ True if the writers can format the date AValue: not NaN, 0001-01-01 to
+  9999-12-31 (the range of LandrixXml).
+  DE: True, wenn die Writer das Datum AValue formatieren koennen: nicht
+  NaN, 0001-01-01 bis 9999-12-31 (der Bereich von LandrixXml). }
+function DateWritable(AValue: TDateTime): Boolean;
+begin
+  Result := not IsNaN(AValue) and (AValue > -693594) and (AValue < 2958466);
+end;
+
+{ The day of AValue as written (the time is ignored); EUnwritableNumber for
+  a date the writers cannot format.
+  DE: Der Tag von AValue, wie er geschrieben wird (die Uhrzeit zaehlt
+  nicht); EUnwritableNumber fuer ein Datum, das die Writer nicht
+  formatieren koennen. }
+function WrittenDay(AValue: TDateTime): Int64;
+begin
+  if not DateWritable(AValue) then
+    raise EUnwritableNumber.Create('date cannot be formatted');
+  Result := Trunc(AValue);
+end;
+
 function PeriodDateSet(AValue: TDateTime): Boolean;
 begin
   Result := AValue > 100;
@@ -1360,7 +1402,7 @@ end;
   nicht. }
 function PeriodReversed(AStart, AEnd: TDateTime): Boolean;
 begin
-  Result := PeriodDateSet(AStart) and PeriodDateSet(AEnd) and (Trunc(AEnd) < Trunc(AStart));
+  Result := PeriodDateSet(AStart) and PeriodDateSet(AEnd) and (WrittenDay(AEnd) < WrittenDay(AStart));
 end;
 
 { The line rules, for one line.
@@ -2000,25 +2042,6 @@ begin
       Result := False;
   end;
 end;
-
-{ True for a NaN, by its bits (comparing a NaN differs between compilers).
-  DE: True fuer NaN, an den Bits (Vergleiche mit NaN fallen je Compiler
-  anders aus). }
-function IsNaN(AValue: Double): Boolean;
-begin
-  Result := ((PInt64(@AValue)^ shr 52) and $7FF = $7FF) and (PInt64(@AValue)^ and $FFFFFFFFFFFFF <> 0);
-end;
-
-type
-  { Raised where a rule formats a number the writers cannot format
-    (ReportUnwritableNumbers reports the number); the rule then holds. Only
-    this exception is caught: every other one, e.g. of a date outside
-    0001-9999, passes.
-    DE: Ausgeloest, wo eine Regel eine Zahl formatiert, die die Writer
-    nicht formatieren koennen (ReportUnwritableNumbers meldet die Zahl);
-    die Regel gilt dann als erfuellt. Nur diese Ausnahme wird abgefangen:
-    jede andere, z. B. eines Datums ausserhalb 0001-9999, geht weiter. }
-  EUnwritableNumber = class(Exception);
 
 { AValue if the writers can format it, else EUnwritableNumber.
   DE: AValue, wenn die Writer es formatieren koennen, sonst
@@ -3895,24 +3918,25 @@ function PeppolLineViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; 
 var
   I: TLandrixEInvoiceListIndex;
   Base, Allowances, Charges, Value: TExact;
-  HeaderWritten, LineWritten: Boolean;
   BaseUnit: TLandrixEInvoiceString;
 begin
   Result := False;
-  HeaderWritten := PeriodWritten(AInvoice.InvoicePeriodStartDate, AInvoice.InvoicePeriodEndDate);
-  LineWritten := PeriodWritten(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate);
   case AIndex of
     cr_PeppolR046:
       Result := (ALine.GrossPriceAmount <> 0) and (ExactCompare(PriceExact(ALine.NetPriceAmount),
         ExactSub(PriceExact(ALine.GrossPriceAmount), PriceExact(ALine.DiscountOnTheGrossPrice))) <> 0);
     cr_PeppolR110:
-      Result := HeaderWritten and PeriodDateSet(AInvoice.InvoicePeriodStartDate) and LineWritten and
+      Result := PeriodWritten(AInvoice.InvoicePeriodStartDate, AInvoice.InvoicePeriodEndDate) and
+        PeriodDateSet(AInvoice.InvoicePeriodStartDate) and
+        PeriodWritten(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate) and
         PeriodDateSet(ALine.InvoiceLinePeriodStartDate) and
-        (Trunc(ALine.InvoiceLinePeriodStartDate) < Trunc(AInvoice.InvoicePeriodStartDate));
+        (WrittenDay(ALine.InvoiceLinePeriodStartDate) < WrittenDay(AInvoice.InvoicePeriodStartDate));
     cr_PeppolR111:
-      Result := HeaderWritten and PeriodDateSet(AInvoice.InvoicePeriodEndDate) and LineWritten and
+      Result := PeriodWritten(AInvoice.InvoicePeriodStartDate, AInvoice.InvoicePeriodEndDate) and
+        PeriodDateSet(AInvoice.InvoicePeriodEndDate) and
+        PeriodWritten(ALine.InvoiceLinePeriodStartDate, ALine.InvoiceLinePeriodEndDate) and
         PeriodDateSet(ALine.InvoiceLinePeriodEndDate) and
-        (Trunc(ALine.InvoiceLinePeriodEndDate) > Trunc(AInvoice.InvoicePeriodEndDate));
+        (WrittenDay(ALine.InvoiceLinePeriodEndDate) > WrittenDay(AInvoice.InvoicePeriodEndDate));
     cr_PeppolR120XR, cr_PeppolR120BIS:
       begin
         Base := ExactOf('1');
@@ -4208,7 +4232,7 @@ begin
   end;
 end;
 
-{ --- numbers no writer can write ----------------------------------------------- }
+{ --- numbers and dates no writer can write -------------------------------------- }
 
 type
   { What the walk found. DE: Was der Durchgang gefunden hat. }
@@ -4306,13 +4330,101 @@ begin
   end;
 end;
 
-{ Reports every number of AInvoice that the writers write but cannot
-  format (one edk_ConversionFailed error each). A cash discount level
-  counts up to the level of PaymentTermsType.
-  DE: Meldet jede Zahl von AInvoice, die die Writer schreiben, aber nicht
-  formatieren koennen (je ein Fehler edk_ConversionFailed). Eine
-  Skontostufe zaehlt bis zur Stufe von PaymentTermsType. }
-function ReportUnwritableNumbers(AInvoice: TLandrixInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics): TUnwritable;
+{ A date the writers cannot format: a NaN always (whether the writers
+  write it differs between compilers), otherwise when it is written (a
+  plain date above 0, an optional one with AHasValue) and outside
+  0001-9999.
+  DE: Ein Datum, das die Writer nicht formatieren koennen: NaN immer (ob
+  die Writer es schreiben, faellt je Compiler anders aus), sonst wenn es
+  geschrieben wird (ein einfaches Datum ueber 0, ein optionales mit
+  AHasValue) und ausserhalb 0001-9999 liegt. }
+procedure ReportDate(AValue: TDateTime; AHasValue: Boolean; const ATerms: string; const AWhat: TLandrixEInvoiceString;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; var AFound: TUnwritable);
+var
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  if IsNaN(AValue) then
+    AFound.NaN := True
+  else if DateWritable(AValue) or (not AHasValue and (AValue <= 0)) then
+    Exit;
+  Inc(AFound.Count);
+  if ADiagnostics = nil then
+    Exit;
+  D := ADiagnostics.AddDiagnostic(edk_ConversionFailed, TLandrixEInvoiceString(ATerms), 0, 0, 0,
+    AWhat + ' cannot be written (NaN or outside 0001-9999); the rules that cannot judge it are skipped');
+  D.Severity := eds_Error;
+end;
+
+{ The dates of the lines and sub lines; a delivery note date only with its
+  number (or NaN), as the writers.
+  DE: Die Daten der Positionen und Unterpositionen; ein Lieferscheindatum
+  nur mit seiner Nummer (oder NaN), wie bei den Writern. }
+procedure ReportLineDates(ALines: TLandrixInvoiceLines; ADiagnostics: TLandrixEInvoiceDiagnostics;
+  var AFound: TUnwritable);
+var
+  I: TLandrixEInvoiceListIndex;
+  Line: TLandrixInvoiceLine;
+  Where: TLandrixEInvoiceString;
+begin
+  for I := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[I];
+    Where := ' of invoice line ''' + Line.ID + '''';
+    if Line.OrderDate.HasValue then
+      ReportDate(Line.OrderDate.Value, True, 'BT-X-22', 'The order date' + Where, ADiagnostics, AFound);
+    ReportDate(Line.InvoiceLinePeriodStartDate, False, 'BT-134', 'The period start' + Where, ADiagnostics, AFound);
+    ReportDate(Line.InvoiceLinePeriodEndDate, False, 'BT-135', 'The period end' + Where, ADiagnostics, AFound);
+    if Present(Line.DeliveryNoteNumber) or IsNaN(Line.DeliveryNoteDate) then
+      ReportDate(Line.DeliveryNoteDate, False, 'BT-X-94', 'The delivery note date' + Where, ADiagnostics, AFound);
+    ReportDate(Line.ActualDeliveryDate, False, 'BT-X-85', 'The delivery date' + Where, ADiagnostics, AFound);
+    ReportLineDates(Line.SubInvoiceLines, ADiagnostics, AFound);
+  end;
+end;
+
+{ Every date of AInvoice the writers cannot format (ReportDate); the date
+  of a despatch advice or delivery note only with its number (or NaN), as
+  the writers.
+  DE: Jedes Datum von AInvoice, das die Writer nicht formatieren koennen
+  (ReportDate); das Datum einer Versandanzeige oder eines Lieferscheins
+  nur mit seiner Nummer (oder NaN), wie bei den Writern. }
+procedure ReportUnwritableDates(AInvoice: TLandrixInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics;
+  var AFound: TUnwritable);
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  ReportDate(AInvoice.InvoiceIssueDate, False, 'BT-2', 'The invoice date', ADiagnostics, AFound);
+  ReportDate(AInvoice.InvoiceDueDate, False, 'BT-9', 'The due date', ADiagnostics, AFound);
+  if AInvoice.TaxPointDate.HasValue then
+    ReportDate(AInvoice.TaxPointDate.Value, True, 'BT-7', 'The VAT point date', ADiagnostics, AFound);
+  ReportDate(AInvoice.InvoicePeriodStartDate, False, 'BT-73', 'The invoicing period start', ADiagnostics, AFound);
+  ReportDate(AInvoice.InvoicePeriodEndDate, False, 'BT-74', 'The invoicing period end', ADiagnostics, AFound);
+  ReportDate(AInvoice.DeliveryInformation.ActualDeliveryDate, False, 'BT-72', 'The actual delivery date',
+    ADiagnostics, AFound);
+  for I := 0 to AInvoice.PrecedingInvoiceReferences.Count - 1 do
+    ReportDate(AInvoice.PrecedingInvoiceReferences[I].IssueDate, False, 'BT-26', 'The issue date of preceding ' +
+      'invoice ' + TLandrixEInvoiceString(IntToStr(I + 1)), ADiagnostics, AFound);
+  if AInvoice.SellerOrderReferenceDate.HasValue then
+    ReportDate(AInvoice.SellerOrderReferenceDate.Value, True, 'BT-X-146', 'The sales order date', ADiagnostics,
+      AFound);
+  if AInvoice.PurchaseOrderReferenceDate.HasValue then
+    ReportDate(AInvoice.PurchaseOrderReferenceDate.Value, True, 'BT-X-147', 'The purchase order date',
+      ADiagnostics, AFound);
+  if Present(AInvoice.DeliveryReceiptNumber) or IsNaN(AInvoice.DeliveryReceiptDate) then
+    ReportDate(AInvoice.DeliveryReceiptDate, False, 'BT-X-200', 'The despatch advice date', ADiagnostics, AFound);
+  if Present(AInvoice.DeliveryReceiptNumberExtended) or IsNaN(AInvoice.DeliveryReceiptDateExtended) then
+    ReportDate(AInvoice.DeliveryReceiptDateExtended, False, 'BT-X-203', 'The delivery note date', ADiagnostics,
+      AFound);
+  ReportLineDates(AInvoice.InvoiceLines, ADiagnostics, AFound);
+end;
+
+{ Reports every number and date of AInvoice that the writers write but
+  cannot format (one edk_ConversionFailed error each). A cash discount
+  level counts up to the level of PaymentTermsType.
+  DE: Meldet jede Zahl und jedes Datum von AInvoice, die die Writer
+  schreiben, aber nicht formatieren koennen (je ein Fehler
+  edk_ConversionFailed). Eine Skontostufe zaehlt bis zur Stufe von
+  PaymentTermsType. }
+function ReportUnwritableValues(AInvoice: TLandrixInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics): TUnwritable;
 var
   I: TLandrixEInvoiceListIndex;
 begin
@@ -4332,6 +4444,7 @@ begin
   if AInvoice.PaymentTermsType = iptt_CashDiscount3 then
     ReportNumber(AInvoice.PaymentTermCashDiscount3Percent, 'BT-20', 'The percentage of cash discount 3',
       ADiagnostics, Result);
+  ReportUnwritableDates(AInvoice, ADiagnostics, Result);
 end;
 
 procedure AddViolation(ADiagnostics: TLandrixEInvoiceDiagnostics; const AID, ATerms, AMessage: string;
@@ -4425,12 +4538,12 @@ var
   Flat: TLandrixInvoice;
   Found: TUnwritable;
 begin
-  { numbers the writers write but cannot format: errors; the rules that
-    cannot judge them hold, with a NaN no rule runs
-    DE: Zahlen, die die Writer nicht formatieren koennen: Fehler; die
-    Regeln, die sie nicht beurteilen koennen, gelten als erfuellt, bei NaN
-    laeuft keine Regel }
-  Found := ReportUnwritableNumbers(AInvoice, ADiagnostics);
+  { numbers and dates the writers write but cannot format: errors; the
+    rules that cannot judge them hold, with a NaN no rule runs
+    DE: Zahlen und Daten, die die Writer nicht formatieren koennen: Fehler;
+    die Regeln, die sie nicht beurteilen koennen, gelten als erfuellt, bei
+    NaN laeuft keine Regel }
+  Found := ReportUnwritableValues(AInvoice, ADiagnostics);
   Result := Found.Count;
   if Found.NaN then
     Exit;
@@ -4481,7 +4594,7 @@ begin
       if CheckRows[I].Legacy then
         Inc(LegacyRows);
     end;
-  Unwritable := ReportUnwritableNumbers(AInvoice, nil);
+  Unwritable := ReportUnwritableValues(AInvoice, nil);
   Flat := nil;
   if (Rows = 0) or (LegacyRows < Rows) then
     Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);

@@ -1305,6 +1305,77 @@ begin
   end;
 end;
 
+{ A date no writer can write (NaN, outside 0001-9999) is one error of its
+  own, the rules that need it are skipped, nothing raises (Trunc of 1e300
+  would); a date the writers leave out (0 or below) is not reported, a NaN
+  always is and stops every rule. }
+procedure TestUnwritableDates;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Huge, NaN: Double;
+  K: TTargetKind;
+  I: Integer;
+begin
+  Huge := 1;
+  for I := 1 to 300 do
+    Huge := Huge * 10;
+  PInt64(@NaN)^ := $7FF8000000000000;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceDueDate := Huge;
+    Invoice.TaxPointDate.SetValue(EncodeDate(1, 1, 1) - 1);
+    Invoice.InvoicePeriodStartDate := Huge;
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 10, 31);
+    Invoice.InvoiceLines[0].InvoiceLinePeriodStartDate := EncodeDate(2026, 10, 1);
+    Invoice.InvoiceLines[0].InvoiceLinePeriodEndDate := EncodeDate(9999, 12, 31) + 1;
+    Invoice.DeliveryReceiptDate := -Huge;
+    { without its number the writers leave a delivery note date out }
+    Invoice.DeliveryReceiptDateExtended := Huge;
+    Invoice.InvoiceLines[0].DeliveryNoteDate := Huge;
+    for K := tk_XRUBL to High(TTargetKind) do
+    begin
+      D.Clear;
+      CheckEquals(4, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D), 'unwritable dates: four errors, target ' +
+        IntToStr(Ord(K)) + ': ' + string(D.ToText));
+      CheckEquals(4, D.CountOf(edk_ConversionFailed), 'unwritable dates reported, target ' + IntToStr(Ord(K)));
+    end;
+    D.Clear;
+    LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D);
+    CheckEqualsInvoiceStr('BT-9', D[0].Path, 'due date: business term');
+    CheckEqualsInvoiceStr('BT-7', D[1].Path, 'VAT point date: business term');
+    CheckEqualsInvoiceStr('BT-73', D[2].Path, 'period start: business term');
+    CheckEqualsInvoiceStr('BT-135', D[3].Path, 'line period end: business term');
+    Check(D[0].Severity = eds_Error, 'an error');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-29', nil), 'BR-29 skipped');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-30', nil), 'BR-30 skipped');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'PEPPOL-EN16931-R110', nil), 'R110 skipped');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'PEPPOL-EN16931-R111', nil), 'R111 skipped');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceIssueDate := NaN;
+    Invoice.DeliveryReceiptDate := NaN;
+    for K := tk_XRUBL to High(TTargetKind) do
+    begin
+      D.Clear;
+      CheckEquals(2, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D), 'NaN dates: two errors, no rule, target ' +
+        IntToStr(Ord(K)) + ': ' + string(D.ToText));
+    end;
+    CheckEqualsInvoiceStr('BT-2', D[0].Path, 'invoice date: business term');
+    CheckEqualsInvoiceStr('BT-X-200', D[1].Path, 'despatch advice date: business term');
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-03', nil), 'BR-03 skipped');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { BR-CO-17 allows a difference below 1 (UBL) or up to 1 (CII) from the
   taxable amount x rate rounded to cents; with a rate of 0 the tax amount
   must round to 0. }
@@ -2444,6 +2515,7 @@ begin
   RegisterTest('Check.SEPAIdentifiers', TestSEPAIdentifiers);
   RegisterTest('Check.TaxTolerance', TestTaxTolerance);
   RegisterTest('Check.UnwritableNumbers', TestUnwritableNumbers);
+  RegisterTest('Check.UnwritableDates', TestUnwritableDates);
   RegisterTest('Check.Totals', TestTotals);
   RegisterTest('Check.VatCategories', TestVatCategories);
   RegisterTest('Check.VatSyntaxes', TestVatSyntaxes);

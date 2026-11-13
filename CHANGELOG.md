@@ -405,6 +405,13 @@ Supported invoice standards are documented per release.
 - The invoice page titles a credit note (BT-3 = 381) "Credit note" / "Gutschrift"; the VAT columns of allowances
   and charges on line level appear only when an item has a category or a rate. German names for 42 common charge
   reasons (UNTDID 7161, e.g. FC "Fracht") in `tools/codelists/names-de.json`; the others stay English.
+- English code names corrected where the EN 16931 code lists cut them off or keep their list form, in the new
+  hand-written `tools/codelists/names-en.json` (90 entries; the generator fails on an entry equal to the source): 47
+  names completed from UNTDID (payment means, e.g. 63 "...endorsed by a third party", note subjects, reference
+  qualifiers, item classifications), countries without the article of the ISO list form ("Netherlands" instead of
+  "Netherlands (the)"), invoice types 471-503 without ", invoice type, Corrected", and the units minute and second
+  without "[unit of time]". Payment means 32/33 and 41/43 had the same English and German names; they now say credit
+  and debit (Gutschrift, Lastschrift).
 - `LandrixEInvoiceValidation` chooses the KoSIT configuration per document among registered ones
   (`Options.AddConfiguration(Configuration, Kind)`, `ClearConfigurations`, `ConfigurationCount`; kinds
   `TLandrixEInvoiceConfigurationKind`): a configuration is a candidate when exactly one of its scenarios matches
@@ -616,3 +623,8 @@ Supported invoice standards are documented per release.
   decimals, any size) in the VAT category rules, BR-S-09 and BR-CO-17; before, a rate above the `Currency` range
   became 0, taxable amount x rate could overflow, and BR-CO-17 rounded `-0.5` away from 0 unlike XPath. Cent
   amounts of the rules cover the whole `Currency` range.
+- The rule check no longer raises for a date the writers cannot format either (NaN or outside 0001-9999, as a
+  caller can set it): each such date the writers write (a plain date above 0, an optional one with a value, a
+  delivery note or despatch advice date only with its number) is an error of its own (`edk_ConversionFailed`, path = business term), and a NaN date always is and stops every rule.
+  The rules that compare or format such a date hold (BR-29, BR-30, PEPPOL-EN16931-R110/R111, IS-R-008 to -010,
+  GR-R-001-3).

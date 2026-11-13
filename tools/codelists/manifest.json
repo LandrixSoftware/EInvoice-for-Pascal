@@ -37,6 +37,7 @@
   },
   "names": {
     "german": "names-de.json",
+    "english": "names-en.json",
     "cldr_version": "47.0.0",
     "cldr": {
       "CountryCode": {"file": "cldr-47/territories.json", "path": ["main", "de", "localeDisplayNames", "territories"]},

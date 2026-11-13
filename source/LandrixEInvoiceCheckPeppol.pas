@@ -70,14 +70,14 @@ uses
 { Runs every rule of this unit when ASpec is Peppol BIS (otherwise none)
   and adds one edk_RuleViolation per violation to ADiagnostics (nil:
   discarded). Returns the number of violations with severity eds_Error.
-  A rule that cannot judge a number the writers cannot format holds
-  (LandrixEInvoiceCheckInvoice reports the number).
+  A rule that cannot judge a number or date the writers cannot format
+  holds (LandrixEInvoiceCheckInvoice reports the value).
   DE: Fuehrt jede Regel dieser Unit aus, wenn ASpec Peppol BIS ist (sonst
   keine), und fuegt je Verstoss ein edk_RuleViolation an ADiagnostics an
   (nil: verworfen). Liefert die Anzahl der Verstoesse mit Schwere
-  eds_Error. Eine Regel, die eine Zahl nicht beurteilen kann, die die
-  Writer nicht formatieren koennen, gilt als erfuellt
-  (LandrixEInvoiceCheckInvoice meldet die Zahl). }
+  eds_Error. Eine Regel, die eine Zahl oder ein Datum nicht beurteilen
+  kann, das die Writer nicht formatieren koennen, gilt als erfuellt
+  (LandrixEInvoiceCheckInvoice meldet den Wert). }
 function LandrixEInvoiceCheckPeppolInvoice(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 
@@ -85,14 +85,14 @@ function LandrixEInvoiceCheckPeppolInvoice(AInvoice: TLandrixInvoice; const ASpe
   True if it holds or ASpec is not Peppol BIS, otherwise False and one
   edk_RuleViolation in ADiagnostics (nil: discarded). AFound False: the
   identifier is not a rule of this unit, the result is True. ASkip: the
-  rule does not run (True); a rule that cannot judge a number holds as for
-  LandrixEInvoiceCheckPeppolInvoice.
+  rule does not run (True); a rule that cannot judge a number or date holds
+  as for LandrixEInvoiceCheckPeppolInvoice.
   DE: Prueft die Regel ARuleID (Gross- und Kleinschreibung zaehlt), wenn
   diese Unit sie hat (AFound): True, wenn sie erfuellt ist oder ASpec nicht
   Peppol BIS ist, sonst False und ein edk_RuleViolation in ADiagnostics
   (nil: verworfen). AFound False: die Kennung ist keine Regel dieser Unit,
   das Ergebnis ist True. ASkip: die Regel laeuft nicht (True); eine Regel,
-  die eine Zahl nicht beurteilen kann, gilt wie bei
+  die eine Zahl oder ein Datum nicht beurteilen kann, gilt wie bei
   LandrixEInvoiceCheckPeppolInvoice als erfuellt. }
 function LandrixEInvoiceCheckPeppolRule(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
   const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; ASkip: Boolean;
@@ -1147,14 +1147,27 @@ begin
 end;
 
 type
-  { Raised where a rule formats a number the writers cannot format
-    (LandrixEInvoiceCheckInvoice reports the number); the rule then holds.
-    Only this exception is caught.
-    DE: Ausgeloest, wo eine Regel eine Zahl formatiert, die die Writer
-    nicht formatieren koennen (LandrixEInvoiceCheckInvoice meldet die
-    Zahl); die Regel gilt dann als erfuellt. Nur diese Ausnahme wird
-    abgefangen. }
+  { Raised where a rule formats a number or a date the writers cannot
+    format (LandrixEInvoiceCheckInvoice reports the value); the rule then
+    holds. Only this exception is caught.
+    DE: Ausgeloest, wo eine Regel eine Zahl oder ein Datum formatiert, das
+    die Writer nicht formatieren koennen (LandrixEInvoiceCheckInvoice
+    meldet den Wert); die Regel gilt dann als erfuellt. Nur diese Ausnahme
+    wird abgefangen. }
   EUnwritableNumber = class(Exception);
+
+{ The date as UBL writes it; EUnwritableNumber outside 0001-9999.
+  DE: Das Datum, wie UBL es schreibt; EUnwritableNumber ausserhalb
+  0001-9999. }
+function DateLexical(AValue: TDateTime): TLandrixEInvoiceString;
+begin
+  try
+    Result := LandrixEInvoiceDateToUBL(AValue);
+  except
+    on ELandrixXmlError do
+      raise EUnwritableNumber.Create('date cannot be formatted');
+  end;
+end;
 
 { The rate as written (two decimals); EUnwritableNumber for NaN, infinite
   and 1e23 and above.
@@ -1432,7 +1445,7 @@ begin
   Result := False;
   if (AInvoice.InvoiceIssueDate <= 0) or (LandrixEInvoiceNormalizeSpace(ASegment) = '') then
     Exit;
-  Issue := LandrixEInvoiceDateToUBL(AInvoice.InvoiceIssueDate);
+  Issue := DateLexical(AInvoice.InvoiceIssueDate);
   Result := (Segment(ASegment, '/', 1, Count) = Copy(Issue, 9, 2)) and
     (Segment(ASegment, '/', 2, Count) = Copy(Issue, 6, 2)) and (Segment(ASegment, '/', 3, Count) = Copy(Issue, 1, 4)) and
     ((Copy(Issue, 1, 2) = '19') or (Copy(Issue, 1, 2) = '20'));
@@ -2004,7 +2017,7 @@ begin
         if (SellerRaw = 'IS') and (Reference <> nil) then
         begin
           if IsInvoice and (AInvoice.InvoiceDueDate > 0) then
-            Due := LandrixEInvoiceDateToUBL(AInvoice.InvoiceDueDate)
+            Due := DateLexical(AInvoice.InvoiceDueDate)
           else
             Due := '';
           if Present(Reference.ID) then
