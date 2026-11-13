@@ -31,6 +31,13 @@ ALLOWED_UNITS = {"sysutils", "classes", "contnrs", "types"}
 # Unix wide string manager that applications need for lossless conversions.
 PROGRAM_UNITS = {"cwstring"}
 OWN_UNIT_PREFIXES = ("landrixxml", "landrixeinvoice")
+# Only in the GUI example examples/Workbench: the VCL and LCL units both
+# frameworks name alike (Windows and ShellAPI for the VCL branch, Interfaces
+# and LCLIntf for the LCL branch), and its own form unit.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GUI_EXAMPLE_DIR = os.path.normcase(os.path.join(ROOT, "examples", "Workbench")) + os.sep
+GUI_UNITS = {"interfaces", "lclintf", "windows", "shellapi", "forms", "controls", "dialogs",
+             "stdctrls", "extctrls", "comctrls", "workbenchmain"}
 
 FORBIDDEN_IDENTIFIERS = [
     "TStringBuilder", "TEncoding", "TFormatSettings", "PosEx", "CharInSet",
@@ -174,6 +181,8 @@ def check_uses(path, code, violations):
             if "." in name:
                 violations.append(Violation(path, line, "qualified unit name: %s" % name))
             elif low in PROGRAM_UNITS and path.lower().endswith((".dpr", ".lpr")):
+                continue
+            elif low in GUI_UNITS and os.path.normcase(os.path.abspath(path)).startswith(GUI_EXAMPLE_DIR):
                 continue
             elif low not in ALLOWED_UNITS and not low.startswith(OWN_UNIT_PREFIXES):
                 violations.append(Violation(path, line, "unit not allowed: %s" % name))

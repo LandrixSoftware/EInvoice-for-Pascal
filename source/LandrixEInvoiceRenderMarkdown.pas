@@ -431,6 +431,9 @@ begin
       Heading('##', Escape(LandrixEInvoiceRenderSectionLabel(ASection, Language)));
     erg_Box:
       Heading('###', Escape(LabelOf(AField, LandrixEInvoiceRenderFieldBT(AField))));
+  else
+    { the other groups write nothing when they open (FPC 3.3.1 warns about
+      a case without else) }
   end;
 end;
 

@@ -33,7 +33,9 @@
   into build/<toolchain>/examples/ (reusing the compiled units) and run there
   in a fixed order with fixed arguments; a build error, a diagnostic or an
   exit code other than 0 fails the toolchain. Not for mac, d13-osxarm64 and
-  the -checked variants, and only for the default program.
+  the -checked variants, and only for the default program. The GUI example
+  Workbench (VCL) is only compiled, and only by Delphi (the FPC toolchains
+  have no LCL; its Lazarus project is built with lazbuild, see the example).
 
   Cross test: every test run writes all scenarios to build/<toolchain>/cross/
   (test Cross.Write). After the runs, each local
@@ -108,6 +110,9 @@ $WslRoot = '/mnt/' + $Root.Substring(0, 1).ToLower() + ($Root.Substring(2) -repl
 $FpcPaths = @($UnitDirs | ForEach-Object { "-Fu$_" }) + @($IncDirs | ForEach-Object { "-Fi$_" })
 $DccUnits = ($UnitDirs | ForEach-Object { $_ -replace '/', '\' }) -join ';'
 $DccIncs = ($IncDirs | ForEach-Object { $_ -replace '/', '\' }) -join ';'
+# the same as absolute paths, for compiling an example in its own folder
+$AbsDccUnits = ($UnitDirs | ForEach-Object { (Resolve-Path $_).Path }) -join ';'
+$AbsDccIncs = ($IncDirs | ForEach-Object { (Resolve-Path $_).Path }) -join ';'
 
 function Count-OwnDiagnostics([string[]]$Lines) {
   # Delphi: file.pas(12) Warning: ...   FPC: file.pas(12,5) Warning: ...
@@ -128,7 +133,8 @@ $Examples = @(
   @{ Name = 'CheckInvoice';    Args = @('xrechnung-ubl.xml') },
   @{ Name = 'ConvertCIIToUBL'; Args = @('xrechnung-cii.xml', 'converted-ubl.xml') },
   @{ Name = 'CompatXRechnung'; Args = @('xrechnung-ubl.xml') },
-  @{ Name = 'BusinessCases';   Args = @('business-cases', '../../../examples/BusinessCases/attachments') }
+  @{ Name = 'BusinessCases';   Args = @('business-cases', '../../../examples/BusinessCases/attachments') },
+  @{ Name = 'Workbench';       Gui = $true }
 )
 
 # Compiles and runs the examples with one toolchain; returns the number of
@@ -142,6 +148,7 @@ function Invoke-Examples([string]$Name, [string]$Base, [string[]]$Checks, $Resul
   foreach ($ex in $Examples) {
     $dpr = "examples/$($ex.Name)/$($ex.Name).dpr"
     if (-not (Test-Path $dpr)) { continue }
+    if ($ex.Gui -and $Base -notmatch '^d') { continue }
     $runCmd = $null
     switch -Regex ($Base) {
       '^fpc(\d+)-linux$' {
@@ -158,14 +165,24 @@ function Invoke-Examples([string]$Name, [string]$Base, [string[]]$Checks, $Resul
       '^d(6|7)$' {
         $d = if ($Matches[1] -eq '6') { $Delphi6 } else { $Delphi7 }
         $winOut = (Resolve-Path $out).Path
-        $log = & "$d\Bin\dcc32.exe" -Q -W -H @Checks "-U$d\Lib;$winOut;$DccUnits" "-I$DccIncs" "-N$winOut" "-E$winOut\examples" ($dpr -replace '/', '\') 2>&1
-        $code = $LASTEXITCODE
+        # in the example's folder: Delphi 6 resolves "in 'File.pas'" of a
+        # program against the current folder (the form unit of Workbench)
+        Push-Location "examples/$($ex.Name)"
+        try {
+          $log = & "$d\Bin\dcc32.exe" -Q -W -H @Checks "-U$d\Lib;$winOut;$AbsDccUnits" "-I$AbsDccIncs" "-N$winOut" "-E$winOut\examples" "$($ex.Name).dpr" 2>&1
+          $code = $LASTEXITCODE
+        } finally { Pop-Location }
       }
       '^d13-win(32|64)$' {
         $bits = $Matches[1]
         $dcc = if ($bits -eq '32') { 'dcc32.exe' } else { 'dcc64.exe' }
-        $log = & "$Delphi13\bin\$dcc" -Q -W -H @Checks '-NSSystem;System.Win;Winapi' "-U$Delphi13\lib\win$bits\release;$out;$DccUnits" "-I$DccIncs" "-NU$out" "-E$exOut" $dpr 2>&1
-        $code = $LASTEXITCODE
+        $winOut = (Resolve-Path $out).Path
+        $winExOut = (Resolve-Path $exOut).Path
+        Push-Location "examples/$($ex.Name)"
+        try {
+          $log = & "$Delphi13\bin\$dcc" -Q -W -H @Checks '-NSSystem;System.Win;Winapi;Vcl' "-U$Delphi13\lib\win$bits\release;$winOut;$AbsDccUnits" "-I$AbsDccIncs" "-NU$winOut" "-E$winExOut" "$($ex.Name).dpr" 2>&1
+          $code = $LASTEXITCODE
+        } finally { Pop-Location }
       }
       default { return 0 }
     }
@@ -180,6 +197,7 @@ function Invoke-Examples([string]$Name, [string]$Base, [string[]]$Checks, $Resul
       $failed++
       continue
     }
+    if ($ex.Gui) { continue }
     if ($runCmd) {
       $runLog = & $runCmd 2>&1
     } else {

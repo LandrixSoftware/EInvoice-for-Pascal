@@ -86,8 +86,9 @@ writing itself never changes amounts.
 
 ## Examples
 
-Every example is a console program with a `.dpr` for Delphi and an `.lpi` for Lazarus. They
-build on each other: run WriteXRechnung first, the others read its output.
+Every example has a `.dpr` for Delphi and an `.lpi` for Lazarus. The console programs
+build on each other: run WriteXRechnung first, the others read its output. Workbench is a window
+(VCL and LCL) to try everything interactively.
 
 | Example | Shows |
 |---|---|
@@ -97,6 +98,7 @@ build on each other: run WriteXRechnung first, the others read its output.
 | [ConvertCIIToUBL](../examples/ConvertCIIToUBL/ConvertCIIToUBL.dpr) | Converting between the syntaxes |
 | [CompatXRechnung](../examples/CompatXRechnung/CompatXRechnung.dpr) | Code written for XRechnung-for-Delphi |
 | [BusinessCases](../examples/BusinessCases/BusinessCases.dpr) | 24 business cases for every target they fit (111 files) |
+| [Workbench](../examples/Workbench/Workbench.dpr) | A window: create a business case or open XML or PDF, check it natively (own rules, KoSIT), read it back, show it as text and HTML |
 
 ## Further reading
 

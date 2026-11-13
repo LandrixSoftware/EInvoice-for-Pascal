@@ -551,6 +551,17 @@ Supported invoice standards are documented per release.
   labels and values as the walk (white space at the edges of a one-line value and blank lines of a longer one
   excepted, which rendered CommonMark does not show). Exceptions in
   `tools/render/md-exceptions.txt` (none).
+- Example `examples/Workbench`: a window in the spirit of the sample project of XRechnung-for-Delphi, native only
+  (no Java, no validation service, no browser control). It creates the overall example with its options or one of
+  the 25 business cases for XRechnung UBL or CII, ZUGFeRD EN 16931 or EXTENDED or Peppol BIS, or opens an XML
+  invoice or a ZUGFeRD / Factur-X PDF; it shows the XML, checks it with `TLandrixEInvoiceDocumentValidator` (the
+  library's own rules, and KoSIT with the configurations and rule files it finds or is given), reads it back and
+  writes it again (byte comparison), shows the invoice as Markdown and opens the invoice and the check report as
+  HTML in the default browser. Interface German (default) or English, the choice also sets the language of the
+  invoice and the report. One unit for Delphi 6 to 13 (VCL, `.dfm`) and Lazarus (LCL, `.lfm`, `Workbench.lpi`).
+  `tools/build.ps1` compiles it with Delphi without running it (the FPC toolchains have no LCL) and compiles every
+  Delphi example in its own folder; `tools/check-forbidden.py` allows the GUI units in this example only. The single
+  business cases of `LandrixEInvoiceExampleScenarios` are now in its interface.
 
 ### Changed
 - Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as

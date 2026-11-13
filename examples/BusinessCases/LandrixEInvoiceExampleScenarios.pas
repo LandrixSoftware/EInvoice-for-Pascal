@@ -49,6 +49,35 @@ type
   and ends with a path delimiter. }
 procedure RunAllScenarios(ASave: TScenarioSave; AData: Pointer; const AAttachmentDir: string);
 
+{ The single cases, each filling an empty invoice (used one by one by
+  examples/Workbench); see the comments at the implementations. }
+procedure ScenarioExchangePartTax(AInvoice: TLandrixInvoice);
+procedure ScenarioMarginScheme(AInvoice: TLandrixInvoice);
+procedure ScenarioOverallExample(AInvoice: TLandrixInvoice; APaymentTerms: Integer;
+  AUseAllowancesCharges, ADeductPrepayments, AUseAttachments, AWithDeliveryAddress,
+  ACIIRestrictions: Boolean; const AAttachmentDir: string);
+procedure ScenarioCreditNote(AInvoice: TLandrixInvoice);
+procedure ScenarioIntraCommunitySupplyWithoutVAT(AInvoice: TLandrixInvoice);
+procedure ScenarioSmallBusinessRegulation(AInvoice: TLandrixInvoice);
+procedure ScenarioCreditCard(AInvoice: TLandrixInvoice);
+procedure ScenarioDirectDebit(AInvoice: TLandrixInvoice);
+procedure ScenarioLinePeriods(AInvoice: TLandrixInvoice);
+procedure ScenarioCollectiveInvoiceDeliveryNotes(AInvoice: TLandrixInvoice);
+procedure ScenarioMinimalB2BWithoutLeitwegID(AInvoice: TLandrixInvoice);
+procedure ScenarioReverseCharge13b(AInvoice: TLandrixInvoice);
+procedure ScenarioOnlinePaymentService(AInvoice: TLandrixInvoice);
+procedure ScenarioPriceBaseQuantityAbove1(AInvoice: TLandrixInvoice);
+procedure ScenarioCorrectedInvoice(AInvoice: TLandrixInvoice);
+procedure ScenarioThirdPartyPaymentBGDEX09(AInvoice: TLandrixInvoice; AUseCharges: Boolean);
+procedure ScenarioTitleLineGroups(AInvoice: TLandrixInvoice);
+procedure ScenarioTitleLineGroupsExtended(AInvoice: TLandrixInvoice);
+procedure ScenarioFourDecimalPlaces(AInvoice: TLandrixInvoice);
+procedure ScenarioBaseQuantityDecimals(AInvoice: TLandrixInvoice);
+procedure ScenarioPeppolEndpointSchemeID(AInvoice: TLandrixInvoice;
+  const ASellerSchemeID, ABuyerSchemeID: TLandrixEInvoiceString);
+procedure ScenarioPartyIdentifierGLN(AInvoice: TLandrixInvoice;
+  AUseIdentifier, AUseGLN, AUseCreditorID: Boolean);
+
 implementation
 
 uses

@@ -1,0 +1,283 @@
+object WorkbenchForm: TWorkbenchForm
+  Left = 0
+  Top = 0
+  Caption = 'EInvoice-for-Pascal Workbench'
+  ClientHeight = 761
+  ClientWidth = 1184
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  Font.Height = -12
+  Font.Name = 'Segoe UI'
+  object pnLeft: TPanel
+    Left = 0
+    Top = 0
+    Width = 248
+    Height = 601
+    Align = alLeft
+    BevelOuter = bvNone
+    object rgTarget: TRadioGroup
+      Left = 8
+      Top = 8
+      Width = 232
+      Height = 113
+      Caption = 'Target'
+    end
+    object gbOverall: TGroupBox
+      Left = 8
+      Top = 128
+      Width = 232
+      Height = 249
+      Caption = 'Overall example'
+      object rgPaymentTerms: TRadioGroup
+        Left = 8
+        Top = 18
+        Width = 216
+        Height = 113
+        Caption = 'Payment terms'
+      end
+      object cbAllowancesCharges: TCheckBox
+        Left = 8
+        Top = 138
+        Width = 216
+        Height = 19
+        Caption = 'Allowances and charges'
+      end
+      object cbPrepayments: TCheckBox
+        Left = 8
+        Top = 158
+        Width = 216
+        Height = 19
+        Caption = 'Prepayments'
+      end
+      object cbAttachments: TCheckBox
+        Left = 8
+        Top = 178
+        Width = 216
+        Height = 19
+        Caption = 'Attachments'
+      end
+      object cbDeliveryAddress: TCheckBox
+        Left = 8
+        Top = 198
+        Width = 216
+        Height = 19
+        Caption = 'Delivery address'
+      end
+      object btCreateOverall: TButton
+        Left = 8
+        Top = 218
+        Width = 216
+        Height = 25
+        Caption = 'Create overall example'
+        OnClick = btCreateOverallClick
+      end
+    end
+    object lbCasesCaption: TLabel
+      Left = 8
+      Top = 384
+      Width = 232
+      Height = 15
+      Caption = 'Business cases'
+    end
+    object lbCases: TListBox
+      Left = 8
+      Top = 402
+      Width = 232
+      Height = 130
+      OnDblClick = btCreateCaseClick
+    end
+    object btCreateCase: TButton
+      Left = 8
+      Top = 538
+      Width = 232
+      Height = 25
+      Caption = 'Create selected case'
+      OnClick = btCreateCaseClick
+    end
+    object btOpen: TButton
+      Left = 8
+      Top = 568
+      Width = 232
+      Height = 25
+      Caption = 'Open XML or PDF...'
+      OnClick = btOpenClick
+    end
+  end
+  object pnBottom: TPanel
+    Left = 0
+    Top = 601
+    Width = 1184
+    Height = 160
+    Align = alBottom
+    BevelOuter = bvNone
+    object pnButtons: TPanel
+      Left = 0
+      Top = 0
+      Width = 1184
+      Height = 35
+      Align = alTop
+      BevelOuter = bvNone
+      object btInvoiceHtml: TButton
+        Left = 8
+        Top = 5
+        Width = 160
+        Height = 25
+        Caption = 'Invoice in browser'
+        OnClick = btInvoiceHtmlClick
+      end
+      object btReportHtml: TButton
+        Left = 176
+        Top = 5
+        Width = 160
+        Height = 25
+        Caption = 'Report in browser'
+        OnClick = btReportHtmlClick
+      end
+      object btSaveXml: TButton
+        Left = 344
+        Top = 5
+        Width = 160
+        Height = 25
+        Caption = 'Save XML...'
+        OnClick = btSaveXmlClick
+      end
+      object lbLanguage: TLabel
+        Left = 520
+        Top = 9
+        Width = 60
+        Height = 15
+        Caption = 'Language'
+      end
+      object cxLanguage: TComboBox
+        Left = 584
+        Top = 5
+        Width = 110
+        Height = 23
+        Style = csDropDownList
+        OnChange = cxLanguageChange
+      end
+      object cbTerms: TCheckBox
+        Left = 712
+        Top = 8
+        Width = 160
+        Height = 19
+        Caption = 'Business terms'
+        OnClick = cbTermsClick
+      end
+    end
+    object mmLog: TMemo
+      Align = alClient
+      ReadOnly = True
+      ScrollBars = ssBoth
+      WordWrap = False
+      Font.Height = -13
+      Font.Name = 'Courier New'
+    end
+  end
+  object pcMain: TPageControl
+    Left = 248
+    Top = 0
+    Width = 936
+    Height = 601
+    ActivePage = tsXml
+    Align = alClient
+    object tsXml: TTabSheet
+      Caption = 'XML'
+      object mmXml: TMemo
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssBoth
+        WordWrap = False
+        Font.Height = -13
+        Font.Name = 'Courier New'
+      end
+    end
+    object tsCheck: TTabSheet
+      Caption = 'Check'
+      object mmCheck: TMemo
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssBoth
+        WordWrap = False
+        Font.Height = -13
+        Font.Name = 'Courier New'
+      end
+    end
+    object tsInvoice: TTabSheet
+      Caption = 'Invoice'
+      object mmInvoice: TMemo
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssBoth
+        WordWrap = False
+        Font.Height = -13
+        Font.Name = 'Courier New'
+      end
+    end
+    object tsKosit: TTabSheet
+      Caption = 'KoSIT'
+      object pnKosit: TPanel
+        Left = 0
+        Top = 0
+        Width = 928
+        Height = 132
+        Align = alTop
+        BevelOuter = bvNone
+        object lbKositConfig: TLabel
+          Left = 8
+          Top = 8
+          Width = 900
+          Height = 15
+          Caption = 'Folder with the KoSIT configurations (validator-configuration-xrechnung, -bis, -zugferd; addons/java-tools/install-tools.ps1)'
+        end
+        object edKositConfig: TEdit
+          Left = 8
+          Top = 26
+          Width = 700
+          Height = 23
+        end
+        object lbKositRules: TLabel
+          Left = 8
+          Top = 56
+          Width = 900
+          Height = 15
+          Caption = 'Folder with the LandrixXML rule files (rules/rules, peppol; tools/testdata/sync-local.py)'
+        end
+        object edKositRules: TEdit
+          Left = 8
+          Top = 74
+          Width = 700
+          Height = 23
+        end
+        object btKositLoad: TButton
+          Left = 8
+          Top = 103
+          Width = 120
+          Height = 25
+          Caption = 'Load'
+          OnClick = btKositLoadClick
+        end
+      end
+      object mmKosit: TMemo
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssBoth
+        WordWrap = False
+        Font.Height = -13
+        Font.Name = 'Courier New'
+      end
+    end
+  end
+  object odOpen: TOpenDialog
+    Filter = 'Invoices (*.xml;*.pdf)|*.xml;*.pdf|All files (*.*)|*.*'
+    Left = 40
+    Top = 40
+  end
+  object sdSave: TSaveDialog
+    DefaultExt = 'xml'
+    Filter = 'XML (*.xml)|*.xml'
+    Left = 80
+    Top = 40
+  end
+end

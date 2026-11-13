@@ -86,8 +86,9 @@ das Schreiben selbst ändert nie Beträge.
 
 ## Beispiele
 
-Jedes Beispiel ist ein Konsolenprogramm mit einer `.dpr` für Delphi und einer `.lpi` für
-Lazarus. Sie bauen aufeinander auf: Zuerst WriteXRechnung ausführen, die anderen lesen dessen
+Jedes Beispiel hat eine `.dpr` für Delphi und eine `.lpi` für Lazarus. Workbench ist ein
+Fenster (VCL und LCL) zum Ausprobieren, die übrigen sind Konsolenprogramme. Sie bauen
+aufeinander auf: Zuerst WriteXRechnung ausführen, die anderen lesen dessen
 Ausgabe.
 
 | Beispiel | Zeigt |
@@ -98,6 +99,7 @@ Ausgabe.
 | [ConvertCIIToUBL](../../examples/ConvertCIIToUBL/ConvertCIIToUBL.dpr) | Zwischen den Syntaxen umwandeln |
 | [CompatXRechnung](../../examples/CompatXRechnung/CompatXRechnung.dpr) | Code, der für XRechnung-for-Delphi geschrieben wurde |
 | [BusinessCases](../../examples/BusinessCases/BusinessCases.dpr) | 24 Geschäftsfälle für jedes passende Ziel (111 Dateien) |
+| [Workbench](../../examples/Workbench/Workbench.dpr) | Ein Fenster: Geschäftsfall erzeugen oder XML bzw. PDF öffnen, nativ prüfen (eigene Regeln, KoSIT), zurücklesen, als Text und HTML zeigen |
 
 ## Weiterlesen
 

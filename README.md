@@ -69,7 +69,8 @@ schema validation; see [Checking](docs/checking.md) for the details and the know
 - [Writing](docs/writing.md), [Reading](docs/reading.md), [Checking](docs/checking.md)
 - [Moving from XRechnung-for-Delphi](docs/compat-xrechnung.md)
 - [Examples](examples/): console programs for Delphi (`.dpr`) and Lazarus (`.lpi`), including
-  the 24 business cases of XRechnung-for-Delphi
+  the 24 business cases of XRechnung-for-Delphi, and Workbench, a window (VCL and LCL) to create,
+  open, check and show invoices
 
 ## Public API
 

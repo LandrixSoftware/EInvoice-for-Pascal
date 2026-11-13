@@ -119,4 +119,6 @@ examples/*/*
 !examples/*/*.dpr
 !examples/*/*.lpi
 !examples/*/*.pas
+!examples/*/*.dfm
+!examples/*/*.lfm
 !examples/*/attachments/
