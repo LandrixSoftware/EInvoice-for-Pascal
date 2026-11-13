@@ -16,7 +16,8 @@ Supported invoice standards are documented per release.
   decimal and IEEE double arithmetic, Unicode normalization, third-party notices), then to `67c374b`
   (release 0.3.0: XML Schema validation as Xerces does it, faster XPath, DOM names copied without
   `Move`), then to `85f63f5` (faster XML Schema validation of large documents, indexed attribute
-  comparisons in XPath steps, small integers to doubles without big-integer division).
+  comparisons in XPath steps, small integers to doubles without big-integer division), then to `a9a2a8e`
+  (release 0.4.0).
 - `tools/check-forbidden.py`: checks sources for language features and units that
   Delphi 6 does not support. `cwstring` is allowed in programs (`.dpr`/`.lpr`) only; old-style
   `object` types must not have a VMT.
