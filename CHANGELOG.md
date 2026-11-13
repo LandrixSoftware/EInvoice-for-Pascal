@@ -577,6 +577,9 @@ Supported invoice standards are documented per release.
   (`TXRechnungHelper` code conversions, `TZUGFeRDAdditionalContent`, `IXMLDocument`, the Java helper with the
   native validation and rendering), behaviour changes of reading, writing and the model, the old sample project
   (Workbench, BusinessCases), and the move to the facade.
+- `docs/compat-zugferd.md` (and German): moving from ZUGFeRD-for-Delphi (no compatibility layer): the two models
+  instead of the descriptor, reading, writing with the profile table, checking, PDF, differences in the model and
+  the licence. A field-by-field table follows.
 
 ### Changed
 - Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as

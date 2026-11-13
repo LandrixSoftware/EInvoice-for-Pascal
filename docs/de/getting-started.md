@@ -129,4 +129,5 @@ Java, keine Datendateien. Nur die KoSIT-Prüfung braucht ihren Konfigurationsord
 - [Prüfen](checking.md)
 - [Rechnungen validieren und anzeigen](validation.md)
 - [Umstieg von XRechnung-for-Delphi](compat-xrechnung.md)
+- [Umstieg von ZUGFeRD-for-Delphi](compat-zugferd.md)
 - [Öffentliche API](../../README.md#public-api): welche Units stabil sind

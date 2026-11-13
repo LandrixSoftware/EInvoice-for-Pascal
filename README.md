@@ -73,7 +73,8 @@ schema validation; see [Checking](docs/checking.md) for the details and the know
 - [Writing](docs/writing.md), [Reading](docs/reading.md), [Checking](docs/checking.md)
 - [Validating and showing invoices](docs/validation.md): the KoSIT files, validation, reports,
   HTML and Markdown, what to ship
-- [Moving from XRechnung-for-Delphi](docs/compat-xrechnung.md)
+- [Moving from XRechnung-for-Delphi](docs/compat-xrechnung.md),
+  [moving from ZUGFeRD-for-Delphi](docs/compat-zugferd.md)
 - [Examples](examples/): console programs for Delphi (`.dpr`) and Lazarus (`.lpi`), including
   the 24 business cases of XRechnung-for-Delphi, and Workbench, a window (VCL and LCL) to create,
   open, check and show invoices

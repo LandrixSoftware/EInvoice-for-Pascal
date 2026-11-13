@@ -127,4 +127,5 @@ Java, no data files. Only the KoSIT check needs its configuration folder; see
 - [Checking](checking.md)
 - [Validating and showing invoices](validation.md)
 - [Moving from XRechnung-for-Delphi](compat-xrechnung.md)
+- [Moving from ZUGFeRD-for-Delphi](compat-zugferd.md)
 - [Public API](../README.md#public-api): which units are stable
