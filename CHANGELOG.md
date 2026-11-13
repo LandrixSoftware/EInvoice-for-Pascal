@@ -533,6 +533,23 @@ Supported invoice standards are documented per release.
   XRechnung invoice and on mutants with one XMP value changed in place: per PDF whether each side rejects
   `fx:ConformanceLevel`, `fx:DocumentType`, `fx:DocumentFileName`, `fx:Version`, the XMP packet and the PDF/A
   part. Exceptions in `tools/pdfcheck/mustang-exceptions.txt` (none).
+- An invoice as Markdown for logs, tickets, mails and terminals: internal unit `LandrixEInvoiceRenderMarkdown` with
+  `TLandrixEInvoiceRenderMarkdownWriter` (same properties and methods as the HTML writer, from
+  `TLandrixEInvoiceRenderWriter`). Same content as the HTML page (the shared walk); CommonMark core only: `#` title,
+  `##` sections, `###` parties, a bold line before a top-level list, `- **Label:** value` per value, list items and
+  table rows as `*` items carrying their first value, sub lines nested. Text from the invoice is escaped, a value with line breaks
+  goes verbatim into a fenced code block; UTF-8 without BOM, LF, no time stamp. Tests `Markdown.Writer`,
+  `Markdown.Escaping`, `Markdown.Events` (every line against what the walk calls for, stated by a recording target:
+  title, headings, list lines, bare bullets and values with their nesting depth, section, label and value, the
+  document section included), `Markdown.Mutations` (every model mutation with one and two items changes the text
+  and still matches the walk), `Markdown.Golden` (`tests/data/render/*.md`), `Markdown.Corpus` (every local file, both languages).
+- `tools/render/md-oracle.py` with `tools/render/MarkdownProbe.dpr` and `tools/render/md-walk.js`: parses the Markdown
+  of the filled, golden and hostile invoices and of every local corpus file with commonmark.js 0.31.2 (the
+  CommonMark reference implementation, pinned in `addons/java-tools/tools.json`, run with Node.js): no HTML, link,
+  image, emphasis or inline code node; the parsed headings and items give the same kinds, nesting depths, sections,
+  labels and values as the walk (white space at the edges of a one-line value and blank lines of a longer one
+  excepted, which rendered CommonMark does not show). Exceptions in
+  `tools/render/md-exceptions.txt` (none).
 
 ### Changed
 - Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as

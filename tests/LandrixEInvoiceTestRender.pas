@@ -29,6 +29,14 @@ unit LandrixEInvoiceTestRender;
 
 interface
 
+uses
+  LandrixEInvoiceInvoice;
+
+{ The hand-checked invoices of the golden pages (also used by the Markdown
+  tests). }
+procedure BuildFullInvoice(AInvoice: TLandrixInvoice);
+procedure BuildCreditNote(AInvoice: TLandrixInvoice);
+
 procedure Register;
 
 implementation
@@ -43,7 +51,6 @@ uses
   LandrixEInvoiceDiagnostics,
   LandrixEInvoiceCodes,
   LandrixEInvoiceCodeNames,
-  LandrixEInvoiceInvoice,
   LandrixEInvoice,
   LandrixEInvoiceReportHtml,
   LandrixEInvoiceRender,

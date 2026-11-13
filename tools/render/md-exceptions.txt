@@ -1,0 +1,2 @@
+# Known differences of tools/render/md-oracle.py: case<TAB>check<TAB>reason (case may be *).
+# None.

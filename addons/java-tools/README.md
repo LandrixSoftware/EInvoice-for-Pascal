@@ -1,6 +1,6 @@
 # Java tools
 
-Java-based tools around EInvoice-for-Pascal, and qpdf for the PDF oracle. Only the scripts and the manifest are in the
+Java-based tools around EInvoice-for-Pascal, qpdf for the PDF oracle and commonmark.js for the Markdown oracle. Only the scripts and the manifest are in the
 repository; the tools themselves are downloaded into this folder (git-ignored).
 
 ```powershell
@@ -23,6 +23,7 @@ platform, into the same folder if it is shared.
 | `xrechnung-visualization/` | KoSIT XRechnung visualization 2026-01-31; its `xsl/*-xr.xsl` turn UBL and CII into the syntax-neutral XR form (`tools/testdata/xr-compare.py`) |
 | `jre/<os>-<arch>/` | Eclipse Temurin 21 JRE: `windows-x64`, `windows-aarch64`, `linux-x64`, `linux-aarch64`, `macos-aarch64` |
 | `qpdf/<os>-<arch>/` | qpdf 12.4.2 (`bin/qpdf.exe`), `windows-x64` and `windows-aarch64` for `tools/pdfcheck/pdf-oracle.py`; on Linux and macOS the oracle uses `qpdf` from the `PATH` (the release archives unpack there without the executable bit) |
+| `commonmark/` | commonmark.js 0.31.2 (the CommonMark reference implementation, BSD license, one bundled file) for `tools/render/md-oracle.py`, run with Node.js |
 | `download/` | downloaded files (cache) |
 
 `tools.json` pins every download by URL and SHA-256; the script refuses a file with another

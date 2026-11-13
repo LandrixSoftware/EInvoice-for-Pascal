@@ -12,7 +12,8 @@
   XRechnung, Peppol BIS Billing and ZUGFeRD / Factur-X, the Java runtime
   (Temurin 21) of the current platform under jre/<os>-<arch>, and qpdf for
   the PDF oracle (tools/pdfcheck/pdf-oracle.py; Windows only, elsewhere
-  an installed qpdf is used). An entry with a platform is installed only
+  an installed qpdf is used), and commonmark.js for the Markdown oracle
+  (tools/render/md-oracle.py). An entry with a platform is installed only
   for that platform. Linux and
   macOS users may use an installed Java runtime instead (-NoJre). On Windows
   the Linux and macOS runtimes are skipped: their archives contain symbolic

@@ -116,6 +116,13 @@
       "dir": "qpdf/windows-aarch64",
       "unpack": true,
       "strip": 1
+    },
+    {
+      "name": "commonmark",
+      "url": "https://cdn.jsdelivr.net/npm/commonmark@0.31.2/dist/commonmark.js",
+      "file": "commonmark.js",
+      "sha256": "4d124568b8d4490df72fea8aa0f9a144c5b581b0de0eb63d3a996104b2797edc",
+      "dir": "commonmark"
     }
   ]
 }
