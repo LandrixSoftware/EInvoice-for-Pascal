@@ -53,8 +53,7 @@ Supported invoice standards are documented per release.
   `EmbedDataFromFile` no longer retries on locked files; invalid Base64 raises
   `ELandrixXmlError`; `TryAddAttachmentByExtension` sets the attachment to nil on failure.
 - `TLandrixInvoice.Clear` resets every field and list and clears the parties and the delivery
-  information (in XRechnung-for-Delphi it reset only `ProfileID`, `PaymentTermsType`, five
-  lists and the totals); new `Clear`
+  information; new `Clear`
   methods on `TLandrixInvoiceLine`, `TLandrixInvoiceAccountingParty`,
   `TLandrixInvoiceAddress` and `TLandrixInvoiceDeliveryInformation`.
 - Targets and specification directory: `TLandrixEInvoiceTarget` (standard, syntax, profile,
@@ -574,6 +573,10 @@ Supported invoice standards are documented per release.
   Getting started: syntaxes per standard, ZIP download without submodule, Delphi 6/7 search path, Workbench
   setup, what to ship. Reading: the reading options; plain EN 16931 in CII is Factur-X EN 16931. README:
   the syntax models as they are (CII EXTENDED, UBL positive list), the preview units.
+- `docs/compat-xrechnung.md` (and German) as a step-by-step guide: steps, what is gone and what replaces it
+  (`TXRechnungHelper` code conversions, `TZUGFeRDAdditionalContent`, `IXMLDocument`, the Java helper with the
+  native validation and rendering), behaviour changes of reading, writing and the model, the old sample project
+  (Workbench, BusinessCases), and the move to the facade.
 
 ### Changed
 - Factur-X EN16931 CII writes one preceding invoice reference (BG-3, `ram:InvoiceReferencedDocument`), as
