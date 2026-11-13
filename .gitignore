@@ -121,4 +121,5 @@ examples/*/*
 !examples/*/*.pas
 !examples/*/*.dfm
 !examples/*/*.lfm
+!examples/*/*.dproj
 !examples/*/attachments/

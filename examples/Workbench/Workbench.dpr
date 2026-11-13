@@ -42,6 +42,17 @@ uses
   Forms,
   WorkbenchMain in 'WorkbenchMain.pas' {WorkbenchForm};
 
+{ The project resource (version information, manifest) exists only when the
+  IDE or lazbuild builds the project: Workbench.dproj defines WORKBENCH_RES,
+  tools/build.ps1 compiles without it. }
+{$IFDEF FPC}
+  {$R *.res}
+{$ELSE}
+  {$IFDEF WORKBENCH_RES}
+    {$R *.res}
+  {$ENDIF}
+{$ENDIF}
+
 begin
   Application.Initialize;
   Application.CreateForm(TWorkbenchForm, WorkbenchForm);

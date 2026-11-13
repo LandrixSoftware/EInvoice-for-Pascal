@@ -558,7 +558,8 @@ Supported invoice standards are documented per release.
   library's own rules, and KoSIT with the configurations and rule files it finds or is given), reads it back and
   writes it again (byte comparison), shows the invoice as Markdown and opens the invoice and the check report as
   HTML in the default browser. Interface German (default) or English, the choice also sets the language of the
-  invoice and the report. One unit for Delphi 6 to 13 (VCL, `.dfm`) and Lazarus (LCL, `.lfm`, `Workbench.lpi`).
+  invoice and the report. One unit for Delphi 6 to 13 (VCL, `.dfm`, `Workbench.dproj` with the search paths and
+  the output in `build/Workbench/`) and Lazarus (LCL, `.lfm`, `Workbench.lpi`).
   `tools/build.ps1` compiles it with Delphi without running it (the FPC toolchains have no LCL) and compiles every
   Delphi example in its own folder; `tools/check-forbidden.py` allows the GUI units in this example only. The single
   business cases of `LandrixEInvoiceExampleScenarios` are now in its interface.
