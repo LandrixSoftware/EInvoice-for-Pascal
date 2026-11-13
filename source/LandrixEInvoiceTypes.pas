@@ -77,7 +77,7 @@ uses
 const
   { Library version (Semantic Versioning).
     DE: Version der Bibliothek (Semantic Versioning). }
-  LandrixEInvoiceVersion = '0.1.0';
+  LandrixEInvoiceVersion = '0.9.0-beta.1';
 
 type
 {$IFDEF FPC}

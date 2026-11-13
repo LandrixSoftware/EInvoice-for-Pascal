@@ -12,7 +12,7 @@
   SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
 }
 
-{ Semantic sweep over the official test material (plan, Phase 2 step 3):
+{ Semantic sweep over the official test material:
   tests/data/local/sweep/<corpus>/ as copied by tools/testdata/sync-local.py
   (skipped when the folder does not exist; a file listed in a corpus
   MANIFEST.txt but missing fails).

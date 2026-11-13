@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Copies the official test material for the semantic sweep (plan, Phase 2
-step 3) and the KoSIT end-to-end run (plan, phase 6) from the documentation
+"""Copies the official test material for the semantic sweep
+and the KoSIT end-to-end run from the documentation
 folder into tests/data/local/ (git-ignored; the material is never committed).
 
 The committed manifest corpora.json names every file with its SHA-256, so a
@@ -32,7 +32,8 @@ Usage:
   python tools/testdata/sync-local.py [--docs <folder>]            copy and verify
   python tools/testdata/sync-local.py [--docs <folder>] --update   rewrite corpora.json
 The documentation folder defaults to ../landrix-einvoice-docs next to the
-repository (D:/Projekte/landrix-einvoice-docs, see its INHALT.md).
+repository (see its INHALT.md): the maintainers' local, non-public collection
+of specifications and test suites, which the oracle scripts read as well.
 """
 
 import argparse

@@ -17,7 +17,7 @@
   for rules of this library. A violation is reported as edk_RuleViolation
   with the identifier in RuleID and the severity of the rule. The checks
   only report; they never change the invoice. Which rules are implemented
-  grows during phase 2 (plan, phase 2 step 4); a clean result means that
+  is listed in docs/checking.md; a clean result means that
   the implemented rules hold, not that a validator will accept the output.
 
   The official rules judge the invoice as the mappers would write it to the
@@ -69,8 +69,8 @@
   (z. B. BR-DE-15) oder LX-... fuer Regeln dieser Bibliothek. Ein Verstoss
   wird als edk_RuleViolation gemeldet, mit der Kennung in RuleID und der
   Schwere der Regel. Die Pruefungen melden nur; sie aendern die Rechnung
-  nie. Welche Regeln umgesetzt sind, waechst in Phase 2 (Fahrplan, Phase 2
-  Schritt 4); ein Ergebnis ohne Meldung heisst, dass die umgesetzten Regeln
+  nie. Welche Regeln umgesetzt sind, steht in docs/checking.md; ein
+  Ergebnis ohne Meldung heisst, dass die umgesetzten Regeln
   erfuellt sind, nicht, dass ein Validator die Ausgabe annimmt.
 
   Die offiziellen Regeln beurteilen die Rechnung so, wie die Mapper sie in

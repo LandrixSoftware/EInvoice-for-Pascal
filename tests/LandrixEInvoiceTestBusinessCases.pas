@@ -13,8 +13,7 @@
 }
 
 { Business test cases per business group, written anew from EN 16931 and its
-  syntax bindings (plan, Phase 2 step 3; no test case taken from other
-  libraries). Each case changes one group of a valid base invoice and runs
+  syntax bindings (no test case taken from other libraries). Each case changes one group of a valid base invoice and runs
   through five targets: XRechnung UBL and CII, Peppol BIS, Factur-X EN16931
   and EXTENDED. Per target the case writes the invoice, checks hand-written
   expectations on the XML (element path and value from the binding, compared

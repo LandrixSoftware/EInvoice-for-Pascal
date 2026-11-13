@@ -32,8 +32,8 @@ Eine Meldung an das Projekt ersetzt keine gegebenenfalls erforderliche Behörden
 
 ### Unterstützte Versionen und Bearbeitung
 
-Das Projekt befindet sich in der Entwicklung; es gibt noch keine veröffentlichte Version und
-keine Tabelle mit Sicherheits-Supportzeiträumen. Die unterstützten Compiler in der README
+Das Projekt ist in der Beta-Phase (0.9.x); unterstützt wird die jeweils neueste Version. Eine
+Tabelle mit Sicherheits-Supportzeiträumen gibt es noch nicht. Die unterstützten Compiler in der README
 beschreiben technische Kompatibilität, keinen Sicherheits-Supportzeitraum.
 
 Es werden hier keine festen Reaktionszeiten, Behebungsfristen oder Rückportierungen zugesagt.
@@ -77,8 +77,8 @@ Reporting to the project does not replace any required report to authorities.
 
 ### Supported versions and handling
 
-The project is under development; there is no published release yet and no table of security
-support periods. The supported compilers listed in the README describe technical
+The project is in beta (0.9.x); the latest release is supported. There is no table of security
+support periods yet. The supported compilers listed in the README describe technical
 compatibility, not a security support period.
 
 This document does not promise fixed response times, remediation deadlines or backports.

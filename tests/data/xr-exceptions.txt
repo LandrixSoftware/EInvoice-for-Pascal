@@ -1,8 +1,7 @@
 # XR oracle exceptions (tools/testdata/xr-compare.py): sweep output file<TAB>finding prefix.
 # Every line needs a reason in the comment above it; an unused line is an error.
 
-# BT-29 is 0..n, the model holds one identifier and one global identifier (known deviation until
-# Phase 4).
+# BT-29 is 0..n, the model holds one identifier and one global identifier (known deviation).
 kosit-xr302_standard_03.01a-INVOICE_ubl-ubl-30x.xml	lost BG-4[1]/BT-29 =
 kosit-xr302_standard_03.01a-INVOICE_uncefact-cii-30x.xml	lost BG-4[1]/BT-29 =
 kosit-xr302_standard_03.07a-INVOICE_uncefact-cii-30x.xml	lost BG-4[1]/BT-29 =
@@ -21,7 +20,7 @@ zugferd252_X08_01_Herkunftsland_Zolltarif-Nummer__HS___UNSPSC__TST___eCl_ss__STQ
 zugferd252_X11_01_Kostenrechnung-ciiextended-25.xml	added BT-9 =
 zugferd252_X19_01_Warenrechnung-ciiextended-25.xml	added BT-9 =
 # Logistics service charges (BT-X-271 to 274) are read as document level charges (BG-21); the
-# stylesheet shows no logistics charge, so the charge appears as added (plan, Phase 2 step 3).
+# stylesheet shows no logistics charge, so the charge appears as added.
 zugferd252_X11_01_Kostenrechnung-ciiextended-25.xml	added BG-21[1]/
 zugferd252_X19_01_Warenrechnung-ciiextended-25.xml	added BG-21[1]/
 # Two payment terms without discount terms: the model holds one net term and up to three cash
@@ -30,7 +29,7 @@ zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	lost BT-20 =
 zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	lost BT-9 =
 zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	added BT-20 =
 zugferd252_X07_01_Fremdwaehrung-ciiextended-25.xml	added BT-9 =
-# Several discounts on the gross price (EXTENDED): the model holds one (plan, Phase 2 step 1).
+# Several discounts on the gross price (EXTENDED): the model holds one.
 zugferd252_X14_01_Rechnungskorrektur-ciiextended-25.xml	lost BG-25[2]/BG-29[1]/BT-147 =
 zugferd252_X19_01_Warenrechnung-ciiextended-25.xml	lost BG-25[3]/BG-29[1]/BT-147 =
 # The sources carry person name and department together (CII-SR-465, KoSIT rejects them); the

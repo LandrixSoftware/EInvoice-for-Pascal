@@ -9,8 +9,8 @@ kosit-xr302/standard_01.21a-INVOICE_uncefact.xml	compare AccountingCustomerParty
 # Exemption reason per line exists only in Factur-X EXTENDED (BT-X-96); XRechnung CII has no BT.
 kosit-xr302/standard_01.21a-INVOICE_uncefact.xml	write NotAllowed /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:ExemptionReason
 kosit-xr302/standard_01.21a-INVOICE_uncefact.xml	compare InvoiceLines[0].TaxExemptionReason
-# BT-29 is 0..n, the model holds one identifier and one global identifier (plan, Phase 2
-# step 1: known deviation until Phase 4).
+# BT-29 is 0..n, the model holds one identifier and one global identifier (known
+# deviation).
 kosit-xr302/standard_03.01a-INVOICE_ubl.xml	read NotMapped /Invoice/cac:AccountingSupplierParty/cac:Party/cac:PartyIdentification
 kosit-xr302/standard_03.01a-INVOICE_uncefact.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID
 kosit-xr302/standard_03.07a-INVOICE_uncefact.xml	read NotMapped /rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID

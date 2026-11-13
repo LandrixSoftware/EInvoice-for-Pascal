@@ -35,6 +35,8 @@ Changes affecting generated invoice XML should, where applicable, be tested agai
 
 Examples in `examples/<Name>/` are console programs that compile with every supported compiler; `tools/build.ps1` builds and runs them after the tests. A new example needs a `.dpr`, an `.lpi` and an entry in the example list of `tools/build.ps1`. The exception is `examples/Workbench`, a window for VCL and LCL from one unit (`.dfm` and `.lfm`, plus `Workbench.dproj`): `tools/build.ps1` only compiles it, with Delphi; build the Lazarus project with `lazbuild`.
 
+`tools/build.ps1` runs Free Pascal through small wrappers per toolchain: `~/.local/bin/fpc322-win64.cmd` (and the other `fpc<version>-<target>.cmd`) on Windows and `~/.local/bin/fpc322` in WSL, each calling the compiler with its configuration file. It reads the Delphi folders from the environment variables `LANDRIXEINVOICE_DELPHI6`, `LANDRIXEINVOICE_DELPHI7` and `LANDRIXEINVOICE_DELPHI13` when they are set. The oracle scripts under `tools/` (KoSIT, rule, Peppol and PDF oracles) and `tools/testdata/sync-local.py` compare against official test suites that the maintainers keep in a local, non-public folder `../landrix-einvoice-docs`; without it they cannot run, and the tests that need its files are skipped.
+
 Generated units (syntax models, code lists) must not be edited by hand. Change the generator or its input under `tools/` and regenerate.
 
 ## Compatibility

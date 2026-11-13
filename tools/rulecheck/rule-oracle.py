@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Negative oracle for the business rule checks (plan, Phase 2 step 4): the
+"""Negative oracle for the business rule checks: the
 KoSIT schematron test documents of XRechnung 3.0.0 (folder 'generated' of
 the schematron 2.0.0 package, 1,219 documents, each made to pass or fail one
 rule) are validated with the KoSIT validator and read and checked with

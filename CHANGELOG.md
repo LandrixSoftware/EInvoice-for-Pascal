@@ -7,6 +7,18 @@ Supported invoice standards are documented per release.
 
 ## [Unreleased]
 
+## [0.9.0-beta.1] - 2026-11-13
+
+First public pre-release. The API may still change until 1.0; units marked `API: internal`
+(among them the validation and rendering units, documented as a preview) may change in any
+release.
+
+Supported invoice standards: XRechnung 3.0.2 (UBL and CII), ZUGFeRD 2.5.2 / Factur-X 1.09.2
+(MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED), Peppol BIS Billing 3.0.21. Reading
+also accepts the ZUGFeRD 2.x identifiers. Validation configurations: KoSIT XRechnung 3.0.2
+(2026-08-31), KoSIT Peppol BIS 3.0.21, ZUGFeRD 2.5.2 (2026-10-15). Compilers: Delphi 6 to 13,
+Free Pascal 3.2.2 and later. LandrixXML 0.4.0.
+
 ### Added
 - Project foundation: dual licensing (GPL-3.0-or-later or Landrix Software Commercial
   License), third-party notices, contribution rules, security policy.
@@ -696,3 +708,6 @@ Supported invoice standards are documented per release.
   the new `WriteToString`), from which `TLandrixEInvoiceRenderHtmlWriter` descends. The pages stay byte-identical
   (checked on every local corpus document and every model mutation with one and two items per list, both languages,
   with and without business terms).
+
+[Unreleased]: https://github.com/LandrixSoftware/EInvoice-for-Pascal/compare/v0.9.0-beta.1...HEAD
+[0.9.0-beta.1]: https://github.com/LandrixSoftware/EInvoice-for-Pascal/releases/tag/v0.9.0-beta.1

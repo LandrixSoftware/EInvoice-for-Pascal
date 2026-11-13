@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Oracle for the PDF reader and checker (plan, PDF level 2): qpdf against
+"""Oracle for the PDF reader and checker (level 2): qpdf against
 tools/pdfcheck/PdfCheckProbe.dpr on the local PDF corpus.
 
 Per PDF, qpdf (addons/java-tools/qpdf, pinned by install-tools.ps1; on Linux

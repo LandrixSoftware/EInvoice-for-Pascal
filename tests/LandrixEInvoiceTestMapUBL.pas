@@ -838,7 +838,7 @@ begin
   end;
 end;
 
-{ XRechnung UBL writes the EN 16931 part of the Phase 2 fields, reads it
+{ XRechnung UBL writes the EN 16931 part of the FillPhase2 fields, reads it
   back without loss and reports every Factur-X EXTENDED field. }
 procedure TestPhase2Fields;
 var

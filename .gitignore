@@ -96,9 +96,6 @@ GTAGS
 __pycache__/
 *.pyc
 
-# Local planning document - never commit
-E-Rechnung-Analyse-und-Fahrplan.md
-
 # Local agent settings
 .claude/settings.local.json
 

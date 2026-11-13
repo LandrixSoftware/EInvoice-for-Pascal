@@ -5,8 +5,7 @@ TLandrixInvoice, a canonical text dump, a fill procedure that sets every field
 and one mutation per leaf (field or list count) for the completeness test;
 fill and mutations with one or with two items per list.
 
-Test-only (plan, Phase 2 step 3): no public Assign or compare API before the
-API freeze in Phase 3. The parser is strict: a declaration in a model class it
+Test-only: no public Assign or compare API before the API freeze of 1.0. The parser is strict: a declaration in a model class it
 cannot classify stops the generator, so a new field is never left out
 silently.
 

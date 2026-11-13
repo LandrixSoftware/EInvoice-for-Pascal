@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Oracle for the PDF checker, level 3 (plan, PDF level 3): Mustang against
+"""Oracle for the PDF checker, level 3 (XMP): Mustang against
 tools/pdfcheck/PdfCheckProbe.dpr on the local PDF corpus.
 
 Mustang (addons/java-tools/mustang, pinned by install-tools.ps1, run with the

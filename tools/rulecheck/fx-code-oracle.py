@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Oracle for the Factur-X code asserts (LandrixEInvoiceCIICodeRules): the
-local CII example files (tests/data/local/cii and cii-invalid, see CLAUDE.md
-Test data) are validated with the KoSIT validator and the ZUGFeRD 2.5.2
+local CII example files (tests/data/local/cii and cii-invalid, git-ignored:
+the CII examples of the XRechnung-for-Delphi and ZUGFeRD-for-Delphi test data,
+which the maintainers keep locally; without them the oracle has no documents) are validated with the KoSIT validator and the ZUGFeRD 2.5.2
 configuration and read and checked with CIICodeProbe. For every document
 whose scenario is a Factur-X 1.09.2 profile, the FX-SCH-A code asserts of
 that profile (tools/syntaxmodel/cii-codes.json) must agree: 'missed' means

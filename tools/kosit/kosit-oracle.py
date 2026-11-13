@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end oracle for LandrixEInvoiceValidator (plan, phase 6, KoSIT
+"""End-to-end oracle for LandrixEInvoiceValidator (KoSIT
 end-to-end run): the KoSIT XRechnung test suite 2026-08-31 and mutants of
 it are validated with the KoSIT validator (the configuration of
 addons/java-tools) and with tools/kosit/ValidatorProbe.dpr, and the results

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independent oracle for the semantic sweep (plan, Phase 2 step 3): turns the
+"""Independent oracle for the semantic sweep: turns the
 source files and the outputs of the sweep into the syntax-neutral XR form of
 the KoSIT XRechnung visualization (cii-xr.xsl, ubl-invoice-xr.xsl,
 ubl-creditnote-xr.xsl, run by the Saxon inside the KoSIT validator) and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure which Factur-X fields reach TLandrixInvoice (field comparison, plan Phase 2).
+"""Measure which Factur-X fields reach TLandrixInvoice (field comparison).
 
 Steps:
 1. Read the Factur-X field table (xlsx, one sheet per profile; checksum from

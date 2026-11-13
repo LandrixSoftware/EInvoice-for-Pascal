@@ -31,7 +31,6 @@
   the same Schematron source.
   Only what the KoSIT configurations use is supported; a configuration with
   another acceptMatch or without match expression is refused, not guessed.
-  This is the first building block of the validator of plan phase 6.
   DE: Pruefung einer XML-Rechnung, wie der KoSIT-Validator sie mit einer
   Validator-Konfiguration (scenarios.xml) ausfuehrt: das Szenario, dessen
   match-Ausdruck zutrifft, wird gewaehlt (keines oder mehrere: kein
@@ -52,8 +51,7 @@
   LandrixXML abgebildet (RuleFiles), aus derselben Schematron-Quelle
   uebersetzt. Unterstuetzt wird nur, was die KoSIT-Konfigurationen
   verwenden; eine Konfiguration mit anderem acceptMatch oder ohne
-  match-Ausdruck wird abgewiesen, nicht geraten. Erster Baustein des
-  Validators aus Phase 6 des Fahrplans. }
+  match-Ausdruck wird abgewiesen, nicht geraten. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.

@@ -3,9 +3,10 @@
 A unified electronic invoicing library for Delphi and Free Pascal supporting XRechnung,
 ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
 
-> **Status:** before release 1.0. Reading, writing and checking work for XRechnung 3.0,
-> ZUGFeRD 2.5 / Factur-X 1.09 and Peppol BIS 3.0; the API may still change until 1.0, and
-> there is no release yet.
+> **Status:** beta, version 0.9.0-beta.1. Reading, writing and checking work for XRechnung 3.0,
+> ZUGFeRD 2.5 / Factur-X 1.09 and Peppol BIS 3.0, and documents are validated against the
+> KoSIT configurations without Java. The API may still change until 1.0; see the
+> [CHANGELOG](CHANGELOG.md).
 
 ## Goals
 

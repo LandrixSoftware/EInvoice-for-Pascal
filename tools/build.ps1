@@ -71,9 +71,16 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-$Delphi6  = 'D:\Projekte\Borland\Delphi6'
-$Delphi7  = 'D:\Projekte\Borland\Delphi7'
-$Delphi13 = 'C:\Program Files (x86)\Embarcadero\Studio\37.0'
+# Compiler folders: the environment variables LANDRIXEINVOICE_DELPHI6, _DELPHI7
+# and _DELPHI13 override the defaults of the maintainer's machine.
+function Get-Folder([string]$Variable, [string]$Default) {
+  $value = [Environment]::GetEnvironmentVariable($Variable)
+  if ([string]::IsNullOrEmpty($value)) { return $Default }
+  return $value
+}
+$Delphi6  = Get-Folder 'LANDRIXEINVOICE_DELPHI6' 'D:\Projekte\Borland\Delphi6'
+$Delphi7  = Get-Folder 'LANDRIXEINVOICE_DELPHI7' 'D:\Projekte\Borland\Delphi7'
+$Delphi13 = Get-Folder 'LANDRIXEINVOICE_DELPHI13' 'C:\Program Files (x86)\Embarcadero\Studio\37.0'
 $LocalBin = Join-Path $env:USERPROFILE '.local\bin'
 $MacRunner = Join-Path $env:USERPROFILE '.local\share\remote-toolchains\macos-fpc\Run-PascalProgram.ps1'
 

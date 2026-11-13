@@ -40,7 +40,7 @@ end;
 
 procedure TestVersion;
 begin
-  CheckEqualsStr('0.1.0', LandrixEInvoiceVersion, 'LandrixEInvoiceVersion');
+  CheckEqualsStr('0.9.0-beta.1', LandrixEInvoiceVersion, 'LandrixEInvoiceVersion');
 end;
 
 procedure TestCharSize;

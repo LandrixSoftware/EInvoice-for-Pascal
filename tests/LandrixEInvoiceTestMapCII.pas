@@ -32,8 +32,8 @@ uses
 
 procedure Register;
 
-{ Fills an invoice with every field added in Phase 2 (field comparison
-  against the Factur-X 1.09.2 table); used by the CII and UBL tests. }
+{ Fills an invoice with every field added after the field comparison
+  against the Factur-X 1.09.2 table; used by the CII and UBL tests. }
 procedure FillPhase2(AInvoice: TLandrixInvoice);
 
 implementation
@@ -625,7 +625,7 @@ begin
   end;
 end;
 
-{ EXTENDED holds every Phase 2 field: write, read back, nothing lost. }
+{ EXTENDED holds every field of FillPhase2: write, read back, nothing lost. }
 procedure TestPhase2Extended;
 var
   Invoice, Back: TLandrixInvoice;

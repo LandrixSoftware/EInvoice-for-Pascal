@@ -1,0 +1,53 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not attach real invoices: remove personal and business data or build a small
+        example. Security issues go to the address in SECURITY.md, not into an issue.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release or commit of EInvoice-for-Pascal.
+    validations:
+      required: true
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler and platform
+      description: For example Delphi 12 Win64, Delphi 6, Free Pascal 3.2.2 Linux x86_64.
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Format
+      multiple: true
+      options:
+        - XRechnung UBL
+        - XRechnung CII
+        - ZUGFeRD / Factur-X
+        - Peppol BIS
+        - PDF (hybrid)
+        - other / not format-specific
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: A short program or the steps, and an anonymised invoice if needed.
+  - type: textarea
+    id: messages
+    attributes:
+      label: Messages
+      description: Exception text, diagnostics or validation findings.
+      render: text

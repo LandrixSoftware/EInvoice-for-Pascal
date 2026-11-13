@@ -2228,14 +2228,14 @@ begin
 end;
 
 { Factur-X EXTENDED logistics service charge (BT-X-271 to BT-X-274): the
-  invoice model has no field for it (plan, Phase 2 step 1), but the totals
+  invoice model has no field for it, but the totals
   (BT-108, BT-109) and the VAT breakdown include it. It becomes a document
   level charge (BG-21) with the description as reason (BT-104), the amount
   and the VAT category and rate of the first tax, so every target stays
   consistent; EXTENDED writes it back as such a charge (its Schematron sums
   both alike). Reported as information.
   DE: Logistikkosten aus Factur-X EXTENDED (BT-X-271 bis BT-X-274): das
-  Rechnungsmodell hat kein Feld dafuer (Fahrplan, Phase 2 Schritt 1), die
+  Rechnungsmodell hat kein Feld dafuer, die
   Summen (BT-108, BT-109) und die Steueraufschluesselung enthalten sie aber.
   Sie werden zu einem Zuschlag auf Dokumentebene (BG-21) mit der
   Beschreibung als Grund (BT-104), dem Betrag sowie Steuerkategorie und

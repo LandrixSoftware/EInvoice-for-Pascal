@@ -14,10 +14,10 @@
 
 { Rule table of the target specifications: which content of the invoice
   model a specification allows, discourages or forbids. The mapping asks
-  this table instead of testing standards or profiles in code. Phase 1
-  covers what the mapping needs for the specifications of
-  LandrixEInvoiceSpecs; phase 2 adds cardinalities and the consistency
-  checks. What a Factur-X profile contains structurally is not repeated
+  this table instead of testing standards or profiles in code. It covers
+  what the mapping needs for the specifications of LandrixEInvoiceSpecs;
+  the business rule checks are in LandrixEInvoiceCheck. What a Factur-X
+  profile contains structurally is not repeated
   here: LandrixEInvoiceCIIProfiles removes it from the CII model.
 
   A rule row names a key (e.g. LandrixEInvoiceRuleLineSubLines), the
@@ -29,9 +29,9 @@
   DE: Regel-Tabelle der Zielspezifikationen: welchen Inhalt des
   Rechnungsmodells eine Spezifikation erlaubt, davon abraet oder verbietet.
   Die Abbildung fragt diese Tabelle, statt Standards oder Profile im Code zu
-  pruefen. Phase 1 enthaelt, was die Abbildung fuer die
-  Spezifikationen aus LandrixEInvoiceSpecs braucht; Phase 2 ergaenzt
-  Kardinalitaeten und die Konsistenzpruefungen. Was ein Factur-X-Profil
+  pruefen. Sie enthaelt, was die Abbildung fuer die Spezifikationen aus
+  LandrixEInvoiceSpecs braucht; die Pruefung der Geschaeftsregeln steht in
+  LandrixEInvoiceCheck. Was ein Factur-X-Profil
   strukturell enthaelt, steht nicht hier: LandrixEInvoiceCIIProfiles
   entfernt es aus dem CII-Modell.
 

@@ -13,7 +13,7 @@ from tools/syntaxmodel/cii.json and ubl.json (written by extract-xsd.py):
   source/LandrixEInvoiceUBLReader.pas   LandrixEInvoiceReadUBLInvoice/CreditNote
   source/LandrixEInvoiceUBLWriter.pas   LandrixEInvoiceWriteUBLInvoice/CreditNote
 
-Mapping of schema types (plan, decisions on phase 1.4):
+Mapping of schema types:
 - element content           -> class TLandrixCII<Name>; children created on
                                first access (never nil), IsEmpty, Clear
 - simple content, attributes -> record TLandrixCII<Name> (Value + attributes,
