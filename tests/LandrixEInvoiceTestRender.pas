@@ -15,8 +15,9 @@
 { Tests of the rendering of invoices (LandrixEInvoiceRender,
   LandrixEInvoiceRenderHtml): the formatting of values, the writer (stream,
   file, nil, escaping, read context), the completeness test (one mutation
-  per field of the generated FillInvoiceAll/MutateInvoiceLeaf; the page must
-  change exactly in the elements marked with that field, and every marked
+  per field of the generated FillInvoiceAll/MutateInvoiceLeaf, with one and
+  with two items per list; the page must change exactly in the elements
+  marked with that field, in the item of that index, and every marked
   element sits in the section of its field; exceptions with reasons in
   tools/render/render-exceptions.txt), hand-checked golden pages in
   tests/data/render/ and every local golden and sweep file in both
@@ -282,10 +283,26 @@ begin
   end;
 end;
 
+{ the number of elements before AChild (a child of AParent) marked AField }
+function MarkedBefore(AParent, AChild: TLandrixXmlNode; const AField: string): Integer;
+var
+  N: TLandrixXmlNode;
+begin
+  Result := 0;
+  N := AParent.FirstChildElement;
+  while (N <> nil) and (N <> AChild) do
+  begin
+    if Attr(N, 'data-field') = AField then
+      Inc(Result);
+    N := N.NextSiblingElement;
+  end;
+end;
+
 { one entry 'chain|text' per marked element: the chain of the marks from
-  the outermost to the element (a data-ref as '@path'), the text of a value (a container, i.e. an
-  element with marked elements below it, counts by its presence; its
-  labels are not values) }
+  the outermost to the element (a data-ref as '@path'; a list item, marked
+  'X[]', as 'X[n]' with n its position among the siblings of that mark),
+  the text of a value (a container, i.e. an element with marked elements
+  below it, counts by its presence; its labels are not values) }
 procedure CollectEntries(ANode: TLandrixXmlNode; const AChain: string; AList: TStringList);
 var
   N: TLandrixXmlNode;
@@ -295,6 +312,8 @@ begin
   while N <> nil do
   begin
     Mark := Attr(N, 'data-field');
+    if Copy(Mark, Length(Mark) - 1, 2) = '[]' then
+      Mark := Copy(Mark, 1, Length(Mark) - 1) + IntToStr(MarkedBefore(ANode, N, Mark)) + ']';
     if (Mark = '') and N.HasAttribute('', 'data-ref') then
       Mark := '@' + Attr(N, 'data-ref');
     Chain := AChain;
@@ -368,82 +387,110 @@ begin
   end;
 end;
 
-{ a path of MutateInvoiceLeaf ('InvoiceLines[0].SubInvoiceLines[0].Name
+{ a path of MutateInvoiceLeaf ('InvoiceLines[1].SubInvoiceLines[0].Name
   (BT-153)', 'Notes (BG-1/BT-21/BT-22).Count') as the chain of marks it must
-  appear under: the list items on the way, then the field (or the new list
-  item for .Count); sub lines use the paths of a line }
-procedure ExpectedChain(const APath: string; AChain: TStringList; out ALeaf: string; out ACount: Boolean);
+  appear under: the list items on the way with their indexes, then the field
+  (or the new list item for .Count: index AItems, after the filled ones; 0
+  for the sub lines of a sub line, which FillInvoiceAll leaves empty); ALeaf
+  is the field without indexes; sub lines use the paths of a line }
+procedure ExpectedChain(const APath: string; AItems: Integer; AChain: TStringList; out ALeaf: string;
+  out ACount: Boolean);
 var
-  S, Seg, Cur: string;
-  I, P: Integer;
+  S, Seg, Cur, Index: string;
+  I, P, N: Integer;
   InBracket, InParen: Boolean;
+  Indexes: TStringList;
 begin
-  { drop ' (terms)' and the indexes }
-  S := '';
-  InBracket := False;
-  InParen := False;
-  I := 1;
-  while I <= Length(APath) do
-  begin
-    if InParen then
+  Indexes := TStringList.Create;
+  try
+    { drop ' (terms)' and the indexes, keep the indexes apart }
+    S := '';
+    Index := '';
+    InBracket := False;
+    InParen := False;
+    I := 1;
+    while I <= Length(APath) do
     begin
-      if APath[I] = ')' then
-        InParen := False;
-    end
-    else if (APath[I] = ' ') and (I < Length(APath)) and (APath[I + 1] = '(') then
-    begin
-      InParen := True;
-      Inc(I);
-    end
-    else if APath[I] = '[' then
-    begin
-      S := S + '[]';
-      InBracket := True;
-    end
-    else if APath[I] = ']' then
-      InBracket := False
-    else if not InBracket then
-      S := S + APath[I];
-    Inc(I);
-  end;
-  ACount := (Length(S) > 6) and (Copy(S, Length(S) - 5, 6) = '.Count');
-  if ACount then
-    S := Copy(S, 1, Length(S) - 6) + '[]';
-  AChain.Clear;
-  Cur := '';
-  ALeaf := '';
-  while S <> '' do
-  begin
-    P := Pos('.', S);
-    if P = 0 then
-    begin
-      Seg := S;
-      S := '';
-    end
-    else
-    begin
-      Seg := Copy(S, 1, P - 1);
-      S := Copy(S, P + 1, MaxInt);
-    end;
-    if Seg = 'SubInvoiceLines[]' then
-      ALeaf := Cur + '.' + Seg
-    else
-    begin
-      if Cur = '' then
-        Cur := Seg
+      if InParen then
+      begin
+        if APath[I] = ')' then
+          InParen := False;
+      end
+      else if (APath[I] = ' ') and (I < Length(APath)) and (APath[I + 1] = '(') then
+      begin
+        InParen := True;
+        Inc(I);
+      end
+      else if APath[I] = '[' then
+      begin
+        S := S + '[]';
+        Index := '';
+        InBracket := True;
+      end
+      else if APath[I] = ']' then
+      begin
+        InBracket := False;
+        Indexes.Add(Index);
+      end
+      else if InBracket then
+        Index := Index + APath[I]
       else
-        Cur := Cur + '.' + Seg;
-      ALeaf := Cur;
+        S := S + APath[I];
+      Inc(I);
     end;
-    if Copy(Seg, Length(Seg) - 1, 2) = '[]' then
+    ACount := (Length(S) > 6) and (Copy(S, Length(S) - 5, 6) = '.Count');
+    if ACount then
+    begin
+      S := Copy(S, 1, Length(S) - 6) + '[]';
+      P := Pos('SubInvoiceLines[]', S);
+      if (P > 0) and (Pos('SubInvoiceLines[]', Copy(S, P + 1, MaxInt)) > 0) then
+        Indexes.Add('0')
+      else
+        Indexes.Add(IntToStr(AItems));
+    end;
+    AChain.Clear;
+    Cur := '';
+    ALeaf := '';
+    N := 0;
+    while S <> '' do
+    begin
+      P := Pos('.', S);
+      if P = 0 then
+      begin
+        Seg := S;
+        S := '';
+      end
+      else
+      begin
+        Seg := Copy(S, 1, P - 1);
+        S := Copy(S, P + 1, MaxInt);
+      end;
+      if Seg = 'SubInvoiceLines[]' then
+        ALeaf := Cur + '.' + Seg
+      else
+      begin
+        if Cur = '' then
+          Cur := Seg
+        else
+          Cur := Cur + '.' + Seg;
+        ALeaf := Cur;
+      end;
+      if Copy(Seg, Length(Seg) - 1, 2) = '[]' then
+      begin
+        AChain.Add(Copy(ALeaf, 1, Length(ALeaf) - 1) + Indexes[N] + ']');
+        Inc(N);
+      end;
+    end;
+    if not ACount then
       AChain.Add(ALeaf);
+  finally
+    Indexes.Free;
   end;
-  if not ACount then
-    AChain.Add(ALeaf);
 end;
 
 { the marks of the chain of AEntry ('@' of a data-ref dropped) that matter
-  for a mutation: the list items, ALeaf (the mutated field), the last mark }
+  for a mutation: the list items ('X[n]'), ALeaf (the mutated field), the
+  last mark }
 function ListChain(const AEntry, ALeaf: string): string;
 var
   Chain, Seg: string;
@@ -466,7 +513,7 @@ begin
     end;
     if (Seg <> '') and (Seg[1] = '@') then
       Delete(Seg, 1, 1);
-    if (Chain = '') or (Seg = ALeaf) or (Copy(Seg, Length(Seg) - 1, 2) = '[]') then
+    if (Chain = '') or (Seg = ALeaf) or ((Seg <> '') and (Seg[Length(Seg)] = ']')) then
     begin
       if Result <> '' then
         Result := Result + '/';
@@ -725,54 +772,53 @@ begin
     end;
 end;
 
-procedure TestMutations;
+{ The mutations of an invoice filled with AItems items per list; adds the
+  findings to AFailed. }
+procedure RunMutations(AItems: Integer; AExceptions: TObjectList; var AFailed: Integer);
 var
   Base, Inv: TLandrixInvoice;
   Html0, Html: TLandrixXmlUtf8;
   Entries0, Entries, Diffs, Expected: TStringList;
-  Exceptions: TObjectList;
   E: TRenderException;
-  I, J, Failed: Integer;
-  Path, Leaf, Problem: string;
+  I, J: Integer;
+  Path, Leaf, Problem, What: string;
   IsCount, LeafSeen: Boolean;
 begin
-  Exceptions := TObjectList.Create;
+  What := IntToStr(AItems) + ' item(s): ';
   Expected := TStringList.Create;
   Diffs := TStringList.Create;
   Base := TLandrixInvoice.Create;
   Entries0 := nil;
   try
-    LoadRenderExceptions(Exceptions);
-    FillInvoiceAll(Base);
+    FillInvoiceAll(Base, AItems);
     Html0 := PageOf(Base, eln_English, True);
-    CheckPage(Html0, 'filled en');
-    CheckPage(PageOf(Base, eln_German, False), 'filled de');
+    CheckPage(Html0, What + 'filled en');
+    CheckPage(PageOf(Base, eln_German, False), What + 'filled de');
     Entries0 := EntriesOf(Html0, 'filled');
-    Failed := 0;
-    { every field once per item: no two values with the same chain (one
-      item per list in FillInvoiceAll) }
+    { every field once per item: no two values with the same chain (the
+      chain holds the position of each item) }
     for I := 1 to Entries0.Count - 1 do
       if (Copy(Entries0[I], 1, Pos('|', Entries0[I])) = Copy(Entries0[I - 1], 1, Pos('|', Entries0[I - 1]))) and
          (Pos('@', Entries0[I]) = 0) then
       begin
-        Inc(Failed);
-        WriteLn('  shown twice: ', Entries0[I]);
+        Inc(AFailed);
+        WriteLn('  ', What, 'shown twice: ', Entries0[I]);
       end;
-    for I := 0 to InvoiceLeafCount - 1 do
+    for I := 0 to InvoiceLeafCount(AItems) - 1 do
     begin
       Inv := TLandrixInvoice.Create;
       try
-        FillInvoiceAll(Inv);
-        MutateInvoiceLeaf(Inv, I, Path);
+        FillInvoiceAll(Inv, AItems);
+        MutateInvoiceLeaf(Inv, I, Path, AItems);
         Html := PageOf(Inv, eln_English, True);
       finally
         Inv.Free;
       end;
-      ExpectedChain(Path, Expected, Leaf, IsCount);
+      ExpectedChain(Path, AItems, Expected, Leaf, IsCount);
       if IsCount then
-        E := FindException(Exceptions, Leaf + '.Count')
+        E := FindException(AExceptions, Leaf + '.Count')
       else
-        E := FindException(Exceptions, Leaf);
+        E := FindException(AExceptions, Leaf);
       if E <> nil then
       begin
         E.Used := True;
@@ -805,24 +851,41 @@ begin
       end;
       if Problem <> '' then
       begin
-        Inc(Failed);
-        if Failed <= 40 then
-          WriteLn('  ', Path, ': ', Problem);
+        Inc(AFailed);
+        if AFailed <= 40 then
+          WriteLn('  ', What, Path, ': ', Problem);
       end;
     end;
+  finally
+    Expected.Free;
+    Diffs.Free;
+    Entries0.Free;
+    Base.Free;
+  end;
+end;
+
+procedure TestMutations;
+var
+  Exceptions: TObjectList;
+  I, Failed: Integer;
+begin
+  Exceptions := TObjectList.Create;
+  try
+    LoadRenderExceptions(Exceptions);
+    Failed := 0;
+    RunMutations(1, Exceptions, Failed);
+    { two items per list: a mix-up between the items of one list shows }
+    RunMutations(2, Exceptions, Failed);
     for I := 0 to Integer(Exceptions.Count) - 1 do
       if not TRenderException(Exceptions[I]).Used then
       begin
         Inc(Failed);
         WriteLn('  unused exception: ', TRenderException(Exceptions[I]).Path);
       end;
-    CheckEquals(0, Failed, IntToStr(InvoiceLeafCount) + ' mutations, with findings');
+    CheckEquals(0, Failed, IntToStr(InvoiceLeafCount(1)) + ' + ' + IntToStr(InvoiceLeafCount(2)) +
+      ' mutations, with findings');
   finally
     Exceptions.Free;
-    Expected.Free;
-    Diffs.Free;
-    Entries0.Free;
-    Base.Free;
   end;
 end;
 

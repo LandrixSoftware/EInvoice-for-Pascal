@@ -2,7 +2,8 @@
 """Generates tests/LandrixEInvoiceTestInvoiceCompare.pas from the interface
 section of source/LandrixEInvoiceInvoice.pas: an all-field comparison of two
 TLandrixInvoice, a canonical text dump, a fill procedure that sets every field
-and one mutation per leaf (field or list count) for the completeness test.
+and one mutation per leaf (field or list count) for the completeness test;
+fill and mutations with one or with two items per list.
 
 Test-only (plan, Phase 2 step 3): no public Assign or compare API before the
 API freeze in Phase 3. The parser is strict: a declaration in a model class it
@@ -179,7 +180,7 @@ def gen(classes, lists):
   Test helpers for TLandrixInvoice: every field compared (CompareInvoices,
   paths like 'InvoiceLines[2].AllowanceCharges[0].Amount (BT-136)'), a
   canonical text dump of every set field (DumpInvoice), a fill procedure that
-  sets every field (FillInvoiceAll; lists get one item, sub lines one
+  sets every field (FillInvoiceAll; lists get one item or two, sub lines one
   level), and one mutation per leaf for the completeness test
   (InvoiceLeafCount, MutateInvoiceLeaf). Double fields are equal within
   1e-9 relative; attachment data is compared by bytes. }
@@ -203,15 +204,17 @@ procedure CompareInvoices(A, B: TLandrixInvoice; ADiffs: TStrings);
   empty, list counts above 0). }
 procedure DumpInvoice(A: TLandrixInvoice; ALines: TStrings);
 
-{ Sets every field of AInvoice (expected empty) to a value of its own. }
-procedure FillInvoiceAll(AInvoice: TLandrixInvoice);
+{ Sets every field of AInvoice (expected empty) to a value of its own, with
+  AItems (1 or 2) items in every list. }
+procedure FillInvoiceAll(AInvoice: TLandrixInvoice; AItems: Integer = 1);
 
-{ Number of leaves of an invoice filled by FillInvoiceAll. }
-function InvoiceLeafCount: Integer;
+{ Number of leaves of an invoice filled by FillInvoiceAll with AItems. }
+function InvoiceLeafCount(AItems: Integer = 1): Integer;
 
-{ Changes leaf AIndex (0 .. InvoiceLeafCount - 1) of an invoice filled by
-  FillInvoiceAll; APath is the path CompareInvoices reports for it. }
-procedure MutateInvoiceLeaf(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string);
+{ Changes leaf AIndex (0 .. InvoiceLeafCount(AItems) - 1) of an invoice
+  filled by FillInvoiceAll with AItems; APath is the path CompareInvoices
+  reports for it. }
+procedure MutateInvoiceLeaf(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string; AItems: Integer = 1);
 
 implementation
 
@@ -409,11 +412,11 @@ end;
         w("end;")
         w("")
 
-    # static expansion for fill and leaves
-    fill, leaves = [], []
+    # static expansion for fill and leaves, with one and with two items per
+    # list (the values of the second run go on counting: all differ)
     counter = [0]
 
-    def walk(cname, expr, path, stack):
+    def walk(cname, expr, path, stack, items, fill, leaves):
         for f in classes[cname]:
             n, k = f["name"], f["kind"]
             e = "%s.%s" % (expr, n)
@@ -448,17 +451,22 @@ end;
                 fill.append("  AppendData(%s, 3);" % e)
                 leaves.append((p, "AppendData(%s, 1);" % e))
             elif k == "object":
-                walk(f["type"], e, path + n + ".", stack)
+                walk(f["type"], e, path + n + ".", stack, items, fill, leaves)
             elif k == "list":
                 info = lists[f["type"]]
                 item = info["item"]
                 leaves.append((p + ".Count", "%s.%s;" % (e, info["add"])))
                 if stack.count(item) + 1 > MAX_NESTING:
                     continue
-                fill.append("  %s.%s;" % (e, info["add"]))
-                walk(item, "%s[0]" % e, path + n + "[0].", stack + [item])
+                for j in range(items):
+                    fill.append("  %s.%s;" % (e, info["add"]))
+                    walk(item, "%s[%d]" % (e, j), path + n + "[%d]." % j, stack + [item], items, fill, leaves)
 
-    walk(ROOT_CLASS, "AInvoice", "", [ROOT_CLASS])
+    variants = []
+    for items in (1, 2):
+        fill, leaves = [], []
+        walk(ROOT_CLASS, "AInvoice", "", [ROOT_CLASS], items, fill, leaves)
+        variants.append((items, fill, leaves))
     w("procedure CompareInvoices(A, B: TLandrixInvoice; ADiffs: TStrings);")
     w("begin")
     w("  CompareInvoiceFields(A, B, '', ADiffs);")
@@ -469,28 +477,57 @@ end;
     w("  DumpInvoiceFields(A, '', ALines);")
     w("end;")
     w("")
-    w("procedure FillInvoiceAll(AInvoice: TLandrixInvoice);")
+    for items, fill, leaves in variants:
+        w("procedure Fill%d(AInvoice: TLandrixInvoice);" % items)
+        w("begin")
+        L.extend(fill)
+        w("end;")
+        w("")
+        w("procedure Mutate%d(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string);" % items)
+        w("begin")
+        w("  case AIndex of")
+        for i, (p, st) in enumerate(leaves):
+            w("    %d:" % i)
+            w("      begin")
+            w("        APath := '%s';" % p)
+            w("        %s" % st)
+            w("      end;")
+        w("  else")
+        w("    raise Exception.Create('MutateInvoiceLeaf: index ' + IntToStr(AIndex));")
+        w("  end;")
+        w("end;")
+        w("")
+    w("procedure CheckItems(AItems: Integer);")
     w("begin")
-    L.extend(fill)
+    w("  if (AItems < 1) or (AItems > 2) then")
+    w("    raise Exception.Create('items per list: 1 or 2, not ' + IntToStr(AItems));")
     w("end;")
     w("")
-    w("function InvoiceLeafCount: Integer;")
+    w("procedure FillInvoiceAll(AInvoice: TLandrixInvoice; AItems: Integer);")
     w("begin")
-    w("  Result := %d;" % len(leaves))
-    w("end;")
-    w("")
-    w("procedure MutateInvoiceLeaf(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string);")
-    w("begin")
-    w("  case AIndex of")
-    for i, (p, st) in enumerate(leaves):
-        w("    %d:" % i)
-        w("      begin")
-        w("        APath := '%s';" % p)
-        w("        %s" % st)
-        w("      end;")
+    w("  CheckItems(AItems);")
+    w("  if AItems = 1 then")
+    w("    Fill1(AInvoice)")
     w("  else")
-    w("    raise Exception.Create('MutateInvoiceLeaf: index ' + IntToStr(AIndex));")
-    w("  end;")
+    w("    Fill2(AInvoice);")
+    w("end;")
+    w("")
+    w("function InvoiceLeafCount(AItems: Integer): Integer;")
+    w("begin")
+    w("  CheckItems(AItems);")
+    w("  if AItems = 1 then")
+    w("    Result := %d" % len(variants[0][2]))
+    w("  else")
+    w("    Result := %d;" % len(variants[1][2]))
+    w("end;")
+    w("")
+    w("procedure MutateInvoiceLeaf(AInvoice: TLandrixInvoice; AIndex: Integer; out APath: string; AItems: Integer);")
+    w("begin")
+    w("  CheckItems(AItems);")
+    w("  if AItems = 1 then")
+    w("    Mutate1(AInvoice, AIndex, APath)")
+    w("  else")
+    w("    Mutate2(AInvoice, AIndex, APath);")
     w("end;")
     w("")
     w("end.")

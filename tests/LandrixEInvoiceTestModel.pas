@@ -1058,47 +1058,55 @@ end;
 { --- generated all-field comparison --------------------------------------- }
 
 { Every leaf of the generated comparison is detected: two filled invoices
-  are equal, and changing one leaf gives exactly one difference at its path. }
+  are equal, and changing one leaf gives exactly one difference at its path
+  (with one and with two items per list). }
 procedure TestCompareComplete;
 var
   A, B: TLandrixInvoice;
   Diffs: TStringList;
-  I, Failed: Integer;
+  I, Items, Failed: Integer;
   Path: string;
 begin
-  A := TLandrixInvoice.Create;
   Diffs := TStringList.Create;
   try
-    FillInvoiceAll(A);
     Failed := 0;
-    for I := 0 to InvoiceLeafCount - 1 do
+    for Items := 1 to 2 do
     begin
-      B := TLandrixInvoice.Create;
+      A := TLandrixInvoice.Create;
       try
-        FillInvoiceAll(B);
-        Diffs.Clear;
-        if I = 0 then
+        FillInvoiceAll(A, Items);
+        for I := 0 to InvoiceLeafCount(Items) - 1 do
         begin
-          CompareInvoices(A, B, Diffs);
-          CheckEquals(0, Diffs.Count, 'filled invoices equal: ' + Diffs.Text);
-        end;
-        MutateInvoiceLeaf(B, I, Path);
-        Diffs.Clear;
-        CompareInvoices(A, B, Diffs);
-        if (Diffs.Count <> 1) or (Pos(Path, Diffs[0]) <> 1) then
-        begin
-          Inc(Failed);
-          WriteLn('  leaf ', I, ' ', Path, ': ', Diffs.Text);
+          B := TLandrixInvoice.Create;
+          try
+            FillInvoiceAll(B, Items);
+            Diffs.Clear;
+            if I = 0 then
+            begin
+              CompareInvoices(A, B, Diffs);
+              CheckEquals(0, Diffs.Count, 'filled invoices equal: ' + Diffs.Text);
+            end;
+            MutateInvoiceLeaf(B, I, Path, Items);
+            Diffs.Clear;
+            CompareInvoices(A, B, Diffs);
+            if (Diffs.Count <> 1) or (Pos(Path, Diffs[0]) <> 1) then
+            begin
+              Inc(Failed);
+              WriteLn('  ', Items, ' item(s), leaf ', I, ' ', Path, ': ', Diffs.Text);
+            end;
+          finally
+            B.Free;
+          end;
         end;
       finally
-        B.Free;
+        A.Free;
       end;
     end;
     Check(InvoiceLeafCount > 200, 'leaves: ' + IntToStr(InvoiceLeafCount));
+    Check(InvoiceLeafCount(2) > 2 * InvoiceLeafCount, 'leaves with two items: ' + IntToStr(InvoiceLeafCount(2)));
     CheckEquals(0, Failed, 'leaves not detected exactly once');
   finally
     Diffs.Free;
-    A.Free;
   end;
 end;
 
@@ -1170,6 +1178,16 @@ begin
     B.Assign(A);
     CompareInvoices(A, B, Diffs);
     CheckEquals(0, Diffs.Count, 'copy equals the source: ' + Diffs.Text);
+    { two items per list: each copied to its place }
+    C.Clear;
+    FillInvoiceAll(C, 2);
+    B.Assign(C);
+    Diffs.Clear;
+    CompareInvoices(C, B, Diffs);
+    CheckEquals(0, Diffs.Count, 'copy with two items per list: ' + Diffs.Text);
+    B.Assign(A);
+    C.Free;
+    C := TLandrixInvoice.Create;
     FillInvoiceAll(C);
     B.Assign(B);
     Diffs.Clear;

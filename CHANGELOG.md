@@ -405,6 +405,10 @@ Supported invoice standards are documented per release.
 - The invoice page titles a credit note (BT-3 = 381) "Credit note" / "Gutschrift"; the VAT columns of allowances
   and charges on line level appear only when an item has a category or a rate. German names for 42 common charge
   reasons (UNTDID 7161, e.g. FC "Fracht") in `tools/codelists/names-de.json`; the others stay English.
+- `Render.Mutations`, `Model.CompareComplete` and `Model.Assign` also run with two items in every list
+  (`FillInvoiceAll`, `InvoiceLeafCount` and `MutateInvoiceLeaf` of the generated test unit take the number of items,
+  1 or 2): a mutation of the second item must change exactly that item on the page (list items are told apart by
+  their position), so a mix-up between the items of one list shows.
 - English code names corrected where the EN 16931 code lists cut them off or keep their list form, in the new
   hand-written `tools/codelists/names-en.json` (90 entries; the generator fails on an entry equal to the source): 47
   names completed from UNTDID (payment means, e.g. 63 "...endorsed by a third party", note subjects, reference
