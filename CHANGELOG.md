@@ -402,6 +402,9 @@ Supported invoice standards are documented per release.
   field of the model: the page must change in the elements marked with that field, in its section; exceptions in
   `tools/render/render-exceptions.txt`), `Render.Golden` (pages in `tests/data/render/`) and `Render.Corpus` (every
   local golden, CII, UBL and sweep file in both languages, read back as XML).
+- The invoice page titles a credit note (BT-3 = 381) "Credit note" / "Gutschrift"; the VAT columns of allowances
+  and charges on line level appear only when an item has a category or a rate. German names for 42 common charge
+  reasons (UNTDID 7161, e.g. FC "Fracht") in `tools/codelists/names-de.json`; the others stay English.
 - `LandrixEInvoiceValidation` chooses the KoSIT configuration per document among registered ones
   (`Options.AddConfiguration(Configuration, Kind)`, `ClearConfigurations`, `ConfigurationCount`; kinds
   `TLandrixEInvoiceConfigurationKind`): a configuration is a candidate when exactly one of its scenarios matches

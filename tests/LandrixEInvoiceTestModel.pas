@@ -192,7 +192,13 @@ begin
     'CI de, decoded');
   CheckEqualsInvoiceStr(Wide([Ord('S'), Ord('t'), $FC, Ord('c'), Ord('k')]),
     LandrixEInvoiceCodeName(ecl_UnitCode, 'H87', eln_German), 'H87 de');
+  CheckEqualsInvoiceStr('Fracht', LandrixEInvoiceCodeName(ecl_SpecialServiceDescriptionCode, 'FC', eln_German),
+    'FC de');
+  CheckEqualsInvoiceStr('Freight service', LandrixEInvoiceCodeName(ecl_SpecialServiceDescriptionCode, 'FC',
+    eln_English), 'FC en');
   { no German name: the English one }
+  CheckEqualsInvoiceStr('Koshering', LandrixEInvoiceCodeName(ecl_SpecialServiceDescriptionCode, 'KO', eln_German),
+    'KO fallback');
   CheckEqualsInvoiceStr('percent weight', LandrixEInvoiceCodeName(ecl_UnitCode, '60', eln_German), 'fallback');
   CheckEqualsInvoiceStr('', LandrixEInvoiceCodeName(ecl_UnitCode, 'NOPE', eln_English), 'unknown code');
   CheckEqualsInvoiceStr('', LandrixEInvoiceCodeName(ecl_UnitCode, '', eln_German), 'empty code');

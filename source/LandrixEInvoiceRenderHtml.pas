@@ -124,20 +124,22 @@ uses
   LandrixEInvoiceRenderLabels;
 
 type
-  TLabel = (lbTitle, lbYes, lbNo, lbAllowance, lbCharge, lbBytes, lbDocument, lbSource, lbRootName, lbSyntax,
-    lbCustomizationId, lbSpecification, lbPdfAttachment, lbNotTakenOver, lbNothingLeftOut, lbKind, lbPosition,
-    lbPath, lbMessage, lbLine, lbColumn, lbSanitizedNote, lbGenerator);
+  TLabel = (lbTitle, lbCreditNote, lbYes, lbNo, lbAllowance, lbCharge, lbBytes, lbDocument, lbSource, lbRootName,
+    lbSyntax, lbCustomizationId, lbSpecification, lbPdfAttachment, lbNotTakenOver, lbNothingLeftOut, lbKind,
+    lbPosition, lbPath, lbMessage, lbLine, lbColumn, lbSanitizedNote, lbGenerator);
 
 const
   { HTML snippets, ASCII with character references; written as they are }
   Labels: array[TLandrixEInvoiceReportLanguage, TLabel] of AnsiString = (
-    ('Invoice', 'yes', 'no', 'Allowance', 'Charge', 'bytes', 'Document', 'Source', 'Root element', 'Syntax',
-     'Specification identifier (BT-24)', 'Specification', 'Invoice file in the PDF', 'Not taken over when reading',
-     'Reading took over everything.', 'Kind', 'Location', 'Path', 'Message', 'line', 'column',
+    ('Invoice', 'Credit note', 'yes', 'no', 'Allowance', 'Charge', 'bytes', 'Document', 'Source', 'Root element',
+     'Syntax', 'Specification identifier (BT-24)', 'Specification', 'Invoice file in the PDF',
+     'Not taken over when reading', 'Reading took over everything.', 'Kind', 'Location', 'Path', 'Message', 'line',
+     'column',
      'Characters that XML does not allow were replaced by U+FFFD.', 'Written by'),
-    ('Rechnung', 'ja', 'nein', 'Abschlag', 'Zuschlag', 'Bytes', 'Dokument', 'Herkunft', 'Wurzelelement', 'Syntax',
-     'Spezifikationskennung (BT-24)', 'Spezifikation', 'Rechnungsdatei im PDF', 'Beim Lesen nicht &#252;bernommen',
-     'Das Lesen hat alles &#252;bernommen.', 'Art', 'Fundstelle', 'Pfad', 'Meldung', 'Zeile', 'Spalte',
+    ('Rechnung', 'Gutschrift', 'ja', 'nein', 'Abschlag', 'Zuschlag', 'Bytes', 'Dokument', 'Herkunft', 'Wurzelelement',
+     'Syntax', 'Spezifikationskennung (BT-24)', 'Spezifikation', 'Rechnungsdatei im PDF',
+     'Beim Lesen nicht &#252;bernommen', 'Das Lesen hat alles &#252;bernommen.', 'Art', 'Fundstelle', 'Pfad',
+     'Meldung', 'Zeile', 'Spalte',
      'Zeichen, die XML nicht erlaubt, wurden durch U+FFFD ersetzt.', 'Erstellt mit'));
 
   { the diagnostics of reading that mean content did not reach the model;
@@ -804,7 +806,7 @@ var
   I: Integer;
   A: TLandrixInvoiceAllowanceCharge;
   Kind, Category: TLandrixEInvoiceString;
-  ShowRate: Boolean;
+  ShowRate, HasTax: Boolean;
 
   function F(ATemplate: TLandrixEInvoiceRenderField): TLandrixEInvoiceRenderField;
   begin
@@ -819,14 +821,28 @@ var
 begin
   if AList.Count = 0 then
     Exit;
+  { the VAT columns on line level only when an item has a category or a
+    rate (EN 16931 has no VAT there; the document level always shows them)
+    DE: die Steuerspalten auf Positionsebene nur, wenn ein Eintrag eine
+    Kategorie oder einen Satz hat (EN 16931 kennt dort keine Steuer; die
+    Belegebene zeigt sie immer) }
+  HasTax := ABase = erf_AllowanceCharges;
+  for I := 0 to Integer(AList.Count) - 1 do
+    if (AList[I].TaxCategory <> idtfcc_None) or (AList[I].TaxCategoryOther <> '') or (AList[I].TaxPercent <> 0) then
+      HasTax := True;
   { the code column holds the codes of allowances and of charges
     DE: die Code-Spalte enthaelt die Codes von Abschlaegen und Zuschlaegen }
-  P.OpenTable(Columns([F(erf_AllowanceCharges_ChargeIndicator), F(erf_AllowanceCharges_ReasonCodeAllowance),
-    F(erf_AllowanceCharges_Reason), F(erf_AllowanceCharges_BaseAmount),
-    F(erf_AllowanceCharges_MultiplierFactorNumeric), F(erf_AllowanceCharges_Amount),
-    F(erf_AllowanceCharges_TaxCategory), F(erf_AllowanceCharges_TaxPercent)]),
-    Terms(['', LandrixEInvoiceRenderFieldBT(F(erf_AllowanceCharges_ReasonCodeAllowance)) + '/' +
-    LandrixEInvoiceRenderFieldBT(F(erf_AllowanceCharges_ReasonCodeCharge))]));
+  Kind := LandrixEInvoiceRenderFieldBT(F(erf_AllowanceCharges_ReasonCodeAllowance)) + '/' +
+    LandrixEInvoiceRenderFieldBT(F(erf_AllowanceCharges_ReasonCodeCharge));
+  if HasTax then
+    P.OpenTable(Columns([F(erf_AllowanceCharges_ChargeIndicator), F(erf_AllowanceCharges_ReasonCodeAllowance),
+      F(erf_AllowanceCharges_Reason), F(erf_AllowanceCharges_BaseAmount),
+      F(erf_AllowanceCharges_MultiplierFactorNumeric), F(erf_AllowanceCharges_Amount),
+      F(erf_AllowanceCharges_TaxCategory), F(erf_AllowanceCharges_TaxPercent)]), Terms(['', Kind]))
+  else
+    P.OpenTable(Columns([F(erf_AllowanceCharges_ChargeIndicator), F(erf_AllowanceCharges_ReasonCodeAllowance),
+      F(erf_AllowanceCharges_Reason), F(erf_AllowanceCharges_BaseAmount),
+      F(erf_AllowanceCharges_MultiplierFactorNumeric), F(erf_AllowanceCharges_Amount)]), Terms(['', Kind]));
   for I := 0 to Integer(AList.Count) - 1 do
   begin
     A := AList[I];
@@ -859,6 +875,11 @@ begin
     P.Cell(F(erf_AllowanceCharges_MultiplierFactorNumeric), P.PercentIf(A.MultiplierFactorNumeric),
       BT(erf_AllowanceCharges_MultiplierFactorNumeric));
     P.Cell(F(erf_AllowanceCharges_Amount), P.Amount(A.Amount), BT(erf_AllowanceCharges_Amount));
+    if not HasTax then
+    begin
+      P.Raw('</tr>'#10);
+      Continue;
+    end;
     P.Raw('<td>');
     P.Span(F(erf_AllowanceCharges_TaxCategory), P.Code(ecl_DutyTaxFeeCategoryCode,
       LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(A.TaxCategory)), BT(erf_AllowanceCharges_TaxCategory));
@@ -1343,6 +1364,7 @@ function TLandrixEInvoiceRenderHtmlWriter.Build(AInvoice: TLandrixInvoice;
   ADocument: TLandrixEInvoiceDocument): TMemoryStream;
 var
   P: TPage;
+  Title: TLabel;
 begin
   if AInvoice = nil then
     raise ELandrixEInvoiceError.Create('No invoice to render');
@@ -1353,14 +1375,22 @@ begin
     P.Raw('<!DOCTYPE html>'#10'<html xmlns="http://www.w3.org/1999/xhtml" lang="' + LanguageCodes[FLanguage] +
       '">'#10'<head>'#10'<meta charset="utf-8"/>'#10 +
       '<meta name="viewport" content="width=device-width, initial-scale=1"/>'#10'<title>');
-    P.Lbl(lbTitle);
+    { a credit note (BT-3 = 381, as the UBL writer decides ubl:CreditNote)
+      is titled so; every other type is an invoice
+      DE: eine Gutschrift (BT-3 = 381, wie der UBL-Writer ubl:CreditNote
+      waehlt) heisst so; jede andere Art ist eine Rechnung }
+    if AInvoice.InvoiceTypeCode = itc_CreditNote then
+      Title := lbCreditNote
+    else
+      Title := lbTitle;
+    P.Lbl(Title);
     if FDocumentName <> '' then
     begin
       P.Raw(': ');
       P.Text(FDocumentName);
     end;
     P.Raw('</title>'#10'<style>' + Css + '</style>'#10'</head>'#10'<body>'#10'<header><h1>');
-    P.Lbl(lbTitle);
+    P.Lbl(Title);
     P.Raw('</h1>'#10);
     if FDocumentName <> '' then
     begin
