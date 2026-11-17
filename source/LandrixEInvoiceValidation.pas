@@ -199,7 +199,10 @@ type
     FCandidateKinds: set of TLandrixEInvoiceConfigurationKind;
     FInfo: TLandrixEInvoiceDocumentInfo;
     FPdf: TLandrixEInvoicePdfCheckResult;
+    FKosit: TLandrixEInvoiceValidationResult;
+    FXml: TMemoryStream;
     function GetStatus(APart: TLandrixEInvoiceValidationPart): TLandrixEInvoicePartStatus;
+    function GetInvoiceXml: TMemoryStream;
     function GetFindingCount: Integer;
     function GetFinding(AIndex: Integer): TLandrixEInvoiceFinding;
     procedure AddFailure(APart: TLandrixEInvoiceValidationPart; E: Exception);
@@ -272,6 +275,22 @@ type
       nil bei XML. Gehoert dem Ergebnis; nur lesen. Status und Findings der
       Pruefung sind massgeblich, Pdf.Diagnostics ist ihre Rohquelle. }
     property Pdf: TLandrixEInvoicePdfCheckResult read FPdf;
+    { The result of the KoSIT run (scenario, steps, messages, assessment),
+      for the KoSIT report; nil without a run. Owned by the result; read
+      only.
+      DE: Das Ergebnis des KoSIT-Laufs (Szenario, Schritte, Meldungen,
+      Bewertung), fuer den KoSIT-Bericht; nil ohne Lauf. Gehoert dem
+      Ergebnis; nur lesen. }
+    property Kosit: TLandrixEInvoiceValidationResult read FKosit;
+    { The XML that was checked: the document itself, for a PDF the
+      embedded invoice (Pdf.Invoice); nil when there is none (no stream,
+      more than 2 GB, a PDF without invoice). Owned by the result; read
+      only.
+      DE: Das gepruefte XML: das Dokument selbst, bei einem PDF die
+      eingebettete Rechnung (Pdf.Invoice); nil, wenn es keines gibt (kein
+      Stream, mehr als 2 GB, ein PDF ohne Rechnung). Gehoert dem Ergebnis;
+      nur lesen. }
+    property InvoiceXml: TMemoryStream read GetInvoiceXml;
   end;
 
   { The options of a validation.
@@ -424,6 +443,8 @@ end;
 
 destructor TLandrixEInvoiceDocumentValidation.Destroy;
 begin
+  FKosit.Free;
+  FXml.Free;
   FPdf.Free;
   FFindings.Free;
   inherited Destroy;
@@ -445,6 +466,10 @@ begin
   FCandidateKinds := [];
   FPdf.Free;
   FPdf := nil;
+  FKosit.Free;
+  FKosit := nil;
+  FXml.Free;
+  FXml := nil;
   Finalize(FInfo);
   FillChar(FInfo, SizeOf(FInfo), 0);
 end;
@@ -452,6 +477,18 @@ end;
 function TLandrixEInvoiceDocumentValidation.GetStatus(APart: TLandrixEInvoiceValidationPart): TLandrixEInvoicePartStatus;
 begin
   Result := FStatus[APart];
+end;
+
+function TLandrixEInvoiceDocumentValidation.GetInvoiceXml: TMemoryStream;
+begin
+  if FPdf <> nil then
+  begin
+    Result := FPdf.Invoice;
+    if (Result <> nil) and (Result.Size = 0) then
+      Result := nil;
+  end
+  else
+    Result := FXml;
 end;
 
 function TLandrixEInvoiceDocumentValidation.GetFindingCount: Integer;
@@ -626,6 +663,9 @@ begin
         ReadAndCheck(Data, AResult, nil);
         CheckKind(AResult, KositEnd);
       end;
+      { the result keeps the checked XML }
+      AResult.FXml := Data;
+      Data := nil;
     end;
   finally
     Data.Free;
@@ -679,8 +719,12 @@ begin
       AResult.FVerdict := ev_Accepted
     else
       AResult.FVerdict := ev_Rejected;
-  finally
+    { the result keeps the KoSIT result }
+    AResult.FKosit.Free;
+    AResult.FKosit := K;
+  except
     K.Free;
+    raise;
   end;
 end;
 

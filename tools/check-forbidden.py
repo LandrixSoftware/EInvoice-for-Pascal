@@ -38,6 +38,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GUI_EXAMPLE_DIR = os.path.normcase(os.path.join(ROOT, "examples", "Workbench")) + os.sep
 GUI_UNITS = {"interfaces", "lclintf", "windows", "shellapi", "forms", "controls", "dialogs",
              "stdctrls", "extctrls", "comctrls", "workbenchmain"}
+# The XSLT engine of LandrixXML stays optional: in source/ only these units
+# may use it, so a program that only reads and writes invoices does not link
+# it (tools, tests and examples may).
+SOURCE_DIR = os.path.normcase(os.path.join(ROOT, "source")) + os.sep
+XSLT_UNIT_PREFIX = "landrixxmlxslt"
+XSLT_USERS = {"landrixeinvoicekositreport.pas", "landrixeinvoicekositvisualization.pas"}
 
 FORBIDDEN_IDENTIFIERS = [
     "TStringBuilder", "TEncoding", "TFormatSettings", "PosEx", "CharInSet",
@@ -186,6 +192,11 @@ def check_uses(path, code, violations):
                 continue
             elif low not in ALLOWED_UNITS and not low.startswith(OWN_UNIT_PREFIXES):
                 violations.append(Violation(path, line, "unit not allowed: %s" % name))
+            elif (low.startswith(XSLT_UNIT_PREFIX) and
+                  os.path.normcase(os.path.abspath(path)).startswith(SOURCE_DIR) and
+                  os.path.basename(path).lower() not in XSLT_USERS):
+                violations.append(Violation(path, line, "XSLT unit outside the KoSIT report and visualization units: %s"
+                                            % name))
 
 
 def block_bodies(code, opener):

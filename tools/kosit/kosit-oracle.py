@@ -66,6 +66,44 @@ where the probe counts exactly one match, and these must agree. The script
 then lists the documents with several candidates and the configuration the
 precedence picks (ZUGFeRD, Peppol BIS, XRechnung). It is not part of all.
 
+--report-input also compares the KoSIT report input of every document
+(in:createReportInput, which the KoSIT validator writes with
+--serialize-report-input and the probe with -input:, see
+LandrixEInvoiceKositReportInput): every element and attribute, the text
+with white space normalized, except what differs by nature (engine name,
+timestamp, document reference, the text of processing errors), the
+well-formedness errors by count only (as above), XML schema messages by code,
+line and column (the parsers word them differently), and of the SVRL only
+what the report stylesheet reads (svrl:failed-assert and
+svrl:successful-report with location, id, flag and role, the location
+written as SchXslt does as above, and the svrl:text unchanged); active
+patterns, fired and suppressed rules and the other attributes are left
+out. The document hash is checked against the SHA-256 of the file, not
+against KoSIT: the KoSIT validator 1.6.3 hashes only the first bytes of some
+documents (8,230 of 12,988 for ubl-inv-br-de-27-test-145-code--0-1-.xml of
+the generated corpus). A processing error "Report input has errors" of
+KoSIT is left out: KoSIT checks its report input against its own schema,
+which requires an id on svrl:successful-report, and some ZUGFeRD rules
+have none; the native report input is not checked against that schema.
+Its difference lines start with "input ". The probe's report inputs are in
+build/kosit-oracle/<run>/ours/. Run it together with --report: the copied
+scenario text (normalized here) and the SVRL elements left out here are
+checked only through the report.
+
+--report also compares the KoSIT report itself (LandrixEInvoiceKositReport:
+the report stylesheet of the configuration run with the LandrixXML XSLT
+engine on the probe's report input; KoSIT runs with --extract-html, the
+probe with -report:): the report XML and its HTML page must be equal byte
+for byte except the engine name, the timestamp, the document reference and
+the document hash (checked with --report-input), the same values where the
+embedded HTML page shows them, and the text of the well-formedness and XML
+schema messages (the parsers word them differently, Xerces in the language
+of the system; their codes and positions are compared above) with the line
+and column of a well-formedness error (KoSIT has none; in a report with a
+well-formedness message every position cell is left out); Schematron
+locations are compared as SchXslt writes them, as above. Its difference
+lines start with "report ".
+
 Known differences are listed in tools/kosit/kosit-exceptions.txt
 ("file<TAB>difference line", '*' in the file name for any text, each with a
 reason); an unused line is an error.
@@ -78,7 +116,7 @@ probe:
 
 Usage:
   python tools/kosit/kosit-oracle.py [--corpus suite|generated|outputs|peppol|zugferd|all] [--toolchain <tc>]
-      [--probe <exe>] [--java <java>] [--keep] [--update]
+      [--probe <exe>] [--java <java>] [--keep] [--update] [--report-input] [--report]
 The KoSIT reports are kept in build/kosit-oracle/ (--keep reuses them).
 --update rewrites tests/data/kosit-expected.txt, the reference of the test
 Validator.KositSuite (the probe's lines for the test suite instances), when
@@ -219,18 +257,165 @@ def make_mutants(folder, mutants=MUTANTS, sources=INSTANCES):
         open(os.path.join(folder, name), "wb").write(data)
 
 
-def run_kosit(java, config, files, out):
+def run_kosit(java, config, files, out, report_input=False, html=False):
     jar = glob.glob(os.path.join(TOOLS, "validator", "validator-*-standalone.jar"))
     if not jar or not os.path.isfile(os.path.join(config, "scenarios.xml")):
         sys.exit("KoSIT validator or configuration missing: run addons/java-tools/install-tools.ps1")
     os.makedirs(out, exist_ok=True)
     empty = os.path.join(out, "empty-input.txt")
     open(empty, "w").close()
+    # the validator writes the report input to the current directory
+    extra = (["--serialize-report-input"] if report_input else []) + (["--extract-html"] if html else [])
     for i in range(0, len(files), 100):
         with open(empty) as stdin:
-            subprocess.run([java, "-jar", jar[0], "-r", config, "-s", os.path.join(config, "scenarios.xml"),
-                            "-o", out] + files[i:i + 100], stdin=stdin, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL)
+            subprocess.run([java, "-jar", os.path.abspath(jar[0]), "-r", os.path.abspath(config), "-s",
+                            os.path.abspath(os.path.join(config, "scenarios.xml")), "-o", os.path.abspath(out)] +
+                           extra + [os.path.abspath(f) for f in files[i:i + 100]], stdin=stdin,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=out)
+
+
+IN = "{http://www.xoev.de/de/validator/framework/1/createreportinput}"
+SVRL = "{http://purl.oclc.org/dsdl/svrl}"
+SVRL_KEPT = {SVRL + "schematron-output", SVRL + "failed-assert", SVRL + "successful-report", SVRL + "text"}
+INPUT_MASKED = {IN + "name", IN + "timestamp", IN + "documentReference", IN + "error", IN + "hashValue"}
+SVRL_ATTRIBUTES = ("location", "id", "flag", "role")
+
+
+def file_hash(path):
+    import base64
+    import hashlib
+    return base64.b64encode(hashlib.sha256(open(path, "rb").read()).digest()).decode()
+
+
+REPORT_MASKS = [re.compile(r"(<rep:(?:name|timestamp|documentReference|hashValue)>)[^<]*(</rep:)"),
+                re.compile(r"(<dd>)\d\d\.\d\d\.\d{4} \d\d:\d\d:\d\d(</dd>)")]
+
+
+PARSER_MESSAGE = re.compile(r'(<rep:message [^>]*(?:id="val-xml[^"]*"|code="cvc-[^"]*")[^>]*>)(.*?)(</rep:message>)', re.S)
+
+
+def parser_messages(report_path):
+    """The texts of the well-formedness and XML schema messages of a report."""
+    try:
+        return [m.group(2) for m in PARSER_MESSAGE.finditer(open(report_path, encoding="utf-8").read())]
+    except OSError:
+        return []
+
+
+def masked_report(path, messages, well_formedness=False, spaces=None):
+    """The report or its HTML page with the values that differ by nature
+    replaced (messages: the parser message texts of both reports); None if
+    the file is missing."""
+    try:
+        text = open(path, encoding="utf-8").read()
+    except OSError:
+        return None
+    for mask in REPORT_MASKS:
+        text = mask.sub(lambda m: m.group(1) + "*" + m.group(2), text)
+    # the engine name and the document reference as the page shows them
+    text = re.sub(r"(erstellt mit |created with )[^<]*(\.</p>)", lambda m: m.group(1) + "*" + m.group(2), text)
+    text = re.sub(r"(<dd>)(?:/?[A-Za-z]:[/\\]|/)[^<]*\.xml(</dd>)", lambda m: m.group(1) + "*" + m.group(2), text)
+
+    def message(m):
+        head = m.group(1)
+        if 'id="val-xml' in head:
+            head = re.sub(r' (?:lineNumber|columnNumber)="[^"]*"', "", head)
+        return head + "*" + m.group(3)
+
+    text = PARSER_MESSAGE.sub(message, text)
+    # Schematron locations as SchXslt writes them (the XSLT of the Peppol and
+    # ZUGFeRD configurations write other forms, as compared above)
+
+    def location(m):
+        loc = ISO_STEP.sub(lambda s: "Q{%s}%s[%s]" % (s.group(2), s.group(1), s.group(3)), m.group(2))
+        return m.group(1) + readable_location(loc, spaces or {}) + m.group(3)
+
+    text = re.sub(r'( xpathLocation=")([^"]*)(")', location, text)
+    text = re.sub(r"(<td>Pfad: )([^<]*)(</td>)", location, text)
+    # the position cell of a well-formedness error (KoSIT has none): only
+    # in a report with a well-formedness message; empty cells alike
+    if well_formedness:
+        text = re.sub(r"<td>\s*Zeile: \d+(?: Spalte: \d+)?</td>|<td/>", "<td></td>", text)
+    # the texts where the page shows them (the page may break their lines)
+    for t in sorted(set(messages), key=len, reverse=True):
+        if t.split():
+            text = re.sub(r"\s+".join(re.escape(w) for w in t.split()), "*", text)
+    return text
+
+
+def report_lines(theirs_path, ours_path, html, document=None):
+    """[] if equal, else a line naming the first difference."""
+    kind = "html" if html else "xml"
+    messages = parser_messages(re.sub(r"\.html$", ".xml", theirs_path)) + \
+        parser_messages(re.sub(r"\.html$", ".xml", ours_path))
+    xml_theirs = re.sub(r"\.html$", ".xml", theirs_path)
+    try:
+        well_formedness = 'id="val-xml' in open(xml_theirs, encoding="utf-8").read()
+    except OSError:
+        well_formedness = False
+    spaces = document_namespaces(document) if document else {}
+    a = masked_report(theirs_path, messages, well_formedness, spaces)
+    b = masked_report(ours_path, messages, well_formedness, spaces)
+    if a == b:
+        return []
+    if a is None or b is None:
+        return ["report %s %s" % (kind, "KoSIT has none" if a is None else "the probe has none")]
+    i = next((k for k in range(min(len(a), len(b))) if a[k] != b[k]), min(len(a), len(b)))
+    return ["report %s differs at %d: KoSIT %r, probe %r" % (kind, i, a[max(0, i - 30):i + 30],
+                                                              b[max(0, i - 30):i + 30])]
+
+
+def input_lines(path, document=None, check_hash=False):
+    """The comparable lines of a KoSIT report input (see --report-input);
+    document: the validated file (prefixes of readable locations, and its
+    hash with check_hash)."""
+    lines = []
+    spaces = document_namespaces(document) if document else {}
+
+    def walk(e, where, wellformedness):
+        tag = e.tag
+        if tag.startswith(SVRL) and tag not in SVRL_KEPT:
+            return
+        # the expanded name: a wrong namespace is a difference
+        here = where + "/" + tag
+        if tag == IN + "processingError":
+            kept = [x for x in e.findall(IN + "error") if not (x.text or "").startswith("Report input has errors")]
+            if not kept:
+                return
+        if tag == IN + "error" and (e.text or "").startswith("Report input has errors"):
+            return
+        if tag == IN + "validationResultsWellformedness":
+            lines.append("%s %d" % (here, len(e.findall(IN + "xmlSyntaxError"))))
+            return
+        if tag == IN + "message":
+            # Xerces wording differs: the code only
+            text = (e.text or "").split(":", 1)[0] if (e.text or "").startswith("cvc-") else "*"
+        elif tag == IN + "hashValue" and check_hash:
+            text = "*" if (e.text or "") == file_hash(document) else "differs from the file's SHA-256"
+        elif tag in INPUT_MASKED:
+            text = "*"
+        elif tag == SVRL + "text":
+            text = repr(e.text or "")
+        else:
+            text = " ".join((e.text or "").split())
+        items = sorted(e.attrib.items())
+        if tag == SVRL + "schematron-output":
+            items = []
+        elif tag in (SVRL + "failed-assert", SVRL + "successful-report"):
+            items = [(k, v) for k, v in items if k in SVRL_ATTRIBUTES]
+            items = [(k, readable_location(ISO_STEP.sub(lambda m: "Q{%s}%s[%s]" % (m.group(2), m.group(1),
+                                                                                     m.group(3)), v), spaces)
+                      if k == "location" else v) for k, v in items]
+        attrs = " ".join("%s=%s" % (k, " ".join(v.split())) for k, v in items)
+        lines.append(("%s [%s] %s" % (here, attrs, text)).rstrip())
+        for c in e:
+            walk(c, here, wellformedness)
+
+    try:
+        walk(ET.parse(path).getroot(), "", False)
+    except (OSError, ET.ParseError) as e:
+        return ["unreadable %s" % e]
+    return lines
 
 
 def document_namespaces(document):
@@ -321,17 +506,20 @@ def probe_args(config):
     return zugferd_maps() if config == CONFIG_ZF else []
 
 
-def probe_output(probe, config, folders):
-    out = subprocess.run([probe, os.path.join(config, "scenarios.xml"), LOCAL] + probe_args(config) + folders,
+def probe_output(probe, config, folders, input_dir=None, report=False):
+    extra = ["-input:" + input_dir] if input_dir else []
+    if input_dir and report:
+        extra.append("-report:" + input_dir)
+    out = subprocess.run([probe, os.path.join(config, "scenarios.xml"), LOCAL] + probe_args(config) + extra + folders,
                          capture_output=True, text=True, encoding="ascii", errors="replace")
     if out.returncode != 0:
         sys.exit("probe failed: " + out.stdout + out.stderr)
     return out
 
 
-def probe_results(probe, config, folders):
+def probe_results(probe, config, folders, input_dir=None, report=False):
     """{file: comparable lines} from the probe's output."""
-    out = probe_output(probe, config, folders)
+    out = probe_output(probe, config, folders, input_dir, report)
     results = {}
     current = None
     wf = 0
@@ -359,6 +547,8 @@ def probe_results(probe, config, folders):
             results[current].append("verdict " + ("accept" if line == "accepted" else "reject"))
         elif line.startswith("exception "):
             results[current].append(line)
+        elif line.startswith("report accept") or line.startswith("report reject"):
+            pass
     for name, lines in results.items():
         results[name] = [lines[0]] + sorted(l for l in lines[1:] if not l.startswith("verdict ")) + \
             [l for l in lines if l.startswith("verdict ")]
@@ -468,6 +658,10 @@ def main():
     ap.add_argument("--update", action="store_true", help="rewrite tests/data/kosit-expected.txt")
     ap.add_argument("--corpus", choices=("suite", "generated", "outputs", "peppol", "zugferd", "all", "auto"),
                     default="suite")
+    ap.add_argument("--report-input", action="store_true",
+                    help="also compare the KoSIT report input of every document")
+    ap.add_argument("--report", action="store_true",
+                    help="also compare the KoSIT report and its HTML page")
     ap.add_argument("--toolchain", default="fpc322-linux",
                     help="whose outputs the corpora outputs, peppol and zugferd take")
     args = ap.parse_args()
@@ -562,11 +756,20 @@ def main():
         if len(set(os.path.basename(f) for f in files)) != len(files):
             sys.exit("file names of run %s are not unique" % sub)
         reports = os.path.join(OUT, sub)
-        if not args.keep or not os.path.isdir(reports):
+        if not args.keep or not os.path.isdir(reports) or (
+                args.report_input and not glob.glob(os.path.join(reports, "*-reportInput.xml"))) or (
+                args.report and not glob.glob(os.path.join(reports, "*-report.html"))):
             if os.path.isdir(reports):
                 shutil.rmtree(reports)
-            run_kosit(find_java(args.java), config, files, reports)
-        ours.update(probe_results(args.probe, config, folders))
+            run_kosit(find_java(args.java), config, files, reports, args.report_input or args.report,
+                      args.report)
+        input_dir = None
+        if args.report_input or args.report:
+            input_dir = os.path.join(reports, "ours")
+            if os.path.isdir(input_dir):
+                shutil.rmtree(input_dir)
+            os.makedirs(input_dir)
+        ours.update(probe_results(args.probe, config, folders, input_dir, args.report))
         pairs += [(f, reports) for f in files]
     exceptions = load_exceptions()
     unexpected = 0
@@ -580,6 +783,14 @@ def main():
             continue
         theirs = kosit_result(report, f)
         mine = ours.get(name, ["missing in the probe output"])
+        if args.report:
+            for html in (False, True):
+                stem = name[:-4] + ("-report.html" if html else "-report.xml")
+                mine = mine + report_lines(os.path.join(reports, stem), os.path.join(reports, "ours", stem), html, f)
+        if args.report_input:
+            stem = name[:-4] + "-reportInput.xml"
+            theirs = theirs + ["input " + l for l in input_lines(os.path.join(reports, stem), f)]
+            mine = mine + ["input " + l for l in input_lines(os.path.join(reports, "ours", stem), f, True)]
         compared += 1
         if theirs == mine:
             continue
@@ -596,8 +807,10 @@ def main():
                     unexpected += 1
     names = [os.path.basename(f) for f, _ in pairs]
     for pattern, diff, used in exceptions:
-        # an exception for a corpus that did not run is not unused
-        if not used and any(fnmatch.fnmatch(n, pattern) for n in names):
+        # an exception for a corpus that did not run is not unused, nor one
+        # for the report input without --report-input
+        if not used and any(fnmatch.fnmatch(n, pattern) for n in names) and (
+                args.report_input or not diff.startswith(("- input ", "+ input "))):
             print("  unused exception: %s\t%s" % (pattern, diff))
             unexpected += 1
     print("%d documents compared (corpus %s); '-' KoSIT only, '+' probe only" % (compared, args.corpus))

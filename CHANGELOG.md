@@ -8,8 +8,30 @@ Supported invoice standards are documented per release.
 ## [Unreleased]
 
 ### Added
+- The KoSIT originals with the XSLT engine of LandrixXML (preview, `API: internal`):
+  `LandrixEInvoiceKositReportInput` writes the KoSIT report input (`in:createReportInput`, with the
+  SVRL of every Schematron step), `LandrixEInvoiceKositReport` runs the configuration's report
+  stylesheet on it and extracts the HTML page, as the KoSIT validator does with
+  `--extract-html`, and `LandrixEInvoiceKositVisualization` runs the KoSIT XRechnung
+  visualization (UBL / CII to XR to HTML). Only these two units link the XSLT engine
+  (`tools/check-forbidden.py` checks it). `TLandrixEInvoiceValidator.KeepSvrl` and
+  `NoScenarioReportFile`; the scenario has `ScenarioXml` and `ReportFile`; the result has
+  `Timestamp`, `DocumentHash`, `DocumentReference`, `ScenarioXml`, `ReportFile` and `Steps`
+  (`TLandrixEInvoiceValidationStepResult`); `TLandrixEInvoiceDocumentValidation` keeps the KoSIT
+  result (`Kosit`) and the checked XML (`InvoiceXml`). Tests `Kosit.*` with an own report
+  stylesheet in `tests/data/validator/`.
+- `tools/kosit/kosit-oracle.py --report-input` compares the report input with the KoSIT
+  validator's (`--serialize-report-input`), `--report` the report and its HTML page byte for byte
+  (engine, time, reference, parser messages and location forms masked); suite, Peppol BIS,
+  ZUGFeRD and the generated corpus agree. The KoSIT validator 1.6.3 hashes only the first bytes
+  of some documents; the oracle checks the hash against the file.
+- `addons/kosit/install-kosit.ps1`: module `visualization` (KoSIT XRechnung visualization
+  2026-01-31).
+- Workbench: buttons for the KoSIT report and the KoSIT visualization.
 - `tools/kosit/XsltProbe.dpr`: loads the KoSIT report stylesheets and the XRechnung visualization
-  with the LandrixXML XSLT engine and runs a chain of stylesheets (load test on every toolchain).
+  with the LandrixXML XSLT engine and runs a chain of stylesheets (load test on every toolchain);
+  `visualize` runs `LandrixEInvoiceKositVisualization` (99 invoices, XR and HTML in German and
+  English, equal to Saxon byte for byte).
 
 ### Changed
 - LandrixXML 0.5.0 (`4264bf9`): XSLT 2.0 engine, SVRL into an open writer, raw Schematron message

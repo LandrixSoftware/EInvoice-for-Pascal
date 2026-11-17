@@ -15,15 +15,18 @@
 { Main form of the workbench: creates the business cases of
   LandrixEInvoiceExampleScenarios for a chosen target, opens XML and PDF
   invoices, checks them natively (the library's own rules, and KoSIT when a
-  configuration is set up) and shows the invoice as text and HTML. No Java,
-  no web service, no browser control: HTML pages open in the default
-  browser. The interface is German (default) or English; the language also
+  configuration is set up) and shows the invoice as text and HTML. With the
+  files of addons/kosit/install-kosit.ps1 it also shows the KoSIT originals:
+  the KoSIT report of the check and the KoSIT XRechnung visualization, both
+  made with the XSLT engine of LandrixXML. No Java, no web service, no
+  browser control: HTML pages open in the default browser. The interface is German (default) or English; the language also
   applies to the invoice and the check report.
 
   The same unit serves Delphi (VCL, WorkbenchMain.dfm) and Lazarus (LCL,
   WorkbenchMain.lfm). Validation and rendering use units marked
-  "API: internal" (LandrixEInvoiceValidation, LandrixEInvoiceRender*): they
-  may still change before they become stable. }
+  "API: internal" (LandrixEInvoiceValidation, LandrixEInvoiceRender*,
+  LandrixEInvoiceKosit*): they may still change before they become
+  stable. }
 
 unit WorkbenchMain;
 
@@ -59,7 +62,9 @@ uses
   LandrixEInvoiceInvoice,
   LandrixEInvoice,
   LandrixEInvoiceReportHtml,
-  LandrixEInvoiceValidation;
+  LandrixEInvoiceValidation,
+  LandrixEInvoiceKositReport,
+  LandrixEInvoiceKositVisualization;
 
 type
   TWorkbenchForm = class(TForm)
@@ -80,6 +85,8 @@ type
     pnButtons: TPanel;
     btInvoiceHtml: TButton;
     btReportHtml: TButton;
+    btKositReport: TButton;
+    btVisualization: TButton;
     btSaveXml: TButton;
     lbLanguage: TLabel;
     cxLanguage: TComboBox;
@@ -108,6 +115,8 @@ type
     procedure btKositLoadClick(Sender: TObject);
     procedure btInvoiceHtmlClick(Sender: TObject);
     procedure btReportHtmlClick(Sender: TObject);
+    procedure btKositReportClick(Sender: TObject);
+    procedure btVisualizationClick(Sender: TObject);
     procedure btSaveXmlClick(Sender: TObject);
     procedure cxLanguageChange(Sender: TObject);
     procedure cbTermsClick(Sender: TObject);
@@ -127,6 +136,9 @@ type
     FValidation: TLandrixEInvoiceDocumentValidation;
     { loaded KoSIT configurations (TLandrixEInvoiceValidator, owned) }
     FKosit: TObjectList;
+    { the KoSIT report and visualization (stylesheets compiled once) }
+    FReporter: TLandrixEInvoiceKositReporter;
+    FVisualizer: TLandrixEInvoiceKositVisualizer;
     function German: Boolean;
     function T(const AEnglish, AGerman: string): string;
     function Language: TLandrixEInvoiceReportLanguage;
@@ -432,6 +444,8 @@ begin
   FValidator := TLandrixEInvoiceDocumentValidator.Create;
   FValidation := TLandrixEInvoiceDocumentValidation.Create;
   FKosit := TObjectList.Create(True);
+  FReporter := TLandrixEInvoiceKositReporter.Create;
+  FVisualizer := TLandrixEInvoiceKositVisualizer.Create;
   for I := Low(TargetNames) to High(TargetNames) do
     rgTarget.Items.Add(TargetNames[I]);
   rgTarget.ItemIndex := 0;
@@ -463,6 +477,8 @@ begin
   ClearCurrent;
   FValidator.Free;
   FValidation.Free;
+  FReporter.Free;
+  FVisualizer.Free;
   FKosit.Free;
   FData.Free;
 end;
@@ -527,14 +543,16 @@ begin
   btOpen.Caption := T('Open XML or PDF...', 'XML oder PDF #offnen...');
   btInvoiceHtml.Caption := T('Invoice in browser', 'Rechnung im Browser');
   btReportHtml.Caption := T('Report in browser', 'Pr#ufbericht im Browser');
+  btKositReport.Caption := T('KoSIT report', 'KoSIT-Pr#ufbericht');
+  btVisualization.Caption := T('KoSIT visualization', 'KoSIT-Visualisierung');
   btSaveXml.Caption := T('Save XML...', 'XML speichern...');
   lbLanguage.Caption := T('Language', 'Sprache');
   cbTerms.Caption := T('Business terms', 'Business Terms (BT)');
   tsCheck.Caption := T('Check', 'Pr#ufung');
   tsInvoice.Caption := T('Invoice', 'Rechnung');
-  lbKositConfig.Caption := T('KoSIT folder (validator-configuration-xrechnung, -bis, -zugferd and rules; ' +
-    'filled by addons/kosit/install-kosit.ps1)',
-    'KoSIT-Ordner (validator-configuration-xrechnung, -bis, -zugferd und rules; ' +
+  lbKositConfig.Caption := T('KoSIT folder (validator-configuration-xrechnung, -bis, -zugferd, rules and ' +
+    'xrechnung-visualization; filled by addons/kosit/install-kosit.ps1)',
+    'KoSIT-Ordner (validator-configuration-xrechnung, -bis, -zugferd, rules und xrechnung-visualization; ' +
     'gef#ullt von addons/kosit/install-kosit.ps1)');
   btKositLoad.Caption := T('Load', 'Laden');
   odOpen.Filter := T('Invoices (*.xml;*.pdf)|*.xml;*.pdf|All files (*.*)|*.*',
@@ -1061,6 +1079,103 @@ begin
   OpenInBrowser(FileName);
 end;
 
+{ The KoSIT report of the check (the report stylesheet of the configuration
+  that ran), its HTML page in the browser. }
+procedure TWorkbenchForm.btKositReportClick(Sender: TObject);
+var
+  Report: TLandrixEInvoiceKositReport;
+  FileName: string;
+begin
+  if not FChecked then
+    Exit;
+  if FValidation.Kosit = nil then
+  begin
+    Log(T('No KoSIT run: load a KoSIT folder (tab KoSIT) and check again.',
+      'Kein KoSIT-Lauf: einen KoSIT-Ordner laden (Reiter KoSIT) und erneut pr#ufen.'));
+    Exit;
+  end;
+  FileName := '';
+  Screen.Cursor := crHourGlass;
+  try
+    try
+      Report := FReporter.CreateReport(FValidation);
+      try
+        Report.SaveXmlToFile(OutputFolder + 'kosit-report.xml');
+        if Report.HasHtml then
+        begin
+          FileName := OutputFolder + 'kosit-report.html';
+          Report.SaveHtmlToFile(FileName);
+        end;
+        if Report.Accepted then
+          Log(T('KoSIT report: accept', 'KoSIT-Pr#ufbericht: annehmen'))
+        else
+          Log(T('KoSIT report: reject', 'KoSIT-Pr#ufbericht: ablehnen'));
+      finally
+        Report.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        Log(T('No KoSIT report: ', 'Kein KoSIT-Pr#ufbericht: ') + E.Message);
+        Exit;
+      end;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  if FileName <> '' then
+    OpenInBrowser(FileName)
+  else
+    Log(T('The KoSIT report has no HTML page; written: ', 'Der KoSIT-Pr#ufbericht hat keine HTML-Seite; ' +
+      'geschrieben: ') + OutputFolder + 'kosit-report.xml');
+end;
+
+{ The KoSIT XRechnung visualization of the XML in the browser. }
+procedure TWorkbenchForm.btVisualizationClick(Sender: TObject);
+var
+  Folder, FileName: string;
+  Input: TMemoryStream;
+  Output: TFileStream;
+begin
+  if FXmlUtf8 = '' then
+    Exit;
+  Folder := IncludeTrailingPathDelimiter(Trim(edKositConfig.Text)) + 'xrechnung-visualization' + PathDelim + 'xsl';
+  if not FileExists(Folder + PathDelim + 'xrechnung-html.xsl') then
+  begin
+    Log(T('No visualization: ', 'Keine Visualisierung: ') + Folder + T(' is missing (module visualization ' +
+      'of addons/kosit/install-kosit.ps1)', ' fehlt (Modul visualization von addons/kosit/install-kosit.ps1)'));
+    Exit;
+  end;
+  if FVisualizer.Folder <> Folder then
+    FVisualizer.Folder := Folder;
+  FVisualizer.Language := Language;
+  FileName := OutputFolder + 'visualization.html';
+  Screen.Cursor := crHourGlass;
+  Input := TMemoryStream.Create;
+  try
+    try
+      Input.WriteBuffer(PAnsiChar(FXmlUtf8)^, Length(FXmlUtf8));
+      Input.Position := 0;
+      Output := TFileStream.Create(FileName, fmCreate);
+      try
+        FVisualizer.WriteHtml(Input, Output);
+      finally
+        Output.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        Log(T('No visualization: ', 'Keine Visualisierung: ') + E.Message);
+        Exit;
+      end;
+    end;
+  finally
+    Input.Free;
+    Screen.Cursor := crDefault;
+  end;
+  OpenInBrowser(FileName);
+end;
+
 procedure TWorkbenchForm.btSaveXmlClick(Sender: TObject);
 begin
   if FXml = '' then
@@ -1139,6 +1254,8 @@ begin
   V := TLandrixEInvoiceValidator.Create;
   try
     V.LoadConfiguration(Folder + 'scenarios.xml');
+    { the KoSIT report needs the SVRL of the Schematron steps }
+    V.KeepSvrl := True;
     for I := Low(RuleMap) to High(RuleMap) do
       V.RuleFiles.Values[RuleMap[I, 0]] := Rules + Slashes(RuleMap[I, 1]);
     { the ZUGFeRD configuration ships its Schematron sources: each

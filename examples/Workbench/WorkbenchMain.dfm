@@ -134,23 +134,39 @@ object WorkbenchForm: TWorkbenchForm
         Caption = 'Report in browser'
         OnClick = btReportHtmlClick
       end
-      object btSaveXml: TButton
+      object btKositReport: TButton
         Left = 344
         Top = 5
         Width = 160
+        Height = 25
+        Caption = 'KoSIT report'
+        OnClick = btKositReportClick
+      end
+      object btVisualization: TButton
+        Left = 512
+        Top = 5
+        Width = 160
+        Height = 25
+        Caption = 'KoSIT visualization'
+        OnClick = btVisualizationClick
+      end
+      object btSaveXml: TButton
+        Left = 680
+        Top = 5
+        Width = 120
         Height = 25
         Caption = 'Save XML...'
         OnClick = btSaveXmlClick
       end
       object lbLanguage: TLabel
-        Left = 520
+        Left = 816
         Top = 9
         Width = 60
         Height = 15
         Caption = 'Language'
       end
       object cxLanguage: TComboBox
-        Left = 584
+        Left = 880
         Top = 5
         Width = 110
         Height = 23
@@ -158,9 +174,9 @@ object WorkbenchForm: TWorkbenchForm
         OnChange = cxLanguageChange
       end
       object cbTerms: TCheckBox
-        Left = 712
+        Left = 1004
         Top = 8
-        Width = 160
+        Width = 172
         Height = 19
         Caption = 'Business terms'
         OnClick = cbTermsClick

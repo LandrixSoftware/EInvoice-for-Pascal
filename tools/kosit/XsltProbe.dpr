@@ -25,6 +25,10 @@ program XsltProbe;
       runs the stylesheets one after the other, each on the result of the
       one before, and writes the result of the last one to <output> as its
       xsl:output says; prints "ok <output>" or the error.
+    XsltProbe visualize <xsl-folder> <output-folder> [-en] <xml>...
+      runs the XRechnung visualization (LandrixEInvoiceKositVisualization,
+      German unless -en) and writes <output-folder>/<name>.xr.xml and
+      <name>.html; prints "ok <name>" or the error.
   Exit code 0 when everything worked, 1 otherwise. }
 
 {$I LandrixEInvoice.inc}
@@ -36,7 +40,9 @@ uses
   SysUtils,
   Classes,
   LandrixXmlXPathTree,
-  LandrixXmlXslt;
+  LandrixXmlXslt,
+  LandrixEInvoiceReportHtml,
+  LandrixEInvoiceKositVisualization;
 
 var
   Failed: Boolean;
@@ -126,15 +132,65 @@ begin
   end;
 end;
 
+procedure Visualize;
+var
+  I: Integer;
+  V: TLandrixEInvoiceKositVisualizer;
+  Dir, Base: string;
+  Input, Output: TFileStream;
+begin
+  V := TLandrixEInvoiceKositVisualizer.Create;
+  try
+    V.Folder := ParamStr(2);
+    Dir := IncludeTrailingPathDelimiter(ParamStr(3));
+    for I := 4 to ParamCount do
+      if ParamStr(I) = '-en' then
+        V.Language := eln_English
+      else
+      begin
+        Base := Dir + ChangeFileExt(ExtractFileName(ParamStr(I)), '');
+        try
+          Input := TFileStream.Create(ParamStr(I), fmOpenRead or fmShareDenyWrite);
+          try
+            Output := TFileStream.Create(Base + '.xr.xml', fmCreate);
+            try
+              V.WriteXr(Input, Output);
+            finally
+              Output.Free;
+            end;
+            Input.Position := 0;
+            Output := TFileStream.Create(Base + '.html', fmCreate);
+            try
+              V.WriteHtml(Input, Output);
+            finally
+              Output.Free;
+            end;
+          finally
+            Input.Free;
+          end;
+          WriteLn('ok ', ExtractFileName(ParamStr(I)));
+        except
+          on E: Exception do
+            Report(ExtractFileName(ParamStr(I)), E);
+        end;
+      end;
+  finally
+    V.Free;
+  end;
+end;
+
 begin
   Failed := False;
   if (ParamCount >= 2) and (ParamStr(1) = 'load') then
     LoadAll
   else if (ParamCount >= 4) and (ParamStr(1) = 'chain') then
     Chain
+  else if (ParamCount >= 4) and (ParamStr(1) = 'visualize') then
+    Visualize
   else
   begin
-    WriteLn('usage: XsltProbe load <xsl>... | XsltProbe chain <output> <xml> <xsl>...');
+    WriteLn('usage: XsltProbe load <xsl>... | XsltProbe chain <output> <xml> <xsl>... | ' +
+      'XsltProbe visualize <xsl-folder> <output-folder> [-en] <xml>...');
     Failed := True;
   end;
   if Failed then

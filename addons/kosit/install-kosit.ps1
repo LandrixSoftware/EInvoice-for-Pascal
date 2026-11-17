@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
   Installs what the native KoSIT check of EInvoice-for-Pascal needs: the
-  validator configurations and the rule files. No Java.
+  validator configurations and the rule files, and the XRechnung
+  visualization. No Java.
 
 .DESCRIPTION
   Reads kosit.json next to this script; every file is pinned by URL and
@@ -16,11 +17,15 @@
                May 2026 release 3.0.21)
     zugferd    ZUGFeRD 2.5.2 / Factur-X 1.09.2 configuration (2026-10-15);
                it ships its own Schematron sources
+    visualization
+               KoSIT XRechnung visualization (2026-01-31) for
+               LandrixEInvoiceKositVisualization; its xsl/ folder is used
 
-  Without -Modules all three are installed. The target folder then holds
+  Without -Modules all four are installed. The target folder then holds
   validator-configuration-xrechnung/, validator-configuration-bis/,
-  validator-configuration-zugferd/ and rules/; ship that folder with an
-  application that runs the check (see docs/validation.md). The LandrixXML
+  validator-configuration-zugferd/, xrechnung-visualization/ and rules/;
+  ship that folder with an application that runs the check or shows the
+  visualization (see docs/validation.md). The LandrixXML
   rule files are copied from the submodule external/landrix-xml when it is
   checked out, else downloaded from the LandrixXML release. Downloads are
   kept in download/ next to this script, not in the target folder.
@@ -33,11 +38,11 @@
 
 .EXAMPLE
   ./addons/kosit/install-kosit.ps1
-  ./addons/kosit/install-kosit.ps1 -Modules xrechnung,zugferd
+  ./addons/kosit/install-kosit.ps1 -Modules xrechnung,zugferd,visualization
   ./addons/kosit/install-kosit.ps1 -Target C:\MyApp\kosit
 #>
 param(
-  [string[]]$Modules = @('xrechnung', 'bis', 'zugferd'),
+  [string[]]$Modules = @('xrechnung', 'bis', 'zugferd', 'visualization'),
   # folder to install into (default: this script's folder)
   [string]$Target = $PSScriptRoot,
   [switch]$Force
@@ -52,9 +57,10 @@ $Here = $PSScriptRoot
 $Repo = Split-Path -Parent (Split-Path -Parent $Here)
 $Manifest = Get-Content -Raw -LiteralPath (Join-Path $Here 'kosit.json') | ConvertFrom-Json
 $Modules = @(($Modules -join ',').Split(',') | ForEach-Object { $_.Trim().ToLower() } | Where-Object { $_ -ne '' })
-if ($Modules.Count -eq 0) { throw 'No module given (xrechnung, bis, zugferd)' }
+$Known = @('xrechnung', 'bis', 'zugferd', 'visualization')
+if ($Modules.Count -eq 0) { throw "No module given ($($Known -join ', '))" }
 foreach ($m in $Modules) {
-  if (@('xrechnung', 'bis', 'zugferd') -notcontains $m) { throw "Unknown module '$m' (xrechnung, bis, zugferd)" }
+  if ($Known -notcontains $m) { throw "Unknown module '$m' ($($Known -join ', '))" }
 }
 New-Item -ItemType Directory -Force -Path $Target | Out-Null
 $Target = (Resolve-Path -LiteralPath $Target).Path
@@ -90,7 +96,10 @@ function Install-Configuration($Entry) {
   New-Item -ItemType Directory -Force -Path $dir | Out-Null
   # .NET instead of Expand-Archive, which takes -DestinationPath as a wildcard in 5.1
   [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $dir)
-  if (-not (Test-Path -LiteralPath (Join-Path $dir 'scenarios.xml'))) { throw "$($Entry.file): no scenarios.xml at the top level" }
+  # the file that shows the archive unpacked as expected
+  $check = 'scenarios.xml'
+  if ($Entry.PSObject.Properties.Name -contains 'check') { $check = $Entry.check }
+  if (-not (Test-Path -LiteralPath (Join-Path $dir $check))) { throw "$($Entry.file): no $check" }
   Set-Content -NoNewline -LiteralPath $marker -Value $Entry.sha256
   Write-Host "  $($Entry.dir): installed"
 }

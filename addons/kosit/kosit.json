@@ -20,6 +20,14 @@
       "file": "validation-configuration-zugferd-2.5.2-2026-10-15.zip",
       "sha256": "43487e76edad8b7276da8266f0b1473b597be23554d1ab7fb1c828a03036eafa",
       "dir": "validator-configuration-zugferd"
+    },
+    {
+      "module": "visualization",
+      "url": "https://github.com/itplr-kosit/xrechnung-visualization/releases/download/v2026-01-31/xrechnung-3.0.2-visualization-2026-01-31.zip",
+      "file": "xrechnung-3.0.2-visualization-2026-01-31.zip",
+      "sha256": "af9f0be80db3035d9beaeee4c066bdc7a3ccbec2e25a428c460c25b9f894b383",
+      "dir": "xrechnung-visualization",
+      "check": "xsl/xrechnung-html.xsl"
     }
   ],
   "rules": [

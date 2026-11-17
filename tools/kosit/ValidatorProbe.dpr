@@ -3,7 +3,8 @@ program ValidatorProbe;
 { Validates XML files with LandrixEInvoiceValidator and a KoSIT validator
   configuration; used by tools/kosit/kosit-oracle.py, which compares the
   output with the reports of the KoSIT validator.
-  Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] <file or folder>...
+  Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] [-input:<folder>]
+    [-report:<folder>] <file or folder>...
   The rule folder is tests/data/local/kosit as tools/testdata/sync-local.py
   fills it: the LandrixXML rule files in rules/rules (en16931-ubl.xml,
   en16931-cii.xml, xrechnung-ubl.xml, xrechnung-cii.xml) for the XRechnung
@@ -24,7 +25,16 @@ program ValidatorProbe;
     ## <file name>
     matches <n>
   step is wf, xsd or sch<n>; a file that raises prints "exception <class>
-  <message>". Exit code 0 unless the configuration does not load. }
+  <message>". With -input:<folder> (for the files after it) the validator
+  keeps the SVRL and every file's KoSIT report input is written to
+  <folder>/<name>-reportInput.xml (LandrixEInvoiceKositReportInput), the
+  name the KoSIT validator gives it with --serialize-report-input.
+  With -report:<folder> the KoSIT report is made too
+  (LandrixEInvoiceKositReport): <folder>/<name>-report.xml and, if it has
+  one, the HTML page <folder>/<name>-report.html, the names the KoSIT
+  validator gives them with --extract-html; the line "report accept" or
+  "report reject" gives the report's assessment.
+  Exit code 0 unless the configuration does not load. }
 
 {$I LandrixEInvoice.inc}
 {$IFDEF MSWINDOWS}
@@ -35,7 +45,9 @@ uses
   SysUtils,
   Classes,
   LandrixEInvoiceTypes,
-  LandrixEInvoiceValidator;
+  LandrixEInvoiceValidator,
+  LandrixEInvoiceKositReportInput,
+  LandrixEInvoiceKositReport;
 
 const
   RuleMap: array[0..5, 0..1] of string = (
@@ -61,6 +73,9 @@ end;
 
 var
   MatchesOnly: Boolean = False;
+  InputDir: string = '';
+  ReportDir: string = '';
+  Reporter: TLandrixEInvoiceKositReporter = nil;
 
 procedure ProbeMatches(V: TLandrixEInvoiceValidator; const AFileName: string);
 var
@@ -86,6 +101,10 @@ var
   M: TLandrixEInvoiceValidationMessage;
   I: Integer;
   Step: string;
+  Input: TLandrixEInvoiceKositReportInputWriter;
+  Doc: TFileStream;
+  Report: TLandrixEInvoiceKositReport;
+  Base: string;
 begin
   if MatchesOnly then
   begin
@@ -123,6 +142,36 @@ begin
         WriteLn('accepted')
       else
         WriteLn('rejected');
+      if InputDir <> '' then
+      begin
+        Input := TLandrixEInvoiceKositReportInputWriter.Create;
+        try
+          Input.SaveToFile(R, InputDir + ChangeFileExt(ExtractFileName(AFileName), '') + '-reportInput.xml');
+        finally
+          Input.Free;
+        end;
+      end;
+      if ReportDir <> '' then
+      begin
+        Doc := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+        try
+          Report := Reporter.CreateReport(R, Doc);
+          try
+            Base := ReportDir + ChangeFileExt(ExtractFileName(AFileName), '') + '-report';
+            Report.SaveXmlToFile(Base + '.xml');
+            if Report.HasHtml then
+              Report.SaveHtmlToFile(Base + '.html');
+            if Report.Accepted then
+              WriteLn('report accept')
+            else
+              WriteLn('report reject');
+          finally
+            Report.Free;
+          end;
+        finally
+          Doc.Free;
+        end;
+      end;
     except
       on E: Exception do
         WriteLn('exception ' + E.ClassName + ' ' + StringReplace(E.Message, #10, ' ', [rfReplaceAll]));
@@ -170,7 +219,8 @@ var
 begin
   if ParamCount < 3 then
   begin
-    WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] <file or folder>...');
+    WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] ' +
+      '[-input:<folder>] <file or folder>...');
     ExitCode := 2;
     Exit;
   end;
@@ -198,6 +248,18 @@ begin
         V.RuleFiles.Values[Copy(Arg, 1, Pos('=', Arg) - 1)] := Copy(Arg, Pos('=', Arg) + 1, MaxInt)
       else if Arg = '-matches' then
         MatchesOnly := True
+      else if Copy(Arg, 1, 7) = '-input:' then
+      begin
+        InputDir := IncludeTrailingPathDelimiter(Copy(Arg, 8, MaxInt));
+        V.KeepSvrl := True;
+      end
+      else if Copy(Arg, 1, 8) = '-report:' then
+      begin
+        ReportDir := IncludeTrailingPathDelimiter(Copy(Arg, 9, MaxInt));
+        V.KeepSvrl := True;
+        if Reporter = nil then
+          Reporter := TLandrixEInvoiceKositReporter.Create;
+      end
       else
       begin
         ProbeAll(V, Arg);
@@ -206,10 +268,12 @@ begin
     end;
     if Paths = 0 then
     begin
-      WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] <file or folder>...');
+      WriteLn('Usage: ValidatorProbe <scenarios.xml> <rule-folder> [<xslt>=<rule file>]... [-matches] ' +
+      '[-input:<folder>] <file or folder>...');
       ExitCode := 2;
     end;
   finally
+    Reporter.Free;
     V.Free;
   end;
 end.

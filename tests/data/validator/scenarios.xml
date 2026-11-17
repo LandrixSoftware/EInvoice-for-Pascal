@@ -30,4 +30,7 @@
     </createReport>
     <acceptMatch>/rep:report/rep:assessment[1]/rep:accept[1]</acceptMatch>
   </scenario>
+  <noScenarioReport>
+    <resource><name>report without scenario</name><location>report.xsl</location></resource>
+  </noScenarioReport>
 </scenarios>

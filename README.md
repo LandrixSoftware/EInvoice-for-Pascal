@@ -25,8 +25,9 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
     everything the semantic model does not cover: CII with everything Factur-X EXTENDED has,
     UBL with the elements of EN 16931, XRechnung and Peppol (an extensible positive list).
 - Validation without Java: documents are checked against the official KoSIT configurations
-  (XML schema and Schematron) natively, with the same verdict as the KoSIT validator, and
-  invoices are shown as HTML or Markdown.
+  (XML schema and Schematron) natively, with the same verdict as the KoSIT validator; the
+  KoSIT report and the KoSIT XRechnung visualization are made with the XSLT engine of LandrixXML,
+  and invoices are shown as HTML or Markdown.
 - No dependency on MSXML or other XML libraries: XML is handled by
   [LandrixXML for Pascal](https://github.com/landrix/LandrixXML-for-Pascal),
   included as a Git submodule.
@@ -72,8 +73,8 @@ schema validation; see [Checking](docs/checking.md) for the details and the know
 - [Getting started](docs/getting-started.md) ([Deutsch](docs/de/getting-started.md)): setup,
   the three models, targets
 - [Writing](docs/writing.md), [Reading](docs/reading.md), [Checking](docs/checking.md)
-- [Validating and showing invoices](docs/validation.md): the KoSIT files, validation, reports,
-  HTML and Markdown, what to ship
+- [Validating and showing invoices](docs/validation.md): the KoSIT files, validation, reports
+  (also the KoSIT report), HTML and Markdown, the KoSIT visualization, what to ship
 - [Moving from XRechnung-for-Delphi](docs/compat-xrechnung.md),
   [moving from ZUGFeRD-for-Delphi](docs/compat-zugferd.md)
 - [Examples](examples/): console programs for Delphi (`.dpr`) and Lazarus (`.lpi`), including
@@ -95,7 +96,8 @@ its level in a comment before its `unit` line (`API: stable` or `API: internal`)
 - **Preview** (marked `API: internal`, documented in [Validating](docs/validation.md); names may
   still change before 1.0): `LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
   `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceReportHtml`,
-  `LandrixEInvoiceRenderHtml`, `LandrixEInvoiceRenderMarkdown`.
+  `LandrixEInvoiceRenderHtml`, `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`,
+  `LandrixEInvoiceKositReport`, `LandrixEInvoiceKositVisualization`.
 - **Internal** (may change in any release): `LandrixEInvoiceMapCII`, `LandrixEInvoiceMapUBL`,
   `LandrixEInvoiceCheck`, `LandrixEInvoiceCheckPeppol`, `LandrixEInvoiceIdentifiers`,
   `LandrixEInvoiceCodeNames`, `LandrixEInvoiceRenderLabels`, `LandrixEInvoiceRender`,

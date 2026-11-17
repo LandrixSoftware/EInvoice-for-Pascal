@@ -16,14 +16,15 @@ Konfigurations- und Regeldateien; diese gehören nicht zur Bibliothek.
 > **Vorschau.** Dokumentvalidierung, Berichte und Darstellung der Rechnung liegen in Units mit
 > der Markierung `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
 > `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
-> `LandrixEInvoiceRenderMarkdown`). Sie funktionieren und sind getestet, Namen und Signaturen können
+> `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`, `LandrixEInvoiceKositReport`,
+> `LandrixEInvoiceKositVisualization`). Sie funktionieren und sind getestet, Namen und Signaturen können
 > sich aber bis 1.0 noch ändern. [examples/Workbench](../../examples/Workbench/WorkbenchMain.pas) nutzt
 > sie alle.
 
 ## Die KoSIT-Dateien besorgen
 
 ```powershell
-./addons/kosit/install-kosit.ps1                          # XRechnung, Peppol BIS, ZUGFeRD
+./addons/kosit/install-kosit.ps1                          # XRechnung, Peppol BIS, ZUGFeRD, Visualisierung
 ./addons/kosit/install-kosit.ps1 -Modules xrechnung       # nur, was gebraucht wird
 ./addons/kosit/install-kosit.ps1 -Target C:\MyApp\kosit   # direkt in die eigene Anwendung
 ```
@@ -40,13 +41,15 @@ beim Herausgeber, prüft ihre SHA-256 (festgeschrieben in
 | `rules/en16931-ubl.xml`, `en16931-cii.xml`, `xrechnung-ubl.xml`, `xrechnung-cii.xml` | die Schematron von EN 16931 und XRechnung, von LandrixXML übersetzt (aus dem Submodul kopiert oder vom LandrixXML-Release geladen) | `xrechnung`, `bis` (nur UBL) |
 | `rules/PEPPOL-EN16931-UBL.sch` | die Peppol-Schematron (OpenPEPPOL, Mai-2026-Release 3.0.21) | `bis` |
 | `rules/NOTICE.md` | Herkunft und Lizenzen der vier Regeldateien (der Hinweis des LandrixXML-Ordners, aus dem sie kommen; seine übrigen Abschnitte gelten hier nicht) | `xrechnung`, `bis` |
+| `xrechnung-visualization/` | die KoSIT-XRechnung-Visualisierung, Stand 2026-01-31; benutzt wird ihr Ordner `xsl/` ([Die Rechnung anzeigen](#die-rechnung-anzeigen)) | `visualization` |
 
 Warum Regeldateien: Die KoSIT-Konfigurationen enthalten die Schematron als XSLT, das die
-Bibliothek nicht ausführt. Jeder XSLT-Schritt einer Konfiguration wird einer Regeldatei mit
+Validierung nicht ausführt (die XSLT-Maschine dient nur dem KoSIT-Prüfbericht und der
+Visualisierung). Jeder XSLT-Schritt einer Konfiguration wird einer Regeldatei mit
 denselben Regeln zugeordnet (siehe unten); die ZUGFeRD-Konfiguration bringt die
 Schematron-Quellen selbst mit, die Bibliothek übersetzt sie beim Laden.
 
-Ohne PowerShell: die drei Archive und die Peppol-Datei von den URLs in `kosit.json` laden, jedes
+Ohne PowerShell: die vier Archive und die Peppol-Datei von den URLs in `kosit.json` laden, jedes
 Archiv in seinen Ordner entpacken und die vier Regeldateien und `NOTICE.md` aus
 `external/landrix-xml/tests/data/schematron/` (Regeldateien unter `rules/`) nach `rules/` kopieren.
 
@@ -197,6 +200,45 @@ finally
 end;
 ```
 
+Der KoSIT-Prüfbericht: der Bericht, den der KoSIT-Validator schreibt, auf demselben Weg erzeugt.
+Der Berichtseingang (`LandrixEInvoiceKositReportInput`: Engine, Zeit, Hash des Dokuments, das
+gewählte Szenario, die Schritte, das SVRL jedes Schematron-Schritts) wird mit dem
+Bericht-Stylesheet der Konfiguration transformiert (`xrechnung-report.xsl` und andere), das auch
+eine HTML-Seite einbettet. Die XSLT-Maschine ist die von LandrixXML; ein Programm bindet sie nur ein,
+wenn es `LandrixEInvoiceKositReport` oder `LandrixEInvoiceKositVisualization` verwendet. Die
+Konfigurationen müssen das SVRL behalten:
+
+```pascal
+uses LandrixEInvoiceKositReport;
+
+XRechnung.KeepSvrl := True;          { vor dem Prüfen; auch bei den anderen }
+...
+Reporter := TLandrixEInvoiceKositReporter.Create;   { behält die übersetzten Stylesheets }
+try
+  Report := Reporter.CreateReport(Res);              { der KoSIT-Lauf von Res }
+  try
+    Report.SaveXmlToFile('kosit-report.xml');        { rep:report }
+    if Report.HasHtml then
+      Report.SaveHtmlToFile('kosit-report.html');    { die Seite darin }
+  finally
+    Report.Free;
+  end;
+finally
+  Reporter.Free;
+end;
+```
+
+- Bericht und Seite sind die des KoSIT-Validators, in den Tests des Repositorys Byte für Byte mit
+  ihm verglichen, bis auf das, was von Natur aus abweicht: Engine-Name, Zeit, Verweis auf das
+  Dokument, der Wortlaut von Wohlgeformtheits- und XML-Schema-Meldungen (der KoSIT-Validator zeigt
+  die Texte von Xerces in der Sprache des Systems) und die Form der Schematron-Orte der
+  Konfigurationen Peppol BIS und ZUGFeRD (`/Q{namespace}name[1]`, wie die XRechnung-Konfiguration
+  sie schreibt).
+- `Report.Accepted` ist die Bewertung des Bericht-Stylesheets. Bei Peppol BIS kann es die Annahme
+  eines Dokuments mit nur Warnungen empfehlen, das der Validator ablehnt (siehe oben).
+- `TLandrixEInvoiceValidator.Validate` liefert das Ergebnis der unteren Ebene; `CreateReport(Result,
+  DocumentStream)` nimmt es mit dem Dokument.
+
 ## Die Rechnung anzeigen
 
 `TLandrixEInvoiceRenderHtmlWriter` schreibt eine Rechnung als eine HTML-Seite,
@@ -218,14 +260,34 @@ finally
 end;
 ```
 
-Das ersetzt die KoSIT-Visualisierung (XSLT, Java). Ein PDF der Rechnung entsteht nicht.
+Auch die KoSIT-XRechnung-Visualisierung steht zur Verfügung, ausgeführt mit der XSLT-Maschine von
+LandrixXML (Modul `visualization` des Installers): Eine UBL-Rechnung, UBL-Gutschrift oder
+CII-Rechnung wird zur XR-Form und zu einer HTML-Seite, wie mit Saxon, Byte für Byte.
+
+```pascal
+uses LandrixEInvoiceKositVisualization;
+
+Viz := TLandrixEInvoiceKositVisualizer.Create;
+try
+  Viz.Folder := 'kosit/xrechnung-visualization/xsl';
+  Viz.Language := eln_English;                        { Vorgabe Deutsch }
+  Viz.WriteHtml(InvoiceStream, PageStream);           { oder WriteXr, WriteHtmlFromXr }
+finally
+  Viz.Free;
+end;
+```
+
+Sie zeigt das XML, wie es ist (auch, was das Modell nicht hält); die Darstellung oben zeigt das
+Modell mit jedem Feld und braucht keine Dateien. Ein PDF der Rechnung entsteht nicht (die
+Visualisierung erzeugt es mit Apache FOP).
 
 ## Was ausgeliefert werden muss
 
 | Funktion | Braucht zur Laufzeit |
 |---|---|
 | Lesen, Schreiben, Regelprüfung, Berechnung, PDF-Extraktion, PDF-Prüfung, Berichte, Darstellung | nichts: alles ist ins Programm übersetzt (Codelisten und Regeltabellen sind Pascal-Units); keine DLL, kein MSXML, kein Java, keine Datendateien |
-| Dokumentvalidierung mit KoSIT | den Ordner von `install-kosit.ps1` (nur die genutzten Module; die Marker `.installed` dürfen fehlen), unter einem Pfad, den das Programm an `LoadConfiguration` übergibt |
+| Dokumentvalidierung mit KoSIT, KoSIT-Prüfbericht | den Ordner von `install-kosit.ps1` (nur die genutzten Module; die Marker `.installed` dürfen fehlen), unter einem Pfad, den das Programm an `LoadConfiguration` übergibt |
+| KoSIT-Visualisierung | `xrechnung-visualization/` aus diesem Ordner (Modul `visualization`; das Programm nutzt `xsl/`) |
 
 Unter Unix nehmen Programme wie üblich `cwstring` in die uses-Liste; die Bibliothek selbst braucht
 es nicht.
@@ -239,7 +301,7 @@ Lizenzen, die mit einer Anwendung ausgeliefert werden:
 - wer den KoSIT-Ordner mitliefert, die Bedingungen seines Inhalts, die die kommerzielle Lizenz
   nicht abdeckt: KoSIT-Konfigurationen und XRechnung-Schematron (Apache-2.0, KoSIT), die
   Validierungsartefakte der EN 16931 und die daraus übersetzten Regeldateien (EUPL-1.2, CEN/TC 434;
-  siehe `rules/NOTICE.md`), die ZUGFeRD-Konfiguration (Apache-2.0; ihre Schemas und Schematron
+  siehe `rules/NOTICE.md`), die KoSIT-XRechnung-Visualisierung (Apache-2.0, KoSIT), die ZUGFeRD-Konfiguration (Apache-2.0; ihre Schemas und Schematron
   unter den Bedingungen von FeRD und FNFE-MPE), die Peppol-Schematron (OpenPEPPOL; die Datei
   trägt nur einen Vermerk des CEN, keine Lizenz: vor dem Weitergeben die Bedingungen von OpenPEPPOL
   prüfen), die

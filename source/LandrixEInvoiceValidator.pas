@@ -31,6 +31,10 @@
   the same Schematron source.
   Only what the KoSIT configurations use is supported; a configuration with
   another acceptMatch or without match expression is refused, not guessed.
+  The result keeps what the KoSIT report input needs (time, document hash,
+  the scenario and the resource of every step as written in the
+  configuration, with KeepSvrl the SVRL of every Schematron step), so
+  LandrixEInvoiceKositReportInput can write it without the configuration.
   DE: Pruefung einer XML-Rechnung, wie der KoSIT-Validator sie mit einer
   Validator-Konfiguration (scenarios.xml) ausfuehrt: das Szenario, dessen
   match-Ausdruck zutrifft, wird gewaehlt (keines oder mehrere: kein
@@ -51,7 +55,12 @@
   LandrixXML abgebildet (RuleFiles), aus derselben Schematron-Quelle
   uebersetzt. Unterstuetzt wird nur, was die KoSIT-Konfigurationen
   verwenden; eine Konfiguration mit anderem acceptMatch oder ohne
-  match-Ausdruck wird abgewiesen, nicht geraten. }
+  match-Ausdruck wird abgewiesen, nicht geraten. Das Ergebnis behaelt, was
+  der Eingang des KoSIT-Berichts braucht (Zeit, Hash des Dokuments, das
+  Szenario und die Ressource jedes Schritts wie in der Konfiguration, mit
+  KeepSvrl das SVRL jedes Schematron-Schritts), damit
+  LandrixEInvoiceKositReportInput ihn ohne die Konfiguration schreiben
+  kann. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -67,6 +76,8 @@ interface
 uses
   Classes,
   Contnrs,
+  LandrixXmlBase,
+  LandrixXmlWriter,
   LandrixXmlXPath,
   LandrixEInvoiceTypes;
 
@@ -127,6 +138,43 @@ type
     property Text: TLandrixEInvoiceString read FText;
   end;
 
+  { One step of a run as the KoSIT report input lists it: well-formedness
+    (always), the XML schema (with a scenario) and every Schematron step
+    that ran (only on a schema-valid document). The messages of all steps
+    are in the result's Messages.
+    DE: Ein Schritt eines Laufs, wie der Eingang des KoSIT-Berichts ihn
+    auffuehrt: Wohlgeformtheit (immer), XML-Schema (mit Szenario) und jeder
+    Schematron-Schritt, der lief (nur bei einem schemagueltigen Dokument).
+    Die Meldungen aller Schritte stehen in Messages des Ergebnisses. }
+  TLandrixEInvoiceValidationStepResult = class(TObject)
+  private
+    FStep: TLandrixEInvoiceValidationStep;
+    FResourceXml: TLandrixXmlUtf8;
+    FSvrl: TLandrixXmlUtf8;
+    FProcessingError: TLandrixEInvoiceString;
+  public
+    { the kind of the step.
+      DE: die Art des Schritts. }
+    property Step: TLandrixEInvoiceValidationStep read FStep;
+    { the s:resource element of the step as the configuration writes it
+      (name and location), UTF-8; '' for well-formedness.
+      DE: das Element s:resource des Schritts, wie die Konfiguration es
+      schreibt (Name und Ort), UTF-8; '' bei der Wohlgeformtheit. }
+    property ResourceXml: TLandrixXmlUtf8 read FResourceXml;
+    { the SVRL of a Schematron step (svrl:schematron-output, UTF-8, the
+      message texts as written in the rule set); '' unless the validator's
+      KeepSvrl is set, and '' for a step with a processing error.
+      DE: das SVRL eines Schematron-Schritts (svrl:schematron-output,
+      UTF-8, die Meldungstexte wie im Regelwerk); '', ausser KeepSvrl des
+      Validators ist gesetzt, und '' bei einem Schritt mit
+      Verarbeitungsfehler. }
+    property Svrl: TLandrixXmlUtf8 read FSvrl;
+    { '' or the reason the step could not be completed.
+      DE: '' oder der Grund, warum der Schritt nicht abgeschlossen werden
+      konnte. }
+    property ProcessingError: TLandrixEInvoiceString read FProcessingError;
+  end;
+
   { The result of one validation.
     DE: Das Ergebnis einer Pruefung. }
   TLandrixEInvoiceValidationResult = class(TObject)
@@ -137,10 +185,20 @@ type
     FXmlSchemaValid: Boolean;
     FProcessingError: TLandrixEInvoiceString;
     FAccepted: Boolean;
+    FSteps: TObjectList;
+    FTimestamp: TLandrixEInvoiceString;
+    FDocumentHash: TLandrixEInvoiceString;
+    FDocumentReference: TLandrixEInvoiceString;
+    FScenarioXml: TLandrixXmlUtf8;
+    FReportFile: string;
     function GetMessageCount: Integer;
     function GetMessage(AIndex: Integer): TLandrixEInvoiceValidationMessage;
+    function GetStepCount: Integer;
+    function GetStep(AIndex: Integer): TLandrixEInvoiceValidationStepResult;
     function Add(AStep: TLandrixEInvoiceValidationStep; AStepIndex: Integer;
       const ACode: TLandrixEInvoiceString; ALevel: TLandrixEInvoiceValidationLevel): TLandrixEInvoiceValidationMessage;
+    function AddStep(AStep: TLandrixEInvoiceValidationStep;
+      const AResourceXml: TLandrixXmlUtf8): TLandrixEInvoiceValidationStepResult;
   public
     constructor Create;
     destructor Destroy; override;
@@ -169,6 +227,40 @@ type
     property Accepted: Boolean read FAccepted;
     property MessageCount: Integer read GetMessageCount;
     property Messages[AIndex: Integer]: TLandrixEInvoiceValidationMessage read GetMessage; default;
+    { the start of the run as xs:dateTime in local time, without time zone.
+      DE: der Beginn des Laufs als xs:dateTime in Ortszeit, ohne Zeitzone. }
+    property Timestamp: TLandrixEInvoiceString read FTimestamp;
+    { the SHA-256 of the document bytes, Base64 (as KoSIT); '' if the file
+      could not be read.
+      DE: der SHA-256 der Dokumentbytes, Base64 (wie KoSIT); '', wenn die
+      Datei nicht gelesen werden konnte. }
+    property DocumentHash: TLandrixEInvoiceString read FDocumentHash;
+    { the full path of the file passed to Validate; '' for ValidateStream.
+      DE: der volle Pfad der an Validate uebergebenen Datei; '' bei
+      ValidateStream. }
+    property DocumentReference: TLandrixEInvoiceString read FDocumentReference;
+    { the s:scenario element of the chosen scenario as the configuration
+      writes it, UTF-8, as the KoSIT validator copies it (text that is only
+      white space left out, line breaks and tabs as spaces); '' without a
+      scenario.
+      DE: das Element s:scenario des gewaehlten Szenarios, wie die
+      Konfiguration es schreibt, UTF-8, so kopiert wie im KoSIT-Validator
+      (Text nur aus Leerraum entfaellt, Zeilenumbrueche und Tabulatoren als
+      Leerzeichen); '' ohne Szenario. }
+    property ScenarioXml: TLandrixXmlUtf8 read FScenarioXml;
+    { the report stylesheet KoSIT applies (full path): the createReport of
+      the scenario, without a scenario the noScenarioReport of the
+      configuration; '' if the configuration names none.
+      DE: das Bericht-Stylesheet, das KoSIT anwendet (voller Pfad): das
+      createReport des Szenarios, ohne Szenario das noScenarioReport der
+      Konfiguration; '', wenn die Konfiguration keines nennt. }
+    property ReportFile: string read FReportFile;
+    { the steps of the run in their order (well-formedness, XML schema,
+      Schematron), for the KoSIT report input.
+      DE: die Schritte des Laufs in ihrer Reihenfolge (Wohlgeformtheit,
+      XML-Schema, Schematron), fuer den Eingang des KoSIT-Berichts. }
+    property StepCount: Integer read GetStepCount;
+    property Steps[AIndex: Integer]: TLandrixEInvoiceValidationStepResult read GetStep;
   end;
 
   { A scenario of the configuration.
@@ -182,6 +274,10 @@ type
     FSchematronFiles: TStringList;
     FCustomCodes: TStringList;
     FCustomLevels: array of TLandrixEInvoiceValidationLevel;
+    FScenarioXml: TLandrixXmlUtf8;
+    FReportFile: string;
+    FSchemaResourceXml: TLandrixXmlUtf8;
+    FSchematronResourceXml: array of TLandrixXmlUtf8;
     function GetSchematronCount: Integer;
     function GetSchematronFile(AIndex: Integer): string;
   public
@@ -201,6 +297,14 @@ type
       (XSLT-Dateien, voller Pfad). }
     property SchematronCount: Integer read GetSchematronCount;
     property SchematronFiles[AIndex: Integer]: string read GetSchematronFile;
+    { the s:scenario element as the configuration writes it, UTF-8.
+      DE: das Element s:scenario, wie die Konfiguration es schreibt,
+      UTF-8. }
+    property ScenarioXml: TLandrixXmlUtf8 read FScenarioXml;
+    { the report stylesheet of createReport, the full path; '' if none.
+      DE: das Bericht-Stylesheet aus createReport, voller Pfad; '', wenn
+      keines. }
+    property ReportFile: string read FReportFile;
   end;
 
   { A KoSIT validator configuration and the engines to run it. Load the
@@ -217,6 +321,9 @@ type
     FRuleFiles: TStringList;
     FSchemas: TStringList;
     FRules: TStringList;
+    FKeepSvrl: Boolean;
+    FNoScenarioReportFile: string;
+    procedure ReadScenarioXml(const AFileName: string);
     function GetScenarioCount: Integer;
     function GetScenario(AIndex: Integer): TLandrixEInvoiceValidationScenario;
     function SchemaOf(const AFileName: string): TObject;
@@ -281,6 +388,22 @@ type
       Endung .sch wird beim Laden aus ISO-Schematron uebersetzt. Vor dem
       ersten Validate fuellen: eine Regeldatei wird einmal geladen. }
     property RuleFiles: TStringList read FRuleFiles;
+    { True: every Schematron step keeps its SVRL in the result (Steps[].Svrl,
+      the message texts as written, as SchXslt writes them), for the KoSIT
+      report input; default False (the SVRL lists every fired rule and can
+      be large).
+      DE: True: jeder Schematron-Schritt behaelt sein SVRL im Ergebnis
+      (Steps[].Svrl, die Meldungstexte wie geschrieben, wie SchXslt sie
+      schreibt), fuer den Eingang des KoSIT-Berichts; Vorgabe False (das
+      SVRL fuehrt jede gefeuerte Regel auf und kann gross werden). }
+    property KeepSvrl: Boolean read FKeepSvrl write FKeepSvrl;
+    { the report stylesheet of noScenarioReport (full path), which KoSIT
+      applies when no scenario is chosen; '' if the configuration names
+      none.
+      DE: das Bericht-Stylesheet aus noScenarioReport (voller Pfad), das
+      KoSIT anwendet, wenn kein Szenario gewaehlt ist; '', wenn die
+      Konfiguration keines nennt. }
+    property NoScenarioReportFile: string read FNoScenarioReportFile;
   end;
 
 { The level as the KoSIT report writes it (information, warning, error).
@@ -288,11 +411,22 @@ type
   error). }
 function LandrixEInvoiceValidationLevelText(ALevel: TLandrixEInvoiceValidationLevel): TLandrixEInvoiceString;
 
+{ Writes the elements of AXml (UTF-8, as ScenarioXml, ResourceXml or Svrl
+  hold them) into AWriter, at its current position; namespaces are
+  declared where needed. Comments and processing instructions are left
+  out. Raises ELandrixXmlError if AXml is not well-formed.
+  DE: Schreibt die Elemente von AXml (UTF-8, wie ScenarioXml, ResourceXml
+  oder Svrl sie halten) in AWriter, an seiner aktuellen Stelle; Namensraeume
+  werden deklariert, wo noetig. Kommentare und Verarbeitungsanweisungen
+  entfallen. Loest ELandrixXmlError aus, wenn AXml nicht wohlgeformt ist. }
+procedure LandrixEInvoiceWriteXmlFragment(const AXml: TLandrixXmlUtf8; AWriter: TLandrixXmlWriter);
+
 implementation
 
 uses
   SysUtils,
-  LandrixXmlBase,
+  LandrixXmlConvert,
+  LandrixXmlSha256,
   LandrixXmlDom,
   LandrixXmlReader,
   LandrixXmlXPathTree,
@@ -334,6 +468,217 @@ begin
   while (Last >= First) and (S[Last] <= ' ') do
     Dec(Last);
   Result := Copy(S, First, Last - First + 1);
+end;
+
+{ Copies the element at the reader's position (a start tag) with its
+  subtree into AWriter; the reader stops on its end. ANormalize: text is
+  normalized as the KoSIT validator copies the scenario (JAXB, by the
+  types of its scenarios.xsd): text that is only white space is left out,
+  in p and li (xs:normalizedString) tab, carriage return and line feed
+  become spaces, in match and acceptMatch (xs:string) the text is trimmed,
+  any other text (xs:token, xs:anyURI) is trimmed and its runs of white
+  space become one space.
+  DE: Kopiert das Element an der Position des Readers (ein Start-Tag) samt
+  Unterbaum nach AWriter; der Reader steht danach auf dessen Ende.
+  ANormalize: Text wird normalisiert, wie der KoSIT-Validator das Szenario
+  kopiert (JAXB, nach den Typen seiner scenarios.xsd): Text nur aus
+  Leerraum entfaellt, in p und li (xs:normalizedString) werden Tabulator,
+  Wagenruecklauf und Zeilenvorschub zu Leerzeichen, in match und
+  acceptMatch (xs:string) wird der Text getrimmt, jeder andere Text
+  (xs:token, xs:anyURI) getrimmt und Folgen von Leerraum zu einem
+  Leerzeichen. }
+procedure CopyElement(AReader: TLandrixXmlReader; AWriter: TLandrixXmlWriter; ANormalize: Boolean = False);
+var
+  Level, I, Colon: Integer;
+  Name, Prefix, Pending, Current: TLandrixXmlUtf8;
+  { the names of the open elements, for the text after a child }
+  Names: array of TLandrixXmlUtf8;
+
+  function PrefixOf(AIndex: Integer; out AColon: Integer): TLandrixXmlUtf8;
+  var
+    J: Integer;
+  begin
+    Name := AReader.AttributeNameUtf8(AIndex);
+    AColon := 0;
+    for J := 1 to Length(Name) do
+      if (AColon = 0) and (Name[J] = ':') then
+        AColon := J;
+    if AColon > 0 then
+      Result := Copy(Name, 1, AColon - 1)
+    else
+      Result := '';
+  end;
+
+  { writes the text gathered since the last tag (the reader may deliver a
+    text in several parts) }
+  procedure Flush;
+  var
+    J: Integer;
+    Text: TLandrixXmlUtf8;
+    Space: Boolean;
+  begin
+    if Pending = '' then
+      Exit;
+    if not ANormalize then
+      AWriter.TextUtf8(Pending)
+    else if TrimUtf8(Pending) <> '' then
+    begin
+      if (Current = 'p') or (Current = 'li') then
+      begin
+        Text := Pending;
+        for J := 1 to Length(Text) do
+          if Text[J] in [#9, #10, #13] then
+            Text[J] := ' ';
+      end
+      else if (Current = 'match') or (Current = 'acceptMatch') then
+        Text := TrimUtf8(Pending)
+      else
+      begin
+        Text := '';
+        Space := False;
+        for J := 1 to Length(Pending) do
+          if Pending[J] in [#9, #10, #13, ' '] then
+            Space := Text <> ''
+          else
+          begin
+            if Space then
+              Text := Text + ' ';
+            Space := False;
+            Text := Text + Copy(Pending, J, 1);
+          end;
+      end;
+      AWriter.TextUtf8(Text);
+    end;
+    Pending := '';
+  end;
+
+begin
+  Current := '';
+  Pending := '';
+  Names := nil;
+  Level := 0;
+  repeat
+    case AReader.TokenType of
+      xttStartElement:
+        begin
+          Flush;
+          AWriter.StartElementNs(AReader.NamespaceUriUtf8, AReader.PrefixUtf8, AReader.LocalNameUtf8, True);
+          Current := AReader.LocalNameUtf8;
+          { the declarations first: an attribute with a prefix declares it
+            itself unless it is declared; StartElementNs declares the
+            element's own prefix }
+          for I := 0 to AReader.AttributeCount - 1 do
+            if AReader.IsNamespaceDeclaration(I) then
+            begin
+              Prefix := PrefixOf(I, Colon);
+              if Colon > 0 then
+                Prefix := AReader.AttributeLocalNameUtf8(I);
+              if Prefix <> AReader.PrefixUtf8 then
+                AWriter.DeclareNamespace(Prefix, AReader.AttributeValueUtf8(I));
+            end;
+          for I := 0 to AReader.AttributeCount - 1 do
+            if not AReader.IsNamespaceDeclaration(I) then
+            begin
+              Prefix := PrefixOf(I, Colon);
+              if Colon > 0 then
+                AWriter.AttributeNsUtf8(AReader.AttributeNamespaceUriUtf8(I), Prefix,
+                  AReader.AttributeLocalNameUtf8(I), AReader.AttributeValueUtf8(I))
+              else
+                AWriter.AttributeUtf8(Name, AReader.AttributeValueUtf8(I));
+            end;
+          { an empty element <x/> has an end token too }
+          Inc(Level);
+          SetLength(Names, Level);
+          Names[Level - 1] := Current;
+        end;
+      xttEndElement:
+        begin
+          Flush;
+          AWriter.EndElement;
+          Dec(Level);
+          if Level > 0 then
+            Current := Names[Level - 1];
+        end;
+      xttText, xttCData:
+        Pending := Pending + AReader.ValueUtf8;
+    else
+      { comments, processing instructions and the document type are left
+        out (FPC 3.3.1 warns about a case without else) }
+    end;
+    if Level = 0 then
+      Exit;
+  until not AReader.Read;
+end;
+
+procedure LandrixEInvoiceWriteXmlFragment(const AXml: TLandrixXmlUtf8; AWriter: TLandrixXmlWriter);
+var
+  Reader: TLandrixXmlReader;
+begin
+  Reader := TLandrixXmlReader.Create;
+  try
+    Reader.LoadFromUtf8(AXml);
+    while Reader.Read do
+      if Reader.TokenType = xttStartElement then
+        CopyElement(Reader, AWriter);
+  finally
+    Reader.Free;
+  end;
+end;
+
+{ The element at the reader's position as UTF-8 text without declaration,
+  normalized as CopyElement does with ANormalize.
+  DE: Das Element an der Position des Readers als UTF-8-Text ohne
+  Deklaration, normalisiert wie CopyElement mit ANormalize. }
+function ElementXml(AReader: TLandrixXmlReader): TLandrixXmlUtf8;
+var
+  Writer: TLandrixXmlWriter;
+begin
+  Writer := TLandrixXmlWriter.Create;
+  try
+    Writer.WriteDeclaration := False;
+    Writer.Indent := False;
+    CopyElement(AReader, Writer, True);
+    Writer.EndDocument;
+    Result := Writer.AsUtf8;
+  finally
+    Writer.Free;
+  end;
+end;
+
+{ SHA-256 of the bytes, Base64 as the KoSIT report input writes it. }
+function Sha256Base64(AData: Pointer; ASize: Integer): TLandrixEInvoiceString;
+const
+  Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+var
+  Hex: string;
+  Bytes: array[0..31] of Byte;
+  I, N: Integer;
+  S: string;
+begin
+  Hex := LandrixXmlSha256Hex(AData^, ASize);
+  for I := 0 to 31 do
+    Bytes[I] := Byte(StrToInt('$' + Copy(Hex, I * 2 + 1, 2)));
+  S := '';
+  I := 0;
+  while I < 32 do
+  begin
+    N := Bytes[I] shl 16;
+    if I + 1 < 32 then
+      N := N or (Bytes[I + 1] shl 8);
+    if I + 2 < 32 then
+      N := N or Bytes[I + 2];
+    S := S + Alphabet[(N shr 18) and 63 + 1] + Alphabet[(N shr 12) and 63 + 1];
+    if I + 1 < 32 then
+      S := S + Alphabet[(N shr 6) and 63 + 1]
+    else
+      S := S + '=';
+    if I + 2 < 32 then
+      S := S + Alphabet[N and 63 + 1]
+    else
+      S := S + '=';
+    Inc(I, 3);
+  end;
+  Result := TLandrixEInvoiceString(S);
 end;
 
 { the child elements in the scenarios namespace with that local name }
@@ -421,10 +766,12 @@ constructor TLandrixEInvoiceValidationResult.Create;
 begin
   inherited Create;
   FMessages := TObjectList.Create(True);
+  FSteps := TObjectList.Create(True);
 end;
 
 destructor TLandrixEInvoiceValidationResult.Destroy;
 begin
+  FSteps.Free;
   FMessages.Free;
   inherited Destroy;
 end;
@@ -437,6 +784,31 @@ begin
   FXmlSchemaValid := False;
   FProcessingError := '';
   FAccepted := False;
+  FSteps.Clear;
+  FTimestamp := '';
+  FDocumentHash := '';
+  FDocumentReference := '';
+  FScenarioXml := '';
+  FReportFile := '';
+end;
+
+function TLandrixEInvoiceValidationResult.GetStepCount: Integer;
+begin
+  Result := Integer(FSteps.Count);
+end;
+
+function TLandrixEInvoiceValidationResult.GetStep(AIndex: Integer): TLandrixEInvoiceValidationStepResult;
+begin
+  Result := TLandrixEInvoiceValidationStepResult(FSteps[AIndex]);
+end;
+
+function TLandrixEInvoiceValidationResult.AddStep(AStep: TLandrixEInvoiceValidationStep;
+  const AResourceXml: TLandrixXmlUtf8): TLandrixEInvoiceValidationStepResult;
+begin
+  Result := TLandrixEInvoiceValidationStepResult.Create;
+  FSteps.Add(Result);
+  Result.FStep := AStep;
+  Result.FResourceXml := AResourceXml;
 end;
 
 function TLandrixEInvoiceValidationResult.GetMessageCount: Integer;
@@ -564,6 +936,7 @@ begin
   FScenarios.Clear;
   ClearCaches;
   FName := '';
+  FNoScenarioReportFile := '';
   Dir := IncludeTrailingPathDelimiter(ExtractFilePath(ExpandFileName(AFileName)));
   Doc := TLandrixXmlDocument.Create;
   try
@@ -608,7 +981,10 @@ begin
       end;
       Child := FirstChild(Node, 'createReport');
       if Child <> nil then
+      begin
+        Scenario.FReportFile := ResourceLocation(Child, Dir);
         Child := FirstChild(Child, 'customLevel');
+      end;
       while Child <> nil do
       begin
         if not LevelByName(Child.AttributeValueUtf8('', 'level'), Level) then
@@ -634,15 +1010,73 @@ begin
     end;
     if FScenarios.Count = 0 then
       ConfigError('no scenario in ' + AFileName);
+    Child := FirstChild(Doc.Root, 'noScenarioReport');
+    if Child <> nil then
+      FNoScenarioReportFile := ResourceLocation(Child, Dir);
+    ReadScenarioXml(AFileName);
   except
     { a configuration that does not load leaves no scenario behind }
     FScenarios.Clear;
     FName := '';
+    FNoScenarioReportFile := '';
     raise;
   end;
   finally
     Doc.Free;
   end;
+end;
+
+{ The s:scenario elements as written (for the KoSIT report input), and
+  the s:resource of the XML schema and of each Schematron step. }
+procedure TLandrixEInvoiceValidator.ReadScenarioXml(const AFileName: string);
+var
+  Reader, Inner: TLandrixXmlReader;
+  Scenario: TLandrixEInvoiceValidationScenario;
+  Index, Count: Integer;
+  Container: TLandrixXmlUtf8;
+begin
+  Index := 0;
+  Reader := TLandrixXmlReader.Create;
+  try
+    Reader.LoadFromFile(AFileName);
+    while Reader.Read do
+      if (Reader.TokenType = xttStartElement) and (Reader.Depth = 1) and
+        (Reader.NamespaceUriUtf8 = ScenariosNs) and (Reader.LocalNameUtf8 = 'scenario') then
+      begin
+        if Index >= ScenarioCount then
+          ConfigError('scenarios not read again from ' + AFileName);
+        Scenario := Scenarios[Index];
+        Inc(Index);
+        Scenario.FScenarioXml := ElementXml(Reader);
+        Count := 0;
+        Container := '';
+        Inner := TLandrixXmlReader.Create;
+        try
+          Inner.LoadFromUtf8(Scenario.FScenarioXml);
+          while Inner.Read do
+            if (Inner.TokenType = xttStartElement) and (Inner.NamespaceUriUtf8 = ScenariosNs) then
+              if Inner.Depth = 1 then
+                Container := Inner.LocalNameUtf8
+              else if (Inner.Depth = 2) and (Inner.LocalNameUtf8 = 'resource') then
+                if Container = 'validateWithXmlSchema' then
+                  Scenario.FSchemaResourceXml := ElementXml(Inner)
+                else if Container = 'validateWithSchematron' then
+                begin
+                  SetLength(Scenario.FSchematronResourceXml, Count + 1);
+                  Scenario.FSchematronResourceXml[Count] := ElementXml(Inner);
+                  Inc(Count);
+                end;
+        finally
+          Inner.Free;
+        end;
+        if Count <> Scenario.SchematronCount then
+          ConfigError('scenario ' + string(Scenario.FName) + ': Schematron resources not read');
+      end;
+  finally
+    Reader.Free;
+  end;
+  if Index <> ScenarioCount then
+    ConfigError('scenarios not read again from ' + AFileName);
 end;
 
 function TLandrixEInvoiceValidator.SchemaOf(const AFileName: string): TObject;
@@ -710,7 +1144,12 @@ begin
     Count := AStream.Size - AStream.Position;
   if Count > MaxInt then
   begin
+    { a run without document: time, the well-formedness step and the
+      report without scenario, as for a document that does not load }
     AResult.Clear;
+    AResult.FTimestamp := U(LandrixXmlFormatDateTime(Now));
+    AResult.FReportFile := FNoScenarioReportFile;
+    AResult.AddStep(evs_Wellformedness, '');
     Msg := AResult.Add(evs_Wellformedness, 0, 'generic-error', evl_Error);
     Msg.FText := 'The document is larger than 2 GB';
     Result := False;
@@ -821,10 +1260,37 @@ var
   I, K: Integer;
   HasDynamicError: Boolean;
   ErrorText: TLandrixEInvoiceString;
+  Step: TLandrixEInvoiceValidationStepResult;
+  FileData: TMemoryStream;
+  SvrlWriter: TLandrixXmlWriter;
 begin
   AResult.Clear;
   Result := False;
   Scenario := nil;
+  AResult.FTimestamp := U(LandrixXmlFormatDateTime(Now));
+  if AFileName <> '' then
+    AResult.FDocumentReference := TLandrixEInvoiceString(ExpandFileName(AFileName));
+  AResult.FReportFile := FNoScenarioReportFile;
+  if AData <> nil then
+    AResult.FDocumentHash := Sha256Base64(AData.Memory, Integer(AData.Size))
+  else
+  begin
+    FileData := TMemoryStream.Create;
+    try
+      try
+        FileData.LoadFromFile(AFileName);
+        if FileData.Size <= MaxInt then
+          AResult.FDocumentHash := Sha256Base64(FileData.Memory, Integer(FileData.Size));
+      except
+        { the well-formedness step reports a file that cannot be read }
+        on EStreamError do ;
+        on EInOutError do ;
+      end;
+    finally
+      FileData.Free;
+    end;
+  end;
+  AResult.AddStep(evs_Wellformedness, '');
   Tree := TLandrixXmlXPathTree.Create;
   try
     { well-formedness: a document that does not load matches no scenario }
@@ -858,6 +1324,9 @@ begin
     if Scenario = nil then
       Exit;
     AResult.FScenarioName := Scenario.FName;
+    AResult.FScenarioXml := Scenario.FScenarioXml;
+    AResult.FReportFile := Scenario.FReportFile;
+    AResult.AddStep(evs_XmlSchema, Scenario.FSchemaResourceXml);
 
     XsdValidator := TLandrixXmlXsdValidator.Create(TLandrixXmlXsdSchemaSet(SchemaOf(Scenario.FSchemaFile)));
     try
@@ -897,6 +1366,7 @@ begin
       begin
         SchValidator := TLandrixXmlSchematronValidator.Create(TLandrixXmlSchematronRules(
           RulesOf(Scenario.SchematronFiles[I])));
+        Step := AResult.AddStep(evs_Schematron, Scenario.FSchematronResourceXml[I]);
         try
           SchValidator.AbortOnDynamicError := True;
           SchValidator.ValidateTree(Tree);
@@ -913,11 +1383,28 @@ begin
           begin
             { as KoSIT: the step's XSLT fails, a processing error without
               messages of the step }
+            Step.FProcessingError := TLandrixEInvoiceString(ExtractFileName(Scenario.SchematronFiles[I])) + ': ' +
+              ErrorText;
             if AResult.FProcessingError = '' then
-              AResult.FProcessingError := TLandrixEInvoiceString(ExtractFileName(Scenario.SchematronFiles[I])) + ': ' +
-                ErrorText;
+              AResult.FProcessingError := Step.FProcessingError;
           end
           else
+          begin
+            if FKeepSvrl then
+            begin
+              SchValidator.SvrlPreserveWhitespace := True;
+              if AData = nil then
+                SchValidator.DocumentUri := LandrixXmlFileUri(AFileName);
+              SvrlWriter := TLandrixXmlWriter.Create;
+              try
+                SvrlWriter.WriteDeclaration := False;
+                SchValidator.SaveSvrlToWriter(SvrlWriter);
+                SvrlWriter.EndDocument;
+                Step.FSvrl := SvrlWriter.AsUtf8;
+              finally
+                SvrlWriter.Free;
+              end;
+            end;
             for K := 0 to SchValidator.ResultCount - 1 do
             begin
               SchResult := SchValidator.Results[K];
@@ -932,6 +1419,7 @@ begin
               Msg.FText := U(SchResult.Message);
               Msg.FFailedAssert := SchResult.Kind = xsrFailedAssert;
             end;
+          end;
         finally
           SchValidator.Free;
         end;

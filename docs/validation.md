@@ -16,13 +16,14 @@ below; they are not part of the library.
 > **Preview.** Document validation, the reports and the invoice rendering live in units marked
 > `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
 > `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
-> `LandrixEInvoiceRenderMarkdown`). They work and are tested, but names and signatures may change
+> `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`, `LandrixEInvoiceKositReport`,
+> `LandrixEInvoiceKositVisualization`). They work and are tested, but names and signatures may change
 > before 1.0. [examples/Workbench](../examples/Workbench/WorkbenchMain.pas) uses all of them.
 
 ## Getting the KoSIT files
 
 ```powershell
-./addons/kosit/install-kosit.ps1                          # XRechnung, Peppol BIS, ZUGFeRD
+./addons/kosit/install-kosit.ps1                          # XRechnung, Peppol BIS, ZUGFeRD, visualization
 ./addons/kosit/install-kosit.ps1 -Modules xrechnung       # only what you need
 ./addons/kosit/install-kosit.ps1 -Target C:\MyApp\kosit   # straight into your application
 ```
@@ -39,13 +40,14 @@ from its publisher, verifies its SHA-256 (pinned in
 | `rules/en16931-ubl.xml`, `en16931-cii.xml`, `xrechnung-ubl.xml`, `xrechnung-cii.xml` | the EN 16931 and XRechnung Schematron, compiled by LandrixXML (copied from the submodule or downloaded from the LandrixXML release) | `xrechnung`, `bis` (UBL only) |
 | `rules/PEPPOL-EN16931-UBL.sch` | the Peppol Schematron (OpenPEPPOL, May 2026 release 3.0.21) | `bis` |
 | `rules/NOTICE.md` | sources and licences of the four rule files (the notice of the LandrixXML folder they come from; its other sections do not apply here) | `xrechnung`, `bis` |
+| `xrechnung-visualization/` | the KoSIT XRechnung visualization, release 2026-01-31; its `xsl/` folder is used ([Showing the invoice](#showing-the-invoice)) | `visualization` |
 
-Why rule files: the KoSIT configurations contain the Schematron as XSLT, which the library does
-not run. Each XSLT step of a configuration is mapped to a rule file with the same rules (see
+Why rule files: the KoSIT configurations contain the Schematron as XSLT, which the validation does
+not run (the XSLT engine serves the KoSIT report and the visualization only). Each XSLT step of a configuration is mapped to a rule file with the same rules (see
 below); the ZUGFeRD configuration ships the Schematron sources itself, which the library compiles
 when it loads them.
 
-Without PowerShell: download the three archives and the Peppol file from the URLs in
+Without PowerShell: download the four archives and the Peppol file from the URLs in
 `kosit.json`, unpack each archive into its folder and copy the four rule files and `NOTICE.md`
 from `external/landrix-xml/tests/data/schematron/` (rule files under `rules/`) into `rules/`.
 
@@ -195,6 +197,44 @@ finally
 end;
 ```
 
+The KoSIT report: the report the KoSIT validator writes, made the same way. The report input
+(`LandrixEInvoiceKositReportInput`: engine, time, document hash, the chosen scenario, the steps,
+the SVRL of every Schematron step) is transformed with the report stylesheet of the configuration
+(`xrechnung-report.xsl` and the like), which also embeds an HTML page in it. The XSLT engine is the
+one of LandrixXML; a program links it only when it uses `LandrixEInvoiceKositReport` or
+`LandrixEInvoiceKositVisualization`. The configurations must keep the SVRL:
+
+```pascal
+uses LandrixEInvoiceKositReport;
+
+XRechnung.KeepSvrl := True;          { before validating; also for the others }
+...
+Reporter := TLandrixEInvoiceKositReporter.Create;   { keeps the compiled stylesheets }
+try
+  Report := Reporter.CreateReport(Res);              { the KoSIT run of Res }
+  try
+    Report.SaveXmlToFile('kosit-report.xml');        { rep:report }
+    if Report.HasHtml then
+      Report.SaveHtmlToFile('kosit-report.html');    { the page in it }
+  finally
+    Report.Free;
+  end;
+finally
+  Reporter.Free;
+end;
+```
+
+- The report and its page are those of the KoSIT validator, checked against it byte for byte in
+  the repository's tests, except what differs by nature: the engine name, the time, the document
+  reference, the wording of well-formedness and XML schema messages (the KoSIT validator shows
+  Xerces' texts in the language of the system) and the form of Schematron locations of the
+  Peppol BIS and ZUGFeRD configurations (`/Q{namespace}name[1]`, as the XRechnung configuration
+  writes them).
+- `Report.Accepted` is the assessment of the report stylesheet. For Peppol BIS it can recommend to
+  accept a document with only warnings, which the validator rejects (see above).
+- `TLandrixEInvoiceValidator.Validate` gives the lower-level result; `CreateReport(Result,
+  DocumentStream)` takes it with the document.
+
 ## Showing the invoice
 
 `TLandrixEInvoiceRenderHtmlWriter` writes an invoice as one HTML page, `TLandrixEInvoiceRenderMarkdownWriter`
@@ -215,14 +255,34 @@ finally
 end;
 ```
 
-This replaces the KoSIT visualization (XSLT, Java). A PDF of the invoice is not produced.
+The KoSIT XRechnung visualization is available too, run with the XSLT engine of LandrixXML
+(module `visualization` of the installer): a UBL invoice, UBL credit note or CII invoice becomes
+the XR form and an HTML page, the same as with Saxon, byte for byte.
+
+```pascal
+uses LandrixEInvoiceKositVisualization;
+
+Viz := TLandrixEInvoiceKositVisualizer.Create;
+try
+  Viz.Folder := 'kosit/xrechnung-visualization/xsl';
+  Viz.Language := eln_English;                        { default German }
+  Viz.WriteHtml(InvoiceStream, PageStream);           { or WriteXr, WriteHtmlFromXr }
+finally
+  Viz.Free;
+end;
+```
+
+It shows the XML as it is (also what the model does not hold); the rendering above shows the
+model with every field and works without files. A PDF of the invoice is not produced (the
+visualization makes it with Apache FOP).
 
 ## What to ship
 
 | Feature | Needs at run time |
 |---|---|
 | Reading, writing, rule check, calculation, PDF extraction, PDF check, reports, rendering | nothing: everything is compiled into the program (code lists and rule tables are Pascal units); no DLL, no MSXML, no Java, no data files |
-| Document validation with KoSIT | the folder of `install-kosit.ps1` (only the modules you use; the `.installed` markers may be left out), at a path your program passes to `LoadConfiguration` |
+| Document validation with KoSIT, the KoSIT report | the folder of `install-kosit.ps1` (only the modules you use; the `.installed` markers may be left out), at a path your program passes to `LoadConfiguration` |
+| KoSIT visualization | `xrechnung-visualization/` of that folder (module `visualization`; the program uses `xsl/`) |
 
 On Unix, programs add `cwstring` to their uses clause as usual; the library itself does not need
 it.
@@ -236,7 +296,7 @@ Licences to ship with an application:
 - when you ship the KoSIT folder, the terms of its contents, which the commercial licence does
   not cover: the KoSIT configurations and the XRechnung Schematron (Apache-2.0, KoSIT), the EN 16931
   validation artefacts and the rule files compiled from them (EUPL-1.2, CEN/TC 434; see
-  `rules/NOTICE.md`), the ZUGFeRD configuration (Apache-2.0; its schemas and Schematron under the
+  `rules/NOTICE.md`), the KoSIT XRechnung visualization (Apache-2.0, KoSIT), the ZUGFeRD configuration (Apache-2.0; its schemas and Schematron under the
   terms of FeRD and FNFE-MPE), the Peppol Schematron (OpenPEPPOL; the file carries only a CEN
   reproduction notice and no licence grant: check OpenPEPPOL's terms before you redistribute it), the UBL schemas (OASIS) and the
   CII schemas (UN/CEFACT).

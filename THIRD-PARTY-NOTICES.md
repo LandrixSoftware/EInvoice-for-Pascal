@@ -94,5 +94,7 @@ downloads (or copies from the LandrixXML submodule): the KoSIT validator configu
 XRechnung and Peppol BIS Billing (Apache License 2.0), the ZUGFeRD / Factur-X configuration
 (Apache License 2.0; schemas and Schematron under the terms of FeRD and FNFE-MPE), the EN 16931 and
 XRechnung rule files compiled by LandrixXML (EUPL-1.2 and Apache License 2.0; see their
-`NOTICE.md`) and the Peppol Schematron of OpenPEPPOL. An application that ships these files ships
+`NOTICE.md`), the Peppol Schematron of OpenPEPPOL and the KoSIT XRechnung visualization
+(https://github.com/itplr-kosit/xrechnung-visualization, Apache License 2.0), whose stylesheets
+`LandrixEInvoiceKositVisualization` runs. An application that ships these files ships
 them under the terms of their publishers; see [docs/validation.md](docs/validation.md#what-to-ship).
