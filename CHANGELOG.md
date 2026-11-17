@@ -7,6 +7,16 @@ Supported invoice standards are documented per release.
 
 ## [Unreleased]
 
+### Added
+- `tools/kosit/XsltProbe.dpr`: loads the KoSIT report stylesheets and the XRechnung visualization
+  with the LandrixXML XSLT engine and runs a chain of stylesheets (load test on every toolchain).
+
+### Changed
+- LandrixXML 0.5.0 (`4264bf9`): XSLT 2.0 engine, SVRL into an open writer, raw Schematron message
+  text. Rules compiled from `.sch` at run time (Peppol BIS, ZUGFeRD) drop static text that is
+  only white space between `value-of` parts, as SchXslt does, so a few messages lose a space.
+  `addons/kosit/install-kosit.ps1` downloads the rule files from that tag.
+
 ## [0.9.0-beta.1] - 2026-11-13
 
 First public pre-release. The API may still change until 1.0; units marked `API: internal`
