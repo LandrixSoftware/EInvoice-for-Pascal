@@ -23,8 +23,8 @@
   predicts what KoSIT would report and never changes it (its findings are
   marked Predicted). Without a configuration an XML document gets no
   verdict (Incomplete), a PDF only a rejection by levels 2 and 3; reading
-  and the rule check still run. PDF/A (level 1, so far the rules of clause
-  6.1) is reported with its findings and status but does not count for the
+  and the rule check still run. PDF/A (level 1, so far the rules of clauses
+  6.1 and 6.3 to 6.5) is reported with its findings and status but does not count for the
   verdict. One flat list of findings, a status per part.
 
   DE: Prueft ein E-Rechnungs-Dokument als Ganzes, XML oder ein hybrides
@@ -40,7 +40,7 @@
   als Predicted markiert). Ohne Konfiguration bekommt ein XML-Dokument
   kein Urteil (Incomplete), ein PDF nur eine Ablehnung durch die Ebenen 2
   und 3; Lesen und Regelpruefung laufen trotzdem. PDF/A (Ebene 1, bisher
-  die Regeln von Abschnitt 6.1) wird mit Befunden und Status gemeldet,
+  die Regeln der Abschnitte 6.1 und 6.3 bis 6.5) wird mit Befunden und Status gemeldet,
   zaehlt aber nicht fuer das Urteil. Eine flache Befundliste, ein Status je
   Teil. }
 

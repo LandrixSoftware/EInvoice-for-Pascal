@@ -38,6 +38,13 @@ Supported invoice standards are documented per release.
   fails; accepted differences in `tests/data/pdfa-exceptions.txt`, none so far). The corpus has no
   veraPDF failure of 6.1.3-3, 6.1.7.2-1, 6.1.13-2 and 6.1.13-7; the first three are covered by
   `PdfA.Violations` only. The validator's test PDFs now carry a binary comment and `/ID`.
+- PDF/A level 1, stage B: the rules of clauses 6.3 (annotations: types, flags, appearances), 6.4
+  (interactive forms: no actions on widgets and fields, NeedAppearances, XFA, NeedsRendering) and 6.5
+  (actions: permitted types and named actions, no additional actions on catalog and pages), found where
+  veraPDF finds them (the `/Annots` of the pages; `/A`, the named `/AA` events, a dictionary
+  `/OpenAction`, outline items and `/Next` chains; the AcroForm fields). The signature rules 6.4.3 are not
+  implemented yet. Tests `PdfA.Interactive` and `PdfA.Interactive2` (every rule and the details of
+  veraPDF's reading); `PdfA.VeraPdf` agrees with veraPDF on all 1,600 PDFs.
 
 ## [0.9.0-beta.2] - 2026-11-17
 

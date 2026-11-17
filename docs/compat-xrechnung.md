@@ -61,7 +61,7 @@ The Java helper is not needed any more; validation and display run in the progra
 |---|---|
 | `Validate`, `ValidateFile` (KoSIT validator, XML and HTML report) | `TLandrixEInvoiceDocumentValidator` with the KoSIT files of `addons/kosit/install-kosit.ps1`; reports `TLandrixEInvoiceValidationReportWriter` (XML) and `TLandrixEInvoiceValidationHtmlWriter` (HTML) |
 | `Visualize`, `VisualizeFile`, `PeppolVisualize`, `PeppolVisualizeFile`, `MustangVisualizeFile` (HTML) | `TLandrixEInvoiceRenderHtmlWriter`, `TLandrixEInvoiceRenderMarkdownWriter`: the library's own layout, English or German |
-| `MustangValidateFile` | partly: the PDF check of `TLandrixEInvoiceDocumentValidator` (embedding and XMP metadata); PDF/A-3b only in part (the file structure rules of clause 6.1; shown, not part of the verdict) |
+| `MustangValidateFile` | partly: the PDF check of `TLandrixEInvoiceDocumentValidator` (embedding and XMP metadata); PDF/A-3b only in part (the rules of clauses 6.1 and 6.3 to 6.5: file structure, annotations, forms, actions; shown, not part of the verdict) |
 | `VisualizeAsPdf`, `VisualizeFileAsPdf`, `MustangVisualizeFileAsPdf`, `MustangCombinePdfAndXML`, `MustangUpgradeToPDFA3Only` | none: the library does not write PDF. It gives the XMP metadata and the attachment name for a PDF library of your choice (`ZUGFeRDPdfXmpInfo`, `ZUGFeRDPdfFilename` of the adapter; `LandrixEInvoicePdfXmpDescription(Target)` and `Spec.AttachmentFileName` in `LandrixEInvoiceSpecs`) |
 | `ValitoolValidate`, `ValitoolValidateDirectory` | none |
 

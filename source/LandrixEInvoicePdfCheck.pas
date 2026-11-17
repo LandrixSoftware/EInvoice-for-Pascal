@@ -13,8 +13,8 @@
 }
 
 { Checks of a hybrid invoice PDF (ZUGFeRD 2.5.2 / Factur-X 1.09.2), levels
-  1 to 3. Level 1, PDF/A-3b: the rules of clause 6.1 (file structure) of
-  LandrixEInvoicePdfARules on the raw syntax collected while the document
+  1 to 3. Level 1, PDF/A-3b: the rules of clauses 6.1 (file structure) and
+  6.3 to 6.5 (annotations, forms, actions) of LandrixEInvoicePdfARules on the raw syntax collected while the document
   loads; findings PDFA-<clause>-<test> (veraPDF numbering) with paths that
   start with "PDF/A ". Not every rule of PDF/A-3b is implemented, so level 1
   is eps_Failed on a violation and eps_Incomplete otherwise, never
@@ -46,8 +46,9 @@
   has its own status; ZUGFeRD 1.0 and 2.0 leave level 3 eps_Incomplete.
 
   DE: Pruefungen eines hybriden Rechnungs-PDFs (ZUGFeRD 2.5.2 / Factur-X
-  1.09.2), Ebenen 1 bis 3. Ebene 1, PDF/A-3b: die Regeln von Abschnitt 6.1
-  (Dateistruktur) aus LandrixEInvoicePdfARules auf der rohen Syntax, die
+  1.09.2), Ebenen 1 bis 3. Ebene 1, PDF/A-3b: die Regeln der Abschnitte 6.1
+  (Dateistruktur) und 6.3 bis 6.5 (Annotationen, Formulare, Aktionen) aus
+  LandrixEInvoicePdfARules auf der rohen Syntax, die
   beim Laden gesammelt wird; Befunde PDFA-<Abschnitt>-<Test>
   (veraPDF-Nummerierung) mit Pfaden, die mit "PDF/A " beginnen. Nicht jede
   Regel von PDF/A-3b ist umgesetzt, darum ist Ebene 1 bei einem Verstoss
@@ -1854,11 +1855,11 @@ begin
   D.RuleID := ARule;
 end;
 
-{ Level 1: the PDF/A-3b rules of clause 6.1 on the facts AFacts collected
+{ Level 1: the PDF/A-3b rules of LandrixEInvoicePdfARules on the facts AFacts collected
   while ADoc loaded. A violation gives eps_Failed; without one the level is
   eps_Incomplete, as not every rule is implemented. An exception leaves it
   eps_Incomplete with a warning.
-  DE: Ebene 1: die PDF/A-3b-Regeln von Abschnitt 6.1 auf den Tatsachen
+  DE: Ebene 1: die PDF/A-3b-Regeln aus LandrixEInvoicePdfARules auf den Tatsachen
   AFacts, die beim Laden von ADoc gesammelt wurden. Ein Verstoss ergibt
   eps_Failed; ohne einen ist die Ebene eps_Incomplete, weil nicht jede
   Regel umgesetzt ist. Eine Ausnahme laesst sie eps_Incomplete mit einer

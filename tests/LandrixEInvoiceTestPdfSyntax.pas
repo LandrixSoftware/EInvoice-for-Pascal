@@ -18,14 +18,15 @@
   xref chain, a /Prev cycle, a file with an object stream and an xref
   stream, stream ends by /Length, an xref offset on white space, trailer
   tokens, a hybrid file, syntax the parser recovers from and misuse of
-  Inspect. PdfA.* checks the clause 6.1 rules of LandrixEInvoicePdfARules: a
+  Inspect. PdfA.* checks the rules of LandrixEInvoicePdfARules: a
   clean file, one with a violation of every implemented rule, and
   PdfA.VeraPdf compares the rules with the veraPDF results in
   tests/data/verapdf-expected.txt over the local corpora (tests/data/local/pdf
   and tests/data/local/verapdf; skipped without them): no rule may fail that
   veraPDF passes, and no rule may pass (a full rule on complete facts) that
   veraPDF fails. PdfA.Limits: a cycle of form fields ends at the node budget
-  and leaves its rule incomplete. Accepted differences are listed in
+  and leaves its rule incomplete. PdfA.Interactive: annotations, forms and
+  actions (6.3 to 6.5) with the details of veraPDF's reading. Accepted differences are listed in
   tests/data/pdfa-exceptions.txt (path, rule, reason). }
 
 unit LandrixEInvoiceTestPdfSyntax;
@@ -964,6 +965,132 @@ begin
   end;
 end;
 
+procedure TestPdfAInteractive;
+const
+  Empty = 'stream' + #10 + #10 + 'endstream';
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+  Res: TLandrixEInvoicePdfARuleResult;
+begin
+  { catalog: NeedAppearances true (6.4.1-3), NeedsRendering false (allowed),
+    a JavaScript /OpenAction (6.5.1-1); page 3 with /AA (6.5.2-2);
+    4: Link with /F 4.9 (read as 4) whose URI action chains a named action
+    Print (6.5.1-2); 5: Square with /F 6, Hidden (6.3.2-2); 6: Text whose N
+    appearance is a subdictionary (6.3.3-4); 7: widget of the button field
+    20 (/FT inherited over /Parent) with an N stream (6.3.3-3); 8: Popup
+    without /F and appearance (allowed); 9: Ink with an empty rectangle and
+    no appearance (allowed); 10: Circle; widget 7 has /AA null (counts as
+    absent); 20: field with /AA (6.4.1-2), its kid 7 has /AA null and no /T
+    (no field), its kid 21 has /AA and no /T (no field either) }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [20 0 R] /NeedAppearances true >> ' +
+      '/NeedsRendering false /OpenAction << /S /JavaScript /JS (x) >> >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R 5 0 R 6 0 R 7 0 R 8 0 R ' +
+      '9 0 R 10 0 R] /AA << /O << /S /GoTo /D [3 0 R /Fit] >> >> >>' + LF + 'endobj' + LF,
+    '4 0 obj' + LF + '<< /Type /Annot /Subtype /Link /F 4.9 /Rect [0 0 10 10] /A << /S /URI /URI (x) ' +
+      '/Next [ << /S /Named /N /Print >> ] >> >>' + LF + 'endobj' + LF,
+    '5 0 obj' + LF + '<< /Type /Annot /Subtype /Square /F 6 /Rect [0 0 10 10] /AP << /N 13 0 R >> >>' + LF +
+      'endobj' + LF,
+    '6 0 obj' + LF + '<< /Type /Annot /Subtype /Text /F 4 /Rect [0 0 10 10] /AP << /N << /On 13 0 R >> >> >>' + LF +
+      'endobj' + LF,
+    '7 0 obj' + LF + '<< /Type /Annot /Subtype /Widget /F 4 /AA null /Parent 20 0 R /Rect [0 0 10 10] ' +
+      '/AP << /N 13 0 R >> >>' + LF + 'endobj' + LF,
+    '8 0 obj' + LF + '<< /Type /Annot /Subtype /Popup /Rect [0 0 10 10] >>' + LF + 'endobj' + LF,
+    '9 0 obj' + LF + '<< /Type /Annot /Subtype /Ink /F 4 /Rect [10 10 10 10] >>' + LF + 'endobj' + LF,
+    '10 0 obj' + LF + '<< /Type /Annot /Subtype /Circle /F 4 /Rect [0 0 10 10] /AP << /N 13 0 R >> >>' + LF +
+      'endobj' + LF,
+    '13 0 obj' + LF + '<< /Length 0 >>' + LF + Empty + LF + 'endobj' + LF,
+    '20 0 obj' + LF + '<< /FT /Btn /T (f) /Kids [7 0 R 21 0 R] /AA << /K << /S /GoTo /D [3 0 R /Fit] >> >> >>' + LF +
+      'endobj' + LF,
+    '21 0 obj' + LF + '<< /AA << /K << /S /GoTo /D [3 0 R /Fit] >> >> >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.3.2-2 6.3.3-3 6.3.3-4 6.4.1-2 6.4.1-3 6.5.1-1 6.5.1-2 6.5.2-2', FailedRules(Rules),
+        'failed rules');
+      Res := Rules.RuleResult(par_6_3_2_2);
+      CheckEquals(5, Res.ObjNum, 'flags of object 5');
+      Res := Rules.RuleResult(par_6_3_3_3);
+      CheckEquals(7, Res.ObjNum, 'button widget 7');
+      Res := Rules.RuleResult(par_6_5_1_2);
+      CheckEquals(4, Res.ObjNum, 'named action in the chain of object 4');
+      Check(Rules.RuleResult(par_6_3_2_1).Outcome = pro_Passed, '6.3.2-1 passed (Popup, /F 4.9)');
+      Check(Rules.RuleResult(par_6_3_3_1).Outcome = pro_Passed, '6.3.3-1 passed (Link, Popup, empty rectangle)');
+      Check(Rules.RuleResult(par_6_4_2_2).Outcome = pro_Passed, '6.4.2-2 passed (NeedsRendering false)');
+      Check(Rules.RuleResult(par_6_4_1_1).Outcome = pro_Passed, '6.4.1-1 passed (/AA null of widget 7 is absent)');
+      CheckEquals(1, Rules.RuleResult(par_6_4_1_2).Failures, '6.4.1-2 only for field 20, not for kids without /T');
+      Check(Rules.RuleResult(par_6_4_3_1).Outcome = pro_NotChecked, '6.4.3-1 not checked');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
+procedure TestPdfAInteractive2;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+begin
+  { catalog: /AA with a JavaScript action under WC (6.5.2-1, 6.5.1-1),
+    NeedsRendering true (6.4.2-2), /XFA (6.4.2-1), an outline item whose
+    action is Launch with a /Next dictionary chaining a named action Quit
+    (6.5.1-1, 6.5.1-2); 4: Movie (6.3.1-1); 5: Square without appearance
+    (6.3.3-1); 6: Text whose /AP has N and D (6.3.3-2); 7: widget with /A
+    (6.4.1-1); 8: Link whose /A is a stream, which is no action }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /NeedsRendering true /AcroForm << /Fields [] /XFA 9 0 R >> ' +
+      '/AA << /WC << /S /JavaScript /JS (x) >> >> /Outlines 10 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R 5 0 R 6 0 R 7 0 R 8 0 R] >>' +
+      LF + 'endobj' + LF,
+    '4 0 obj' + LF + '<< /Type /Annot /Subtype /Movie /F 4 /Rect [0 0 10 10] /AP << /N 13 0 R >> >>' + LF + 'endobj' +
+      LF,
+    '5 0 obj' + LF + '<< /Type /Annot /Subtype /Square /F 4 /Rect [0 0 10 10] >>' + LF + 'endobj' + LF,
+    '6 0 obj' + LF + '<< /Type /Annot /Subtype /Text /F 4 /Rect [0 0 10 10] /AP << /N 13 0 R /D 13 0 R >> >>' + LF +
+      'endobj' + LF,
+    '7 0 obj' + LF + '<< /Type /Annot /Subtype /Widget /FT /Tx /F 4 /Rect [0 0 10 10] /A << /S /URI /URI (x) >> ' +
+      '/AP << /N 13 0 R >> >>' + LF + 'endobj' + LF,
+    '8 0 obj' + LF + '<< /Type /Annot /Subtype /Link /F 4 /Rect [0 0 10 10] /A 14 0 R >>' + LF + 'endobj' + LF,
+    '9 0 obj' + LF + '<< /Length 0 >>' + LF + 'stream' + LF + LF + 'endstream' + LF + 'endobj' + LF,
+    '10 0 obj' + LF + '<< /Type /Outlines /First 11 0 R /Last 11 0 R /Count 1 >>' + LF + 'endobj' + LF,
+    '11 0 obj' + LF + '<< /Title (a) /Parent 10 0 R /A << /S /Launch /F (x) /Next << /S /Named /N /Quit >> >> >>' +
+      LF + 'endobj' + LF,
+    '13 0 obj' + LF + '<< /Length 0 >>' + LF + 'stream' + LF + LF + 'endstream' + LF + 'endobj' + LF,
+    '14 0 obj' + LF + '<< /S /JavaScript /JS (x) /Length 0 >>' + LF + 'stream' + LF + LF + 'endstream' + LF + 'endobj' +
+      LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.3.1-1 6.3.3-1 6.3.3-2 6.4.1-1 6.4.2-1 6.4.2-2 6.5.1-1 6.5.1-2 6.5.2-1', FailedRules(Rules),
+        'failed rules');
+      CheckEquals(2, Rules.RuleResult(par_6_5_1_1).Failures, 'JavaScript under WC and Launch in the outline only');
+      CheckEquals(11, Rules.RuleResult(par_6_5_1_2).ObjNum, 'named action Quit in the /Next of outline item 11');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
 procedure TestPdfAVeraPdf;
 var
   Expected, Exceptions, Used: TStringList;
@@ -1073,7 +1200,7 @@ begin
       Check(Used.IndexOf(Exceptions[I]) >= 0, 'unused exception ' + Exceptions[I]);
     Check(Files > 0, 'files of tests/data/verapdf-expected.txt found locally');
     CheckEquals(Files, Agree, 'files that agree with veraPDF');
-    WriteLn('  PDF/A 6.1 against veraPDF: ', Files, ' files, ', Incomplete, ' with incomplete facts');
+    WriteLn('  PDF/A against veraPDF: ', Files, ' files, ', Incomplete, ' with incomplete facts');
   finally
     Rules.Free;
     Used.Free;
@@ -1097,6 +1224,8 @@ begin
   RegisterTest('PdfA.Clean', TestPdfAClean);
   RegisterTest('PdfA.Violations', TestPdfAViolations);
   RegisterTest('PdfA.Limits', TestPdfALimits);
+  RegisterTest('PdfA.Interactive', TestPdfAInteractive);
+  RegisterTest('PdfA.Interactive2', TestPdfAInteractive2);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

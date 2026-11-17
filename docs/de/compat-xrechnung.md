@@ -62,7 +62,7 @@ Der Java-Helper wird nicht mehr gebraucht; Prüfung und Anzeige laufen im Progra
 |---|---|
 | `Validate`, `ValidateFile` (KoSIT-Validator, XML- und HTML-Bericht) | `TLandrixEInvoiceDocumentValidator` mit den KoSIT-Dateien von `addons/kosit/install-kosit.ps1`; Berichte `TLandrixEInvoiceValidationReportWriter` (XML) und `TLandrixEInvoiceValidationHtmlWriter` (HTML) |
 | `Visualize`, `VisualizeFile`, `PeppolVisualize`, `PeppolVisualizeFile`, `MustangVisualizeFile` (HTML) | `TLandrixEInvoiceRenderHtmlWriter`, `TLandrixEInvoiceRenderMarkdownWriter`: eigenes Layout der Bibliothek, englisch oder deutsch |
-| `MustangValidateFile` | teilweise: die PDF-Prüfung von `TLandrixEInvoiceDocumentValidator` (Einbettung und XMP-Metadaten); PDF/A-3b nur teilweise (die Regeln zur Dateistruktur aus Abschnitt 6.1; angezeigt, nicht Teil des Urteils) |
+| `MustangValidateFile` | teilweise: die PDF-Prüfung von `TLandrixEInvoiceDocumentValidator` (Einbettung und XMP-Metadaten); PDF/A-3b nur teilweise (die Regeln der Abschnitte 6.1 und 6.3 bis 6.5: Dateistruktur, Annotationen, Formulare, Aktionen; angezeigt, nicht Teil des Urteils) |
 | `VisualizeAsPdf`, `VisualizeFileAsPdf`, `MustangVisualizeFileAsPdf`, `MustangCombinePdfAndXML`, `MustangUpgradeToPDFA3Only` | keiner: die Bibliothek schreibt kein PDF. Sie liefert XMP-Metadaten und Anhangsnamen für eine PDF-Bibliothek Ihrer Wahl (`ZUGFeRDPdfXmpInfo`, `ZUGFeRDPdfFilename` des Adapters; `LandrixEInvoicePdfXmpDescription(Target)` und `Spec.AttachmentFileName` in `LandrixEInvoiceSpecs`) |
 | `ValitoolValidate`, `ValitoolValidateDirectory` | keiner |
 

@@ -12,9 +12,10 @@
   SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
 }
 
-{ The PDF/A-3b rules of clause 6.1 (file structure) of ISO 19005-3, checked
-  on the raw syntax facts of LandrixEInvoicePdfSyntax and the objects of the
-  document. The rules carry the numbers of the veraPDF validation profile
+{ The PDF/A-3b rules of clauses 6.1 (file structure), 6.3 (annotations), 6.4
+  (interactive forms) and 6.5 (actions) of ISO 19005-3, checked on the raw
+  syntax facts of LandrixEInvoicePdfSyntax and the objects of the document.
+  The rules carry the numbers of the veraPDF validation profile
   ("6.1.2-1": clause and test number; the finding ID is "PDFA-6.1.2-1"), so
   that results compare with veraPDF rule by rule. A registry states for every
   rule how far it is implemented: prc_Full rules are checked in their whole
@@ -23,11 +24,15 @@
   proves nothing; prc_None rules are not checked. The checked population is
   the live object set of the object table (also unreferenced and compressed
   objects), the newest trailer and every section of the xref chain; older
-  revisions of objects are not judged.
+  revisions of objects are not judged. Annotations, actions and form fields
+  are found where veraPDF finds them: the /Annots of the pages, the actions
+  of /A, of the named /AA events, of a dictionary /OpenAction, of outline
+  items and their /Next chains, the AcroForm /Fields with kids that have /T.
 
-  DE: Die PDF/A-3b-Regeln von Abschnitt 6.1 (Dateistruktur) der ISO 19005-3,
-  geprueft auf den rohen Syntax-Tatsachen von LandrixEInvoicePdfSyntax und
-  den Objekten des Dokuments. Die Regeln tragen die Nummern des
+  DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
+  (Annotationen), 6.4 (interaktive Formulare) und 6.5 (Aktionen) der ISO
+  19005-3, geprueft auf den rohen Syntax-Tatsachen von
+  LandrixEInvoicePdfSyntax und den Objekten des Dokuments. Die Regeln tragen die Nummern des
   veraPDF-Pruefprofils ("6.1.2-1": Abschnitt und Testnummer; die Befund-ID ist
   "PDFA-6.1.2-1"), damit sich Ergebnisse Regel fuer Regel mit veraPDF
   vergleichen lassen. Ein Register sagt fuer jede Regel, wie weit sie umgesetzt
@@ -37,7 +42,11 @@
   beweist nichts; prc_None-Regeln werden nicht geprueft. Geprueft wird die
   lebende Objektmenge der Objekttabelle (auch Objekte ohne Verweis und
   komprimierte), der neueste Trailer und jeder Abschnitt der xref-Kette;
-  aeltere Fassungen von Objekten werden nicht beurteilt. }
+  aeltere Fassungen von Objekten werden nicht beurteilt. Annotationen,
+  Aktionen und Formularfelder werden dort gefunden, wo veraPDF sie findet:
+  die /Annots der Seiten, die Aktionen von /A, der benannten /AA-Ereignisse,
+  eines Dictionary-/OpenAction, von Gliederungseintraegen und ihren
+  /Next-Ketten, die AcroForm-/Fields mit Kindern, die /T haben. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -55,15 +64,18 @@ uses
   LandrixEInvoicePdfSyntax;
 
 type
-  { The rules of clause 6.1 in the veraPDF profile PDF/A-3B, named after
-    clause and test number.
-    DE: Die Regeln von Abschnitt 6.1 im veraPDF-Profil PDF/A-3B, benannt nach
-    Abschnitt und Testnummer. }
+  { The rules of clauses 6.1 and 6.3 to 6.5 in the veraPDF profile PDF/A-3B,
+    named after clause and test number.
+    DE: Die Regeln der Abschnitte 6.1 und 6.3 bis 6.5 im veraPDF-Profil
+    PDF/A-3B, benannt nach Abschnitt und Testnummer. }
   TLandrixEInvoicePdfARule = (
     par_6_1_2_1, par_6_1_2_2, par_6_1_3_1, par_6_1_3_2, par_6_1_3_3, par_6_1_4_2, par_6_1_6_1, par_6_1_6_2,
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
     par_6_1_12_1, par_6_1_12_2, par_6_1_13_1, par_6_1_13_2, par_6_1_13_3, par_6_1_13_4, par_6_1_13_5,
-    par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11);
+    par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11,
+    par_6_3_1_1, par_6_3_2_1, par_6_3_2_2, par_6_3_3_1, par_6_3_3_2, par_6_3_3_3, par_6_3_3_4,
+    par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
+    par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2);
 
   { How far a rule is implemented: in its whole scope, in part of it, not
     at all.
@@ -99,9 +111,8 @@ type
     Detail: string;
   end;
 
-  { Checks the rules of clause 6.1 on a document and its facts.
-    DE: Prueft die Regeln von Abschnitt 6.1 an einem Dokument und seinen
-    Tatsachen. }
+  { Checks the rules on a document and its facts.
+    DE: Prueft die Regeln an einem Dokument und seinen Tatsachen. }
   TLandrixEInvoicePdfARuleCheck = class(TObject)
   private
     FResults: array[TLandrixEInvoicePdfARule] of TLandrixEInvoicePdfARuleResult;
@@ -115,11 +126,15 @@ type
     FTrailerTo: Integer;
     FMaxReal: Double;
     FMinReal: Double;
+    { 2^63: /F values from here on are saturated }
+    FInt64Limit: Double;
     { rules whose scope could not be walked to the end (a limit, no
       catalog, objects without envelope) }
     FIncomplete: array[TLandrixEInvoicePdfARule] of Boolean;
-    { pages and form fields walked }
+    { pages and form fields walked for clause 6.1; annotations, actions,
+      fields and outline items walked for stage B }
     FNodes: Integer;
+    FNodesB: Integer;
     procedure Reset;
     procedure Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource;
       APos: Integer; const ADetail: string);
@@ -140,6 +155,19 @@ type
     procedure CheckFields(AField: TLandrixEInvoicePdfObject; const AInheritedType: AnsiString; ADepth: Integer);
     procedure CheckPages(ANode, AMediaBox, ACropBox: TLandrixEInvoicePdfObject; ADepth: Integer);
     procedure CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string);
+    procedure MarkStageB;
+    function Where(AObj: TLandrixEInvoicePdfObject): string;
+    procedure FailAt(ARule: TLandrixEInvoicePdfARule; AObj: TLandrixEInvoicePdfObject; const ADetail: string);
+    function Known(ADict: TLandrixEInvoicePdfObject; const AKey: AnsiString): Boolean;
+    function FieldType(AAnnot: TLandrixEInvoicePdfObject; out AType: AnsiString): Boolean;
+    procedure CheckAnnot(AAnnot: TLandrixEInvoicePdfObject);
+    procedure CheckEvents(AAA: TLandrixEInvoicePdfObject; const AEvents: array of AnsiString);
+    function StageBBudget(ADepth: Integer): Boolean;
+    procedure CheckAction(AAction: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure CheckForm;
+    procedure CheckFormField(AField: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure CheckCatalogActions;
+    procedure CheckOutline(AItem: TLandrixEInvoicePdfObject; ADepth: Integer);
   public
     constructor Create;
     { Checks every implemented rule. ADoc was loaded with AFacts as receiver
@@ -216,11 +244,37 @@ const
     (Number: '6.1.13-8'; Coverage: prc_None; Text: 'q/Q pairs are nested at most 28 levels deep'),
     (Number: '6.1.13-9'; Coverage: prc_None; Text: 'A DeviceN colour space has at most 32 colourants'),
     (Number: '6.1.13-10'; Coverage: prc_None; Text: 'CID values are at most 65535'),
-    (Number: '6.1.13-11'; Coverage: prc_Full; Text: 'Page boundaries are between 3 and 14400 units in each direction'));
+    (Number: '6.1.13-11'; Coverage: prc_Full; Text: 'Page boundaries are between 3 and 14400 units in each direction'),
+    (Number: '6.3.1-1'; Coverage: prc_Full;
+      Text: 'Only annotation types of ISO 32000-1 except 3D, Sound, Screen and Movie'),
+    (Number: '6.3.2-1'; Coverage: prc_Full; Text: 'Every annotation except Popup has the flags /F'),
+    (Number: '6.3.2-2'; Coverage: prc_Full;
+      Text: 'Annotation flags: Print set; Invisible, Hidden, NoView and ToggleNoView clear'),
+    (Number: '6.3.3-1'; Coverage: prc_Full;
+      Text: 'An annotation has an appearance dictionary (except Popup, Link and empty rectangles)'),
+    (Number: '6.3.3-2'; Coverage: prc_Full; Text: 'An appearance dictionary holds only the key N'),
+    (Number: '6.3.3-3'; Coverage: prc_Full;
+      Text: 'The N appearance of a button widget is a subdictionary of appearance streams'),
+    (Number: '6.3.3-4'; Coverage: prc_Full; Text: 'The N appearance of any other annotation is a stream'),
+    (Number: '6.4.1-1'; Coverage: prc_Full; Text: 'A widget annotation has no /A and no /AA'),
+    (Number: '6.4.1-2'; Coverage: prc_Full; Text: 'A form field has no /AA'),
+    (Number: '6.4.1-3'; Coverage: prc_Full; Text: 'NeedAppearances is absent or false'),
+    (Number: '6.4.2-1'; Coverage: prc_Full; Text: 'The interactive form has no /XFA'),
+    (Number: '6.4.2-2'; Coverage: prc_Full; Text: 'The catalog has no NeedsRendering true'),
+    (Number: '6.4.3-1'; Coverage: prc_None; Text: 'A signature digest covers the whole file except the signature'),
+    (Number: '6.4.3-2'; Coverage: prc_None; Text: 'The PKCS#7 signature holds the signing certificate'),
+    (Number: '6.4.3-3'; Coverage: prc_None; Text: 'The PKCS#7 signature has one SignerInfo'),
+    (Number: '6.5.1-1'; Coverage: prc_Full;
+      Text: 'Only the actions GoTo, GoToR, GoToE, Thread, URI, Named and SubmitForm'),
+    (Number: '6.5.1-2'; Coverage: prc_Full; Text: 'Only the named actions NextPage, PrevPage, FirstPage and LastPage'),
+    (Number: '6.5.2-1'; Coverage: prc_Full; Text: 'The catalog has no additional actions /AA'),
+    (Number: '6.5.2-2'; Coverage: prc_Full; Text: 'A page has no additional actions /AA'));
 
   { most pages and AcroForm fields walked together }
   MaxNodes = 200000;
   MaxTreeDepth = 64;
+  { longest /Parent chain of a form field followed }
+  MaxParentChain = 1024;
 
 function LandrixEInvoicePdfARuleNumber(ARule: TLandrixEInvoicePdfARule): string;
 begin
@@ -282,6 +336,7 @@ begin
   { built at run time: literals of this size lose precision as Extended }
   FMaxReal := FloatOf('3.403e38');
   FMinReal := FloatOf('1.175e-38');
+  FInt64Limit := FloatOf('9223372036854775808');
   Reset;
 end;
 
@@ -301,6 +356,7 @@ begin
     FIncomplete[R] := False;
   end;
   FNodes := 0;
+  FNodesB := 0;
   FLive := nil;
   FLiveCount := 0;
   FLiveByNum := nil;
@@ -450,12 +506,17 @@ begin
   if FFacts.InUseCount > 8388607 then
     Fail(par_6_1_13_7, -1, -1, pss_File, -1, IntToStr(FFacts.InUseCount) + ' indirect objects');
   if FDoc.Catalog <> nil then
-    CheckPages(FDoc.DGet(FDoc.Catalog, 'Pages'), nil, nil, 0)
+  begin
+    CheckPages(FDoc.DGet(FDoc.Catalog, 'Pages'), nil, nil, 0);
+    CheckForm;
+    CheckCatalogActions;
+  end
   else
   begin
     FIncomplete[par_6_1_12_1] := True;
     FIncomplete[par_6_1_12_2] := True;
     FIncomplete[par_6_1_13_11] := True;
+    MarkStageB;
   end;
 
   for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
@@ -865,19 +926,22 @@ end;
 procedure TLandrixEInvoicePdfARuleCheck.CheckPages(ANode, AMediaBox, ACropBox: TLandrixEInvoicePdfObject;
   ADepth: Integer);
 var
-  Kids, Box, Media, Crop, TypeObj: TLandrixEInvoicePdfObject;
+  Kids, Box, Media, Crop, TypeObj, Annots, A: TLandrixEInvoicePdfObject;
   I: Integer;
 begin
-  { a page tree node that does not resolve leaves boxes unchecked }
+  { a page tree node that does not resolve leaves boxes, annotations and
+    page actions unchecked }
   if (ANode = nil) or not ANode.IsDictLike then
   begin
     FIncomplete[par_6_1_13_11] := True;
+    MarkStageB;
     Exit;
   end;
   Inc(FNodes);
   if (ADepth > MaxTreeDepth) or (FNodes > MaxNodes) then
   begin
     FIncomplete[par_6_1_13_11] := True;
+    MarkStageB;
     Exit;
   end;
   Media := AMediaBox;
@@ -902,6 +966,435 @@ begin
   CheckBox(FDoc.DGet(ANode, 'BleedBox'), 'BleedBox');
   CheckBox(FDoc.DGet(ANode, 'TrimBox'), 'TrimBox');
   CheckBox(FDoc.DGet(ANode, 'ArtBox'), 'ArtBox');
+  { 6.5.2-2 and the page events O and C; the annotations of the page }
+  if Known(ANode, 'AA') then
+    FailAt(par_6_5_2_2, ANode, 'page with /AA');
+  CheckEvents(FDoc.DGet(ANode, 'AA'), ['O', 'C']);
+  Annots := FDoc.DGet(ANode, 'Annots');
+  if (Annots <> nil) and (Annots.Kind = pok_Arr) then
+    for I := 0 to Annots.ArrCount - 1 do
+    begin
+      A := FDoc.Resolve(Annots.ArrItem(I));
+      if (A <> nil) and A.IsDictLike then
+        CheckAnnot(A);
+    end;
+end;
+
+{ The rules of 6.3 to 6.5 cannot all be checked: a limit or a broken
+  catalog or page tree. }
+procedure TLandrixEInvoicePdfARuleCheck.MarkStageB;
+var
+  R: TLandrixEInvoicePdfARule;
+begin
+  for R := par_6_3_1_1 to par_6_5_2_2 do
+    FIncomplete[R] := True;
+end;
+
+{ Where an object is: the indirect object it belongs to. }
+function TLandrixEInvoicePdfARuleCheck.Where(AObj: TLandrixEInvoicePdfObject): string;
+begin
+  if (AObj <> nil) and (AObj.OwnerNum >= 0) then
+    Result := 'object ' + IntToStr(AObj.OwnerNum)
+  else
+    Result := 'an object';
+end;
+
+procedure TLandrixEInvoicePdfARuleCheck.FailAt(ARule: TLandrixEInvoicePdfARule; AObj: TLandrixEInvoicePdfObject;
+  const ADetail: string);
+begin
+  if (AObj <> nil) and (AObj.OwnerNum >= 0) then
+    Fail(ARule, AObj.OwnerNum, AObj.OwnerGen, pss_File, -1, Where(AObj) + ': ' + ADetail)
+  else
+    Fail(ARule, -1, -1, pss_File, -1, ADetail);
+end;
+
+{ A key is present as veraPDF sees it: a direct null counts as absent.
+  DE: Ein Schluessel ist vorhanden, wie veraPDF es sieht: ein direktes null
+  zaehlt als fehlend. }
+function TLandrixEInvoicePdfARuleCheck.Known(ADict: TLandrixEInvoicePdfObject; const AKey: AnsiString): Boolean;
+var
+  V: TLandrixEInvoicePdfObject;
+begin
+  Result := False;
+  if (ADict = nil) or not ADict.IsDictLike then
+    Exit;
+  V := ADict.RawGet(AKey);
+  Result := (V <> nil) and (V.Kind <> pok_Null);
+end;
+
+{ The field type of a widget: its own /FT or the first one up its /Parent
+  chain; a /FT that is no name ends the search with none. False if the chain
+  is longer than MaxParentChain (a cycle): the type is unknown.
+  DE: Der Feldtyp eines Widgets: sein eigenes /FT oder das erste die
+  /Parent-Kette hinauf; ein /FT, das kein Name ist, beendet die Suche ohne
+  Ergebnis. False, wenn die Kette laenger als MaxParentChain ist (ein
+  Zyklus): der Typ ist unbekannt. }
+function TLandrixEInvoicePdfARuleCheck.FieldType(AAnnot: TLandrixEInvoicePdfObject; out AType: AnsiString): Boolean;
+var
+  Node, FT: TLandrixEInvoicePdfObject;
+  Depth: Integer;
+begin
+  AType := '';
+  Result := True;
+  Node := AAnnot;
+  Depth := 0;
+  while (Node <> nil) and Node.IsDictLike do
+  begin
+    if Depth > MaxParentChain then
+    begin
+      Result := False;
+      Exit;
+    end;
+    if Known(Node, 'FT') then
+    begin
+      FT := FDoc.DGet(Node, 'FT');
+      if (FT <> nil) and (FT.Kind = pok_Name) then
+        AType := FT.NameVal;
+      Exit;
+    end;
+    Node := FDoc.DGet(Node, 'Parent');
+    Inc(Depth);
+  end;
+end;
+
+{ One more node of stage B; False (and the stage B rules incomplete) beyond
+  the depth limit or the node budget.
+  DE: Ein weiterer Knoten von Stufe B; False (und die Regeln von Stufe B
+  unvollstaendig) jenseits der Tiefengrenze oder des Knotenbudgets. }
+function TLandrixEInvoicePdfARuleCheck.StageBBudget(ADepth: Integer): Boolean;
+begin
+  Inc(FNodesB);
+  Result := (ADepth <= MaxTreeDepth) and (FNodesB <= MaxNodes);
+  if not Result then
+    MarkStageB;
+end;
+
+{ 6.3 and 6.4.1-1 on one annotation of a page, and its actions.
+  DE: 6.3 und 6.4.1-1 an einer Annotation einer Seite und ihre Aktionen. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckAnnot(AAnnot: TLandrixEInvoicePdfObject);
+const
+  Allowed: array[0..21] of AnsiString = ('Text', 'Link', 'FreeText', 'Line', 'Square', 'Circle', 'Polygon',
+    'PolyLine', 'Highlight', 'Underline', 'Squiggly', 'StrikeOut', 'Stamp', 'Caret', 'Ink', 'Popup',
+    'FileAttachment', 'Widget', 'PrinterMark', 'TrapNet', 'Watermark', 'Redact');
+var
+  Sub, FObj, Rect, O, AP, N, Entry, V: TLandrixEInvoicePdfObject;
+  Subtype, APKeys, NType, FT: AnsiString;
+  Flags: Int64;
+  HasFlags, HasRect, Ok, Appearances: Boolean;
+  R: array[0..3] of Double;
+  I, Count, K: Integer;
+  TypeKnown, Seen: Boolean;
+begin
+  if not StageBBudget(0) then
+    Exit;
+  Subtype := '';
+  Sub := FDoc.DGet(AAnnot, 'Subtype');
+  if (Sub <> nil) and (Sub.Kind = pok_Name) then
+    Subtype := Sub.NameVal;
+  Ok := False;
+  for I := 0 to High(Allowed) do
+    if Subtype = Allowed[I] then
+      Ok := True;
+  if not Ok then
+    FailAt(par_6_3_1_1, AAnnot, 'annotation type ' + AsciiText(Subtype));
+
+  { /F as veraPDF reads it: a number truncated toward zero (saturated to the
+    64-bit range), anything else none
+    DE: /F, wie veraPDF es liest: eine Zahl, zur Null hin abgeschnitten (auf
+    den 64-Bit-Bereich begrenzt), alles andere keines }
+  HasFlags := False;
+  Flags := 0;
+  FObj := FDoc.DGet(AAnnot, 'F');
+  if Known(AAnnot, 'F') and (FObj <> nil) and (FObj.Kind = pok_Num) then
+  begin
+    HasFlags := True;
+    if FObj.NumVal >= FInt64Limit then
+      Flags := High(Int64)
+    else if FObj.NumVal <= -FInt64Limit then
+      Flags := Low(Int64)
+    else
+      Flags := Trunc(FObj.NumVal);
+  end;
+  if (Subtype <> 'Popup') and not HasFlags then
+    FailAt(par_6_3_2_1, AAnnot, AsciiText(Subtype) + ' annotation without /F');
+  if HasFlags and not (((Flags and 1) = 0) and ((Flags and 2) = 0) and ((Flags and 4) = 4) and ((Flags and 32) = 0) and
+    ((Flags and 256) = 0)) then
+    FailAt(par_6_3_2_2, AAnnot, 'annotation flags ' + IntToStr(Flags));
+
+  { the rectangle: x2 - x1 and y2 - y1 without absolute value; an element
+    that is no number makes it unknown
+    DE: das Rechteck: x2 - x1 und y2 - y1 ohne Betrag; ein Element, das keine
+    Zahl ist, macht es unbekannt }
+  HasRect := False;
+  Rect := FDoc.DGet(AAnnot, 'Rect');
+  if (Rect <> nil) and (Rect.Kind = pok_Arr) and (Rect.ArrCount >= 4) then
+  begin
+    HasRect := True;
+    Count := Rect.ArrCount;
+    for I := 0 to Count - 1 do
+    begin
+      O := FDoc.Resolve(Rect.ArrItem(I));
+      if (O = nil) or (O.Kind <> pok_Num) then
+        HasRect := False
+      else if I <= 3 then
+        R[I] := O.NumVal;
+    end;
+  end;
+
+  { the appearance dictionary: its keys joined with & ('' if empty; a key
+    written twice counts once), none if /AP is no dictionary
+    DE: das Erscheinungs-Dictionary: seine Schluessel mit & verbunden (''
+    wenn leer; ein doppelt geschriebener Schluessel zaehlt einmal), keines,
+    wenn /AP kein Dictionary ist }
+  AP := FDoc.DGet(AAnnot, 'AP');
+  if (AP <> nil) and (AP.Kind <> pok_Dict) then
+    AP := nil;
+  APKeys := '';
+  if AP <> nil then
+    for I := 0 to Integer(AP.DVals.Count) - 1 do
+      if Known(AP, AP.DKeys[I]) then
+      begin
+        Seen := False;
+        for K := 0 to I - 1 do
+          if AP.DKeys[K] = AP.DKeys[I] then
+            Seen := True;
+        if Seen then
+          Continue;
+        if APKeys <> '' then
+          APKeys := APKeys + '&';
+        APKeys := APKeys + AP.DKeys[I];
+      end;
+  if (AP = nil) and (Subtype <> 'Popup') and (Subtype <> 'Link') and
+    not (HasRect and (R[2] - R[0] = 0) and (R[3] - R[1] = 0)) then
+    FailAt(par_6_3_3_1, AAnnot, AsciiText(Subtype) + ' annotation without appearance');
+  if (AP <> nil) and (APKeys <> 'N') then
+    FailAt(par_6_3_3_2, AAnnot, 'appearance keys ' + AsciiText(APKeys));
+  if (AP <> nil) and (APKeys = 'N') then
+  begin
+    NType := '';
+    N := FDoc.DGet(AP, 'N');
+    if N <> nil then
+      if N.Kind = pok_Stream then
+        NType := 'Stream'
+      else if N.Kind = pok_Dict then
+        NType := 'Dict';
+    { the first appearance of N, D, R: a stream, or a subdictionary with at
+      least one stream
+      DE: die erste Erscheinung von N, D, R: ein Stream oder ein
+      Unter-Dictionary mit mindestens einem Stream }
+    Appearances := False;
+    Entry := nil;
+    if Known(AP, 'N') then
+      Entry := FDoc.DGet(AP, 'N')
+    else if Known(AP, 'D') then
+      Entry := FDoc.DGet(AP, 'D')
+    else if Known(AP, 'R') then
+      Entry := FDoc.DGet(AP, 'R');
+    if Entry <> nil then
+      if Entry.Kind = pok_Stream then
+        Appearances := True
+      else if Entry.Kind = pok_Dict then
+        for I := 0 to Integer(Entry.DVals.Count) - 1 do
+        begin
+          V := FDoc.DGet(Entry, Entry.DKeys[I]);
+          if (V <> nil) and (V.Kind = pok_Stream) then
+            Appearances := True;
+        end;
+    FT := '';
+    TypeKnown := True;
+    if Subtype = 'Widget' then
+      TypeKnown := FieldType(AAnnot, FT);
+    if not TypeKnown then
+    begin
+      FIncomplete[par_6_3_3_3] := True;
+      FIncomplete[par_6_3_3_4] := True;
+    end
+    else
+    begin
+      if (Subtype = 'Widget') and (FT = 'Btn') and not ((NType = 'Dict') and Appearances) then
+        FailAt(par_6_3_3_3, AAnnot, 'button widget without appearance subdictionary');
+      if not ((Subtype = 'Widget') and (FT = 'Btn')) and (NType <> 'Stream') then
+        FailAt(par_6_3_3_4, AAnnot, AsciiText(Subtype) + ' annotation whose N appearance is no stream');
+    end;
+  end;
+
+  if (Subtype = 'Widget') and (Known(AAnnot, 'A') or Known(AAnnot, 'AA')) then
+    FailAt(par_6_4_1_1, AAnnot, 'widget with /A or /AA');
+  { an action is a dictionary; a stream is none
+    DE: eine Aktion ist ein Dictionary; ein Stream ist keine }
+  O := FDoc.DGet(AAnnot, 'A');
+  if (O <> nil) and (O.Kind = pok_Dict) then
+    CheckAction(O, 0);
+  CheckEvents(FDoc.DGet(AAnnot, 'AA'), ['E', 'X', 'D', 'U', 'Fo', 'Bl', 'PO', 'PC', 'PV', 'PI']);
+end;
+
+{ The actions of the named events of an additional-actions dictionary.
+  DE: Die Aktionen der benannten Ereignisse eines Zusatzaktionen-
+  Dictionarys. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckEvents(AAA: TLandrixEInvoicePdfObject; const AEvents: array of AnsiString);
+var
+  I: Integer;
+  A: TLandrixEInvoicePdfObject;
+begin
+  if (AAA = nil) or not AAA.IsDictLike then
+    Exit;
+  for I := 0 to Integer(Length(AEvents)) - 1 do
+  begin
+    A := FDoc.DGet(AAA, AEvents[I]);
+    if (A <> nil) and (A.Kind = pok_Dict) then
+      CheckAction(A, 0);
+  end;
+end;
+
+{ 6.5.1 on an action and its /Next chain (a dictionary or an array).
+  DE: 6.5.1 an einer Aktion und ihrer /Next-Kette (ein Dictionary oder ein
+  Array). }
+procedure TLandrixEInvoicePdfARuleCheck.CheckAction(AAction: TLandrixEInvoicePdfObject; ADepth: Integer);
+const
+  Allowed: array[0..6] of AnsiString = ('GoTo', 'GoToR', 'GoToE', 'Thread', 'URI', 'Named', 'SubmitForm');
+  Named: array[0..3] of AnsiString = ('NextPage', 'PrevPage', 'FirstPage', 'LastPage');
+var
+  S, N, Next, A: TLandrixEInvoicePdfObject;
+  Kind, Name: AnsiString;
+  I: Integer;
+  Ok: Boolean;
+begin
+  if not StageBBudget(ADepth) then
+    Exit;
+  Kind := '';
+  S := FDoc.DGet(AAction, 'S');
+  if (S <> nil) and (S.Kind = pok_Name) then
+    Kind := S.NameVal;
+  Ok := False;
+  for I := 0 to High(Allowed) do
+    if Kind = Allowed[I] then
+      Ok := True;
+  if not Ok then
+    FailAt(par_6_5_1_1, AAction, 'action ' + AsciiText(Kind));
+  if Kind = 'Named' then
+  begin
+    Name := '';
+    N := FDoc.DGet(AAction, 'N');
+    if (N <> nil) and (N.Kind = pok_Name) then
+      Name := N.NameVal;
+    Ok := False;
+    for I := 0 to High(Named) do
+      if Name = Named[I] then
+        Ok := True;
+    if not Ok then
+      FailAt(par_6_5_1_2, AAction, 'named action ' + AsciiText(Name));
+  end;
+  Next := FDoc.DGet(AAction, 'Next');
+  if Next = nil then
+    Exit;
+  if Next.Kind = pok_Dict then
+    CheckAction(Next, ADepth + 1)
+  else if Next.Kind = pok_Arr then
+    for I := 0 to Next.ArrCount - 1 do
+    begin
+      A := FDoc.Resolve(Next.ArrItem(I));
+      if (A <> nil) and (A.Kind = pok_Dict) then
+        CheckAction(A, ADepth + 1);
+    end;
+end;
+
+{ 6.4.1-3, 6.4.2-1 and the form fields (6.4.1-2, their actions).
+  DE: 6.4.1-3, 6.4.2-1 und die Formularfelder (6.4.1-2, ihre Aktionen). }
+procedure TLandrixEInvoicePdfARuleCheck.CheckForm;
+var
+  Form, NA, Fields, F: TLandrixEInvoicePdfObject;
+  I: Integer;
+begin
+  Form := FDoc.DGet(FDoc.Catalog, 'AcroForm');
+  if (Form = nil) or not Form.IsDictLike then
+    Exit;
+  { a boolean counts as it is, any other value as true }
+  if Known(Form, 'NeedAppearances') then
+  begin
+    NA := FDoc.DGet(Form, 'NeedAppearances');
+    if (NA = nil) or (NA.Kind <> pok_Bool) or NA.BoolVal then
+      FailAt(par_6_4_1_3, Form, 'NeedAppearances');
+  end;
+  if Known(Form, 'XFA') then
+    FailAt(par_6_4_2_1, Form, 'interactive form with /XFA');
+  Fields := FDoc.DGet(Form, 'Fields');
+  if (Fields <> nil) and (Fields.Kind = pok_Arr) then
+    for I := 0 to Fields.ArrCount - 1 do
+    begin
+      F := FDoc.Resolve(Fields.ArrItem(I));
+      if (F <> nil) and F.IsDictLike then
+        CheckFormField(F, 0);
+    end;
+end;
+
+{ A form field: 6.4.1-2, the events K, F, V, C; kids with /T are fields.
+  DE: Ein Formularfeld: 6.4.1-2, die Ereignisse K, F, V, C; Kinder mit /T
+  sind Felder. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckFormField(AField: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  Kids, K: TLandrixEInvoicePdfObject;
+  I: Integer;
+begin
+  if not StageBBudget(ADepth) then
+    Exit;
+  if Known(AField, 'AA') then
+    FailAt(par_6_4_1_2, AField, 'form field with /AA');
+  CheckEvents(FDoc.DGet(AField, 'AA'), ['K', 'F', 'V', 'C']);
+  Kids := FDoc.DGet(AField, 'Kids');
+  if (Kids <> nil) and (Kids.Kind = pok_Arr) then
+    for I := 0 to Kids.ArrCount - 1 do
+    begin
+      K := FDoc.Resolve(Kids.ArrItem(I));
+      if (K <> nil) and K.IsDictLike and Known(K, 'T') then
+        CheckFormField(K, ADepth + 1);
+    end;
+end;
+
+{ 6.4.2-2, 6.5.2-1 and the actions of the catalog (a dictionary
+  /OpenAction, the events WC, WS, DS, WP, DP) and of the outline.
+  DE: 6.4.2-2, 6.5.2-1 und die Aktionen des Katalogs (ein Dictionary-
+  /OpenAction, die Ereignisse WC, WS, DS, WP, DP) und der Gliederung. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckCatalogActions;
+var
+  Cat, NR, Open, Outlines: TLandrixEInvoicePdfObject;
+begin
+  Cat := FDoc.Catalog;
+  { NeedsRendering false is allowed; true or another value is not }
+  if Known(Cat, 'NeedsRendering') then
+  begin
+    NR := FDoc.DGet(Cat, 'NeedsRendering');
+    if (NR = nil) or (NR.Kind <> pok_Bool) or NR.BoolVal then
+      FailAt(par_6_4_2_2, Cat, 'catalog with NeedsRendering');
+  end;
+  if Known(Cat, 'AA') then
+    FailAt(par_6_5_2_1, Cat, 'catalog with /AA');
+  CheckEvents(FDoc.DGet(Cat, 'AA'), ['WC', 'WS', 'DS', 'WP', 'DP']);
+  Open := FDoc.DGet(Cat, 'OpenAction');
+  if (Open <> nil) and (Open.Kind = pok_Dict) then
+    CheckAction(Open, 0);
+  Outlines := FDoc.DGet(Cat, 'Outlines');
+  if (Outlines <> nil) and Outlines.IsDictLike then
+    CheckOutline(FDoc.DGet(Outlines, 'First'), 0);
+end;
+
+{ The outline items from AItem on: /A of each, down /First, along /Next.
+  DE: Die Gliederungseintraege ab AItem: /A eines jeden, abwaerts ueber
+  /First, weiter ueber /Next. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckOutline(AItem: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  Item, A: TLandrixEInvoicePdfObject;
+begin
+  Item := AItem;
+  while (Item <> nil) and Item.IsDictLike do
+  begin
+    if not StageBBudget(ADepth) then
+      Exit;
+    A := FDoc.DGet(Item, 'A');
+    if (A <> nil) and (A.Kind = pok_Dict) then
+      CheckAction(A, 0);
+    CheckOutline(FDoc.DGet(Item, 'First'), ADepth + 1);
+    Item := FDoc.DGet(Item, 'Next');
+  end;
 end;
 
 procedure TLandrixEInvoicePdfARuleCheck.CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string);
