@@ -1,5 +1,5 @@
 {
-  "comment": "Downloads of addons/java-tools/install-tools.ps1. Every file is pinned by URL and SHA-256; to update a tool, change url, file and sha256 together. dir is relative to addons/java-tools; strip removes that many leading folders when unpacking.",
+  "comment": "Downloads of addons/java-tools/install-tools.ps1. Every file is pinned by URL and SHA-256; to update a tool, change url, file and sha256 together. dir is relative to addons/java-tools; strip removes that many leading folders when unpacking; izpack runs that installer unattended with only the packs in select (veraPDF; it must come after the jre entries).",
   "tools": [
     {
       "name": "validator",
@@ -123,6 +123,20 @@
       "file": "commonmark.js",
       "sha256": "4d124568b8d4490df72fea8aa0f9a144c5b581b0de0eb63d3a996104b2797edc",
       "dir": "commonmark"
+    },
+    {
+      "name": "verapdf",
+      "url": "https://software.verapdf.org/releases/1.30/verapdf-greenfield-1.30.4-installer.zip",
+      "file": "verapdf-greenfield-1.30.4-installer.zip",
+      "sha256": "04415ef3f149526a3048b9889723e81320ddf013bd891bcc7f0f297f3eadcc23",
+      "dir": "verapdf",
+      "izpack": {
+        "installer": "verapdf-greenfield-1.30.4/verapdf-izpack-installer-1.30.4.jar",
+        "packs": ["veraPDF GUI", "veraPDF CLI", "veraPDF Documentation", "veraPDF Sample Plugins"],
+        "select": ["veraPDF CLI"],
+        "check": "bin/cli-1.30.4.jar",
+        "version": "veraPDF 1.30.4"
+      }
     }
   ]
 }

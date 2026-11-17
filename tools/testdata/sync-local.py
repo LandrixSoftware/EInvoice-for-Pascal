@@ -27,6 +27,10 @@ Corpora:
                 (May 2026 release), which the validator compiles when it
                 loads (tests/data/local/kosit/peppol); its EN16931 rules are
                 the en16931-ubl of kosit-rules
+  verapdf       the veraPDF test corpus 1.30.4 (CC BY 4.0) for PDF/A-2 and
+                PDF/A-3: PDF_A-2b, PDF_A-2u, PDF_A-3b and the TWG files for
+                parts 2 and 3, paths kept (tests/data/local/verapdf); the
+                oracle is tools/pdfcheck/verapdf-oracle.py
 
 Usage:
   python tools/testdata/sync-local.py [--docs <folder>]            copy and verify
@@ -85,6 +89,14 @@ SOURCES = {
         "flatten": False,
         "exclude": [],
         "target": "kosit/peppol",
+    },
+    "verapdf": {
+        "root": "PDF-A/veraPDF-corpus-1.30.4",
+        "keep_paths": True,
+        "include": ["README.md", "PDF_A-2b/*.pdf", "PDF_A-2u/*.pdf", "PDF_A-3b/*.pdf",
+                    "TWG test files/*-pdfa2-*.pdf", "TWG test files/*-pdfa3-*.pdf"],
+        "exclude": [],
+        "target": "verapdf",
     },
 }
 

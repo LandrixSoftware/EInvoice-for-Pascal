@@ -28,6 +28,7 @@ platform, into the same folder if it is shared.
 | `jre/<os>-<arch>/` | Eclipse Temurin 21 JRE: `windows-x64`, `windows-aarch64`, `linux-x64`, `linux-aarch64`, `macos-aarch64` |
 | `qpdf/<os>-<arch>/` | qpdf 12.4.2 (`bin/qpdf.exe`), `windows-x64` and `windows-aarch64` for `tools/pdfcheck/pdf-oracle.py`; on Linux and macOS the oracle uses `qpdf` from the `PATH` (the release archives unpack there without the executable bit) |
 | `commonmark/` | commonmark.js 0.31.2 (the CommonMark reference implementation, BSD license, one bundled file) for `tools/render/md-oracle.py`, run with Node.js |
+| `verapdf/` | veraPDF 1.30.4, command line only (`bin/cli-1.30.4.jar`; GPLv3+ or MPLv2+), the PDF/A reference for `tools/pdfcheck/verapdf-oracle.py`; the script runs its IzPack installer unattended with the Java runtime above |
 | `download/` | downloaded files (cache) |
 
 `tools.json` pins every download by URL and SHA-256; the script refuses a file with another

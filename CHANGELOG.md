@@ -7,6 +7,15 @@ Supported invoice standards are documented per release.
 
 ## [Unreleased]
 
+### Added
+- PDF/A oracle (preparation of the native PDF/A-3b check, level 1 of the PDF checker):
+  `addons/java-tools/install-tools.ps1` installs the veraPDF 1.30.4 command line (its IzPack
+  installer unattended, the command line pack only), `tools/testdata/sync-local.py` the veraPDF
+  test corpus 1.30.4 for PDF/A-2 and -3 (corpus `verapdf`, 1,072 PDFs, CC BY 4.0), and
+  `tools/pdfcheck/verapdf-oracle.py` checks the corpus against veraPDF under each file's own
+  profile and writes `tests/data/verapdf-expected.txt`: the PDF/A-3b result of every corpus file
+  and invoice PDF, the target of the native check.
+
 ## [0.9.0-beta.2] - 2026-11-17
 
 Second pre-release: the KoSIT originals (report and visualization) with the XSLT engine of
