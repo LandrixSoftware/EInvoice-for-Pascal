@@ -16,9 +16,9 @@ Eine kommerzielle Lizenz wird je Unternehmen verkauft, das Anwendungen mit EInvo
 Sie kostet einmalig 950,00 EUR zuzüglich Umsatzsteuer je Unternehmen. Die Lizenz umfasst alle künftigen Versionen
 von EInvoice-for-Pascal; kostenpflichtige Upgrades gibt es nicht.
 
-Unternehmen, die bis einschließlich 15. November 2026 eine kommerzielle Lizenz für XRechnung-for-Delphi erworben
-haben, dürfen EInvoice-for-Pascal ohne weitere Zahlung unter dieser Lizenz verwenden. Für später erworbene Lizenzen
-für XRechnung-for-Delphi gilt das nicht.
+Die kommerzielle Lizenz gilt für EInvoice-for-Pascal und XRechnung-for-Delphi
+(https://github.com/LandrixSoftware/XRechnung-for-Delphi) gemeinsam: Unternehmen mit einer kommerziellen Lizenz für
+eine der beiden Bibliotheken dürfen auch die andere ohne weitere Zahlung unter deren kommerzieller Lizenz verwenden.
 
 Bitte fordern Sie per E-Mail an info@landrix.de eine Rechnung an; sie enthält die Bankverbindung.
 
@@ -56,9 +56,9 @@ A commercial licence is sold per company developing applications that use EInvoi
 The cost is 950,00 EUR plus VAT per company, paid once. The licence covers all future versions
 of EInvoice-for-Pascal; there are no paid upgrades.
 
-Companies that acquired a commercial licence for XRechnung-for-Delphi on or before 15 November 2026 may use
-EInvoice-for-Pascal under this licence without further payment. This does not apply to licences for
-XRechnung-for-Delphi acquired later.
+The commercial licence covers EInvoice-for-Pascal and XRechnung-for-Delphi
+(https://github.com/LandrixSoftware/XRechnung-for-Delphi) together: companies holding a commercial licence for
+either library may also use the other one under its commercial licence without further payment.
 
 Please send an e-mail to info@landrix.de to request an invoice which will contain the bank details.
 
