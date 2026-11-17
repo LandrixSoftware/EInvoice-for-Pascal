@@ -13,11 +13,12 @@ Die kommerzielle Lizenz für EInvoice-for-Pascal gibt Ihnen das Recht,
 - beliebig viele Anwendungen in beliebiger Stückzahl zu verkaufen, ohne dass zusätzliche Laufzeitgebühren anfallen.
 
 Eine kommerzielle Lizenz wird je Unternehmen verkauft, das Anwendungen mit EInvoice-for-Pascal entwickelt.
-Sie kostet einmalig 750,00 EUR zuzüglich Umsatzsteuer je Unternehmen. Die Lizenz umfasst alle künftigen Versionen
+Sie kostet einmalig 950,00 EUR zuzüglich Umsatzsteuer je Unternehmen. Die Lizenz umfasst alle künftigen Versionen
 von EInvoice-for-Pascal; kostenpflichtige Upgrades gibt es nicht.
 
-Unternehmen mit einer kommerziellen Lizenz für XRechnung-for-Delphi dürfen EInvoice-for-Pascal ohne weitere Zahlung
-unter dieser Lizenz verwenden.
+Unternehmen, die bis einschließlich 15. November 2026 eine kommerzielle Lizenz für XRechnung-for-Delphi erworben
+haben, dürfen EInvoice-for-Pascal ohne weitere Zahlung unter dieser Lizenz verwenden. Für später erworbene Lizenzen
+für XRechnung-for-Delphi gilt das nicht.
 
 Bitte fordern Sie per E-Mail an info@landrix.de eine Rechnung an; sie enthält die Bankverbindung.
 
@@ -52,11 +53,12 @@ The commercial license for EInvoice-for-Pascal gives you the right to:
 - sell any number of applications in any quantity without any additional run-time fees required
 
 A commercial licence is sold per company developing applications that use EInvoice-for-Pascal.
-The cost is 750,00 EUR plus VAT per company, paid once. The licence covers all future versions
+The cost is 950,00 EUR plus VAT per company, paid once. The licence covers all future versions
 of EInvoice-for-Pascal; there are no paid upgrades.
 
-Companies holding a commercial licence for XRechnung-for-Delphi may use EInvoice-for-Pascal
-under this licence without further payment.
+Companies that acquired a commercial licence for XRechnung-for-Delphi on or before 15 November 2026 may use
+EInvoice-for-Pascal under this licence without further payment. This does not apply to licences for
+XRechnung-for-Delphi acquired later.
 
 Please send an e-mail to info@landrix.de to request an invoice which will contain the bank details.
 
