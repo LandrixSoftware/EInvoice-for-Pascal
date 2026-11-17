@@ -28,7 +28,8 @@ program XsltProbe;
     XsltProbe visualize <xsl-folder> <output-folder> [-en] <xml>...
       runs the XRechnung visualization (LandrixEInvoiceKositVisualization,
       German unless -en) and writes <output-folder>/<name>.xr.xml and
-      <name>.html; prints "ok <name>" or the error.
+      <name>.html; prints "ok <name>" or the error. Used by
+      tools/kosit/viz-oracle.py.
   Exit code 0 when everything worked, 1 otherwise. }
 
 {$I LandrixEInvoice.inc}

@@ -25,6 +25,11 @@ Supported invoice standards are documented per release.
   (engine, time, reference, parser messages and location forms masked); suite, Peppol BIS,
   ZUGFeRD and the generated corpus agree. The KoSIT validator 1.6.3 hashes only the first bytes
   of some documents; the oracle checks the hash against the file.
+- `tools/kosit/viz-oracle.py` compares `LandrixEInvoiceKositVisualization` (through
+  `XsltProbe visualize`) with Saxon byte for byte: XR form and HTML page, German and English.
+  The 99 test instances of the visualization and the KoSIT test suite agree, and so do the
+  1,096 local UBL and CII examples; 17 of them are refused by both engines (an error raised by
+  the stylesheet).
 - `addons/kosit/install-kosit.ps1`: module `visualization` (KoSIT XRechnung visualization
   2026-01-31).
 - Workbench: buttons for the KoSIT report and the KoSIT visualization.
@@ -38,6 +43,8 @@ Supported invoice standards are documented per release.
   text. Rules compiled from `.sch` at run time (Peppol BIS, ZUGFeRD) drop static text that is
   only white space between `value-of` parts, as SchXslt does, so a few messages lose a space.
   `addons/kosit/install-kosit.ps1` downloads the rule files from that tag.
+- The probes `FieldMapProbe`, `ValidatorProbe`, `MarkdownProbe`, `CIICodeProbe` and
+  `RuleCheckProbe` carry the licence header like every other source.
 
 ## [0.9.0-beta.1] - 2026-11-13
 

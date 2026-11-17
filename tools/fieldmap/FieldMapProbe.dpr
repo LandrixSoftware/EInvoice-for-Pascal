@@ -1,3 +1,17 @@
+{
+  EInvoice-for-Pascal
+
+  Copyright (C) 2026 Landrix Software GmbH & Co. KG
+
+  This file is dual-licensed under:
+  - GNU GPL version 3 or later; or
+  - the Landrix Software Commercial License.
+
+  See LICENSE and COMMERCIAL-LICENSE.md.
+
+  SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
+}
+
 program FieldMapProbe;
 
 { Reads CII files, maps them to TLandrixInvoice and prints every diagnostic
