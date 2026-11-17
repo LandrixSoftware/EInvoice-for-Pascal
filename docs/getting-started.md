@@ -15,10 +15,12 @@ the units are added to the search path.
    git clone --recurse-submodules https://github.com/LandrixSoftware/EInvoice-for-Pascal.git
    ```
 
-   In an existing clone: `git submodule update --init`. A ZIP download from GitHub does not
-   contain the submodule: then download
-   [LandrixXML for Pascal](https://github.com/landrix/LandrixXML-for-Pascal) in the version the
-   submodule names (`git submodule status`, or the link on GitHub) into
+   In an existing clone: `git submodule update --init`. GitHub's own source archives do not
+   contain the submodule. From 0.9.0-beta.2 on, every
+   [release](https://github.com/LandrixSoftware/EInvoice-for-Pascal/releases) carries a complete
+   ZIP instead (`EInvoice-for-Pascal-<version>.zip`, LandrixXML in `external/landrix-xml`).
+   Otherwise download [LandrixXML for Pascal](https://github.com/landrix/LandrixXML-for-Pascal) in
+   the version the submodule names (`git submodule status`, or the link on GitHub) into
    `external/landrix-xml`.
 
 2. Add two folders to the search path of your project:

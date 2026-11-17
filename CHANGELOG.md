@@ -7,6 +7,12 @@ Supported invoice standards are documented per release.
 
 ## [Unreleased]
 
+## [0.9.0-beta.2] - 2026-11-17
+
+Second pre-release: the KoSIT originals (report and visualization) with the XSLT engine of
+LandrixXML 0.5.0, and a release ZIP that contains the submodule. Supported invoice standards
+are those of 0.9.0-beta.1.
+
 ### Added
 - The KoSIT originals with the XSLT engine of LandrixXML (preview, `API: internal`):
   `LandrixEInvoiceKositReportInput` writes the KoSIT report input (`in:createReportInput`, with the
@@ -754,5 +760,6 @@ Free Pascal 3.2.2 and later. LandrixXML 0.4.0.
   (checked on every local corpus document and every model mutation with one and two items per list, both languages,
   with and without business terms).
 
-[Unreleased]: https://github.com/LandrixSoftware/EInvoice-for-Pascal/compare/v0.9.0-beta.1...HEAD
+[Unreleased]: https://github.com/LandrixSoftware/EInvoice-for-Pascal/compare/v0.9.0-beta.2...HEAD
+[0.9.0-beta.2]: https://github.com/LandrixSoftware/EInvoice-for-Pascal/compare/v0.9.0-beta.1...v0.9.0-beta.2
 [0.9.0-beta.1]: https://github.com/LandrixSoftware/EInvoice-for-Pascal/releases/tag/v0.9.0-beta.1

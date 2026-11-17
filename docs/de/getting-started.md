@@ -15,8 +15,10 @@ Units kommen in den Suchpfad.
    git clone --recurse-submodules https://github.com/LandrixSoftware/EInvoice-for-Pascal.git
    ```
 
-   In einem bestehenden Klon: `git submodule update --init`. Ein ZIP-Download von GitHub
-   enthält das Submodul nicht: dann
+   In einem bestehenden Klon: `git submodule update --init`. Die Quellarchive von GitHub
+   enthalten das Submodul nicht. Ab 0.9.0-beta.2 hängt deshalb an jedem
+   [Release](https://github.com/LandrixSoftware/EInvoice-for-Pascal/releases) ein vollständiges
+   ZIP (`EInvoice-for-Pascal-<version>.zip`, LandrixXML in `external/landrix-xml`). Sonst
    [LandrixXML for Pascal](https://github.com/landrix/LandrixXML-for-Pascal) in der Version, die
    das Submodul nennt (`git submodule status` oder der Link auf GitHub), nach
    `external/landrix-xml` laden.
