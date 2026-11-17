@@ -105,11 +105,12 @@ type
     { Names: bytes as written after the slash. DE: Namen: Bytes wie
       geschrieben nach dem Schraegstrich. }
     RawLength: Integer;
-    { Hexadecimal strings: hex digits and whether other characters than hex
-      digits and white space occur.
-      DE: Hexadezimale Strings: Hex-Ziffern und ob andere Zeichen als
-      Hex-Ziffern und Leerraum vorkommen. }
-    HexDigits: Integer;
+    { Hexadecimal strings: characters other than white space (hex digits or
+      not) and whether other characters than hex digits and white space
+      occur.
+      DE: Hexadezimale Strings: Zeichen ausser Leerraum (Hex-Ziffern oder
+      nicht) und ob andere Zeichen als Hex-Ziffern und Leerraum vorkommen. }
+    HexChars: Integer;
     HexInvalid: Boolean;
     { Names: a # not followed by two hex digits. DE: Namen: ein #, dem keine
       zwei Hex-Ziffern folgen. }
@@ -131,11 +132,11 @@ type
     { Start of the data. DE: Beginn der Daten. }
     DataStart: Integer;
     { The endstream that ends the data (-1 if none) and the line end
-      between the data and it: where /Length says if endstream follows
+      right before it: where /Length says if endstream follows
       there (LengthEnd), else the first endstream after the data (also
       when /Length is missing or cannot be resolved).
       DE: Das endstream, das die Daten beendet (-1, wenn keines), und das
-      Zeilenende zwischen den Daten und ihm: dort, wo /Length es sagt, wenn
+      Zeilenende direkt davor: dort, wo /Length es sagt, wenn
       dort endstream folgt (LengthEnd), sonst das erste endstream nach den
       Daten (auch, wenn /Length fehlt oder sich nicht aufloesen laesst). }
     EndstreamPos: Integer;
@@ -187,7 +188,7 @@ type
     procedure BeginObject(ANum, AGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource); override;
     procedure EndObject; override;
     procedure NumberToken(APos: Integer; AIsInteger: Boolean; AValue: Double); override;
-    procedure StringToken(APos, ALength: Integer; AHex: Boolean; AHexDigits: Integer; AHexInvalid: Boolean); override;
+    procedure StringToken(APos, ALength: Integer; AHex: Boolean; AHexChars: Integer; AHexInvalid: Boolean); override;
     procedure NameToken(APos, ARawLength, ALength: Integer; ABadEscape: Boolean); override;
     procedure StreamToken(AStream: TLandrixEInvoicePdfObject; AKeywordPos: Integer; AKeywordEol: TLandrixEInvoicePdfEol;
       ADataStart, AEndstreamPos: Integer; AEndstreamEol: TLandrixEInvoicePdfEol); override;
@@ -338,7 +339,7 @@ begin
   FTokens[Result].Value := 0;
   FTokens[Result].Length := 0;
   FTokens[Result].RawLength := 0;
-  FTokens[Result].HexDigits := 0;
+  FTokens[Result].HexChars := 0;
   FTokens[Result].HexInvalid := False;
   FTokens[Result].BadEscape := False;
 end;
@@ -355,7 +356,7 @@ begin
     FTokens[I].Value := AValue;
 end;
 
-procedure TLandrixEInvoicePdfSyntaxFacts.StringToken(APos, ALength: Integer; AHex: Boolean; AHexDigits: Integer;
+procedure TLandrixEInvoicePdfSyntaxFacts.StringToken(APos, ALength: Integer; AHex: Boolean; AHexChars: Integer;
   AHexInvalid: Boolean);
 var
   I: Integer;
@@ -367,7 +368,7 @@ begin
   if I < 0 then
     Exit;
   FTokens[I].Length := ALength;
-  FTokens[I].HexDigits := AHexDigits;
+  FTokens[I].HexChars := AHexChars;
   FTokens[I].HexInvalid := AHexInvalid;
 end;
 

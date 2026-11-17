@@ -1,0 +1,4 @@
+# Accepted differences of PdfA.VeraPdf (tests/LandrixEInvoiceTestPdfSyntax.pas) between the native PDF/A rules
+# and veraPDF 1.30.4 (tests/data/verapdf-expected.txt): path relative to tests/data/local<TAB>rule (e.g. 6.1.2-1)
+# <TAB>reason. Only reproduced veraPDF quirks or a deliberate reading of the standard belong here, never a gap of
+# the native implementation. An unused line fails the test.

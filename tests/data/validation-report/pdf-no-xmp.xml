@@ -11,7 +11,7 @@
     <part name="modelCheck" status="failed"/>
     <part name="pdfEmbedding" status="passed"/>
     <part name="pdfMetadata" status="failed"/>
-    <part name="pdfA" status="notRun"/>
+    <part name="pdfA" status="incomplete"/>
   </parts>
   <pdf hybridKind="xrechnung" factsChecked="true" profile="xrechnung" pdfVersion="1.7" invoiceFileName="xrechnung.xml" invoicePath="/Root/Names/EmbeddedFiles/Names[1]" relationship="Alternative"/>
   <findings errors="1" warnings="0" infos="0" predicted="1">

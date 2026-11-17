@@ -212,12 +212,14 @@ type
       ohne Dezimalpunkt geschrieben. }
     procedure NumberToken(APos: Integer; AIsInteger: Boolean; AValue: Double); virtual; abstract;
     { A string: its length in bytes after decoding; for a hexadecimal string
-      also the number of hex digits and whether other characters than hex
-      digits and white space occur.
+      also the number of characters other than white space (hex digits or
+      not) and whether other characters than hex digits and white space
+      occur.
       DE: Ein String: seine Laenge in Bytes nach dem Dekodieren; bei einem
-      hexadezimalen String auch die Anzahl der Hex-Ziffern und ob andere
+      hexadezimalen String auch die Anzahl der Zeichen ausser Leerraum
+      (Hex-Ziffern oder nicht) und ob andere
       Zeichen als Hex-Ziffern und Leerraum vorkommen. }
-    procedure StringToken(APos, ALength: Integer; AHex: Boolean; AHexDigits: Integer; AHexInvalid: Boolean);
+    procedure StringToken(APos, ALength: Integer; AHex: Boolean; AHexChars: Integer; AHexInvalid: Boolean);
       virtual; abstract;
     { A name (also a dictionary key): the bytes after the slash as written
       and after expanding #xx; ABadEscape: a # not followed by two hex
@@ -264,13 +266,13 @@ type
     procedure Unobserved(APos: Integer; const AText: string); virtual; abstract;
     { The data of the stream AStream, reported last by StreamToken, end
       where its /Length says: endstream follows there (after white space)
-      at AEndstreamPos, AEndstreamEol is the line end between the data and
-      it. Without this call the end is the first endstream after the data,
+      at AEndstreamPos, AEndstreamEol is the line end right before it (as in
+      the file, also when /Length counts it to the data). Without this call the end is the first endstream after the data,
       which may lie inside the data.
       DE: Die Daten des Streams AStream, zuletzt von StreamToken gemeldet,
       enden dort, wo sein /Length es sagt: dort folgt (nach Leerraum)
-      endstream an AEndstreamPos, AEndstreamEol ist das Zeilenende zwischen
-      den Daten und ihm. Ohne diesen Aufruf ist das Ende das erste endstream
+      endstream an AEndstreamPos, AEndstreamEol ist das Zeilenende direkt
+      davor (wie in der Datei, auch wenn /Length es zu den Daten zaehlt). Ohne diesen Aufruf ist das Ende das erste endstream
       nach den Daten, das auch in den Daten liegen kann. }
     procedure StreamEndByLength(AStream: TLandrixEInvoicePdfObject; AEndstreamPos: Integer;
       AEndstreamEol: TLandrixEInvoicePdfEol); virtual; abstract;
@@ -2174,7 +2176,10 @@ begin
     if V < 0 then
     begin
       if not IsPdfWhite(FBuf[FPos - 1]) then
+      begin
         Invalid := True;
+        Inc(Digits);
+      end;
       Continue;
     end;
     Inc(Digits);
@@ -3635,7 +3640,7 @@ begin
   if not MatchAt(FBuf, E, 'endstream') then
     Exit;
   ALex.Pos := E + 9;
-  FSyntax.StreamEndByLength(AObj, E, EolBeforeEndstream(FBuf, E, DataEnd));
+  FSyntax.StreamEndByLength(AObj, E, EolBeforeEndstream(FBuf, E, AObj.StreamPos));
 end;
 
 { The indirect object at AOfs read while the xref chain is followed (an

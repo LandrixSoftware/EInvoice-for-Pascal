@@ -13,7 +13,13 @@
 }
 
 { Checks of a hybrid invoice PDF (ZUGFeRD 2.5.2 / Factur-X 1.09.2), levels
-  2 and 3. Level 2, the embedding of the invoice XML: the business rules for hybrid
+  1 to 3. Level 1, PDF/A-3b: the rules of clause 6.1 (file structure) of
+  LandrixEInvoicePdfARules on the raw syntax collected while the document
+  loads; findings PDFA-<clause>-<test> (veraPDF numbering) with paths that
+  start with "PDF/A ". Not every rule of PDF/A-3b is implemented, so level 1
+  is eps_Failed on a violation and eps_Incomplete otherwise, never
+  eps_Passed. It runs last and not when the XMP claims PDF/A-4 (its rules
+  are not implemented). Level 2, the embedding of the invoice XML: the business rules for hybrid
   documents of the specification (annex 3.d) BR-HYBRID-12 (embedding
   method, a collective rule: several findings share it), BR-HYBRID-13 (file
   name) and BR-HYBRID-11 (/AFRelationship, without profile and country only
@@ -40,7 +46,14 @@
   has its own status; ZUGFeRD 1.0 and 2.0 leave level 3 eps_Incomplete.
 
   DE: Pruefungen eines hybriden Rechnungs-PDFs (ZUGFeRD 2.5.2 / Factur-X
-  1.09.2), Ebenen 2 und 3. Ebene 2, die Einbettung der Rechnungs-XML: die
+  1.09.2), Ebenen 1 bis 3. Ebene 1, PDF/A-3b: die Regeln von Abschnitt 6.1
+  (Dateistruktur) aus LandrixEInvoicePdfARules auf der rohen Syntax, die
+  beim Laden gesammelt wird; Befunde PDFA-<Abschnitt>-<Test>
+  (veraPDF-Nummerierung) mit Pfaden, die mit "PDF/A " beginnen. Nicht jede
+  Regel von PDF/A-3b ist umgesetzt, darum ist Ebene 1 bei einem Verstoss
+  eps_Failed und sonst eps_Incomplete, nie eps_Passed. Sie laeuft zuletzt
+  und nicht, wenn das XMP PDF/A-4 behauptet (dessen Regeln sind nicht
+  umgesetzt). Ebene 2, die Einbettung der Rechnungs-XML: die
   Geschaeftsregeln fuer hybride Dokumente der Spezifikation (Anhang 3.d)
   BR-HYBRID-12 (Einbettungsmethode, eine Sammelregel: mehrere Befunde
   teilen sie), BR-HYBRID-13 (Dateiname) und BR-HYBRID-11
@@ -204,13 +217,16 @@ type
   end;
 
   { Runs the checks: level 2, then level 3 when level 2 found a Factur-X or
-    XRechnung invoice. Both entries clear AResult first and return the
+    XRechnung invoice, then level 1 (PDF/A-3b, not for a PDF/A-4 claim; also
+    for a PDF that cannot be decrypted). Both entries clear AResult first and return the
     number of errors (findings with eds_Error) of all levels, as
     TLandrixEInvoice.Check does. The stream variant reads AStream from its
     position to the end. A PDF that cannot be read is a finding (LX-PDF-01);
     EOutOfMemory is passed on.
     DE: Fuehrt die Pruefungen aus: Ebene 2, dann Ebene 3, wenn Ebene 2 eine
-    Factur-X- oder XRechnung-Rechnung gefunden hat. Beide Einstiege leeren
+    Factur-X- oder XRechnung-Rechnung gefunden hat, dann Ebene 1 (PDF/A-3b,
+    nicht bei einer PDF/A-4-Angabe; auch fuer ein PDF, das sich nicht
+    entschluesseln laesst). Beide Einstiege leeren
     AResult zuerst und liefern die Anzahl der Fehler (Befunde mit
     eds_Error) aller Ebenen, wie TLandrixEInvoice.Check. Die Stream-Variante
     liest AStream ab seiner Position bis zum Ende. Ein PDF, das sich nicht
@@ -245,7 +261,9 @@ uses
   LandrixXmlBase,
   LandrixXmlReader,
   LandrixEInvoicePdf,
-  LandrixEInvoicePdfObjects;
+  LandrixEInvoicePdfObjects,
+  LandrixEInvoicePdfSyntax,
+  LandrixEInvoicePdfARules;
 
 const
   RuleEmbedding = 'BR-HYBRID-12';
@@ -1836,6 +1854,68 @@ begin
   D.RuleID := ARule;
 end;
 
+{ Level 1: the PDF/A-3b rules of clause 6.1 on the facts AFacts collected
+  while ADoc loaded. A violation gives eps_Failed; without one the level is
+  eps_Incomplete, as not every rule is implemented. An exception leaves it
+  eps_Incomplete with a warning.
+  DE: Ebene 1: die PDF/A-3b-Regeln von Abschnitt 6.1 auf den Tatsachen
+  AFacts, die beim Laden von ADoc gesammelt wurden. Ein Verstoss ergibt
+  eps_Failed; ohne einen ist die Ebene eps_Incomplete, weil nicht jede
+  Regel umgesetzt ist. Eine Ausnahme laesst sie eps_Incomplete mit einer
+  Warnung. }
+procedure CheckPdfA(ADoc: TLandrixEInvoicePdfDocument; AFacts: TLandrixEInvoicePdfSyntaxFacts;
+  AResult: TLandrixEInvoicePdfCheckResult);
+var
+  Rules: TLandrixEInvoicePdfARuleCheck;
+  R: TLandrixEInvoicePdfARule;
+  Res: TLandrixEInvoicePdfARuleResult;
+  Path, Msg: string;
+begin
+  AResult.Status[epl_PdfA] := eps_Incomplete;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    try
+      AFacts.Inspect(ADoc);
+      Rules.Check(ADoc, AFacts);
+    except
+      on E: Exception do
+      begin
+        if E is EOutOfMemory then
+          raise;
+        AddFindingAt(AResult, RuleUnreadable, eds_Warning, 'PDF/A file', ToText('PDF/A check not completed: ' +
+          E.Message));
+        Exit;
+      end;
+    end;
+    for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+    begin
+      Res := Rules.RuleResult(R);
+      if Res.Outcome <> pro_Failed then
+        Continue;
+      if Res.ObjNum >= 0 then
+      begin
+        Path := 'PDF/A object ' + IntToStr(Res.ObjNum) + ' ' + IntToStr(Res.ObjGen);
+        if Res.Source = pss_ObjectStream then
+          Path := Path + ' (object stream)';
+      end
+      else if Res.Pos >= 0 then
+        Path := 'PDF/A byte ' + IntToStr(Res.Pos)
+      else
+        Path := 'PDF/A file';
+      Msg := 'PDF/A-3b ' + LandrixEInvoicePdfARuleNumber(R) + ': ' + LandrixEInvoicePdfARuleText(R);
+      if Res.Detail <> '' then
+        Msg := Msg + '; ' + Res.Detail;
+      if Res.Failures > 1 then
+        Msg := Msg + ' (' + IntToStr(Res.Failures) + ' times)';
+      AddFindingAt(AResult, ToText(LandrixEInvoicePdfARuleId(R)), eds_Error, ToText(Path), ToText(Msg));
+    end;
+    if Rules.AnyFailed then
+      AResult.Status[epl_PdfA] := eps_Failed;
+  finally
+    Rules.Free;
+  end;
+end;
+
 function LevelStatus(AErrors: Integer; AIncomplete: Boolean): TLandrixEInvoicePdfLevelStatus;
 begin
   if AErrors > 0 then
@@ -1849,6 +1929,7 @@ end;
 function TLandrixEInvoicePdfChecker.CheckStream(AStream: TStream; AResult: TLandrixEInvoicePdfCheckResult): Integer;
 var
   Doc: TLandrixEInvoicePdfDocument;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
   Check: TEmbeddingCheck;
   Meta: TMetadataCheck;
   Err: string;
@@ -1866,8 +1947,11 @@ begin
     Result := 1;
     Exit;
   end;
+  { the facts live longer than the document, which reports to them }
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
   Doc := TLandrixEInvoicePdfDocument.Create;
   try
+    Doc.Syntax := Facts;
     try
       if not Doc.Load(AStream, Err) then
       begin
@@ -1890,7 +1974,9 @@ begin
     if Doc.CryptError <> '' then
     begin
       AddFinding(AResult, RuleUnreadable, eds_Error, ToText('PDF not readable: ' + Doc.CryptError));
-      Result := 1;
+      { the file structure is readable without the key }
+      CheckPdfA(Doc, Facts, AResult);
+      Result := CountErrors(AResult.Diagnostics);
       Exit;
     end;
     AResult.CatalogVersion := AnsiToText(Doc.CatalogVersion);
@@ -1942,8 +2028,15 @@ begin
       AResult.Status[epl_Metadata] := LevelStatus(CountErrors(AResult.Diagnostics) - Errors,
         Incomplete or MetaIncomplete);
     end;
+    { level 1 last, so that levels 2 and 3 count only their own errors; the
+      rules of PDF/A-4 are not implemented
+      DE: Ebene 1 zuletzt, damit die Ebenen 2 und 3 nur ihre eigenen Fehler
+      zaehlen; die Regeln von PDF/A-4 sind nicht umgesetzt }
+    if AResult.PdfAPart <> '4' then
+      CheckPdfA(Doc, Facts, AResult);
   finally
     Doc.Free;
+    Facts.Free;
   end;
   Result := CountErrors(AResult.Diagnostics);
 end;

@@ -743,12 +743,14 @@ begin
     AWithBuyerReference), TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), AWithXmp);
 end;
 
-procedure CheckPdfStatus(R: TLandrixEInvoiceDocumentValidation; AEmbedding, AMetadata: TLandrixEInvoicePartStatus;
-  const AName: string);
+{ APdfA: the status of PDF/A (level 1); without a violation it is
+  incomplete, as not every PDF/A rule is implemented }
+procedure CheckPdfStatus(R: TLandrixEInvoiceDocumentValidation; AEmbedding, AMetadata,
+  APdfA: TLandrixEInvoicePartStatus; const AName: string);
 begin
   CheckEquals(Ord(AEmbedding), Ord(R.Status[evp_PdfEmbedding]), AName + ': embedding status');
   CheckEquals(Ord(AMetadata), Ord(R.Status[evp_PdfMetadata]), AName + ': metadata status');
-  CheckEquals(Ord(evr_NotRun), Ord(R.Status[evp_PdfA]), AName + ': PDF/A not run');
+  CheckEquals(Ord(APdfA), Ord(R.Status[evp_PdfA]), AName + ': PDF/A status');
   CheckValidationReport(R, AName);
 end;
 
@@ -1013,7 +1015,7 @@ begin
   try
     { without KoSIT: levels 2 and 3 pass, so no verdict }
     CheckEquals(Ord(ev_Incomplete), Ord(ValidateBytes(DV, XRechnungPdf(True, True), R)), 'good PDF verdict');
-    CheckPdfStatus(R, evr_Passed, evr_Passed, 'good PDF');
+    CheckPdfStatus(R, evr_Passed, evr_Passed, evr_Incomplete, 'good PDF');
     CheckStatus(R, evr_Passed, evr_NotRun, evr_Passed, 'good PDF');
     CheckEqualsStr('', Findings(R), 'good PDF findings');
     Check(R.Pdf <> nil, 'good PDF: PDF result');
@@ -1030,7 +1032,7 @@ begin
     CheckEqualsStr('model:BR-DE-15:error:predicted', Findings(R), 'BR-DE-15 PDF findings');
     { no XMP: level 3 fails, rejected without KoSIT }
     CheckEquals(Ord(ev_Rejected), Ord(ValidateBytes(DV, XRechnungPdf(True, False), R)), 'no XMP verdict');
-    CheckPdfStatus(R, evr_Passed, evr_Failed, 'no XMP');
+    CheckPdfStatus(R, evr_Passed, evr_Failed, evr_Incomplete, 'no XMP');
     CheckEqualsStr('xmp:LX-PDF-11:error', Findings(R), 'no XMP findings');
     { an XRechnung named factur-x.xml: the second pass fails level 2 }
     Doc := BuildHybridPdf('factur-x.xml', InvoiceBytes(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), True),
@@ -1049,12 +1051,12 @@ begin
     end;
     CheckEquals(Ord(ev_Incomplete), Ord(ValidateBytes(DV, BuildHybridPdf('factur-x.xml', Doc,
       TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), True), R)), 'no invoice verdict');
-    CheckPdfStatus(R, evr_Incomplete, evr_Passed, 'no invoice');
+    CheckPdfStatus(R, evr_Incomplete, evr_Passed, evr_Incomplete, 'no invoice');
     CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no invoice');
     CheckEqualsStr('read::error', Findings(R), 'no invoice findings');
     { a PDF that cannot be read: rejected, nothing else runs }
     CheckEquals(Ord(ev_Rejected), Ord(ValidateBytes(DV, '%PDF-1.7'#10'junk', R)), 'broken PDF verdict');
-    CheckPdfStatus(R, evr_Failed, evr_NotRun, 'broken PDF');
+    CheckPdfStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'broken PDF');
     CheckStatus(R, evr_NotRun, evr_NotRun, evr_NotRun, 'broken PDF');
     CheckEqualsStr('pdf:LX-PDF-01:error', Findings(R), 'broken PDF findings');
     { XML again: no PDF result }
@@ -1067,7 +1069,7 @@ begin
     V := NewValidator;
     DV.Options.Configuration := V;
     CheckEquals(Ord(ev_Rejected), Ord(ValidateBytes(DV, XRechnungPdf(True, True), R)), 'KoSIT PDF verdict');
-    CheckPdfStatus(R, evr_Passed, evr_Passed, 'KoSIT PDF');
+    CheckPdfStatus(R, evr_Passed, evr_Passed, evr_Incomplete, 'KoSIT PDF');
     CheckStatus(R, evr_Passed, evr_Failed, evr_Passed, 'KoSIT PDF');
     CheckEqualsStr('kosit::error', Findings(R), 'KoSIT PDF findings');
     CheckEquals(Ord(ev_Rejected), Ord(ValidateBytes(DV, XRechnungPdf(False, False), R)), 'KoSIT no XMP verdict');
@@ -1097,7 +1099,7 @@ begin
   R := TLandrixEInvoiceDocumentValidation.Create;
   try
     CheckEquals(Ord(ev_Accepted), Ord(ValidateBytes(DV, XRechnungPdf(True, True), R)), 'verdict: ' + Findings(R));
-    CheckPdfStatus(R, evr_Passed, evr_Passed, 'accepted PDF');
+    CheckPdfStatus(R, evr_Passed, evr_Passed, evr_Incomplete, 'accepted PDF');
     CheckStatus(R, evr_Passed, evr_Passed, evr_Passed, 'accepted PDF');
     Check(R.ScenarioName <> '', 'accepted PDF: scenario');
     { BR-DE-15: KoSIT rejects, the rule check predicted it }
@@ -1364,7 +1366,7 @@ end;
 
 { Over the local PDF corpus without KoSIT: the PDF findings are those of
   the PDF checker, each in a part that ran; rejected exactly when level 2
-  or 3 failed, never accepted. }
+  or 3 failed (PDF/A, level 1, does not count), never accepted. }
 procedure TestDocumentPdfCorpus;
 var
   Dir: string;
@@ -1398,7 +1400,7 @@ begin
           for I := 0 to R.FindingCount - 1 do
           begin
             Check(R.Status[R[I].Part] <> evr_NotRun, SR.Name + ': finding ' + string(R[I].RuleID) + ' in a part that ran');
-            if R[I].Part in [evp_PdfEmbedding, evp_PdfMetadata] then
+            if R[I].Part in [evp_PdfEmbedding, evp_PdfMetadata, evp_PdfA] then
               Inc(PdfFindings);
           end;
           CheckEquals(Integer(R.Pdf.Diagnostics.Count), PdfFindings, SR.Name + ': PDF findings');

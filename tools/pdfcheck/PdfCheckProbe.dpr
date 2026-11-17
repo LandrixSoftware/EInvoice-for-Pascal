@@ -24,7 +24,11 @@
   With -syntax it also prints the raw syntax facts of LandrixEInvoicePdfSyntax:
   "  syntax<TAB>complete|incomplete<TAB>objects in use<TAB>envelopes<TAB>
   streams<TAB>tokens<TAB>xref sections" and a line "  syntax-problem<TAB>text"
-  per problem. }
+  per problem. With -pdfa it first prints "# pdfa-rule<TAB>number<TAB>full|partial|none"
+  per rule of LandrixEInvoicePdfARules, then per file
+  "  pdfa<TAB>complete|incomplete<TAB>failed rule numbers" (complete: the
+  facts) and "  pdfa-fail<TAB>number<TAB>violations<TAB>first one" per
+  failed rule (tools/pdfcheck/verapdf-oracle.py --native). }
 
 program PdfCheckProbe;
 
@@ -40,6 +44,7 @@ uses
   LandrixEInvoiceTypes,
   LandrixEInvoicePdfObjects,
   LandrixEInvoicePdfSyntax,
+  LandrixEInvoicePdfARules,
   LandrixEInvoiceDiagnostics,
   LandrixEInvoice,
   LandrixEInvoicePdfCheck;
@@ -82,6 +87,7 @@ end;
 var
   FactsDir: string;
   WithSyntax: Boolean;
+  WithPdfA: Boolean;
 
 { PDF names are ASCII: one character per byte. }
 function AnsiText(const S: AnsiString): string;
@@ -162,6 +168,38 @@ begin
   end;
 end;
 
+procedure PrintPdfA(ADoc: TLandrixEInvoicePdfDocument; AFacts: TLandrixEInvoicePdfSyntaxFacts);
+const
+  Done: array[Boolean] of string = ('incomplete', 'complete');
+var
+  Rules: TLandrixEInvoicePdfARuleCheck;
+  R: TLandrixEInvoicePdfARule;
+  Res: TLandrixEInvoicePdfARuleResult;
+  Failed: string;
+begin
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Rules.Check(ADoc, AFacts);
+    Failed := '';
+    for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+      if Rules.RuleResult(R).Outcome = pro_Failed then
+      begin
+        if Failed <> '' then
+          Failed := Failed + ' ';
+        Failed := Failed + LandrixEInvoicePdfARuleNumber(R);
+      end;
+    WriteLn('  pdfa', #9, Done[AFacts.Complete], #9, Failed);
+    for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+    begin
+      Res := Rules.RuleResult(R);
+      if Res.Outcome = pro_Failed then
+        WriteLn('  pdfa-fail', #9, LandrixEInvoicePdfARuleNumber(R), #9, Res.Failures, #9, Res.Detail);
+    end;
+  finally
+    Rules.Free;
+  end;
+end;
+
 procedure PrintSyntax(const AFileName: string);
 const
   Done: array[Boolean] of string = ('incomplete', 'complete');
@@ -182,7 +220,10 @@ begin
         try
           if not Doc.Load(Stream, Err) then
           begin
-            WriteLn('  syntax', #9, 'unreadable', #9, Err);
+            if WithSyntax then
+              WriteLn('  syntax', #9, 'unreadable', #9, Err);
+            if WithPdfA then
+              WriteLn('  pdfa', #9, 'unreadable', #9, Err);
             Exit;
           end;
         finally
@@ -192,14 +233,22 @@ begin
       except
         on E: Exception do
         begin
-          WriteLn('  syntax', #9, 'exception', #9, E.ClassName, ': ', E.Message);
+          if WithSyntax then
+            WriteLn('  syntax', #9, 'exception', #9, E.ClassName, ': ', E.Message);
+          if WithPdfA then
+            WriteLn('  pdfa', #9, 'exception', #9, E.ClassName, ': ', E.Message);
           Exit;
         end;
       end;
-      WriteLn('  syntax', #9, Done[Facts.Complete], #9, Facts.InUseCount, #9, Facts.EnvelopeCount, #9,
-        Facts.StreamCount, #9, Facts.TokenCount, #9, Facts.SectionCount);
-      for I := 0 to Facts.Problems.Count - 1 do
-        WriteLn('  syntax-problem', #9, Facts.Problems[I]);
+      if WithSyntax then
+      begin
+        WriteLn('  syntax', #9, Done[Facts.Complete], #9, Facts.InUseCount, #9, Facts.EnvelopeCount, #9,
+          Facts.StreamCount, #9, Facts.TokenCount, #9, Facts.SectionCount);
+        for I := 0 to Facts.Problems.Count - 1 do
+          WriteLn('  syntax-problem', #9, Facts.Problems[I]);
+      end;
+      if WithPdfA then
+        PrintPdfA(Doc, Facts);
     finally
       Doc.Free;
     end;
@@ -227,25 +276,36 @@ begin
   end;
   if FactsDir <> '' then
     PrintFacts(AFileName);
-  if WithSyntax then
+  if WithSyntax or WithPdfA then
     PrintSyntax(AFileName);
 end;
 
+const
+  CoverageNames: array[TLandrixEInvoicePdfARuleCoverage] of string = ('full', 'partial', 'none');
 var
   Checker: TLandrixEInvoicePdfChecker;
   Result: TLandrixEInvoicePdfCheckResult;
   SR: TSearchRec;
   Dir: string;
   I: Integer;
+  R: TLandrixEInvoicePdfARule;
 begin
   if ParamCount = 0 then
   begin
-    WriteLn('usage: PdfCheckProbe [-facts=DIR] [-syntax] <folder or PDF files>');
+    WriteLn('usage: PdfCheckProbe [-facts=DIR] [-syntax] [-pdfa] <folder or PDF files>');
     ExitCode := 2;
     Exit;
   end;
   FactsDir := '';
   WithSyntax := False;
+  WithPdfA := False;
+  for I := 1 to ParamCount do
+    if ParamStr(I) = '-pdfa' then
+      WithPdfA := True;
+  if WithPdfA then
+    for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+      WriteLn('# pdfa-rule', #9, LandrixEInvoicePdfARuleNumber(R), #9,
+        CoverageNames[LandrixEInvoicePdfARuleCoverage(R)]);
   Checker := TLandrixEInvoicePdfChecker.Create;
   Result := TLandrixEInvoicePdfCheckResult.Create;
   try
@@ -254,6 +314,8 @@ begin
         FactsDir := IncludeTrailingPathDelimiter(Copy(ParamStr(I), 8, MaxInt))
       else if ParamStr(I) = '-syntax' then
         WithSyntax := True
+      else if ParamStr(I) = '-pdfa' then
+        WithPdfA := True
       else if DirectoryExists(ParamStr(I)) then
       begin
         Dir := IncludeTrailingPathDelimiter(ParamStr(I));

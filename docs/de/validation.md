@@ -168,11 +168,14 @@ end.
 
 - `Res.Status[Teil]` je Teil: `evp_Read` (Lesen über die Fassade), `evp_KoSIT`, `evp_ModelCheck`
   (die eigenen Regeln der Bibliothek), `evp_PdfEmbedding` und `evp_PdfMetadata` (PDF-Ebenen 2 und
-  3), `evp_PdfA` (PDF/A, Ebene 1: nicht geprüft).
+  3), `evp_PdfA` (PDF/A-3b, Ebene 1: bisher die Regeln zur Dateistruktur aus Abschnitt 6.1;
+  `evr_Failed` bei einem Verstoß, sonst `evr_Incomplete`, weil nicht jede PDF/A-Regel umgesetzt
+  ist; zählt nicht für das Urteil).
 - `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part`. Befunde der
   eigenen Regeln sind als `Predicted` markiert: Sie sagen voraus, was KoSIT meldet, und ändern das
-  Urteil nie. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD) und LX-PDF-01 bis LX-PDF-11
-  (eigene Prüfungen).
+  Urteil nie. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-01 bis LX-PDF-11
+  (eigene Prüfungen) und PDFA-<Abschnitt>-<Test> (PDF/A, nummeriert wie bei veraPDF, z. B.
+  PDFA-6.1.7.1-1).
 - Peppol BIS: Die Konfiguration hat kein `acceptMatch`, deshalb lehnt jede fehlgeschlagene
   Assertion ab, auch eine Warnung. So entscheidet der KoSIT-Validator; sein HTML-Bericht zeigt
   stattdessen die Bewertung seines Stylesheets, die nur bei Fehlern ablehnt (das Skript

@@ -23,8 +23,9 @@
   predicts what KoSIT would report and never changes it (its findings are
   marked Predicted). Without a configuration an XML document gets no
   verdict (Incomplete), a PDF only a rejection by levels 2 and 3; reading
-  and the rule check still run. PDF/A (level 1) is not checked. One flat
-  list of findings, a status per part.
+  and the rule check still run. PDF/A (level 1, so far the rules of clause
+  6.1) is reported with its findings and status but does not count for the
+  verdict. One flat list of findings, a status per part.
 
   DE: Prueft ein E-Rechnungs-Dokument als Ganzes, XML oder ein hybrides
   PDF (ZUGFeRD, Factur-X; am Inhalt erkannt): den KoSIT-Lauf einer
@@ -38,8 +39,10 @@
   voraus, was KoSIT melden wuerde, und aendert es nie (ihre Befunde sind
   als Predicted markiert). Ohne Konfiguration bekommt ein XML-Dokument
   kein Urteil (Incomplete), ein PDF nur eine Ablehnung durch die Ebenen 2
-  und 3; Lesen und Regelpruefung laufen trotzdem. PDF/A (Ebene 1) wird
-  nicht geprueft. Eine flache Befundliste, ein Status je Teil. }
+  und 3; Lesen und Regelpruefung laufen trotzdem. PDF/A (Ebene 1, bisher
+  die Regeln von Abschnitt 6.1) wird mit Befunden und Status gemeldet,
+  zaehlt aber nicht fuer das Urteil. Eine flache Befundliste, ein Status je
+  Teil. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -74,12 +77,14 @@ type
 
   { The parts of a validation: reading through the facade, the KoSIT run,
     the own rule check (a prediction); for a PDF the embedding of the XML
-    (level 2), the XMP metadata (level 3) and PDF/A (level 1, not
-    implemented: always evr_NotRun).
+    (level 2), the XMP metadata (level 3) and PDF/A (level 1: evr_Failed on a
+    violation, else evr_Incomplete, as not every PDF/A rule is implemented;
+    it does not count for the verdict).
     DE: Die Teile einer Pruefung: Lesen ueber die Fassade, der KoSIT-Lauf,
     die eigene Regelpruefung (eine Vorhersage); bei einem PDF die
     Einbettung der XML (Ebene 2), die XMP-Metadaten (Ebene 3) und PDF/A
-    (Ebene 1, nicht umgesetzt: immer evr_NotRun). }
+    (Ebene 1: evr_Failed bei einem Verstoss, sonst evr_Incomplete, weil
+    nicht jede PDF/A-Regel umgesetzt ist; zaehlt nicht fuer das Urteil). }
   TLandrixEInvoiceValidationPart = (evp_Read, evp_KoSIT, evp_ModelCheck, evp_PdfEmbedding, evp_PdfMetadata,
     evp_PdfA);
 
@@ -913,17 +918,29 @@ begin
   Result := (Copy(APath, 1, 4) = 'XMP ') or (APath = '/Root/Metadata');
 end;
 
+{ The part of a finding of the PDF checker: PDF/A (rule PDFA-... or a path
+  starting with "PDF/A "), the XMP metadata or the embedding. }
+function PdfFindingPart(D: TLandrixEInvoiceDiagnostic): TLandrixEInvoiceValidationPart;
+begin
+  if (Copy(D.RuleID, 1, 5) = 'PDFA-') or (Copy(D.Path, 1, 6) = 'PDF/A ') then
+    Result := evp_PdfA
+  else if IsMetadataFinding(D.Path) then
+    Result := evp_PdfMetadata
+  else
+    Result := evp_PdfEmbedding;
+end;
+
 { A hybrid PDF: levels 2 and 3, then the embedded invoice through KoSIT,
   reading (with the second pass of the PDF checker) and the rule check.
   The verdict: rejected if KoSIT rejects or level 2 or 3 failed;
   incomplete if one of them did not run or is incomplete; accepted
-  otherwise. PDF/A (level 1) is not checked and does not count.
+  otherwise. PDF/A (level 1) is reported and does not count.
   DE: Ein hybrides PDF: Ebenen 2 und 3, dann die eingebettete Rechnung
   durch KoSIT, Lesen (mit dem zweiten Durchgang des PDF-Pruefers) und
   Regelpruefung. Das Urteil: abgelehnt, wenn KoSIT ablehnt oder Ebene 2
   oder 3 fehlschlug; unvollstaendig, wenn eine davon nicht lief oder
-  unvollstaendig ist; sonst angenommen. PDF/A (Ebene 1) wird nicht
-  geprueft und zaehlt nicht mit. }
+  unvollstaendig ist; sonst angenommen. PDF/A (Ebene 1) wird gemeldet und
+  zaehlt nicht mit. }
 procedure TLandrixEInvoiceDocumentValidator.ValidatePdf(AData: TMemoryStream;
   AResult: TLandrixEInvoiceDocumentValidation);
 var
@@ -932,7 +949,8 @@ var
   D: TLandrixEInvoiceDiagnostics;
   First, J: Integer;
   I: TLandrixEInvoiceListIndex;
-  WellFormed, Metadata, KositRan: Boolean;
+  WellFormed, KositRan: Boolean;
+  Part: TLandrixEInvoiceValidationPart;
   KositEnd: Integer;
   Embedding, Meta, Kosit: TLandrixEInvoicePartStatus;
 begin
@@ -958,18 +976,13 @@ begin
   end;
   AResult.FInfo.Source := eso_Pdf;
   AResult.FInfo.PdfAttachmentName := Pdf.InvoiceFileName;
-  { the findings of levels 2 and 3 go first, in this order }
+  { the findings of levels 2, 3 and 1 go first, in this order }
   First := AResult.FindingCount;
   D := Pdf.Diagnostics;
-  for Metadata := False to True do
+  for Part := evp_PdfEmbedding to evp_PdfA do
     for I := 0 to D.Count - 1 do
-      if IsMetadataFinding(D[I].Path) = Metadata then
-        if Metadata then
-          AResult.AddFinding(evp_PdfMetadata, D[I].RuleID, D[I].Severity, D[I].Path, D[I].Line, D[I].Column,
-            D[I].Message)
-        else
-          AResult.AddFinding(evp_PdfEmbedding, D[I].RuleID, D[I].Severity, D[I].Path, D[I].Line, D[I].Column,
-            D[I].Message);
+      if PdfFindingPart(D[I]) = Part then
+        AResult.AddFinding(Part, D[I].RuleID, D[I].Severity, D[I].Path, D[I].Line, D[I].Column, D[I].Message);
   for J := 0 to AResult.FindingCount - First - 1 do
     AResult.FFindings.Move(First + J, J);
   Embedding := PartStatusOf(Pdf.Status[epl_Embedding]);
@@ -980,6 +993,7 @@ begin
   Meta := PartStatusOf(Pdf.Status[epl_Metadata]);
   AResult.FStatus[evp_PdfEmbedding] := Embedding;
   AResult.FStatus[evp_PdfMetadata] := Meta;
+  AResult.FStatus[evp_PdfA] := PartStatusOf(Pdf.Status[epl_PdfA]);
   Kosit := AResult.FStatus[evp_KoSIT];
   if (Embedding = evr_Failed) or (Meta = evr_Failed) or
      (KositRan and (AResult.FVerdict = ev_Rejected)) then

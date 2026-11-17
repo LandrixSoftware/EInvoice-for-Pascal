@@ -18,8 +18,15 @@
   xref chain, a /Prev cycle, a file with an object stream and an xref
   stream, stream ends by /Length, an xref offset on white space, trailer
   tokens, a hybrid file, syntax the parser recovers from and misuse of
-  Inspect. The rules themselves and the comparison with veraPDF come
-  later. }
+  Inspect. PdfA.* checks the clause 6.1 rules of LandrixEInvoicePdfARules: a
+  clean file, one with a violation of every implemented rule, and
+  PdfA.VeraPdf compares the rules with the veraPDF results in
+  tests/data/verapdf-expected.txt over the local corpora (tests/data/local/pdf
+  and tests/data/local/verapdf; skipped without them): no rule may fail that
+  veraPDF passes, and no rule may pass (a full rule on complete facts) that
+  veraPDF fails. PdfA.Limits: a cycle of form fields ends at the node budget
+  and leaves its rule incomplete. Accepted differences are listed in
+  tests/data/pdfa-exceptions.txt (path, rule, reason). }
 
 unit LandrixEInvoiceTestPdfSyntax;
 
@@ -36,6 +43,7 @@ uses
   Classes,
   LandrixEInvoicePdfObjects,
   LandrixEInvoicePdfSyntax,
+  LandrixEInvoicePdfARules,
   LandrixEInvoiceTestFramework;
 
 const
@@ -215,7 +223,7 @@ begin
         Result := Result + ':' + IntToStr(T.Length);
       ptk_HexString:
         begin
-          Result := Result + ':' + IntToStr(T.HexDigits);
+          Result := Result + ':' + IntToStr(T.HexChars);
           if T.HexInvalid then
             Result := Result + '!';
         end;
@@ -320,7 +328,7 @@ begin
       St := Facts.Streams[0];
       CheckEquals(Ord(peo_CR), Ord(St.KeywordEol), 'CR alone after stream');
       CheckEquals(Ord(peo_None), Ord(St.EndstreamEol), 'no line end before endstream');
-      CheckEqualsStr('int:2147483648 hex:2! hex:3 name:3/3!', TokensOf(Facts, 4), 'tokens of object 4');
+      CheckEqualsStr('int:2147483648 hex:3! hex:3 name:3/3!', TokensOf(Facts, 4), 'tokens of object 4');
       CheckEquals(Ord(peo_None), Ord(Facts.Sections[0].KeywordEol), 'a space after xref');
       Check(not Facts.Sections[0].HeaderAfterEol, 'subsection header not right after a line end');
     finally
@@ -792,6 +800,288 @@ begin
   end;
 end;
 
+{ The numbers of the failed rules, separated by spaces. }
+function FailedRules(ARules: TLandrixEInvoicePdfARuleCheck): string;
+var
+  R: TLandrixEInvoicePdfARule;
+begin
+  Result := '';
+  for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+    if ARules.RuleResult(R).Outcome = pro_Failed then
+    begin
+      if Result <> '' then
+        Result := Result + ' ';
+      Result := Result + LandrixEInvoicePdfARuleNumber(R);
+    end;
+end;
+
+function Repeated(C: AnsiChar; ACount: Integer): AnsiString;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, ACount);
+  for I := 1 to ACount do
+    Result[I] := C;
+end;
+
+procedure TestPdfAClean;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+  R: TLandrixEInvoicePdfARule;
+  Res: TLandrixEInvoicePdfARuleResult;
+begin
+  Pdf := BuildPdf(GoodHeader, [Catalog, Pages,
+    '3 0 obj' + LF + '<< /Length 5 /Filter /Crypt >>' + LF + 'stream' + CR + LF + 'hello' + CR + LF + 'endstream' + LF +
+    'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('', FailedRules(Rules), 'failed rules');
+      for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+      begin
+        Res := Rules.RuleResult(R);
+        case LandrixEInvoicePdfARuleCoverage(R) of
+          prc_Full:
+            Check(Res.Outcome = pro_Passed, LandrixEInvoicePdfARuleId(R) + ' passed');
+          prc_Partial:
+            Check(Res.Outcome = pro_Incomplete, LandrixEInvoicePdfARuleId(R) + ' incomplete');
+          prc_None:
+            Check(Res.Outcome = pro_NotChecked, LandrixEInvoicePdfARuleId(R) + ' not checked');
+        end;
+      end;
+      CheckEqualsStr('PDFA-6.1.7.1-1', LandrixEInvoicePdfARuleId(par_6_1_7_1_1), 'rule ID');
+      Check(not Rules.AnyFailed, 'nothing failed');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
+procedure TestPdfAViolations;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+  Res: TLandrixEInvoicePdfARuleResult;
+begin
+  { header %PDF-1.8 without binary comment; 1: /Perms with another key and
+    DocMDP, whose signature 9 has a digest in a reference; 2/5: a page with
+    a 2 x 2 CropBox; 3: CR after stream, wrong /Length, /F, LZWDecode; 4:
+    numbers, strings and names beyond the limits; object 6: two spaces
+    after its number; 7: Crypt without parameters and a CR that /Length
+    counts to the data (both allowed); 8: Crypt with another filter than
+    Identity; xref followed by a space, no /ID, bytes after %%EOF. Not
+    here: 6.1.3-2 (/Encrypt, the corpus has a case) and 6.1.13-7 (more than
+    8388607 objects) }
+  Pdf := BuildPdf('%PDF-1.8' + LF + '%abcd' + LF, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Perms << /DocMDP 9 0 R /Foo 1 >> >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [5 0 R] /Count 1 /MediaBox [0 0 612 792] >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Length 9 /F (x) /Filter /LZWDecode >>' + LF + 'stream' + CR + 'data' + LF + 'endstream' + LF +
+      'endobj' + LF,
+    '4 0 obj' + LF + '[ 2147483648 <414> <4G> 0.' + Repeated('0', 40) + '1 4' + Repeated('0', 39) + '.0 /' +
+      Repeated('A', 128) + ' (' + Repeated('a', 32768) + ') ]' + LF + 'endobj' + LF,
+    '5 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /CropBox [0 0 2 2] >>' + LF + 'endobj' + LF,
+    '6  0 obj' + LF + '<< >>' + LF + 'endobj' + LF,
+    '7 0 obj' + LF + '<< /Length 4 /Filter /Crypt >>' + LF + 'stream' + LF + 'abc' + CR + LF + 'endstream' + LF + 'endobj' + LF,
+    '8 0 obj' + LF + '<< /Length 4 /Filter [/FlateDecode /Crypt] /DecodeParms [null << /Name /Std >>] >>' + LF + 'stream' +
+      LF + 'abcd' + LF + 'endstream' + LF + 'endobj' + LF,
+    '9 0 obj' + LF + '<< /Type /Sig /Reference [ << /Type /SigRef /DigestMethod /MD5 >> ] >>' + LF + 'endobj' + LF],
+    ' ' + LF, '', LF + 'junk');
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.1.2-1 6.1.2-2 6.1.3-1 6.1.3-3 6.1.4-2 6.1.6-1 6.1.6-2 6.1.7.1-1 6.1.7.1-2 6.1.7.1-3 6.1.7.2-1 6.1.9-1 ' +
+        '6.1.12-1 6.1.12-2 6.1.13-1 6.1.13-2 6.1.13-3 6.1.13-4 6.1.13-5 6.1.13-11', FailedRules(Rules), 'failed rules');
+      Res := Rules.RuleResult(par_6_1_7_2_1);
+      CheckEquals(2, Res.Failures, 'LZWDecode and Crypt with Std');
+      CheckEquals(3, Res.ObjNum, 'first filter violation in object 3');
+      Res := Rules.RuleResult(par_6_1_7_1_1);
+      CheckEquals(1, Res.Failures, 'only stream 3 has a wrong /Length');
+      Res := Rules.RuleResult(par_6_1_9_1);
+      CheckEquals(6, Res.ObjNum, 'envelope of object 6');
+      Res := Rules.RuleResult(par_6_1_6_1);
+      CheckEquals(4, Res.ObjNum, 'odd hex string in object 4');
+      Check(Rules.AnyFailed, 'failed');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
+{ Rule numbers of a line "rule rule ..."; '' for none. }
+function HasRule(const AList, ARule: string): Boolean;
+begin
+  Result := Pos(' ' + ARule + ' ', ' ' + AList + ' ') > 0;
+end;
+
+procedure TestPdfALimits;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+begin
+  { field 10 lists itself twice as its kid: without a node budget the walk
+    would take about 2^64 steps }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Perms << /DocMDP 9 0 R >> /AcroForm << /Fields [10 0 R] >> >>' +
+      LF + 'endobj' + LF, Pages,
+    '9 0 obj' + LF + '<< /Type /Sig >>' + LF + 'endobj' + LF,
+    '10 0 obj' + LF + '<< /FT /Sig /Kids [10 0 R 10 0 R] >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('', FailedRules(Rules), 'failed rules');
+      Check(Rules.RuleResult(par_6_1_12_2).Outcome = pro_Incomplete, '6.1.12-2 incomplete at the node budget');
+      Check(Rules.RuleResult(par_6_1_12_1).Outcome = pro_Passed, '6.1.12-1 passed');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
+procedure TestPdfAVeraPdf;
+var
+  Expected, Exceptions, Used: TStringList;
+  Local, Line, Path, ExpectedRules, FileName, Key: string;
+  M: TMemoryStream;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+  R: TLandrixEInvoicePdfARule;
+  Failed: Boolean;
+  I, J, Files, Incomplete, Agree: Integer;
+  Err: string;
+begin
+  Local := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim;
+  if not DirectoryExists(Local + 'pdf') and not DirectoryExists(Local + 'verapdf') then
+  begin
+    Skip('no local PDF corpora (tools/testdata/sync-local.py)');
+    Exit;
+  end;
+  Expected := TStringList.Create;
+  Exceptions := TStringList.Create;
+  Used := TStringList.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Expected.LoadFromFile(RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'verapdf-expected.txt');
+    Exceptions.LoadFromFile(RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'pdfa-exceptions.txt');
+    { an exception: path<TAB>rule<TAB>reason; the key is path<TAB>rule }
+    for I := Exceptions.Count - 1 downto 0 do
+      if (Exceptions[I] = '') or (Exceptions[I][1] = '#') then
+        Exceptions.Delete(I)
+      else
+      begin
+        J := Pos(#9, Exceptions[I]);
+        J := J + Pos(#9, Copy(Exceptions[I], J + 1, MaxInt));
+        Exceptions[I] := Copy(Exceptions[I], 1, J - 1);
+      end;
+    Files := 0;
+    Incomplete := 0;
+    Agree := 0;
+    for I := 0 to Expected.Count - 1 do
+    begin
+      Line := Expected[I];
+      if (Line = '') or (Line[1] = '#') then
+        Continue;
+      J := Pos(#9, Line);
+      Path := Copy(Line, 1, J - 1);
+      { the failed rules are the fifth column }
+      ExpectedRules := Line;
+      for J := 1 to 4 do
+        ExpectedRules := Copy(ExpectedRules, Pos(#9, ExpectedRules) + 1, MaxInt);
+      if Pos(#9, ExpectedRules) > 0 then
+        ExpectedRules := '';
+      FileName := Local + StringReplace(Path, '/', PathDelim, [rfReplaceAll]);
+      if not FileExists(FileName) then
+        Continue;
+      Inc(Files);
+      Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+      Doc := TLandrixEInvoicePdfDocument.Create;
+      M := TMemoryStream.Create;
+      try
+        M.LoadFromFile(FileName);
+        Doc.Syntax := Facts;
+        if not Doc.Load(M, Err) then
+        begin
+          Inc(Incomplete);
+          Continue;
+        end;
+        Facts.Inspect(Doc);
+        Rules.Check(Doc, Facts);
+        if not Facts.Complete then
+          Inc(Incomplete);
+        Failed := False;
+        for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+        begin
+          Key := Path + #9 + LandrixEInvoicePdfARuleNumber(R);
+          if (Rules.RuleResult(R).Outcome = pro_Failed) and not HasRule(ExpectedRules, LandrixEInvoicePdfARuleNumber(R)) then
+          begin
+            if Exceptions.IndexOf(Key) >= 0 then
+              Used.Add(Key)
+            else
+            begin
+              Failed := True;
+              Fail(Path + ': ' + LandrixEInvoicePdfARuleId(R) + ' fails, veraPDF passes it: ' +
+                Rules.RuleResult(R).Detail);
+            end;
+          end;
+          if (Rules.RuleResult(R).Outcome = pro_Passed) and HasRule(ExpectedRules, LandrixEInvoicePdfARuleNumber(R)) then
+          begin
+            if Exceptions.IndexOf(Key) >= 0 then
+              Used.Add(Key)
+            else
+            begin
+              Failed := True;
+              Fail(Path + ': ' + LandrixEInvoicePdfARuleId(R) + ' passes, veraPDF fails it');
+            end;
+          end;
+        end;
+        if not Failed then
+          Inc(Agree);
+      finally
+        M.Free;
+        Doc.Free;
+        Facts.Free;
+      end;
+    end;
+    for I := 0 to Exceptions.Count - 1 do
+      Check(Used.IndexOf(Exceptions[I]) >= 0, 'unused exception ' + Exceptions[I]);
+    Check(Files > 0, 'files of tests/data/verapdf-expected.txt found locally');
+    CheckEquals(Files, Agree, 'files that agree with veraPDF');
+    WriteLn('  PDF/A 6.1 against veraPDF: ', Files, ' files, ', Incomplete, ' with incomplete facts');
+  finally
+    Rules.Free;
+    Used.Free;
+    Exceptions.Free;
+    Expected.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('PdfSyntax.Facts', TestFacts);
@@ -804,6 +1094,10 @@ begin
   RegisterTest('PdfSyntax.Hybrid', TestHybrid);
   RegisterTest('PdfSyntax.Recovery', TestRecovery);
   RegisterTest('PdfSyntax.InspectMisuse', TestInspectMisuse);
+  RegisterTest('PdfA.Clean', TestPdfAClean);
+  RegisterTest('PdfA.Violations', TestPdfAViolations);
+  RegisterTest('PdfA.Limits', TestPdfALimits);
+  RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 
 end.

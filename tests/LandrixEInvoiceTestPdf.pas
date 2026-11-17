@@ -429,7 +429,8 @@ begin
   Result := '<< ' + ADict + ' /Length ' + IntToAnsi(Length(AData)) + ' >>'#10'stream'#10 + AData + #10'endstream';
 end;
 
-{ Appends the xref table of objects 1..ACount-1 and the trailer; returns the
+{ Appends the xref table of objects 1..ACount-1 and the trailer (with a file
+  identifier unless ATrailerExtra has one, as PDF/A asks); returns the
   offset of the table. }
 function Finish(var ABuf: AnsiString; const AOffsets: TPdfOffsets; ACount: Integer;
   const ATrailerExtra: AnsiString): Integer;
@@ -440,12 +441,18 @@ begin
   ABuf := ABuf + 'xref'#10'0 ' + IntToAnsi(ACount) + #10'0000000000 65535 f '#10;
   for I := 1 to ACount - 1 do
     ABuf := ABuf + Pad10(AOffsets[I]) + ' 00000 n '#10;
-  ABuf := ABuf + 'trailer'#10'<< /Size ' + IntToAnsi(ACount) + ' /Root 1 0 R' + ATrailerExtra + ' >>'#10 +
+  if RawPos('/ID', ATrailerExtra) = 0 then
+    ABuf := ABuf + 'trailer'#10'<< /Size ' + IntToAnsi(ACount) + ' /Root 1 0 R /ID [<0102030405060708090A0B0C0D0E0F10>' +
+      '<0102030405060708090A0B0C0D0E0F10>]' + ATrailerExtra + ' >>'#10
+  else
+    ABuf := ABuf + 'trailer'#10'<< /Size ' + IntToAnsi(ACount) + ' /Root 1 0 R' + ATrailerExtra + ' >>'#10;
+  ABuf := ABuf +
     'startxref'#10 + IntToAnsi(Result) + #10'%%EOF'#10;
 end;
 
 const
-  PdfHeader = '%PDF-1.7'#10;
+  { with the binary comment line PDF/A asks for }
+  PdfHeader = '%PDF-1.7'#10'%'#$E2#$E3#$CF#$D3#10;
   CatalogBody = '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R] >> >> ' +
     '/AF [4 0 R] >>';
   PagesBody = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
@@ -1480,7 +1487,8 @@ begin
     CheckEquals(0, RunCheck(SimplePdf(TreeAndAF, GoodSpec, GoodStream, CheckXml), R), 'no errors');
     Check(R.Status[epl_Embedding] = eps_Passed, 'passed: ' + StatusText(R));
     CheckEquals(0, EmbeddingCount(R), 'no findings: ' + StatusText(R));
-    Check(R.Status[epl_PdfA] = eps_NotRun, 'level 1 not run');
+    { level 1: no violation, but not every PDF/A rule is implemented }
+    Check(R.Status[epl_PdfA] = eps_Incomplete, 'level 1 incomplete');
     Check(R.HybridKind = ehk_FacturX, 'Factur-X');
     CheckEqualsInvoiceStr('factur-x.xml', R.InvoiceFileName, 'file name');
     CheckEqualsInvoiceStr('Alternative', R.InvoiceRelationship, 'relationship');
@@ -1847,7 +1855,8 @@ begin
     CheckEqualsInvoiceStr('EN 16931', R.XmpConformanceLevel, 'conformance level');
     CheckEqualsInvoiceStr('3', R.PdfAPart, 'PDF/A part');
     CheckEqualsInvoiceStr('B', R.PdfAConformance, 'PDF/A conformance');
-    Check(R.Status[epl_PdfA] = eps_NotRun, 'level 1 not run');
+    { level 1: no violation, but not every PDF/A rule is implemented }
+    Check(R.Status[epl_PdfA] = eps_Incomplete, 'level 1 incomplete');
     { the attribute form says the same }
     CheckXmp(R, RawReplace(RawReplace(Good, '<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance>' +
       '</rdf:Description>', '</rdf:Description>'), 'xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/" rdf:about="">',
@@ -1872,6 +1881,7 @@ begin
       'conformance level "X"', 'PDF/A-3X');
     CheckXmp(R, RawReplace(RawReplace(Good, '<pdfaid:part>3<', '<pdfaid:part>4<'), '<pdfaid:conformance>B<',
       '<pdfaid:conformance>F<'), eps_Passed, 0, '', '', 'PDF/A-4f');
+    Check(R.Status[epl_PdfA] = eps_NotRun, 'PDF/A-4f: level 1 (PDF/A-3b rules) not run');
     CheckXmp(R, RawReplace(Good, '<pdfaid:part>3</pdfaid:part>', ''), eps_Failed, 1, 'BR-HYBRID-02',
       'claims no PDF/A part', 'no part');
 

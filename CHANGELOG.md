@@ -24,6 +24,20 @@ Supported invoice standards are documented per release.
   not be observed marks the facts incomplete. Normal reading is unchanged.
   `tools/pdfcheck/PdfCheckProbe.dpr -syntax` prints a summary per file (1,599 of the 1,600
   corpus and invoice PDFs complete; the rules follow in step 3).
+- Native PDF/A-3b check, level 1 of the PDF checker (`API: internal`): `LandrixEInvoicePdfARules` checks
+  the rules of clause 6.1 (file structure) on the raw syntax facts, numbered as in the veraPDF profile
+  (finding IDs `PDFA-6.1.2-1` etc.). A registry states per rule whether it is fully implemented (header,
+  trailer, `%%EOF`, xref, stream length and line ends, external streams, filters, object envelopes,
+  permissions, object count, page boundaries), partial (hexadecimal strings and the limits of numbers,
+  strings and names: content streams are not read yet) or not yet implemented. `TLandrixEInvoicePdfChecker`
+  runs it as level 1 (`epl_PdfA`) after levels 2 and 3, not for a PDF/A-4 claim (its rules are not
+  implemented): a violation gives `eps_Failed`, otherwise `eps_Incomplete`, never `eps_Passed`. The document validator shows the findings and
+  status under `evp_PdfA`; PDF/A does not count for the verdict. `PdfCheckProbe -pdfa` prints the failed
+  rules; the test `PdfA.VeraPdf` compares the rules with `tests/data/verapdf-expected.txt` over the local
+  corpora (1,600 PDFs: no rule fails that veraPDF passes, no fully implemented rule passes that veraPDF
+  fails; accepted differences in `tests/data/pdfa-exceptions.txt`, none so far). The corpus has no
+  veraPDF failure of 6.1.3-3, 6.1.7.2-1, 6.1.13-2 and 6.1.13-7; the first three are covered by
+  `PdfA.Violations` only. The validator's test PDFs now carry a binary comment and `/ID`.
 
 ## [0.9.0-beta.2] - 2026-11-17
 
