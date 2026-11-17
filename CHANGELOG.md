@@ -15,6 +15,15 @@ Supported invoice standards are documented per release.
   `tools/pdfcheck/verapdf-oracle.py` checks the corpus against veraPDF under each file's own
   profile and writes `tests/data/verapdf-expected.txt`: the PDF/A-3b result of every corpus file
   and invoice PDF, the target of the native check.
+- Raw PDF syntax facts for the native PDF/A check (step 2, `API: internal`): the PDF object
+  layer reports, when a receiver is set before `Load`, what the parser sees (numbers, strings,
+  names, streams with the end their `/Length` gives, the envelope `n g obj ... endobj` of every
+  object, every xref section with its trailer, every break of the xref chain and every piece of
+  malformed syntax it recovers from). `LandrixEInvoicePdfSyntax` collects them for every object
+  in use, also unreferenced ones, plus header line and the bytes after `%%EOF`; whatever could
+  not be observed marks the facts incomplete. Normal reading is unchanged.
+  `tools/pdfcheck/PdfCheckProbe.dpr -syntax` prints a summary per file (1,599 of the 1,600
+  corpus and invoice PDFs complete; the rules follow in step 3).
 
 ## [0.9.0-beta.2] - 2026-11-17
 

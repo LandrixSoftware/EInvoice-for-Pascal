@@ -119,6 +119,163 @@ type
     function ArrItem(AIndex: Integer): TLandrixEInvoicePdfObject;
   end;
 
+  { Where parsed syntax comes from: the bytes of the file or the decoded
+    data of an object stream.
+    DE: Woher geparste Syntax stammt: aus den Bytes der Datei oder den
+    dekodierten Daten eines Objekt-Streams. }
+  TLandrixEInvoicePdfSyntaxSource = (pss_File, pss_ObjectStream);
+
+  { The line end at a position: none, CR, LF or CR LF.
+    DE: Das Zeilenende an einer Stelle: keines, CR, LF oder CR LF. }
+  TLandrixEInvoicePdfEol = (peo_None, peo_CR, peo_LF, peo_CRLF);
+
+  { The envelope "n g obj ... endobj" of an indirect object read from the
+    file, as written (ISO 19005-2, 6.1.9).
+    DE: Die Huelle "n g obj ... endobj" eines indirekten Objekts aus der
+    Datei, so wie sie geschrieben ist (ISO 19005-2, 6.1.9). }
+  TLandrixEInvoicePdfEnvelope = record
+    Num: Integer;
+    Gen: Integer;
+    { Position of the object number in the file. DE: Position der
+      Objektnummer in der Datei. }
+    Offset: Integer;
+    { The line end right before the object number. DE: Das Zeilenende
+      direkt vor der Objektnummer. }
+    EolBefore: TLandrixEInvoicePdfEol;
+    { White-space characters between number and generation and between
+      generation and obj.
+      DE: Leerraumzeichen zwischen Nummer und Generation und zwischen
+      Generation und obj. }
+    SpacesNumGen: Integer;
+    SpacesGenObj: Integer;
+    { The line end right after obj. DE: Das Zeilenende direkt nach obj. }
+    ObjEol: TLandrixEInvoicePdfEol;
+    { Position of endobj after the object, -1 if it does not follow; the
+      line ends right before and right after it.
+      DE: Position von endobj nach dem Objekt, -1, wenn es nicht folgt; die
+      Zeilenenden direkt davor und danach. }
+    EndobjPos: Integer;
+    EndobjEolBefore: TLandrixEInvoicePdfEol;
+    EndobjEolAfter: TLandrixEInvoicePdfEol;
+  end;
+
+  { The syntax of one section of the xref chain.
+    DE: Die Syntax eines Abschnitts der xref-Kette. }
+  TLandrixEInvoicePdfXrefSection = record
+    { Position of the keyword xref or of the xref stream object.
+      DE: Position des Schluesselworts xref oder des xref-Stream-Objekts. }
+    Offset: Integer;
+    { An xref stream instead of a table. DE: Ein xref-Stream statt einer
+      Tabelle. }
+    IsStream: Boolean;
+    { Table: the line end right after the keyword xref, and whether the
+      first subsection header follows right after that line end.
+      DE: Tabelle: das Zeilenende direkt nach dem Schluesselwort xref und ob
+      der erste Unterabschnittskopf direkt nach diesem Zeilenende folgt. }
+    KeywordEol: TLandrixEInvoicePdfEol;
+    HeaderAfterEol: Boolean;
+    { The trailer dictionary (table) or the stream (xref stream); nil if
+      there is none.
+      DE: Das Trailer-Dictionary (Tabelle) oder der Stream (xref-Stream);
+      nil, wenn es keines gibt. }
+    Trailer: TLandrixEInvoicePdfObject;
+  end;
+
+  { Receiver of the raw syntax the parser sees, for the PDF/A file structure
+    checks; normal reading does not use it. The lexer and the document call
+    it while they parse when TLandrixEInvoicePdfDocument.Syntax is set before
+    Load. Tokens come between BeginObject and EndObject of the indirect
+    object they belong to; positions are in the file (pss_File) or in the
+    decoded object stream (pss_ObjectStream). The trailer dictionary of a
+    classic xref table comes as object number -1. An xref stream object is
+    reported once, while the chain is read, and not again when it is loaded
+    as an entry of the table.
+    DE: Empfaenger der rohen Syntax, die der Parser sieht, fuer die
+    PDF/A-Pruefung der Dateistruktur; das normale Lesen nutzt ihn nicht.
+    Lexer und Dokument rufen ihn beim Parsen auf, wenn
+    TLandrixEInvoicePdfDocument.Syntax vor Load gesetzt ist. Token kommen
+    zwischen BeginObject und EndObject des indirekten Objekts, zu dem sie
+    gehoeren; Positionen in der Datei (pss_File) oder im dekodierten
+    Objekt-Stream (pss_ObjectStream). Das Trailer-Dictionary einer
+    klassischen xref-Tabelle kommt als Objektnummer -1. Ein
+    xref-Stream-Objekt wird einmal gemeldet, beim Lesen der Kette, und nicht
+    noch einmal, wenn es als Eintrag der Tabelle geladen wird. }
+  TLandrixEInvoicePdfSyntaxSink = class(TObject)
+  public
+    { An indirect object starts or ends. DE: Ein indirektes Objekt beginnt
+      oder endet. }
+    procedure BeginObject(ANum, AGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource); virtual; abstract;
+    procedure EndObject; virtual; abstract;
+    { A number that is not part of a reference "n g R"; AIsInteger: written
+      without a decimal point.
+      DE: Eine Zahl, die nicht Teil einer Referenz "n g R" ist; AIsInteger:
+      ohne Dezimalpunkt geschrieben. }
+    procedure NumberToken(APos: Integer; AIsInteger: Boolean; AValue: Double); virtual; abstract;
+    { A string: its length in bytes after decoding; for a hexadecimal string
+      also the number of hex digits and whether other characters than hex
+      digits and white space occur.
+      DE: Ein String: seine Laenge in Bytes nach dem Dekodieren; bei einem
+      hexadezimalen String auch die Anzahl der Hex-Ziffern und ob andere
+      Zeichen als Hex-Ziffern und Leerraum vorkommen. }
+    procedure StringToken(APos, ALength: Integer; AHex: Boolean; AHexDigits: Integer; AHexInvalid: Boolean);
+      virtual; abstract;
+    { A name (also a dictionary key): the bytes after the slash as written
+      and after expanding #xx; ABadEscape: a # not followed by two hex
+      digits.
+      DE: Ein Name (auch ein Dictionary-Schluessel): die Bytes nach dem
+      Schraegstrich wie geschrieben und nach dem Aufloesen von #xx;
+      ABadEscape: ein #, dem keine zwei Hex-Ziffern folgen. }
+    procedure NameToken(APos, ARawLength, ALength: Integer; ABadEscape: Boolean); virtual; abstract;
+    { A stream: the keyword stream at AKeywordPos and the line end after it,
+      the start of the data, the first endstream after it (-1 if none) and
+      the line end right before that endstream (none if it would reach
+      back into the keyword line). StreamEndByLength may correct the end
+      afterwards.
+      DE: Ein Stream: das Schluesselwort stream an AKeywordPos und das
+      Zeilenende danach, der Beginn der Daten, das erste endstream danach
+      (-1, wenn keines) und das Zeilenende direkt vor diesem endstream
+      (keines, wenn es in die Zeile des Schluesselworts zurueckreichte).
+      StreamEndByLength kann das Ende danach berichtigen. }
+    procedure StreamToken(AStream: TLandrixEInvoicePdfObject; AKeywordPos: Integer; AKeywordEol: TLandrixEInvoicePdfEol;
+      ADataStart, AEndstreamPos: Integer; AEndstreamEol: TLandrixEInvoicePdfEol); virtual; abstract;
+    { The envelope of an object read from the file (not for objects of an
+      object stream).
+      DE: Die Huelle eines Objekts aus der Datei (nicht fuer Objekte eines
+      Objekt-Streams). }
+    procedure ObjectEnvelope(const AEnvelope: TLandrixEInvoicePdfEnvelope); virtual; abstract;
+    { A section of the xref chain, newest first.
+      DE: Ein Abschnitt der xref-Kette, der neueste zuerst. }
+    procedure XrefSection(const ASection: TLandrixEInvoicePdfXrefSection); virtual; abstract;
+    { The xref chain could not be followed to its end (cycle, unreadable
+      section, offset outside the file, no startxref).
+      DE: Die xref-Kette liess sich nicht bis zum Ende verfolgen (Zyklus,
+      unlesbarer Abschnitt, Position ausserhalb der Datei, kein
+      startxref). }
+    procedure ChainProblem(const AText: string); virtual; abstract;
+    { The parser met malformed syntax and went on (a token skipped, an
+      array, dictionary or string left open, a malformed number, a stream
+      without endstream) or hit a limit (nesting, array size): the facts
+      around APos are incomplete.
+      DE: Der Parser stiess auf fehlerhafte Syntax und machte weiter (ein
+      Token uebersprungen, ein Array, Dictionary oder String nicht
+      geschlossen, eine fehlerhafte Zahl, ein Stream ohne endstream) oder
+      erreichte eine Grenze (Verschachtelung, Arraygroesse): die Tatsachen um
+      APos sind unvollstaendig. }
+    procedure Unobserved(APos: Integer; const AText: string); virtual; abstract;
+    { The data of the stream AStream, reported last by StreamToken, end
+      where its /Length says: endstream follows there (after white space)
+      at AEndstreamPos, AEndstreamEol is the line end between the data and
+      it. Without this call the end is the first endstream after the data,
+      which may lie inside the data.
+      DE: Die Daten des Streams AStream, zuletzt von StreamToken gemeldet,
+      enden dort, wo sein /Length es sagt: dort folgt (nach Leerraum)
+      endstream an AEndstreamPos, AEndstreamEol ist das Zeilenende zwischen
+      den Daten und ihm. Ohne diesen Aufruf ist das Ende das erste endstream
+      nach den Daten, das auch in den Daten liegen kann. }
+    procedure StreamEndByLength(AStream: TLandrixEInvoicePdfObject; AEndstreamPos: Integer;
+      AEndstreamEol: TLandrixEInvoicePdfEol); virtual; abstract;
+  end;
+
   { Tokenizer and parser of PDF objects over a byte buffer; new objects go
     to AOwned.
     DE: Zerleger und Parser fuer PDF-Objekte ueber einem Bytepuffer; neue
@@ -128,6 +285,7 @@ type
     FBuf: TLandrixEInvoicePdfBytes;
     FPos: Integer;
     FOwned: TObjectList;
+    FSink: TLandrixEInvoicePdfSyntaxSink;
     function NewObj(AKind: TLandrixEInvoicePdfObjectKind): TLandrixEInvoicePdfObject;
     function ParseLiteralString: TLandrixEInvoicePdfObject;
     function ParseHexString: TLandrixEInvoicePdfObject;
@@ -142,6 +300,9 @@ type
     function ReadToken: AnsiString;
     function ParseObject(ADepth: Integer): TLandrixEInvoicePdfObject;
     property Pos: Integer read FPos write FPos;
+    { Receiver of the raw syntax, nil = none. DE: Empfaenger der rohen
+      Syntax, nil = keiner. }
+    property Sink: TLandrixEInvoicePdfSyntaxSink read FSink write FSink;
   end;
 
   { Kind of an xref entry. DE: Art eines xref-Eintrags. }
@@ -194,7 +355,20 @@ type
     FCryptStrings: Boolean;
     FEncryptNum: Integer;
     FStreamError: string;
+    FSyntax: TLandrixEInvoicePdfSyntaxSink;
+    FLoadSyntax: TLandrixEInvoicePdfSyntaxSink;
+    FDropReported: Boolean;
+    { offsets of the xref stream objects already reported to FSyntax }
+    FSyntaxSeen: array of Integer;
+    { set by ParseXrefStream when the data end before the last entry or
+      /Index is malformed }
+    FXrefShort: Boolean;
+    FXrefBadIndex: Boolean;
     function MaxPlausibleObjNum: Integer;
+    function SyntaxSeen(AOfs: Integer): Boolean;
+    procedure SettleStreamEnd(AObj: TLandrixEInvoicePdfObject; ALex: TLandrixEInvoicePdfLexer; ADirectOnly: Boolean);
+    function ParseChainObject(ALex: TLandrixEInvoicePdfLexer; AOfs: Integer): TLandrixEInvoicePdfObject;
+    procedure NoteEnvelope(ANum, AGen, AOffset, AObjEnd: Integer; ALex: TLandrixEInvoicePdfLexer);
     procedure EnsureSize(ANum: Integer);
     procedure SetEntry(ANum: Integer; AKind: TLandrixEInvoicePdfXrefKind; AOfs: Int64; AGen, AStmNum, AStmIdx: Integer);
     procedure NoteTrailer(ADict: TLandrixEInvoicePdfObject);
@@ -258,6 +432,25 @@ type
     { Position of %PDF- and the whole file.
       DE: Position von %PDF- und die ganze Datei. }
     property HeaderPos: Integer read FHeaderPos;
+    { Receiver of the raw syntax; set it before Load, the document does not
+      own it. nil (default): normal reading.
+      DE: Empfaenger der rohen Syntax; vor Load setzen, das Dokument besitzt
+      ihn nicht. nil (Vorgabe): normales Lesen. }
+    property Syntax: TLandrixEInvoicePdfSyntaxSink read FSyntax write FSyntax;
+    { The receiver of the raw syntax that was set while Load ran (nil if
+      none, or once an object was read with another or no receiver); only
+      for comparison, it may have been freed since.
+      DE: Der Empfaenger der rohen Syntax, der gesetzt war, waehrend Load
+      lief (nil, wenn keiner, oder sobald ein Objekt mit einem anderen oder
+      ohne Empfaenger gelesen wurde); nur zum Vergleich, er kann inzwischen
+      freigegeben sein. }
+    property LoadSyntax: TLandrixEInvoicePdfSyntaxSink read FLoadSyntax;
+    { The object table: its size and an entry (for a number outside it
+      Known = False, Kind = pxk_Free, StmNum and StmIdx -1).
+      DE: Die Objekttabelle: ihre Groesse und ein Eintrag (fuer eine Nummer
+      ausserhalb Known = False, Kind = pxk_Free, StmNum und StmIdx -1). }
+    function XrefCount: Integer;
+    function XrefEntry(ANum: Integer): TLandrixEInvoicePdfXrefEntry;
     property Buf: TLandrixEInvoicePdfBytes read FBuf;
   end;
 
@@ -627,6 +820,92 @@ begin
   SetLength(Result, Length(S));
   for I := 1 to Length(S) do
     Result[I] := WideChar(Ord(S[I]));
+end;
+
+{ The line end that starts at APos. }
+function EolAt(const ABuf: TLandrixEInvoicePdfBytes; APos: Integer): TLandrixEInvoicePdfEol;
+begin
+  Result := peo_None;
+  if (APos < 0) or (APos >= Length(ABuf)) then
+    Exit;
+  if ABuf[APos] = 13 then
+  begin
+    if (APos + 1 < Length(ABuf)) and (ABuf[APos + 1] = 10) then
+      Result := peo_CRLF
+    else
+      Result := peo_CR;
+  end
+  else if ABuf[APos] = 10 then
+    Result := peo_LF;
+end;
+
+{ The line end that ends right before APos. }
+function EolEndingAt(const ABuf: TLandrixEInvoicePdfBytes; APos: Integer): TLandrixEInvoicePdfEol;
+begin
+  Result := peo_None;
+  if (APos < 1) or (APos > Length(ABuf)) then
+    Exit;
+  if ABuf[APos - 1] = 10 then
+  begin
+    if (APos >= 2) and (ABuf[APos - 2] = 13) then
+      Result := peo_CRLF
+    else
+      Result := peo_LF;
+  end
+  else if ABuf[APos - 1] = 13 then
+    Result := peo_CR;
+end;
+
+{ The line end right before the endstream at AEndPos that does not reach
+  back before ALowest (the first byte after the data or after the keyword
+  line). }
+function EolBeforeEndstream(const ABuf: TLandrixEInvoicePdfBytes; AEndPos, ALowest: Integer): TLandrixEInvoicePdfEol;
+begin
+  Result := EolEndingAt(ABuf, AEndPos);
+  if AEndPos - 1 < ALowest then
+    Result := peo_None
+  else if (Result = peo_CRLF) and (AEndPos - 2 < ALowest) then
+    Result := peo_LF;
+end;
+
+{ A number as PDF writes it: optional sign, digits with at most one point,
+  at least one digit (Val also takes hexadecimal and exponents). }
+function IsPdfNumberText(const S: AnsiString): Boolean;
+var
+  I, Digits: Integer;
+  Dot: Boolean;
+begin
+  Result := False;
+  I := 1;
+  if (Length(S) > 0) and ((S[1] = '+') or (S[1] = '-')) then
+    Inc(I);
+  Digits := 0;
+  Dot := False;
+  while I <= Length(S) do
+  begin
+    if (S[I] >= '0') and (S[I] <= '9') then
+      Inc(Digits)
+    else if (S[I] = '.') and not Dot then
+      Dot := True
+    else
+      Exit;
+    Inc(I);
+  end;
+  Result := Digits > 0;
+end;
+
+{ Only the digits 0 to 9, at least one. }
+function IsPdfDigits(const S: AnsiString): Boolean;
+var
+  I: Integer;
+begin
+  Result := Length(S) > 0;
+  for I := 1 to Length(S) do
+    if (S[I] < '0') or (S[I] > '9') then
+    begin
+      Result := False;
+      Exit;
+    end;
 end;
 
 function HexVal(B: Byte): Integer;
@@ -1789,15 +2068,19 @@ end;
 
 function TLandrixEInvoicePdfLexer.ParseLiteralString: TLandrixEInvoicePdfObject;
 var
-  Depth, Oct, K: Integer;
+  Depth, Oct, K, Start, CrLf: Integer;
   B: Byte;
   Output: TPdfByteBuilder;
+  Closed: Boolean;
 begin
   Result := NewObj(pok_Str);
   Output.Data := nil;
   Output.Len := 0;
+  Start := FPos;
   Inc(FPos);
   Depth := 1;
+  CrLf := 0;
+  Closed := False;
   while FPos < Length(FBuf) do
   begin
     B := FBuf[FPos];
@@ -1837,27 +2120,45 @@ begin
       BuilderAddByte(Output, B);
       Continue;
     end;
+    { an unescaped CR LF in the string stands for one LF (ISO 32000-1,
+      7.3.4.2); the bytes are kept, the reported length counts one }
+    if (B = 13) and (FPos < Length(FBuf)) and (FBuf[FPos] = 10) then
+      Inc(CrLf);
     if B = Ord('(') then
       Inc(Depth)
     else if B = Ord(')') then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
+        Closed := True;
         Break;
+      end;
     end;
     BuilderAddByte(Output, B);
   end;
   Result.StrVal := BuilderDone(Output);
+  if FSink <> nil then
+  begin
+    FSink.StringToken(Start, Integer(Length(Result.StrVal)) - CrLf, False, 0, False);
+    if not Closed then
+      FSink.Unobserved(Start, 'string not closed');
+  end;
 end;
 
 function TLandrixEInvoicePdfLexer.ParseHexString: TLandrixEInvoicePdfObject;
 var
-  Hi, V: Integer;
+  Hi, V, Start, Digits: Integer;
+  Invalid, Closed: Boolean;
   Output: TPdfByteBuilder;
 begin
   Result := NewObj(pok_Str);
   Output.Data := nil;
   Output.Len := 0;
+  Start := FPos;
+  Digits := 0;
+  Invalid := False;
+  Closed := False;
   Inc(FPos);
   Hi := -1;
   while FPos < Length(FBuf) do
@@ -1865,12 +2166,18 @@ begin
     if FBuf[FPos] = Ord('>') then
     begin
       Inc(FPos);
+      Closed := True;
       Break;
     end;
     V := HexVal(FBuf[FPos]);
     Inc(FPos);
     if V < 0 then
+    begin
+      if not IsPdfWhite(FBuf[FPos - 1]) then
+        Invalid := True;
       Continue;
+    end;
+    Inc(Digits);
     if Hi < 0 then
       Hi := V
     else
@@ -1882,13 +2189,21 @@ begin
   if Hi >= 0 then
     BuilderAddByte(Output, Byte(Hi shl 4));
   Result.StrVal := BuilderDone(Output);
+  if FSink <> nil then
+  begin
+    FSink.StringToken(Start, Integer(Length(Result.StrVal)), True, Digits, Invalid);
+    if not Closed then
+      FSink.Unobserved(Start, 'hexadecimal string not closed');
+  end;
 end;
 
 function TLandrixEInvoicePdfLexer.ParseName: TLandrixEInvoicePdfObject;
 var
   Start, I, V1, V2, N: Integer;
   S: AnsiString;
+  BadEscape: Boolean;
 begin
+  BadEscape := False;
   Result := NewObj(pok_Name);
   Inc(FPos);
   Start := FPos;
@@ -1913,12 +2228,16 @@ begin
         Continue;
       end;
     end;
+    if FBuf[I] = Ord('#') then
+      BadEscape := True;
     Inc(N);
     S[N] := AnsiChar(FBuf[I]);
     Inc(I);
   end;
   SetLength(S, N);
   Result.NameVal := S;
+  if FSink <> nil then
+    FSink.NameToken(Start - 1, FPos - Start, N, BadEscape);
 end;
 
 function TLandrixEInvoicePdfLexer.ParseArray(ADepth: Integer): TLandrixEInvoicePdfObject;
@@ -1935,21 +2254,28 @@ begin
     if FBuf[FPos] = Ord(']') then
     begin
       Inc(FPos);
-      Break;
+      Exit;
     end;
     O := ParseObject(ADepth + 1);
     if O = nil then
       Break;
     Result.Items.Add(O);
     if Result.Items.Count > 200000 then
-      Break;
+    begin
+      if FSink <> nil then
+        FSink.Unobserved(FPos, 'array longer than 200000 items');
+      Exit;
+    end;
   end;
+  if FSink <> nil then
+    FSink.Unobserved(FPos, 'array not closed');
 end;
 
 function TLandrixEInvoicePdfLexer.ParseDict(ADepth: Integer): TLandrixEInvoicePdfObject;
 var
   KeyObj, ValObj: TLandrixEInvoicePdfObject;
-  Save: Integer;
+  Save, KeywordPos: Integer;
+  KeywordEol: TLandrixEInvoicePdfEol;
 begin
   Result := NewObj(pok_Dict);
   Inc(FPos, 2);
@@ -1957,7 +2283,11 @@ begin
   begin
     SkipWhite;
     if FPos >= Length(FBuf) then
+    begin
+      if FSink <> nil then
+        FSink.Unobserved(FPos, 'dictionary not closed');
       Break;
+    end;
     if MatchAt(FBuf, FPos, '>>') then
     begin
       Inc(FPos, 2);
@@ -1967,6 +2297,8 @@ begin
     begin
       { unexpected token: skip it so that parsing goes on }
       Save := FPos;
+      if FSink <> nil then
+        FSink.Unobserved(FPos, 'unexpected token in a dictionary');
       ReadToken;
       if FPos = Save then
         Inc(FPos);
@@ -1975,7 +2307,11 @@ begin
     KeyObj := ParseName;
     ValObj := ParseObject(ADepth + 1);
     if ValObj = nil then
+    begin
+      if FSink <> nil then
+        FSink.Unobserved(FPos, 'dictionary value missing');
       Break;
+    end;
     Result.AddEntry(KeyObj.NameVal, ValObj);
   end;
 
@@ -1984,7 +2320,9 @@ begin
   SkipWhite;
   if MatchAt(FBuf, FPos, 'stream') then
   begin
+    KeywordPos := FPos;
     Inc(FPos, 6);
+    KeywordEol := EolAt(FBuf, FPos);
     if (FPos < Length(FBuf)) and (FBuf[FPos] = 13) then
       Inc(FPos);
     if (FPos < Length(FBuf)) and (FBuf[FPos] = 10) then
@@ -1993,6 +2331,16 @@ begin
     Result.StreamPos := FPos;
     { the length is decided by the document (/Length may be indirect) }
     Save := IndexOfBytes(FBuf, 'endstream', FPos);
+    if FSink <> nil then
+    begin
+      if Save >= 0 then
+        FSink.StreamToken(Result, KeywordPos, KeywordEol, FPos, Save, EolBeforeEndstream(FBuf, Save, FPos))
+      else
+      begin
+        FSink.StreamToken(Result, KeywordPos, KeywordEol, FPos, -1, peo_None);
+        FSink.Unobserved(KeywordPos, 'stream without endstream');
+      end;
+    end;
     if Save >= 0 then
       FPos := Save + 9
     else
@@ -2005,13 +2353,17 @@ end;
 function TLandrixEInvoicePdfLexer.ParseObject(ADepth: Integer): TLandrixEInvoicePdfObject;
 var
   B: Byte;
-  Tok: AnsiString;
+  Tok, NumTok: AnsiString;
   Save, SavePos, Code: Integer;
   D, D2: Double;
 begin
   Result := nil;
   if ADepth > LandrixEInvoicePdfObjectMaxDepth then
+  begin
+    if FSink <> nil then
+      FSink.Unobserved(FPos, 'nesting deeper than ' + IntToStr(LandrixEInvoicePdfObjectMaxDepth));
     Exit;
+  end;
   SkipWhite;
   if FPos >= Length(FBuf) then
     Exit;
@@ -2081,6 +2433,9 @@ begin
   end;
   Result := NewObj(pok_Num);
   Result.NumVal := D;
+  NumTok := Tok;
+  if (FSink <> nil) and not IsPdfNumberText(Tok) then
+    FSink.Unobserved(SavePos, 'malformed number');
 
   { a number may start an indirect reference "n g R" }
   if (Frac(D) = 0) and (D >= 0) and (D < 2147483647.0) then
@@ -2096,6 +2451,8 @@ begin
         ((FPos + 1 >= Length(FBuf)) or not IsPdfRegular(FBuf[FPos + 1])) then
       begin
         Inc(FPos);
+        if (FSink <> nil) and not (IsPdfDigits(NumTok) and IsPdfDigits(Tok)) then
+          FSink.Unobserved(SavePos, 'malformed reference');
         Result.Kind := pok_Ref;
         Result.RefNum := Integer(Trunc(D));
         Result.RefGen := Integer(Trunc(D2));
@@ -2104,6 +2461,9 @@ begin
     end;
     FPos := Save;
   end;
+  if FSink <> nil then
+    FSink.NumberToken(SavePos, IsPdfDigits(NumTok) or
+      ((Length(NumTok) > 1) and ((NumTok[1] = '+') or (NumTok[1] = '-')) and IsPdfDigits(Copy(NumTok, 2, MaxInt))), D);
 end;
 
 //==============================================================================
@@ -2181,7 +2541,14 @@ end;
 procedure TLandrixEInvoicePdfDocument.SetEntry(ANum: Integer; AKind: TLandrixEInvoicePdfXrefKind; AOfs: Int64; AGen, AStmNum, AStmIdx: Integer);
 begin
   if (ANum < 0) or (ANum > MaxPlausibleObjNum) then
+  begin
+    if (FSyntax <> nil) and not FDropReported then
+    begin
+      FDropReported := True;
+      FSyntax.ChainProblem('xref entry for object ' + IntToStr(ANum) + ' outside the plausible object numbers');
+    end;
     Exit;
+  end;
   EnsureSize(ANum);
   if FXref[ANum].Known then
     if not (FAllowFreeOverride and (FXref[ANum].Kind = pxk_Free) and (AKind <> pxk_Free)) then
@@ -2281,6 +2648,8 @@ var
 begin
   Result := False;
   IdxPairs := nil;
+  FXrefShort := False;
+  FXrefBadIndex := False;
   if (AObj = nil) or (AObj.Kind <> pok_Stream) then
     Exit;
   { an xref stream is never encrypted (ISO 32000-1, 7.5.8.2) }
@@ -2311,6 +2680,9 @@ begin
     SizeVal := Integer(Length(Data)) div RowLen;
 
   IdxObj := DGet(AObj, 'Index');
+  if (AObj.RawGet('Index') <> nil) and ((IdxObj = nil) or (IdxObj.Kind <> pok_Arr) or (IdxObj.ArrCount < 2) or
+    Odd(IdxObj.ArrCount)) then
+    FXrefBadIndex := True;
   if (IdxObj <> nil) and (IdxObj.Kind = pok_Arr) and (IdxObj.ArrCount >= 2) then
   begin
     SetLength(IdxPairs, IdxObj.ArrCount);
@@ -2342,6 +2714,7 @@ begin
     begin
       if Pos + RowLen > Length(Data) then
       begin
+        FXrefShort := True;
         Result := True; // tolerate an early end
         Exit;
       end;
@@ -2372,12 +2745,15 @@ procedure TLandrixEInvoicePdfDocument.ParseXrefChain(AStartOfs: Int64);
 var
   Ofs: Int64;
   Visited: array of Int64;
-  I: Integer;
-  Seen: Boolean;
+  I, KeywordEnd, StmOfs: Integer;
+  Seen, StmOk, TableOk: Boolean;
   Lex: TLandrixEInvoicePdfLexer;
   Trailer, Obj, PrevObj, StmObj: TLandrixEInvoicePdfObject;
+  Section: TLandrixEInvoicePdfXrefSection;
+  Problem: string;
 begin
   Visited := nil;
+  Problem := '';
   Ofs := AStartOfs;
   while (Ofs > 0) and (Ofs < Length(FBuf)) do
   begin
@@ -2389,9 +2765,15 @@ begin
         Break;
       end;
     if Seen then
-      Break; // cycle in the /Prev chain
-    if Length(Visited) > 1024 then
+    begin
+      Problem := 'cycle in the /Prev chain at offset ' + IntToStr(Ofs);
       Break;
+    end;
+    if Length(Visited) > 1024 then
+    begin
+      Problem := 'more than 1024 xref sections';
+      Break;
+    end;
     SetLength(Visited, Length(Visited) + 1);
     Visited[Integer(Length(Visited)) - 1] := Ofs;
 
@@ -2403,10 +2785,47 @@ begin
       if MatchAt(FBuf, Lex.Pos, 'xref') then
       begin
         Lex.Pos := Lex.Pos + 4;
-        if not ParseClassicXref(Lex, Trailer) then
+        KeywordEnd := Lex.Pos;
+        { the trailer is reported as object -1 }
+        if FSyntax <> nil then
+        begin
+          Lex.Sink := FSyntax;
+          FSyntax.BeginObject(-1, 0, pss_File);
+        end;
+        try
+          TableOk := ParseClassicXref(Lex, Trailer);
+        finally
+          if FSyntax <> nil then
+          begin
+            FSyntax.EndObject;
+            Lex.Sink := nil;
+          end;
+        end;
+        if not TableOk then
+        begin
+          Problem := 'xref table at offset ' + IntToStr(KeywordEnd - 4) + ' not readable';
           Break;
+        end;
         Inc(FXrefSections);
         NoteTrailer(Trailer);
+        if (FSyntax <> nil) and ((Trailer = nil) or not Trailer.IsDictLike) then
+          FSyntax.ChainProblem('xref table at offset ' + IntToStr(KeywordEnd - 4) + ' without trailer dictionary');
+        if FSyntax <> nil then
+        begin
+          Section.Offset := KeywordEnd - 4;
+          Section.IsStream := False;
+          Section.KeywordEol := EolAt(FBuf, KeywordEnd);
+          I := KeywordEnd;
+          case Section.KeywordEol of
+            peo_None: ;
+            peo_CR, peo_LF: Inc(I);
+            peo_CRLF: Inc(I, 2);
+          end;
+          Section.HeaderAfterEol := (Section.KeywordEol <> peo_None) and (I < Length(FBuf)) and
+            (FBuf[I] >= Ord('0')) and (FBuf[I] <= Ord('9'));
+          Section.Trailer := Trailer;
+          FSyntax.XrefSection(Section);
+        end;
         { hybrid file: an additional xref stream for the same update }
         if (Trailer <> nil) and Trailer.IsDictLike then
         begin
@@ -2415,19 +2834,16 @@ begin
           begin
             { a damaged /XRefStm only loses the override, the classic
               table just read stays }
+            StmOk := False;
+            StmOfs := Integer(Obj.AsInt);
+            StmObj := nil;
             try
-              StmObj := nil;
-              Lex.Pos := Integer(Obj.AsInt);
-              Lex.SkipWhite;
-              Lex.ReadToken;
-              Lex.ReadToken;
-              if Lex.ReadToken = 'obj' then
-                StmObj := Lex.ParseObject(0);
+              StmObj := ParseChainObject(Lex, StmOfs);
               if (StmObj <> nil) and (StmObj.Kind = pok_Stream) then
               begin
                 FAllowFreeOverride := True;
                 try
-                  ParseXrefStream(StmObj);
+                  StmOk := ParseXrefStream(StmObj);
                 finally
                   FAllowFreeOverride := False;
                 end;
@@ -2436,26 +2852,58 @@ begin
               on EOutOfMemory do
                 raise;
               on Exception do
-                ;
+                StmOk := False;
             end;
-          end;
+            if FSyntax <> nil then
+            begin
+              if not StmOk then
+                FSyntax.ChainProblem('damaged /XRefStm at offset ' + IntToStr(StmOfs))
+              else
+              begin
+                if FXrefShort then
+                  FSyntax.ChainProblem('xref stream at offset ' + IntToStr(StmOfs) + ' ends before its last entry');
+                if FXrefBadIndex then
+                  FSyntax.ChainProblem('xref stream at offset ' + IntToStr(StmOfs) + ' with a malformed /Index');
+                Section.Offset := StmOfs;
+                Section.IsStream := True;
+                Section.KeywordEol := peo_None;
+                Section.HeaderAfterEol := False;
+                Section.Trailer := StmObj;
+                FSyntax.XrefSection(Section);
+              end;
+            end;
+          end
+          else if (Obj <> nil) and (FSyntax <> nil) then
+            FSyntax.ChainProblem('unusable /XRefStm in the trailer at offset ' + IntToStr(KeywordEnd - 4));
         end;
       end
       else
       begin
         { xref stream: "N G obj << ... >> stream" }
-        Lex.ReadToken;
-        Lex.ReadToken;
-        if Lex.ReadToken <> 'obj' then
-          Break;
-        Obj := Lex.ParseObject(0);
+        KeywordEnd := Lex.Pos;
+        Problem := 'no xref section at offset ' + IntToStr(KeywordEnd);
+        Obj := ParseChainObject(Lex, KeywordEnd);
         if (Obj = nil) or (Obj.Kind <> pok_Stream) then
           Break;
         if not ParseXrefStream(Obj) then
           Break;
+        Problem := '';
+        if FXrefShort and (FSyntax <> nil) then
+          FSyntax.ChainProblem('xref stream at offset ' + IntToStr(KeywordEnd) + ' ends before its last entry');
+        if FXrefBadIndex and (FSyntax <> nil) then
+          FSyntax.ChainProblem('xref stream at offset ' + IntToStr(KeywordEnd) + ' with a malformed /Index');
         Inc(FXrefSections);
         NoteTrailer(Obj);
         Trailer := Obj;
+        if FSyntax <> nil then
+        begin
+          Section.Offset := KeywordEnd;
+          Section.IsStream := True;
+          Section.KeywordEol := peo_None;
+          Section.HeaderAfterEol := False;
+          Section.Trailer := Obj;
+          FSyntax.XrefSection(Section);
+        end;
       end;
 
       Ofs := 0;
@@ -2464,11 +2912,18 @@ begin
         PrevObj := Trailer.RawGet('Prev');
         if (PrevObj <> nil) and (PrevObj.Kind = pok_Num) then
           Ofs := PrevObj.AsInt;
+        if (PrevObj <> nil) and (FSyntax <> nil) and
+          ((PrevObj.Kind <> pok_Num) or (Frac(PrevObj.NumVal) <> 0) or (PrevObj.AsInt = 0)) then
+          FSyntax.ChainProblem('unusable /Prev in the xref section at offset ' + IntToStr(Visited[High(Visited)]));
       end;
     finally
       Lex.Free;
     end;
   end;
+  if (Problem = '') and (Ofs <> 0) then
+    Problem := 'xref offset ' + IntToStr(Ofs) + ' outside the file';
+  if (Problem <> '') and (FSyntax <> nil) then
+    FSyntax.ChainProblem(Problem);
 end;
 
 { Fallback: rebuild the object table by scanning for "N G obj". The last
@@ -2559,6 +3014,8 @@ var
   N, First, I, Num, Ofs: Integer;
   HdrLex, ObjLex: TLandrixEInvoicePdfLexer;
   Nums, Offs: array of Integer;
+  Limit: Integer;
+  Ascending: Boolean;
 begin
   if (AStmNum < 0) or (AStmNum >= Length(FObjStmDone)) then
     Exit;
@@ -2597,8 +3054,18 @@ begin
     HdrLex.Free;
   end;
 
+  { the offsets rise (ISO 32000-1, 7.5.7); only then the next offset bounds
+    a member }
+  Ascending := True;
+  for I := 1 to N - 1 do
+    if Offs[I] <= Offs[I - 1] then
+      Ascending := False;
+  if not Ascending and (FSyntax <> nil) then
+    FSyntax.Unobserved(First, 'object stream ' + IntToStr(AStmNum) + ' with member offsets not ascending');
+
   ObjLex := TLandrixEInvoicePdfLexer.Create(Data, FOwned);
   try
+    ObjLex.Sink := FSyntax;
     for I := 0 to N - 1 do
     begin
       Num := Nums[I];
@@ -2619,8 +3086,32 @@ begin
         Continue;
       if FCache[Num] <> nil then
         Continue;
+      if FSyntax <> FLoadSyntax then
+        FLoadSyntax := nil;
       ObjLex.Pos := Ofs;
-      Parsed := ObjLex.ParseObject(0);
+      if FSyntax <> nil then
+        FSyntax.BeginObject(Num, 0, pss_ObjectStream);
+      try
+        Parsed := ObjLex.ParseObject(0);
+        if FSyntax <> nil then
+        begin
+          { the member ends where the next one starts }
+          Limit := Integer(Length(Data));
+          if Ascending and (I + 1 < N) and (Offs[I + 1] < Length(Data) - First) then
+            Limit := First + Offs[I + 1];
+          if ObjLex.Pos > Limit then
+            FSyntax.Unobserved(Ofs, 'object reaches into the next object of the stream')
+          else
+          begin
+            ObjLex.SkipWhite;
+            if ObjLex.Pos < Limit then
+              FSyntax.Unobserved(ObjLex.Pos, 'bytes after the object in the stream');
+          end;
+        end;
+      finally
+        if FSyntax <> nil then
+          FSyntax.EndObject;
+      end;
       { objects of an object stream keep OwnerNum = -1: the container was
         decrypted as a whole, a second pass would encrypt them again }
       if Parsed <> nil then
@@ -2965,7 +3456,9 @@ end;
 function TLandrixEInvoicePdfDocument.GetObject(ANum: Integer): TLandrixEInvoicePdfObject;
 var
   Lex: TLandrixEInvoicePdfLexer;
-  GotNum, GotGen: Integer;
+  GotNum, GotGen, ObjEnd: Integer;
+  Observed: Boolean;
+  NumTok, GenTok: AnsiString;
 begin
   Result := nil;
   if (ANum < 0) or (ANum >= Length(FXref)) then
@@ -2993,20 +3486,44 @@ begin
         begin
           if (FXref[ANum].Offset < 0) or (FXref[ANum].Offset >= Length(FBuf)) then
             Exit;
+          if FSyntax <> FLoadSyntax then
+            FLoadSyntax := nil;
           Lex := TLandrixEInvoicePdfLexer.Create(FBuf, FOwned);
           try
             Lex.Pos := Integer(FXref[ANum].Offset);
-            { the object number must match, else the xref points elsewhere }
-            if not TokenToInt(Lex.ReadToken, GotNum) or (GotNum <> ANum) then
-              Exit;
-            if not TokenToInt(Lex.ReadToken, GotGen) then
-              GotGen := FXref[ANum].Gen;
-            if Lex.ReadToken <> 'obj' then
-              Exit;
-            Result := Lex.ParseObject(0);
-            FCache[ANum] := Result;
-            if Result <> nil then
-              TagAndDecrypt(Result, ANum, GotGen, 0);
+            { an xref stream object was reported while the chain was read }
+            Observed := (FSyntax <> nil) and not SyntaxSeen(Lex.Pos);
+            if Observed then
+            begin
+              Lex.Sink := FSyntax;
+              FSyntax.BeginObject(ANum, FXref[ANum].Gen, pss_File);
+            end;
+            try
+              { the object number must match, else the xref points elsewhere }
+              NumTok := Lex.ReadToken;
+              if not TokenToInt(NumTok, GotNum) or (GotNum <> ANum) then
+                Exit;
+              GenTok := Lex.ReadToken;
+              if not TokenToInt(GenTok, GotGen) then
+                GotGen := FXref[ANum].Gen;
+              if Observed and not (IsPdfDigits(NumTok) and IsPdfDigits(GenTok)) then
+                FSyntax.Unobserved(Integer(FXref[ANum].Offset), 'malformed object or generation number');
+              if Lex.ReadToken <> 'obj' then
+                Exit;
+              ObjEnd := Lex.Pos;
+              Result := Lex.ParseObject(0);
+              FCache[ANum] := Result;
+              if Result <> nil then
+                TagAndDecrypt(Result, ANum, GotGen, 0);
+              if Observed and (Result <> nil) then
+              begin
+                SettleStreamEnd(Result, Lex, False);
+                NoteEnvelope(ANum, GotGen, Integer(FXref[ANum].Offset), ObjEnd, Lex);
+              end;
+            finally
+              if Observed then
+                FSyntax.EndObject;
+            end;
           finally
             Lex.Free;
           end;
@@ -3014,6 +3531,184 @@ begin
     end;
   finally
     FLoading[ANum] := False;
+  end;
+end;
+
+{ The envelope as written: white space around the numbers, the line ends
+  around obj and endobj (ALex stands behind the object). }
+procedure TLandrixEInvoicePdfDocument.NoteEnvelope(ANum, AGen, AOffset, AObjEnd: Integer; ALex: TLandrixEInvoicePdfLexer);
+var
+  E: TLandrixEInvoicePdfEnvelope;
+  P: Integer;
+begin
+  E.Num := ANum;
+  E.Gen := AGen;
+  { the offset may point at white space before the number }
+  P := AOffset;
+  while (P < Length(FBuf)) and IsPdfWhite(FBuf[P]) do
+    Inc(P);
+  E.Offset := P;
+  E.EolBefore := EolEndingAt(FBuf, P);
+  if (P < Length(FBuf)) and (FBuf[P] = Ord('%')) then
+    FSyntax.Unobserved(P, 'comment before the object number');
+  while (P < Length(FBuf)) and (FBuf[P] >= Ord('0')) and (FBuf[P] <= Ord('9')) do
+    Inc(P);
+  E.SpacesNumGen := 0;
+  while (P < Length(FBuf)) and IsPdfWhite(FBuf[P]) do
+  begin
+    Inc(E.SpacesNumGen);
+    Inc(P);
+  end;
+  if (P < Length(FBuf)) and (FBuf[P] = Ord('%')) then
+    FSyntax.Unobserved(P, 'comment in the object header');
+  while (P < Length(FBuf)) and (FBuf[P] >= Ord('0')) and (FBuf[P] <= Ord('9')) do
+    Inc(P);
+  E.SpacesGenObj := 0;
+  while (P < Length(FBuf)) and IsPdfWhite(FBuf[P]) do
+  begin
+    Inc(E.SpacesGenObj);
+    Inc(P);
+  end;
+  if (P < Length(FBuf)) and (FBuf[P] = Ord('%')) then
+    FSyntax.Unobserved(P, 'comment in the object header');
+  E.ObjEol := EolAt(FBuf, AObjEnd);
+  E.EndobjPos := -1;
+  E.EndobjEolBefore := peo_None;
+  E.EndobjEolAfter := peo_None;
+  ALex.SkipWhite;
+  if MatchAt(FBuf, ALex.Pos, 'endobj') and
+    ((ALex.Pos + 6 >= Length(FBuf)) or not IsPdfRegular(FBuf[ALex.Pos + 6])) then
+  begin
+    E.EndobjPos := ALex.Pos;
+    E.EndobjEolBefore := EolEndingAt(FBuf, ALex.Pos);
+    E.EndobjEolAfter := EolAt(FBuf, ALex.Pos + 6);
+  end;
+  FSyntax.ObjectEnvelope(E);
+end;
+
+{ Whether the object at AOfs (white space before it skipped) was reported
+  while the chain was read. }
+function TLandrixEInvoicePdfDocument.SyntaxSeen(AOfs: Integer): Boolean;
+var
+  I, P: Integer;
+begin
+  Result := False;
+  P := AOfs;
+  while (P >= 0) and (P < Length(FBuf)) and IsPdfWhite(FBuf[P]) do
+    Inc(P);
+  for I := 0 to Integer(Length(FSyntaxSeen)) - 1 do
+    if FSyntaxSeen[I] = P then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ With a syntax receiver: when endstream follows (after white space) where
+  the /Length of the stream AObj ends its data, that is the end, reported to
+  the receiver, and ALex moves behind it; the first endstream after the data
+  that the lexer took may lie inside the data. ADirectOnly: an indirect
+  /Length is not resolved (while the chain is read the table is not
+  complete; an xref stream has a direct /Length). }
+procedure TLandrixEInvoicePdfDocument.SettleStreamEnd(AObj: TLandrixEInvoicePdfObject; ALex: TLandrixEInvoicePdfLexer;
+  ADirectOnly: Boolean);
+var
+  LenObj: TLandrixEInvoicePdfObject;
+  Len: Int64;
+  DataEnd, E: Integer;
+begin
+  if (FSyntax = nil) or (AObj = nil) or (AObj.Kind <> pok_Stream) or (AObj.StreamPos < 0) then
+    Exit;
+  if ADirectOnly then
+    LenObj := AObj.RawGet('Length')
+  else
+    LenObj := DGet(AObj, 'Length');
+  if (LenObj = nil) or (LenObj.Kind <> pok_Num) or (Frac(LenObj.NumVal) <> 0) then
+    Exit;
+  Len := LenObj.AsInt;
+  if (Len < 0) or (Len > Int64(Length(FBuf)) - AObj.StreamPos) then
+    Exit;
+  DataEnd := AObj.StreamPos + Integer(Len);
+  E := DataEnd;
+  while (E < Length(FBuf)) and IsPdfWhite(FBuf[E]) do
+    Inc(E);
+  if not MatchAt(FBuf, E, 'endstream') then
+    Exit;
+  ALex.Pos := E + 9;
+  FSyntax.StreamEndByLength(AObj, E, EolBeforeEndstream(FBuf, E, DataEnd));
+end;
+
+{ The indirect object at AOfs read while the xref chain is followed (an
+  xref stream); with a syntax receiver its tokens, stream and envelope are
+  reported here and its offset is remembered, so that GetObject does not
+  report it again. nil if "n g obj" is missing. }
+function TLandrixEInvoicePdfDocument.ParseChainObject(ALex: TLandrixEInvoicePdfLexer; AOfs: Integer): TLandrixEInvoicePdfObject;
+var
+  NumTok, GenTok: AnsiString;
+  N, G, ObjEnd, E: Integer;
+  Observed: Boolean;
+begin
+  Result := nil;
+  N := 0;
+  G := 0;
+  ALex.Pos := AOfs;
+  ALex.SkipWhite;
+  NumTok := ALex.ReadToken;
+  GenTok := ALex.ReadToken;
+  if ALex.ReadToken <> 'obj' then
+    Exit;
+  ObjEnd := ALex.Pos;
+  Observed := (FSyntax <> nil) and not SyntaxSeen(AOfs);
+  if Observed and not (IsPdfDigits(NumTok) and IsPdfDigits(GenTok) and TokenToInt(NumTok, N) and
+    TokenToInt(GenTok, G)) then
+  begin
+    FSyntax.ChainProblem('xref stream at offset ' + IntToStr(AOfs) + ' without object and generation number');
+    Observed := False;
+  end;
+  if Observed then
+  begin
+    ALex.Sink := FSyntax;
+    FSyntax.BeginObject(N, G, pss_File);
+  end;
+  try
+    Result := ALex.ParseObject(0);
+    if Observed and (Result <> nil) then
+    begin
+      SettleStreamEnd(Result, ALex, True);
+      NoteEnvelope(N, G, AOfs, ObjEnd, ALex);
+      SetLength(FSyntaxSeen, Length(FSyntaxSeen) + 1);
+      { the position of the object number, as SyntaxSeen compares }
+      E := AOfs;
+      while (E < Length(FBuf)) and IsPdfWhite(FBuf[E]) do
+        Inc(E);
+      FSyntaxSeen[High(FSyntaxSeen)] := E;
+    end;
+  finally
+    if Observed then
+    begin
+      FSyntax.EndObject;
+      ALex.Sink := nil;
+    end;
+  end;
+end;
+
+function TLandrixEInvoicePdfDocument.XrefCount: Integer;
+begin
+  Result := Integer(Length(FXref));
+end;
+
+function TLandrixEInvoicePdfDocument.XrefEntry(ANum: Integer): TLandrixEInvoicePdfXrefEntry;
+begin
+  if (ANum >= 0) and (ANum < Length(FXref)) then
+    Result := FXref[ANum]
+  else
+  begin
+    Result.Known := False;
+    Result.Kind := pxk_Free;
+    Result.Offset := 0;
+    Result.Gen := 0;
+    Result.StmNum := -1;
+    Result.StmIdx := -1;
   end;
 end;
 
@@ -3270,6 +3965,7 @@ var
 begin
   Result := False;
   AError := '';
+  FLoadSyntax := FSyntax;
   Size := AStream.Size - AStream.Position;
   if Size <= 0 then
   begin
@@ -3318,9 +4014,15 @@ begin
     except
       on EOutOfMemory do
         raise;
-      on Exception do
+      on E: Exception do
+      begin
         FRootRef := nil;
-    end;
+        if FSyntax <> nil then
+          FSyntax.ChainProblem('xref chain not readable: ' + E.Message);
+      end;
+    end
+  else if FSyntax <> nil then
+    FSyntax.ChainProblem('no usable startxref');
 
   { encryption before the first catalog access: resolving it may load object
     streams, which cannot be unpacked without the key }

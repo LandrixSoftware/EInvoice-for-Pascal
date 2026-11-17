@@ -49,6 +49,7 @@ uses
   LandrixEInvoiceTestMapUBL,
   LandrixEInvoiceTestCompatAdapter,
   LandrixEInvoiceTestPdf,
+  LandrixEInvoiceTestPdfSyntax,
   LandrixEInvoiceTestSweep,
   LandrixEInvoiceTestBusinessCases,
   LandrixEInvoiceTestFacade,
@@ -90,6 +91,7 @@ begin
   LandrixEInvoiceTestMapUBL.Register;
   LandrixEInvoiceTestCompatAdapter.Register;
   LandrixEInvoiceTestPdf.Register;
+  LandrixEInvoiceTestPdfSyntax.Register;
   LandrixEInvoiceTestSweep.Register;
   LandrixEInvoiceTestBusinessCases.Register;
   LandrixEInvoiceTestFacade.Register;

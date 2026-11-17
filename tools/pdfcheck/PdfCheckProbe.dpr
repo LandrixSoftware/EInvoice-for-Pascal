@@ -20,7 +20,11 @@
   findings indented below. With -facts=DIR it also prints, per file specification of the
   collector, a line "  spec<TAB>index<TAB>routes<TAB>key<TAB>spec object<TAB>
   /F<TAB>/UF<TAB>stream object<TAB>subtype<TAB>moddate<TAB>size" and writes
-  the decoded data to DIR/<file>.<index>.bin (tools/pdfcheck/pdf-oracle.py). }
+  the decoded data to DIR/<file>.<index>.bin (tools/pdfcheck/pdf-oracle.py).
+  With -syntax it also prints the raw syntax facts of LandrixEInvoicePdfSyntax:
+  "  syntax<TAB>complete|incomplete<TAB>objects in use<TAB>envelopes<TAB>
+  streams<TAB>tokens<TAB>xref sections" and a line "  syntax-problem<TAB>text"
+  per problem. }
 
 program PdfCheckProbe;
 
@@ -35,6 +39,7 @@ uses
   Classes,
   LandrixEInvoiceTypes,
   LandrixEInvoicePdfObjects,
+  LandrixEInvoicePdfSyntax,
   LandrixEInvoiceDiagnostics,
   LandrixEInvoice,
   LandrixEInvoicePdfCheck;
@@ -76,6 +81,7 @@ end;
 
 var
   FactsDir: string;
+  WithSyntax: Boolean;
 
 { PDF names are ASCII: one character per byte. }
 function AnsiText(const S: AnsiString): string;
@@ -156,6 +162,52 @@ begin
   end;
 end;
 
+procedure PrintSyntax(const AFileName: string);
+const
+  Done: array[Boolean] of string = ('incomplete', 'complete');
+var
+  Stream: TFileStream;
+  Doc: TLandrixEInvoicePdfDocument;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Err: string;
+  I: Integer;
+begin
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  try
+    Doc := TLandrixEInvoicePdfDocument.Create;
+    try
+      Doc.Syntax := Facts;
+      try
+        Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+        try
+          if not Doc.Load(Stream, Err) then
+          begin
+            WriteLn('  syntax', #9, 'unreadable', #9, Err);
+            Exit;
+          end;
+        finally
+          Stream.Free;
+        end;
+        Facts.Inspect(Doc);
+      except
+        on E: Exception do
+        begin
+          WriteLn('  syntax', #9, 'exception', #9, E.ClassName, ': ', E.Message);
+          Exit;
+        end;
+      end;
+      WriteLn('  syntax', #9, Done[Facts.Complete], #9, Facts.InUseCount, #9, Facts.EnvelopeCount, #9,
+        Facts.StreamCount, #9, Facts.TokenCount, #9, Facts.SectionCount);
+      for I := 0 to Facts.Problems.Count - 1 do
+        WriteLn('  syntax-problem', #9, Facts.Problems[I]);
+    finally
+      Doc.Free;
+    end;
+  finally
+    Facts.Free;
+  end;
+end;
+
 procedure CheckOne(AChecker: TLandrixEInvoicePdfChecker; AResult: TLandrixEInvoicePdfCheckResult;
   const AFileName: string);
 var
@@ -175,6 +227,8 @@ begin
   end;
   if FactsDir <> '' then
     PrintFacts(AFileName);
+  if WithSyntax then
+    PrintSyntax(AFileName);
 end;
 
 var
@@ -186,17 +240,20 @@ var
 begin
   if ParamCount = 0 then
   begin
-    WriteLn('usage: PdfCheckProbe [-facts=DIR] <folder or PDF files>');
+    WriteLn('usage: PdfCheckProbe [-facts=DIR] [-syntax] <folder or PDF files>');
     ExitCode := 2;
     Exit;
   end;
   FactsDir := '';
+  WithSyntax := False;
   Checker := TLandrixEInvoicePdfChecker.Create;
   Result := TLandrixEInvoicePdfCheckResult.Create;
   try
     for I := 1 to ParamCount do
       if Copy(ParamStr(I), 1, 7) = '-facts=' then
         FactsDir := IncludeTrailingPathDelimiter(Copy(ParamStr(I), 8, MaxInt))
+      else if ParamStr(I) = '-syntax' then
+        WithSyntax := True
       else if DirectoryExists(ParamStr(I)) then
       begin
         Dir := IncludeTrailingPathDelimiter(ParamStr(I));
