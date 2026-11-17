@@ -30,6 +30,12 @@ Supported invoice standards are documented per release.
   The 99 test instances of the visualization and the KoSIT test suite agree, and so do the
   1,096 local UBL and CII examples; 17 of them are refused by both engines (an error raised by
   the stylesheet).
+- `tools/make-release-zip.py <tag>`: the source ZIP of a release with the LandrixXML submodule
+  (GitHub's source archives leave it out), one root folder. The entries do not depend on the
+  machine or the local Git configuration (line endings only from `.gitattributes`, the tag's
+  commit time, fixed modes); a content digest is printed besides the SHA-256 of the ZIP, whose
+  compressed bytes depend on Python's zlib build. The ZIP of `v0.9.0-beta.1` builds and passes the
+  tests on its own.
 - `addons/kosit/install-kosit.ps1`: module `visualization` (KoSIT XRechnung visualization
   2026-01-31).
 - Workbench: buttons for the KoSIT report and the KoSIT visualization.
