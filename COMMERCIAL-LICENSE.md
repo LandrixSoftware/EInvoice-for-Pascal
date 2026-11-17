@@ -1,4 +1,47 @@
+# LANDRIX SOFTWARE EInvoice-for-Pascal Lizenzvereinbarung
+
+Diese Lizenzvereinbarung liegt in deutscher und englischer Fassung vor. Bei Abweichungen ist die deutsche Fassung
+maßgeblich.
+
+Die kommerzielle Lizenz für EInvoice-for-Pascal gibt Ihnen das Recht,
+
+- die Bibliothek zur Entwicklung von Anwendungen oder Softwaremodulen jeder Art durch ein einzelnes, namentlich
+  benanntes Unternehmen zu verwenden,
+- jede kommerzielle, kompilierte Anwendung zu verkaufen, die die Bibliothek verwendet,
+- den Quellcode der Bibliothek für den eigenen Gebrauch zu ändern,
+- die Komponente und den Quellcode auf allen Entwicklungssystemen des Unternehmens zu verwenden,
+- beliebig viele Anwendungen in beliebiger Stückzahl zu verkaufen, ohne dass zusätzliche Laufzeitgebühren anfallen.
+
+Eine kommerzielle Lizenz wird je Unternehmen verkauft, das Anwendungen mit EInvoice-for-Pascal entwickelt.
+Sie kostet einmalig 750,00 EUR zuzüglich Umsatzsteuer je Unternehmen. Die Lizenz umfasst alle künftigen Versionen
+von EInvoice-for-Pascal; kostenpflichtige Upgrades gibt es nicht.
+
+Unternehmen mit einer kommerziellen Lizenz für XRechnung-for-Delphi dürfen EInvoice-for-Pascal ohne weitere Zahlung
+unter dieser Lizenz verwenden.
+
+Bitte fordern Sie per E-Mail an info@landrix.de eine Rechnung an; sie enthält die Bankverbindung.
+
+# Haftungsausschluss
+
+DIESE SOFTWARE WIRD IHNEN OHNE MÄNGELGEWÄHR („WIE BESEHEN“) UND OHNE AUSDRÜCKLICHE ODER STILLSCHWEIGENDE
+GEWÄHRLEISTUNG JEGLICHER ART ZUR VERFÜGUNG GESTELLT, EINSCHLIESSLICH, ABER NICHT BESCHRÄNKT AUF DIE GEWÄHRLEISTUNG DER
+MARKTGÄNGIGKEIT UND/ODER DER EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.
+SIE TRAGEN DAS GESAMTE RISIKO HINSICHTLICH DER RICHTIGKEIT UND DER VERWENDUNG DER SOFTWARE SOWIE ALLE ANDEREN RISIKEN,
+DIE SICH AUS DER VERWENDUNG ODER LEISTUNG DIESER SOFTWARE UND DER DOKUMENTATION ERGEBEN.
+LANDRIX SOFTWARE HAFTET NICHT FÜR SCHÄDEN JEGLICHER ART, DIE AUS DER VERWENDUNG ODER DER UNMÖGLICHKEIT DER VERWENDUNG
+DIESER SOFTWARE ENTSTEHEN, AUCH WENN LANDRIX SOFTWARE AUF DIE MÖGLICHKEIT SOLCHER SCHÄDEN HINGEWIESEN WURDE.
+IM GRÖSSTMÖGLICHEN NACH GELTENDEM RECHT ZULÄSSIGEN UMFANG HAFTET LANDRIX SOFTWARE IN KEINEM FALL FÜR FOLGESCHÄDEN,
+NEBENSCHÄDEN, UNMITTELBARE, MITTELBARE, BESONDERE SCHÄDEN, SCHADENERSATZ MIT STRAFCHARAKTER ODER SONSTIGE SCHÄDEN
+JEGLICHER ART, EINSCHLIESSLICH, ABER NICHT BESCHRÄNKT AUF SCHÄDEN DURCH ENTGANGENEN GEWINN, BETRIEBSUNTERBRECHUNG,
+VERLUST VON GESCHÄFTSINFORMATIONEN ODER SONSTIGE VERMÖGENSSCHÄDEN, AUCH WENN LANDRIX SOFTWARE AUF DIE MÖGLICHKEIT
+SOLCHER SCHÄDEN HINGEWIESEN WURDE.
+
+---
+
 # LANDRIX SOFTWARE EInvoice-for-Pascal license agreement
+
+This license agreement is available in German and English. In case of any discrepancy, the German version
+prevails.
 
 The commercial license for EInvoice-for-Pascal gives you the right to:
 
