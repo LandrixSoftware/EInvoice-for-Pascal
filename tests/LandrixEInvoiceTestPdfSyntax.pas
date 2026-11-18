@@ -28,7 +28,9 @@
   and leaves its rule incomplete. PdfA.Interactive: annotations, forms and
   actions (6.3 to 6.5) with the details of veraPDF's reading. PdfA.Files:
   embedded files, optional content, alternate presentations and requirements
-  (6.8 to 6.11). Accepted differences are listed in
+  (6.8 to 6.11). PdfA.Metadata: the XMP packets (6.6.2.1, 6.6.4); PdfA.XmpReader:
+  the XMP reader's valid, rejected and undecided forms. Accepted
+  differences are listed in
   tests/data/pdfa-exceptions.txt (path, rule, reason). }
 
 unit LandrixEInvoiceTestPdfSyntax;
@@ -47,6 +49,7 @@ uses
   LandrixEInvoicePdfObjects,
   LandrixEInvoicePdfSyntax,
   LandrixEInvoicePdfARules,
+  LandrixEInvoicePdfXmp,
   LandrixEInvoiceTestFramework;
 
 const
@@ -828,6 +831,20 @@ begin
     Result[I] := C;
 end;
 
+{ A metadata stream object ANum with the XMP AXml. }
+function MetaObj(ANum: Integer; const AXml: AnsiString): AnsiString;
+begin
+  Result := IntToAnsi(ANum) + ' 0 obj' + LF + '<< /Type /Metadata /Subtype /XML /Length ' +
+    IntToAnsi(Length(AXml)) + ' >>' + LF + 'stream' + LF + AXml + LF + 'endstream' + LF + 'endobj' + LF;
+end;
+
+const
+  XmpHead = '<?xpacket begin='''' id=''W5M0MpCehiHzreSzNTczkc9d''?>' + LF +
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' + LF;
+  XmpTail = '</rdf:RDF></x:xmpmeta>' + LF + '<?xpacket end=''w''?>';
+  XmpPdfA3B = '<rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">' +
+    '<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance></rdf:Description>' + LF;
+
 procedure TestPdfAClean;
 var
   Pdf: AnsiString;
@@ -837,9 +854,14 @@ var
   R: TLandrixEInvoicePdfARule;
   Res: TLandrixEInvoicePdfARuleResult;
 begin
-  Pdf := BuildPdf(GoodHeader, [Catalog, Pages,
+  Pdf := BuildPdf(GoodHeader, ['1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF,
+    Pages,
     '3 0 obj' + LF + '<< /Length 5 /Filter /Crypt >>' + LF + 'stream' + CR + LF + 'hello' + CR + LF + 'endstream' + LF +
-    'endobj' + LF], LF, FileId, LF);
+    'endobj' + LF,
+    MetaObj(20, XmpHead + XmpPdfA3B + XmpTail),
+    MetaObj(21, XmpHead + '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" ' +
+      'dc:format="application/pdf"/>' + LF + XmpTail),
+    '22 0 obj' + LF + '<< /Metadata 21 0 R >>' + LF + 'endobj' + LF], LF, FileId, LF);
   Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
   Rules := TLandrixEInvoicePdfARuleCheck.Create;
   try
@@ -909,7 +931,8 @@ begin
       Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
       Rules.Check(Doc, Facts);
       CheckEqualsStr('6.1.2-1 6.1.2-2 6.1.3-1 6.1.3-3 6.1.4-2 6.1.6-1 6.1.6-2 6.1.7.1-1 6.1.7.1-2 6.1.7.1-3 6.1.7.2-1 6.1.9-1 ' +
-        '6.1.12-1 6.1.12-2 6.1.13-1 6.1.13-2 6.1.13-3 6.1.13-4 6.1.13-5 6.1.13-11', FailedRules(Rules), 'failed rules');
+        '6.1.12-1 6.1.12-2 6.1.13-1 6.1.13-2 6.1.13-3 6.1.13-4 6.1.13-5 6.1.13-11 6.6.2.1-1', FailedRules(Rules),
+        'failed rules');
       Res := Rules.RuleResult(par_6_1_7_2_1);
       CheckEquals(2, Res.Failures, 'LZWDecode and Crypt with Std');
       CheckEquals(3, Res.ObjNum, 'first filter violation in object 3');
@@ -955,7 +978,7 @@ begin
     Doc := LoadWithFacts(Pdf, Facts);
     try
       Rules.Check(Doc, Facts);
-      CheckEqualsStr('', FailedRules(Rules), 'failed rules');
+      CheckEqualsStr('6.6.2.1-1', FailedRules(Rules), 'failed rules');
       Check(Rules.RuleResult(par_6_1_12_2).Outcome = pro_Incomplete, '6.1.12-2 incomplete at the node budget');
       Check(Rules.RuleResult(par_6_1_12_1).Outcome = pro_Passed, '6.1.12-1 passed');
     finally
@@ -1016,7 +1039,7 @@ begin
     try
       Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
       Rules.Check(Doc, Facts);
-      CheckEqualsStr('6.3.2-2 6.3.3-3 6.3.3-4 6.4.1-2 6.4.1-3 6.5.1-1 6.5.1-2 6.5.2-2', FailedRules(Rules),
+      CheckEqualsStr('6.3.2-2 6.3.3-3 6.3.3-4 6.4.1-2 6.4.1-3 6.5.1-1 6.5.1-2 6.5.2-2 6.6.2.1-1', FailedRules(Rules),
         'failed rules');
       Res := Rules.RuleResult(par_6_3_2_2);
       CheckEquals(5, Res.ObjNum, 'flags of object 5');
@@ -1080,7 +1103,8 @@ begin
     try
       Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
       Rules.Check(Doc, Facts);
-      CheckEqualsStr('6.3.1-1 6.3.3-1 6.3.3-2 6.4.1-1 6.4.2-1 6.4.2-2 6.5.1-1 6.5.1-2 6.5.2-1', FailedRules(Rules),
+      CheckEqualsStr('6.3.1-1 6.3.3-1 6.3.3-2 6.4.1-1 6.4.2-1 6.4.2-2 6.5.1-1 6.5.1-2 6.5.2-1 6.6.2.1-1',
+        FailedRules(Rules),
         'failed rules');
       CheckEquals(2, Rules.RuleResult(par_6_5_1_1).Failures, 'JavaScript under WC and Launch in the outline only');
       CheckEquals(11, Rules.RuleResult(par_6_5_1_2).ObjNum, 'named action Quit in the /Next of outline item 11');
@@ -1131,7 +1155,7 @@ begin
     try
       Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
       Rules.Check(Doc, Facts);
-      CheckEqualsStr('6.8-1 6.8-2 6.8-3 6.8-4 6.9-1 6.9-2 6.9-3 6.9-4 6.10-1 6.10-2 6.11-1', FailedRules(Rules),
+      CheckEqualsStr('6.6.2.1-1 6.8-1 6.8-2 6.8-3 6.8-4 6.9-1 6.9-2 6.9-3 6.9-4 6.10-1 6.10-2 6.11-1', FailedRules(Rules),
         'failed rules');
       CheckEquals(2, Rules.RuleResult(par_6_8_1).Failures, 'stream 13 under F and UF');
       CheckEquals(11, Rules.RuleResult(par_6_8_1).ObjNum, 'file specification 11');
@@ -1170,7 +1194,7 @@ begin
     try
       Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
       Rules.Check(Doc, Facts);
-      CheckEqualsStr('', FailedRules(Rules), 'failed rules');
+      CheckEqualsStr('6.6.2.1-1', FailedRules(Rules), 'failed rules');
       Check(Rules.RuleResult(par_6_8_1).Outcome = pro_Passed, '6.8-1 passed');
       Check(Rules.RuleResult(par_6_8_4).Outcome = pro_Incomplete, '6.8-4 incomplete (partial)');
       Check(Rules.RuleResult(par_6_9_3).Outcome = pro_Passed, '6.9-3 passed (label, nested array)');
@@ -1209,7 +1233,7 @@ begin
     try
       Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
       Rules.Check(Doc, Facts);
-      CheckEqualsStr('6.9-2 6.9-3', FailedRules(Rules), 'failed rules');
+      CheckEqualsStr('6.6.2.1-1 6.9-2 6.9-3', FailedRules(Rules), 'failed rules');
       Check(Rules.RuleResult(par_6_8_1).Outcome = pro_Incomplete, '6.8-1 incomplete (name tree cycle)');
       CheckEquals(1, Rules.RuleResult(par_6_9_3).Failures, 'the /Order cycle of /D is no failure');
     finally
@@ -1218,6 +1242,225 @@ begin
   finally
     Rules.Free;
     Facts.Free;
+  end;
+end;
+
+{ AText as UTF-16LE with byte order mark (ASCII only). }
+function Utf16Le(const AText: AnsiString): AnsiString;
+var
+  I: Integer;
+begin
+  Result := AnsiChar(255) + AnsiChar(254);
+  for I := 1 to Length(AText) do
+    Result := Result + AText[I] + AnsiChar(0);
+end;
+
+procedure TestPdfAMetadata;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+begin
+  { main packet 20: a header with bytes and encoding (6.6.2.1-2/-3);
+    pdfaid:part "+03" (Java reads 3) under the prefix foo (6.6.4-4) in an
+    attribute; conformance as rdf:Alt (6.6.4-3); further packet 21, named
+    by the page, with dc:format twice (rejected: 6.6.2.1-4/-5) }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Metadata 21 0 R >>' + LF + 'endobj' + LF,
+    MetaObj(20, '<?xpacket begin='''' bytes=''10'' encoding="UTF-8"?>' + LF +
+      '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' + LF +
+      '<rdf:Description rdf:about="" xmlns:foo="http://www.aiim.org/pdfa/ns/id/" foo:part="+03"/>' + LF +
+      '<rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"><pdfaid:conformance><rdf:Alt>' +
+      '<rdf:li xml:lang="x-default">B</rdf:li></rdf:Alt></pdfaid:conformance><pdfaid:amd>2005</pdfaid:amd>' +
+      '</rdf:Description>' + LF + XmpTail),
+    MetaObj(21, XmpHead + '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/">' +
+      '<dc:format>a</dc:format></rdf:Description><rdf:Description rdf:about="" ' +
+      'xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:format>a</dc:format></rdf:Description>' + LF + XmpTail)],
+    LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.6.2.1-2 6.6.2.1-3 6.6.2.1-4 6.6.2.1-5 6.6.4-3 6.6.4-4', FailedRules(Rules), 'failed rules');
+      CheckEquals(20, Rules.RuleResult(par_6_6_2_1_2).ObjNum, 'header of the main packet');
+      CheckEquals(21, Rules.RuleResult(par_6_6_2_1_4).ObjNum, 'duplicate property in the further packet');
+      Check(Rules.RuleResult(par_6_6_4_2).Outcome = pro_Passed, '6.6.4-2 passed (+03)');
+      Check(Rules.RuleResult(par_6_6_4_6).Outcome = pro_Passed, '6.6.4-6 passed (pdfaid:amd)');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+
+  { main packet without rdf:RDF: valid, but no encoding and no
+    identification (6.6.2.1-5, 6.6.4-1); further packet 21 in UTF-16LE
+    (6.6.2.1-5), named by an unreferenced dictionary }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF, Pages,
+    MetaObj(20, '<?xpacket begin='''' bytes=''1''?><foo/>'),
+    MetaObj(21, Utf16Le(XmpHead + XmpPdfA3B + XmpTail)),
+    '22 0 obj' + LF + '<< /Metadata 21 0 R >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.6.2.1-5 6.6.4-1', FailedRules(Rules), 'failed rules');
+      CheckEquals(2, Rules.RuleResult(par_6_6_2_1_5).Failures, 'no RDF and UTF-16LE');
+      Check(Rules.RuleResult(par_6_6_2_1_2).Outcome = pro_Passed, '6.6.2.1-2 passed (no RDF, no header)');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+
+  { the catalog's metadata stream has the wrong /Subtype (6.6.2.1-1): the
+    further packet is then not judged, and the main one not read }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF, Pages,
+    '20 0 obj' + LF + '<< /Type /Metadata /Subtype /Foo /Length 0 >>' + LF + 'stream' + LF + LF + 'endstream' + LF +
+      'endobj' + LF,
+    MetaObj(21, '<?xpacket begin='''' bytes=''1'' id=''W5M0MpCehiHzreSzNTczkc9d''?>' + LF +
+      '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' + LF +
+      XmpTail),
+    '22 0 obj' + LF + '<< /Metadata 21 0 R >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.6.2.1-1', FailedRules(Rules), 'failed rules');
+      Check(Rules.RuleResult(par_6_6_2_1_2).Outcome = pro_Incomplete, '6.6.2.1-2 incomplete');
+      Check(Rules.RuleResult(par_6_6_4_1).Outcome = pro_Passed, '6.6.4-1 not judged without a main packet');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
+{ The state of an XMP packet read from AText. }
+function XmpState(APacket: TLandrixEInvoiceXmpPacket; const AText: AnsiString): TLandrixEInvoiceXmpState;
+var
+  B: TLandrixEInvoicePdfBytes;
+  I: Integer;
+begin
+  B := nil;
+  SetLength(B, Length(AText));
+  for I := 1 to Length(AText) do
+    B[I - 1] := Ord(AText[I]);
+  APacket.Parse(B);
+  Result := APacket.State;
+end;
+
+{ An XMP packet with ABody in its rdf:RDF. }
+function XmpOf(const ABody: AnsiString): AnsiString;
+begin
+  Result := '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+    ABody + '</rdf:RDF></x:xmpmeta>';
+end;
+
+{ An rdf:Description with the namespace q (urn:q) holding ABody. }
+function XmpDesc(const ABody: AnsiString): AnsiString;
+begin
+  Result := XmpOf('<rdf:Description rdf:about="" xmlns:q="urn:q" xmlns:a="urn:q">' + ABody + '</rdf:Description>');
+end;
+
+{ AText as UTF-16BE with byte order mark (ASCII only). }
+function Utf16Be(const AText: AnsiString): AnsiString;
+var
+  I: Integer;
+begin
+  Result := AnsiChar(254) + AnsiChar(255);
+  for I := 1 to Length(AText) do
+    Result := Result + AnsiChar(0) + AText[I];
+end;
+
+procedure TestPdfAXmpReader;
+var
+  P: TLandrixEInvoiceXmpPacket;
+  N: TLandrixEInvoiceXmpNode;
+begin
+  P := TLandrixEInvoiceXmpPacket.Create;
+  try
+    { a qualified value: rdf:value is the value, the other field a qualifier }
+    Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value>hi</rdf:value><q:qual>two</q:qual>' +
+      '</q:prop>')) = xms_Valid, 'qualified value: ' + P.Reason);
+    N := P.Find('urn:q', 'prop');
+    Check((N <> nil) and (N.Kind = xmk_Simple) and (N.Value = 'hi') and (N.QualifierCount = 1), 'qualified value read');
+    { a qualifier attribute keeps its written name, a field moved to a
+      qualifier gets the registry's prefix: attribute and field of the same
+      name are not decided; the same written attribute twice is rejected }
+    Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value rdf:value="hi" a:qual="one"/>' +
+      '<a:qual>two</a:qual></q:prop>')) = xms_Unknown, 'attribute and field qualifier');
+    Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value rdf:value="hi" q:qual="one"/>' +
+      '<q:qual>two</q:qual></q:prop>')) = xms_Unknown, 'attribute and field of the same written name');
+    Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value xmlns:q="urn:other" rdf:value="hi" ' +
+      'q:qual="one"/><a:qual>two</a:qual></q:prop>')) = xms_Unknown, 'field named by the registry prefix');
+    Check(XmpState(P, XmpDesc('<q:prop><q:Thing><rdf:value rdf:parseType="Resource"><rdf:value>hi</rdf:value>' +
+      '<rdf:type xmlns:rdf="urn:q">x</rdf:type></rdf:value></q:Thing></q:prop>')) = xms_Unknown,
+      'field moved up through a nested value');
+    { the same two with other local names }
+    Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value xmlns:q="urn:other" rdf:value="hi" ' +
+      'q:qual="one"/><a:other>two</a:other></q:prop>')) = xms_Valid, 'other local name: ' + P.Reason);
+    Check(XmpState(P, XmpDesc('<q:prop><q:Thing><rdf:value rdf:parseType="Resource"><rdf:value>hi</rdf:value>' +
+      '<rdf:other xmlns:rdf="urn:q">x</rdf:other></rdf:value></q:Thing></q:prop>')) = xms_Valid,
+      'other local name, nested: ' + P.Reason);
+    Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value rdf:value="hi" xml:lang="de"/>' +
+      '<q:qual>two</q:qual></q:prop>')) = xms_Valid, 'attribute and field qualifiers: ' + P.Reason);
+    Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource" xml:lang="de"><rdf:value xml:lang="de">x</rdf:value>' +
+      '</q:prop>')) = xms_Invalid, 'xml:lang on a qualified property and its value');
+    { an array and a structure }
+    Check(XmpState(P, XmpDesc('<q:arr><rdf:Seq><rdf:li>a</rdf:li><rdf:li>b</rdf:li></rdf:Seq></q:arr>' +
+      '<q:st><rdf:Description><q:f>1</q:f></rdf:Description></q:st>')) = xms_Valid, 'array and structure');
+    N := P.Find('urn:q', 'arr');
+    Check((N <> nil) and (N.Kind = xmk_Array) and (N.ArrayForm = xma_Seq) and (N.ChildCount = 2), 'Seq of two');
+    N := P.Find('urn:q', 'st');
+    Check((N <> nil) and (N.Kind = xmk_Struct) and (N.ChildCount = 1), 'structure of one field');
+    { forms the parser rejects }
+    Check(XmpState(P, XmpDesc('<q:p rdf:parseType="Literal">x</q:p>')) = xms_Invalid, 'parseType Literal');
+    Check(XmpState(P, XmpDesc('<rdf:li>x</rdf:li>')) = xms_Invalid, 'top-level rdf:li');
+    Check(XmpState(P, XmpDesc('<q:p><![CDATA[3]]></q:p>')) = xms_Invalid, 'CDATA');
+    Check(XmpState(P, XmpDesc('<q:p rdf:resource="x"> </q:p>')) = xms_Invalid, 'rdf:resource with content');
+    Check(XmpState(P, XmpOf('<q:Thing xmlns:q="urn:q"/>')) = xms_Invalid, 'top-level typed node');
+    Check(XmpState(P, XmpOf('<rdf:Description rdf:about="a"/><rdf:Description rdf:about="b"/>')) = xms_Invalid,
+      'different rdf:about');
+    { not decided here }
+    Check(XmpState(P, XmpOf('<rdf:Description rdf:about="a"/><rdf:Description rdf:about=""/>')) = xms_Unknown,
+      'empty rdf:about after a non-empty one');
+    Check(XmpState(P, '<!DOCTYPE x>' + XmpDesc('')) = xms_Unknown, 'document type');
+    Check(XmpState(P, '<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:RDF><rdf:Description/></rdf:RDF></x:xmpmeta>') = xms_Unknown, 'rdf:RDF without attributes');
+    Check(XmpState(P, XmpDesc('<q:p>' + AnsiChar($C3) + '</q:p>')) = xms_Unknown, 'bytes that are no UTF-8');
+    { encodings }
+    Check(XmpState(P, '<?xml version="1.0" encoding="ISO-8859-1"?>' + XmpDesc('<q:p>x</q:p>')) = xms_Valid,
+      'ISO-8859-1 declaration: ' + P.Reason);
+    CheckEqualsStr('UTF-8', P.Encoding, 'reported as UTF-8');
+    Check(XmpState(P, Utf16Be(XmpDesc('<q:p>x</q:p>'))) = xms_Valid, 'UTF-16BE: ' + P.Reason);
+    CheckEqualsStr('UTF-16BE', P.Encoding, 'UTF-16BE');
+    { the root search: an x:xmpmeta without RDF ends it; the last xpacket wins }
+    Check(XmpState(P, '<o><x:xmpmeta xmlns:x="adobe:ns:meta/"/>' + XmpDesc('') + '</o>') = xms_Valid, 'wrapper first');
+    Check(not P.HasRoot, 'no RDF behind an empty x:xmpmeta');
+    Check(XmpState(P, '<?xpacket a?><?xpacket b?>' + XmpDesc('')) = xms_Valid, 'two headers');
+    CheckEqualsStr('b', string(P.Header), 'the last header');
+  finally
+    P.Free;
   end;
 end;
 
@@ -1357,6 +1600,8 @@ begin
   RegisterTest('PdfA.Interactive', TestPdfAInteractive);
   RegisterTest('PdfA.Interactive2', TestPdfAInteractive2);
   RegisterTest('PdfA.Files', TestPdfAFiles);
+  RegisterTest('PdfA.Metadata', TestPdfAMetadata);
+  RegisterTest('PdfA.XmpReader', TestPdfAXmpReader);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

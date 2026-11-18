@@ -27,7 +27,7 @@
 <tr><td>Regelpr&#252;fung (Vorhersage)</td><td class="s-failed">fehlgeschlagen</td><td></td></tr>
 <tr><td>PDF-Einbettung (Ebene 2)</td><td class="s-passed">bestanden</td><td></td></tr>
 <tr><td>PDF-Metadaten, XMP (Ebene 3)</td><td class="s-failed">fehlgeschlagen</td><td></td></tr>
-<tr><td>PDF/A (Ebene 1)</td><td class="s-incomplete">unvollst&#228;ndig</td><td></td></tr>
+<tr><td>PDF/A (Ebene 1)</td><td class="s-failed">fehlgeschlagen</td><td></td></tr>
 </tbody></table></section>
 <section><h2>PDF</h2>
 <table class="facts">
@@ -40,9 +40,10 @@
 <tr><th>Beziehung (/AFRelationship)</th><td>Alternative</td></tr>
 </table></section>
 <section><h2>Befunde</h2>
-<p class="counts">1 Fehler, 0 Warnungen, 0 Hinweise, 1 vorhergesagt</p>
+<p class="counts">2 Fehler, 0 Warnungen, 0 Hinweise, 1 vorhergesagt</p>
 <table class="findings"><thead><tr><th>Teil</th><th>Schweregrad</th><th>Regel</th><th>Position</th><th>Ort</th><th>Text</th></tr></thead><tbody>
 <tr><td>PDF-Metadaten, XMP (Ebene 3)</td><td class="sev-error">Fehler</td><td>LX-PDF-11</td><td></td><td class="loc">/Root/Metadata</td><td class="text">The PDF has no XMP metadata (/Metadata of the catalog)</td></tr>
+<tr><td>PDF/A (Ebene 1)</td><td class="sev-error">Fehler</td><td>PDFA-6.6.2.1-1</td><td></td><td class="loc">PDF/A object 1 0</td><td class="text">PDF/A-3b 6.6.2.1-1: The catalog has /Metadata, a stream with /Type /Metadata and /Subtype /XML; object 1: catalog without a metadata stream /Type /Metadata /Subtype /XML</td></tr>
 <tr class="predicted"><td>Regelpr&#252;fung (Vorhersage)</td><td class="sev-error">Fehler (vorhergesagt)</td><td>BR-DE-15</td><td></td><td class="loc">BT-10</td><td class="text">the buyer reference (BT-10) shall be provided</td></tr>
 </tbody></table>
 <p class="note">Vorhergesagt: Die eigene Regelpr&#252;fung der Bibliothek sagt voraus, was KoSIT melden w&#252;rde. Sie entscheidet nicht &#252;ber das Urteil und z&#228;hlt nicht zu Fehlern, Warnungen und Hinweisen.</p>

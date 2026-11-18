@@ -13,9 +13,10 @@
 }
 
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.3 (annotations), 6.4
-  (interactive forms), 6.5 (actions), 6.8 (embedded files), 6.9 (optional
-  content), 6.10 (alternate presentations) and 6.11 (requirements) of ISO
-  19005-3, checked on the raw
+  (interactive forms), 6.5 (actions), 6.6.2.1 and 6.6.4 (XMP packets, PDF/A
+  identification), 6.8 (embedded files), 6.9 (optional content), 6.10
+  (alternate presentations) and 6.11 (requirements) of ISO 19005-3, checked
+  on the raw
   syntax facts of LandrixEInvoicePdfSyntax and the objects of the document.
   The rules carry the numbers of the veraPDF validation profile
   ("6.1.2-1": clause and test number; the finding ID is "PDFA-6.1.2-1"), so
@@ -32,8 +33,8 @@
   items and their /Next chains, the AcroForm /Fields with kids that have /T.
 
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
-  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.8
-  (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10 (alternative
+  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6.2.1 und
+  6.6.4 (XMP-Pakete, PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10 (alternative
   Darstellungen) und 6.11 (Anforderungen) der ISO 19005-3, geprueft auf den
   rohen Syntax-Tatsachen von
   LandrixEInvoicePdfSyntax und den Objekten des Dokuments. Die Regeln tragen die Nummern des
@@ -65,13 +66,16 @@ interface
 
 uses
   LandrixEInvoicePdfObjects,
-  LandrixEInvoicePdfSyntax;
+  LandrixEInvoicePdfSyntax,
+  LandrixEInvoicePdfXmp;
 
 type
-  { The rules of clauses 6.1, 6.3 to 6.5 and 6.8 to 6.11 in the veraPDF
-    profile PDF/A-3B, named after clause and test number.
-    DE: Die Regeln der Abschnitte 6.1, 6.3 bis 6.5 und 6.8 bis 6.11 im
-    veraPDF-Profil PDF/A-3B, benannt nach Abschnitt und Testnummer. }
+  { The rules of clauses 6.1, 6.3 to 6.6 and 6.8 to 6.11 in the veraPDF
+    profile PDF/A-3B, named after clause and test number (of 6.6 so far
+    6.6.2.1 and 6.6.4).
+    DE: Die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis 6.11 im
+    veraPDF-Profil PDF/A-3B, benannt nach Abschnitt und Testnummer (von 6.6
+    bisher 6.6.2.1 und 6.6.4). }
   TLandrixEInvoicePdfARule = (
     par_6_1_2_1, par_6_1_2_2, par_6_1_3_1, par_6_1_3_2, par_6_1_3_3, par_6_1_4_2, par_6_1_6_1, par_6_1_6_2,
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
@@ -80,6 +84,8 @@ type
     par_6_3_1_1, par_6_3_2_1, par_6_3_2_2, par_6_3_3_1, par_6_3_3_2, par_6_3_3_3, par_6_3_3_4,
     par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
     par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2,
+    par_6_6_2_1_1, par_6_6_2_1_2, par_6_6_2_1_3, par_6_6_2_1_4, par_6_6_2_1_5,
+    par_6_6_4_1, par_6_6_4_2, par_6_6_4_3, par_6_6_4_4, par_6_6_4_5, par_6_6_4_6, par_6_6_4_7,
     par_6_8_1, par_6_8_2, par_6_8_3, par_6_8_4, par_6_9_1, par_6_9_2, par_6_9_3, par_6_9_4,
     par_6_10_1, par_6_10_2, par_6_11_1);
 
@@ -152,6 +158,11 @@ type
     FSpecNums: array of Integer;
     FSpecCount: Integer;
     FNodesOc: Integer;
+    { the metadata streams other dictionaries name (6.6.2.1), by object
+      number }
+    FMetaSeen: array of Boolean;
+    FMetaNums: array of Integer;
+    FMetaCount: Integer;
     procedure Reset;
     procedure Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource;
       APos: Integer; const ADetail: string);
@@ -195,6 +206,11 @@ type
     procedure CheckFileSpecs;
     procedure CheckOptionalContent;
     procedure CheckCatalogLate;
+    procedure AddMetadata(ADict: TLandrixEInvoicePdfObject);
+    procedure MarkMetadata;
+    procedure JudgePacket(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
+    procedure JudgeIdentification(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
+    procedure CheckMetadata;
   public
     constructor Create;
     { Checks every implemented rule. ADoc was loaded with AFacts as receiver
@@ -303,6 +319,19 @@ const
     (Number: '6.5.1-2'; Coverage: prc_Full; Text: 'Only the named actions NextPage, PrevPage, FirstPage and LastPage'),
     (Number: '6.5.2-1'; Coverage: prc_Full; Text: 'The catalog has no additional actions /AA'),
     (Number: '6.5.2-2'; Coverage: prc_Full; Text: 'A page has no additional actions /AA'),
+    (Number: '6.6.2.1-1'; Coverage: prc_Full;
+      Text: 'The catalog has /Metadata, a stream with /Type /Metadata and /Subtype /XML'),
+    (Number: '6.6.2.1-2'; Coverage: prc_Full; Text: 'The xpacket header of an XMP packet has no bytes attribute'),
+    (Number: '6.6.2.1-3'; Coverage: prc_Full; Text: 'The xpacket header of an XMP packet has no encoding attribute'),
+    (Number: '6.6.2.1-4'; Coverage: prc_Partial; Text: 'An XMP packet is well-formed XML and RDF'),
+    (Number: '6.6.2.1-5'; Coverage: prc_Full; Text: 'An XMP packet is encoded as UTF-8'),
+    (Number: '6.6.4-1'; Coverage: prc_Full; Text: 'The metadata have a PDF/A identification (pdfaid)'),
+    (Number: '6.6.4-2'; Coverage: prc_Full; Text: 'pdfaid:part is 3'),
+    (Number: '6.6.4-3'; Coverage: prc_Full; Text: 'pdfaid:conformance is A, B or U'),
+    (Number: '6.6.4-4'; Coverage: prc_Full; Text: 'pdfaid:part has the prefix pdfaid'),
+    (Number: '6.6.4-5'; Coverage: prc_Full; Text: 'pdfaid:conformance has the prefix pdfaid'),
+    (Number: '6.6.4-6'; Coverage: prc_Full; Text: 'pdfaid:amd has the prefix pdfaid'),
+    (Number: '6.6.4-7'; Coverage: prc_Full; Text: 'pdfaid:corr has the prefix pdfaid'),
     (Number: '6.8-1'; Coverage: prc_Full; Text: 'An embedded file has a MIME type /Subtype of the form type/subtype'),
     (Number: '6.8-2'; Coverage: prc_Partial;
       Text: 'A file specification of an embedded file has /F and /UF'),
@@ -327,6 +356,8 @@ const
   MaxWalkDepth = 128;
   { most optional content groups and configurations compared by name }
   MaxOcNames = 4096;
+  { most further metadata packets read (6.6.2.1) }
+  MaxMetaPackets = 1000;
   { most work (entries visited, names compared) for /OCGs and the /Order
     arrays }
   MaxOcWork = 20000000;
@@ -371,6 +402,20 @@ begin
   for I := 1 to Length(S) do
     if (Ord(S[I]) >= 32) and (Ord(S[I]) < 127) then
       Result[I] := Chr(Ord(S[I]))
+    else
+      Result[I] := '?';
+end;
+
+{ Text of an XMP value as printable ASCII, '?' for anything else. }
+function WideAscii(const S: TLandrixEInvoiceString): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, Length(S));
+  for I := 1 to Length(S) do
+    if (Word(S[I]) >= 32) and (Word(S[I]) < 127) then
+      Result[I] := Chr(Word(S[I]))
     else
       Result[I] := '?';
 end;
@@ -649,6 +694,9 @@ begin
   FSpecs := nil;
   FSpecNums := nil;
   FSpecCount := 0;
+  FMetaSeen := nil;
+  FMetaNums := nil;
+  FMetaCount := 0;
   FLive := nil;
   FLiveCount := 0;
   FLiveByNum := nil;
@@ -814,6 +862,7 @@ begin
     MarkLateA;
   end;
   CheckFileSpecs;
+  CheckMetadata;
 
   for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
     if Rules[R].Coverage = prc_None then
@@ -1806,6 +1855,7 @@ begin
     if (T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Filespec') then
       AddSpec(AObj, ANum);
   end;
+  AddMetadata(AObj);
   for I := 0 to Integer(AObj.DVals.Count) - 1 do
   begin
     V := TLandrixEInvoicePdfObject(AObj.DVals[I]);
@@ -1924,10 +1974,12 @@ var
 begin
   SetLength(FAssoc, FDoc.XrefCount);
   SetLength(FSpecSeen, FDoc.XrefCount);
+  SetLength(FMetaSeen, FDoc.XrefCount);
   for N := 0 to FDoc.XrefCount - 1 do
   begin
     FAssoc[N] := False;
     FSpecSeen[N] := False;
+    FMetaSeen[N] := False;
   end;
   for N := 0 to FDoc.XrefCount - 1 do
   begin
@@ -2140,6 +2192,325 @@ begin
       if (S <> nil) and (S.Kind = pok_Name) then
         FailAt(par_6_11_1, Cat, 'catalog with /Requirements');
     end;
+end;
+
+{ A metadata stream as veraPDF accepts one: a stream with the names /Type
+  /Metadata and /Subtype /XML. }
+function IsMetadataStream(ADoc: TLandrixEInvoicePdfDocument; AObj: TLandrixEInvoicePdfObject): Boolean;
+var
+  T, S: TLandrixEInvoicePdfObject;
+begin
+  Result := False;
+  if (AObj = nil) or (AObj.Kind <> pok_Stream) then
+    Exit;
+  T := ADoc.DGet(AObj, 'Type');
+  S := ADoc.DGet(AObj, 'Subtype');
+  Result := (T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Metadata') and (S <> nil) and
+    (S.Kind = pok_Name) and (S.NameVal = 'XML');
+end;
+
+{ 6.6.2.1-2/-3: the xpacket header as veraPDF searches it: the pattern
+  name\s*=\s*'...' or name\s*=\s*"..." anywhere in the data, case-sensitive.
+  DE: 6.6.2.1-2/-3: der xpacket-Kopf, wie veraPDF ihn durchsucht: das Muster
+  name\s*=\s*'...' oder name\s*=\s*"..." irgendwo in den Daten, mit
+  Gross-/Kleinschreibung. }
+function HeaderHas(const AHeader, AName: TLandrixEInvoiceString): Boolean;
+var
+  I, J, K: Integer;
+  Q: WideChar;
+begin
+  Result := False;
+  for I := 1 to Length(AHeader) - Length(AName) + 1 do
+  begin
+    if Copy(AHeader, I, Length(AName)) <> AName then
+      Continue;
+    J := I + Length(AName);
+    while (J <= Length(AHeader)) and ((AHeader[J] = ' ') or (AHeader[J] = #9) or (AHeader[J] = #10) or
+      (AHeader[J] = #11) or (AHeader[J] = #12) or (AHeader[J] = #13)) do
+      Inc(J);
+    if (J > Length(AHeader)) or (AHeader[J] <> '=') then
+      Continue;
+    Inc(J);
+    while (J <= Length(AHeader)) and ((AHeader[J] = ' ') or (AHeader[J] = #9) or (AHeader[J] = #10) or
+      (AHeader[J] = #11) or (AHeader[J] = #12) or (AHeader[J] = #13)) do
+      Inc(J);
+    if (J > Length(AHeader)) or ((AHeader[J] <> '''') and (AHeader[J] <> '"')) then
+      Continue;
+    Q := AHeader[J];
+    for K := J + 1 to Length(AHeader) do
+      if AHeader[K] = Q then
+      begin
+        Result := True;
+        Exit;
+      end;
+  end;
+end;
+
+{ 6.6.4-2: pdfaid:part read as Java's Integer.parseInt reads it: an optional
+  sign and ASCII digits within 32 bits; False if that gives no number.
+  AUnknown for characters beyond ASCII (Java also takes other digits).
+  DE: 6.6.4-2: pdfaid:part gelesen wie Javas Integer.parseInt: ein
+  optionales Vorzeichen und ASCII-Ziffern innerhalb von 32 Bit; False, wenn
+  das keine Zahl ergibt. AUnknown bei Zeichen jenseits von ASCII (Java nimmt
+  auch andere Ziffern). }
+function JavaInt(const S: TLandrixEInvoiceString; out AValue: Int64; out AUnknown: Boolean): Boolean;
+var
+  I, Start: Integer;
+  Neg: Boolean;
+begin
+  Result := False;
+  AUnknown := False;
+  AValue := 0;
+  for I := 1 to Length(S) do
+    if Word(S[I]) > 127 then
+    begin
+      AUnknown := True;
+      Exit;
+    end;
+  if S = '' then
+    Exit;
+  Start := 1;
+  Neg := False;
+  if (S[1] = '+') or (S[1] = '-') then
+  begin
+    if Length(S) = 1 then
+      Exit;
+    Neg := S[1] = '-';
+    Start := 2;
+  end;
+  for I := Start to Length(S) do
+  begin
+    if (S[I] < '0') or (S[I] > '9') then
+      Exit;
+    AValue := AValue * 10 + (Word(S[I]) - Ord('0'));
+    if AValue > 2147483648 then
+      Exit;
+  end;
+  if Neg then
+    AValue := -AValue;
+  Result := (AValue >= -2147483648) and (AValue <= 2147483647);
+end;
+
+{ The rules of 6.6 cannot all be checked. }
+procedure TLandrixEInvoicePdfARuleCheck.MarkMetadata;
+var
+  R: TLandrixEInvoicePdfARule;
+begin
+  for R := par_6_6_2_1_1 to par_6_6_4_7 do
+    FIncomplete[R] := True;
+end;
+
+{ 6.6.2.1: a further metadata stream, named by /Metadata of a dictionary
+  that is no catalog (the catalog's own stream is the main packet).
+  DE: 6.6.2.1: ein weiterer Metadaten-Stream, genannt von /Metadata eines
+  Dictionarys, das kein Katalog ist (der Stream des Katalogs ist das
+  Hauptpaket). }
+procedure TLandrixEInvoicePdfARuleCheck.AddMetadata(ADict: TLandrixEInvoicePdfObject);
+var
+  Raw, T: TLandrixEInvoicePdfObject;
+begin
+  Raw := ADict.RawGet('Metadata');
+  if (Raw = nil) or (Raw.Kind <> pok_Ref) then
+    Exit;
+  T := FDoc.DGet(ADict, 'Type');
+  if (T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Catalog') then
+    Exit;
+  if (Raw.RefNum < 0) or (Raw.RefNum >= Integer(Length(FMetaSeen))) or FMetaSeen[Raw.RefNum] then
+    Exit;
+  if not IsMetadataStream(FDoc, FDoc.Resolve(Raw)) then
+    Exit;
+  FMetaSeen[Raw.RefNum] := True;
+  if FMetaCount = Integer(Length(FMetaNums)) then
+    SetLength(FMetaNums, 16 + 2 * FMetaCount);
+  FMetaNums[FMetaCount] := Raw.RefNum;
+  Inc(FMetaCount);
+end;
+
+{ 6.6.2.1-2 to -5 on one packet: a packet veraPDF rejects has no header and
+  no encoding (-4 and -5 fail); an unknown one leaves the rules incomplete.
+  DE: 6.6.2.1-2 bis -5 an einem Paket: ein Paket, das veraPDF ablehnt, hat
+  weder Kopf noch Encoding (-4 und -5 verletzt); ein unbekanntes laesst die
+  Regeln unvollstaendig. }
+procedure TLandrixEInvoicePdfARuleCheck.JudgePacket(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
+var
+  Gen: Integer;
+  Where: string;
+begin
+  Gen := FDoc.XrefEntry(ANum).Gen;
+  Where := 'object ' + IntToStr(ANum) + ': ';
+  case APacket.State of
+    xms_Unknown:
+      begin
+        FIncomplete[par_6_6_2_1_2] := True;
+        FIncomplete[par_6_6_2_1_3] := True;
+        FIncomplete[par_6_6_2_1_4] := True;
+        FIncomplete[par_6_6_2_1_5] := True;
+      end;
+    xms_Invalid:
+      begin
+        Fail(par_6_6_2_1_4, ANum, Gen, pss_File, -1, Where + 'XMP packet not valid: ' + APacket.Reason);
+        Fail(par_6_6_2_1_5, ANum, Gen, pss_File, -1, Where + 'XMP packet not valid, no encoding');
+      end;
+  else
+    begin
+      if APacket.HasHeader and HeaderHas(APacket.Header, 'bytes') then
+        Fail(par_6_6_2_1_2, ANum, Gen, pss_File, -1, Where + 'xpacket header with bytes');
+      if APacket.HasHeader and HeaderHas(APacket.Header, 'encoding') then
+        Fail(par_6_6_2_1_3, ANum, Gen, pss_File, -1, Where + 'xpacket header with encoding');
+      if not APacket.HasRoot then
+        Fail(par_6_6_2_1_5, ANum, Gen, pss_File, -1, Where + 'XMP packet without rdf:RDF, no encoding')
+      else if APacket.Encoding <> 'UTF-8' then
+        Fail(par_6_6_2_1_5, ANum, Gen, pss_File, -1, Where + 'XMP packet encoded as ' + APacket.Encoding);
+    end;
+  end;
+end;
+
+{ 6.6.4 on the main packet: a pdfaid property at the top level; part 3 (a
+  simple value as Java reads an integer), conformance A, B or U; the prefix
+  written for part, conformance, amd and corr is pdfaid or none.
+  DE: 6.6.4 am Hauptpaket: eine pdfaid-Eigenschaft auf oberster Ebene; part
+  3 (ein einfacher Wert, wie Java eine Ganzzahl liest), conformance A, B
+  oder U; das fuer part, conformance, amd und corr geschriebene Praefix ist
+  pdfaid oder keines. }
+procedure TLandrixEInvoicePdfARuleCheck.JudgeIdentification(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
+const
+  Names: array[0..3] of string = ('part', 'conformance', 'amd', 'corr');
+var
+  Gen, I: Integer;
+  Where: string;
+  Any, Unknown: Boolean;
+  P: TLandrixEInvoiceXmpNode;
+  Part: Int64;
+begin
+  Gen := FDoc.XrefEntry(ANum).Gen;
+  Where := 'object ' + IntToStr(ANum) + ': ';
+  if APacket.State = xms_Unknown then
+  begin
+    for I := Ord(par_6_6_4_1) to Ord(par_6_6_4_7) do
+      FIncomplete[TLandrixEInvoicePdfARule(I)] := True;
+    Exit;
+  end;
+  Any := False;
+  if APacket.State = xms_Valid then
+    for I := 0 to APacket.PropertyCount - 1 do
+      if APacket.Prop(I).Ns = LandrixEInvoiceXmpNsPdfaId then
+        Any := True;
+  if not Any then
+  begin
+    Fail(par_6_6_4_1, ANum, Gen, pss_File, -1, Where + 'no PDF/A identification (pdfaid)');
+    Exit;
+  end;
+  Unknown := False;
+  P := APacket.Find(LandrixEInvoiceXmpNsPdfaId, 'part');
+  if (P = nil) or (P.Kind <> xmk_Simple) or not JavaInt(P.Value, Part, Unknown) or (Part <> 3) then
+  begin
+    if (P <> nil) and (P.Kind = xmk_Simple) and Unknown then
+      FIncomplete[par_6_6_4_2] := True
+    else if P = nil then
+      Fail(par_6_6_4_2, ANum, Gen, pss_File, -1, Where + 'no pdfaid:part')
+    else
+      Fail(par_6_6_4_2, ANum, Gen, pss_File, -1, Where + 'pdfaid:part ' + WideAscii(P.Value));
+  end;
+  P := APacket.Find(LandrixEInvoiceXmpNsPdfaId, 'conformance');
+  if (P = nil) or (P.Kind <> xmk_Simple) or ((P.Value <> 'A') and (P.Value <> 'B') and (P.Value <> 'U')) then
+    if P = nil then
+      Fail(par_6_6_4_3, ANum, Gen, pss_File, -1, Where + 'no pdfaid:conformance')
+    else
+      Fail(par_6_6_4_3, ANum, Gen, pss_File, -1, Where + 'pdfaid:conformance ' + WideAscii(P.Value));
+  for I := 0 to 3 do
+  begin
+    P := APacket.Find(LandrixEInvoiceXmpNsPdfaId, TLandrixEInvoiceString(Names[I]));
+    if (P <> nil) and (P.Prefix <> '') and (P.Prefix <> 'pdfaid') then
+      Fail(TLandrixEInvoicePdfARule(Ord(par_6_6_4_4) + I), ANum, Gen, pss_File, -1,
+        Where + 'pdfaid:' + Names[I] + ' with the prefix ' + WideAscii(P.Prefix));
+  end;
+end;
+
+{ 6.6.2.1 and 6.6.4 as veraPDF reads them: the catalog's metadata stream is
+  the main packet (6.6.2.1-1, and the only one 6.6.4 judges); every stream a
+  further dictionary names by /Metadata is a packet for 6.6.2.1-2 to -5.
+  veraPDF reads such a packet together with the main one: when the main
+  packet is not valid or not a proper metadata stream, the further packets
+  are not judged. A stream that is both the main and a further packet is
+  judged once and 6.6.4 left incomplete (veraPDF then skips it).
+  DE: 6.6.2.1 und 6.6.4, wie veraPDF sie liest: der Metadaten-Stream des
+  Katalogs ist das Hauptpaket (6.6.2.1-1 und das einzige, das 6.6.4
+  beurteilt); jeder Stream, den ein weiteres Dictionary mit /Metadata nennt,
+  ist ein Paket fuer 6.6.2.1-2 bis -5. veraPDF liest ein solches Paket
+  zusammen mit dem Hauptpaket: ist das Hauptpaket nicht gueltig oder kein
+  richtiger Metadaten-Stream, werden die weiteren Pakete nicht beurteilt.
+  Ein Stream, der Haupt- und weiteres Paket ist, wird einmal beurteilt und
+  6.6.4 bleibt unvollstaendig (veraPDF ueberspringt es dann). }
+procedure TLandrixEInvoicePdfARuleCheck.CheckMetadata;
+var
+  Cat, Raw, M: TLandrixEInvoicePdfObject;
+  MainNum, I: Integer;
+  MainOk, Shared: Boolean;
+  Packet: TLandrixEInvoiceXmpPacket;
+  Data: TLandrixEInvoicePdfBytes;
+begin
+  Cat := FDoc.Catalog;
+  if Cat = nil then
+  begin
+    MarkMetadata;
+    Exit;
+  end;
+  if FWalkBroken then
+  begin
+    FIncomplete[par_6_6_2_1_2] := True;
+    FIncomplete[par_6_6_2_1_3] := True;
+    FIncomplete[par_6_6_2_1_4] := True;
+    FIncomplete[par_6_6_2_1_5] := True;
+  end;
+  Packet := TLandrixEInvoiceXmpPacket.Create;
+  try
+    MainNum := -1;
+    MainOk := Cat.RawGet('Metadata') = nil;
+    Raw := Cat.RawGet('Metadata');
+    M := FDoc.DGet(Cat, 'Metadata');
+    if not IsMetadataStream(FDoc, M) or (Raw.Kind <> pok_Ref) then
+      FailAt(par_6_6_2_1_1, Cat, 'catalog without a metadata stream /Type /Metadata /Subtype /XML')
+    else
+    begin
+      MainNum := Raw.RefNum;
+      { a walk cut short may have missed a dictionary that shares the
+        catalog's stream }
+      Shared := FWalkBroken or ((MainNum < Integer(Length(FMetaSeen))) and FMetaSeen[MainNum]);
+      if FDoc.GetStreamData(M, Data) then
+        Packet.Parse(Data)
+      else
+        Packet.Parse(nil);
+      JudgePacket(Packet, MainNum);
+      if Shared then
+      begin
+        for I := Ord(par_6_6_4_1) to Ord(par_6_6_4_7) do
+          FIncomplete[TLandrixEInvoicePdfARule(I)] := True;
+      end
+      else
+        JudgeIdentification(Packet, MainNum);
+      MainOk := Packet.State = xms_Valid;
+    end;
+    for I := 0 to FMetaCount - 1 do
+    begin
+      if FMetaNums[I] = MainNum then
+        Continue;
+      if not MainOk or (I >= MaxMetaPackets) then
+      begin
+        FIncomplete[par_6_6_2_1_2] := True;
+        FIncomplete[par_6_6_2_1_3] := True;
+        FIncomplete[par_6_6_2_1_4] := True;
+        FIncomplete[par_6_6_2_1_5] := True;
+        Break;
+      end;
+      if FDoc.GetStreamData(FDoc.GetObject(FMetaNums[I]), Data) then
+        Packet.Parse(Data)
+      else
+        Packet.Parse(nil);
+      JudgePacket(Packet, FMetaNums[I]);
+    end;
+  finally
+    Packet.Free;
+  end;
 end;
 
 procedure TLandrixEInvoicePdfARuleCheck.CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string);

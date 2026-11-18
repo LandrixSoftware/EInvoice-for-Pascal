@@ -53,6 +53,14 @@ Supported invoice standards are documented per release.
   only when it is indirect and named in an `/AF` array. 6.8-2 to 6.8-4 stay partial until content streams
   are read; a missing association is reported only when no `/AF` array and no `/Properties` array names
   the file specification. Test `PdfA.Files`; `PdfA.VeraPdf` still agrees with veraPDF on all 1,600 PDFs.
+- PDF/A level 1, stage C, first part: an XMP reader of its own (internal unit `LandrixEInvoicePdfXmp`) that reads
+  a packet as the RDF grammar of the XMP Specification (2005) and veraPDF's parser do (xpacket header, encoding,
+  original prefixes, simple values, structures, arrays, qualifiers, qualified values) and calls a packet invalid
+  only for forms that parser rejects; whatever it cannot decide leaves the rules incomplete. With it the rules of
+  6.6.2.1 (catalog metadata stream, no bytes and encoding in the xpacket header, valid packet, UTF-8; for the
+  catalog's packet and every metadata stream another dictionary names) and 6.6.4 (pdfaid present, part 3,
+  conformance A, B or U, the prefix pdfaid). The validator's PDF without XMP now also shows PDFA-6.6.2.1-1.
+  Test `PdfA.Metadata`; `PdfA.VeraPdf` still agrees with veraPDF on all 1,600 PDFs.
 
 ### Changed
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial

@@ -1030,10 +1030,11 @@ begin
     { the rule check of the embedded invoice predicts, never decides }
     CheckEquals(Ord(ev_Incomplete), Ord(ValidateBytes(DV, XRechnungPdf(False, True), R)), 'BR-DE-15 PDF verdict');
     CheckEqualsStr('model:BR-DE-15:error:predicted', Findings(R), 'BR-DE-15 PDF findings');
-    { no XMP: level 3 fails, rejected without KoSIT }
+    { no XMP: level 3 fails, rejected without KoSIT; PDF/A 6.6.2.1-1 fails
+      as well (shown, not part of the verdict) }
     CheckEquals(Ord(ev_Rejected), Ord(ValidateBytes(DV, XRechnungPdf(True, False), R)), 'no XMP verdict');
-    CheckPdfStatus(R, evr_Passed, evr_Failed, evr_Incomplete, 'no XMP');
-    CheckEqualsStr('xmp:LX-PDF-11:error', Findings(R), 'no XMP findings');
+    CheckPdfStatus(R, evr_Passed, evr_Failed, evr_Failed, 'no XMP');
+    CheckEqualsStr('xmp:LX-PDF-11:error pdfa:PDFA-6.6.2.1-1:error', Findings(R), 'no XMP findings');
     { an XRechnung named factur-x.xml: the second pass fails level 2 }
     Doc := BuildHybridPdf('factur-x.xml', InvoiceBytes(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), True),
       TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), True);
@@ -1073,7 +1074,8 @@ begin
     CheckStatus(R, evr_Passed, evr_Failed, evr_Passed, 'KoSIT PDF');
     CheckEqualsStr('kosit::error', Findings(R), 'KoSIT PDF findings');
     CheckEquals(Ord(ev_Rejected), Ord(ValidateBytes(DV, XRechnungPdf(False, False), R)), 'KoSIT no XMP verdict');
-    CheckEqualsStr('xmp:LX-PDF-11:error kosit::error model:BR-DE-15:error:predicted', Findings(R),
+    CheckEqualsStr('xmp:LX-PDF-11:error pdfa:PDFA-6.6.2.1-1:error kosit::error model:BR-DE-15:error:predicted',
+      Findings(R),
       'KoSIT no XMP findings');
   finally
     R.Free;
@@ -1706,10 +1708,10 @@ begin
     finally
       S.Free;
     end;
-    { one error: singular; a CR stays a CR }
+    { the PDF without XMP: level 3 and PDF/A 6.6.2.1-1; a CR stays a CR }
     Html := HtmlUtf8(R, 'a'#13#10'b', eln_English);
-    Check(Pos(TLandrixXmlUtf8('<p class="counts">1 error, 0 warnings, 0 infos, 1 predicted</p>'), Html) > 0,
-      'singular count');
+    Check(Pos(TLandrixXmlUtf8('<p class="counts">2 errors, 0 warnings, 0 infos, 1 predicted</p>'), Html) > 0,
+      'error count');
     Check(Pos(TLandrixXmlUtf8('<p class="document">a&#13;'#10'b</p>'), Html) > 0, 'CR as a reference');
     { markup in a name is text }
     Html := HtmlUtf8(R, '<b>a & "c"</b>', eln_English);
