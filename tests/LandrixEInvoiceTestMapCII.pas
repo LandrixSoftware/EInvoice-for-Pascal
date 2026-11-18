@@ -788,6 +788,138 @@ begin
   end;
 end;
 
+{ CII with the given payment terms, issued on AIssue (none when empty). }
+function PaymentTermsXml(const AIssue, ATerms: string): string;
+begin
+  Result := '<rsm:CrossIndustryInvoice ' + Ns + '>' +
+    '<rsm:ExchangedDocumentContext><ram:GuidelineSpecifiedDocumentContextParameter>' +
+    '<ram:ID>urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended</ram:ID>' +
+    '</ram:GuidelineSpecifiedDocumentContextParameter></rsm:ExchangedDocumentContext>' +
+    '<rsm:ExchangedDocument><ram:ID>R-1</ram:ID><ram:TypeCode>380</ram:TypeCode>';
+  if AIssue <> '' then
+    Result := Result + '<ram:IssueDateTime><udt:DateTimeString format="102">' + AIssue +
+      '</udt:DateTimeString></ram:IssueDateTime>';
+  Result := Result + '</rsm:ExchangedDocument>' +
+    '<rsm:SupplyChainTradeTransaction>' +
+    '<ram:ApplicableHeaderTradeAgreement/><ram:ApplicableHeaderTradeDelivery/>' +
+    '<ram:ApplicableHeaderTradeSettlement><ram:InvoiceCurrencyCode>EUR</ram:InvoiceCurrencyCode>' + ATerms +
+    '<ram:SpecifiedTradeSettlementHeaderMonetarySummation><ram:DuePayableAmount>0.00</ram:DuePayableAmount>' +
+    '</ram:SpecifiedTradeSettlementHeaderMonetarySummation></ram:ApplicableHeaderTradeSettlement>' +
+    '</rsm:SupplyChainTradeTransaction></rsm:CrossIndustryInvoice>';
+end;
+
+{ A cash discount term with the period ABasis (none when empty) plus ADays
+  in AUnit and the due date ADue. }
+function DiscountTermXml(const ABasis, ADays, AUnit, ADue: string): string;
+begin
+  Result := '<ram:SpecifiedTradePaymentTerms><ram:Description>#SKONTO#TAGE=' + ADays + '#PROZENT=3#</ram:Description>' +
+    '<ram:DueDateDateTime><udt:DateTimeString format="102">' + ADue + '</udt:DateTimeString></ram:DueDateDateTime>' +
+    '<ram:ApplicableTradePaymentDiscountTerms>';
+  if ABasis <> '' then
+    Result := Result + '<ram:BasisDateTime><udt:DateTimeString format="102">' + ABasis +
+      '</udt:DateTimeString></ram:BasisDateTime>';
+  Result := Result + '<ram:BasisPeriodMeasure unitCode="' + AUnit + '">' + ADays + '</ram:BasisPeriodMeasure>' +
+    '<ram:BasisAmount>100.00</ram:BasisAmount><ram:CalculationPercent>3</ram:CalculationPercent>' +
+    '</ram:ApplicableTradePaymentDiscountTerms></ram:SpecifiedTradePaymentTerms>';
+end;
+
+function NetTermXml(const ADue: string): string;
+begin
+  Result := '<ram:SpecifiedTradePaymentTerms><ram:Description>Net</ram:Description>' +
+    '<ram:DueDateDateTime><udt:DateTimeString format="102">' + ADue + '</udt:DateTimeString></ram:DueDateDateTime>' +
+    '</ram:SpecifiedTradePaymentTerms>';
+end;
+
+{ Reads AXml into AInvoice (cleared first); D gets the diagnostics. }
+procedure ReadInvoiceXml(const AXml: string; AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics);
+var
+  CII: TLandrixCIIInvoice;
+begin
+  AInvoice.Clear;
+  D.Clear;
+  CII := ReadCII(LandrixXmlStringToUtf8(AXml), D);
+  try
+    LandrixEInvoiceCIIToInvoice(CII, AInvoice, D);
+  finally
+    CII.Free;
+  end;
+end;
+
+{ ZUGFeRD EXTENDED with a cash discount term that carries its own period
+  (BasisDateTime + BasisPeriodMeasure) and a later due date: that due date
+  is the net due date BT-9, kept on reading and after a round trip. A net
+  term wins and the other date is reported once, in either order. Without
+  a known period end or with a unit other than days nothing is inferred. }
+procedure TestPaymentTermsNetDueBesideDiscount;
+var
+  CII: TLandrixCIIInvoice;
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Xml: TLandrixXmlUtf8;
+begin
+  Invoice := nil;
+  Back := nil;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    Invoice := TLandrixInvoice.Create;
+    Back := TLandrixInvoice.Create;
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '16', 'DAY', '20261231')), Invoice, D);
+    Check(Invoice.PaymentTermsType = iptt_CashDiscount1, 'cash discount');
+    CheckEquals(16, Invoice.PaymentTermCashDiscount1Days, 'days');
+    Check(Invoice.InvoiceDueDate = EncodeDate(2026, 12, 31), 'net due date from the discount term');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
+
+    D.Clear;
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), Spec), 'spec');
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    try
+      Xml := WriteCII(CII);
+    finally
+      CII.Free;
+    end;
+    ReadInvoiceXml(LandrixXmlUtf8ToString(Xml), Back, D);
+    Check(Back.InvoiceDueDate = EncodeDate(2026, 12, 31), 'net due date after a round trip');
+    CheckEquals(16, Back.PaymentTermCashDiscount1Days, 'days after a round trip');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost after a round trip: ' + string(D.ToText));
+
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '16', 'DAY', '20261231') +
+      NetTermXml('20261218')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = EncodeDate(2026, 12, 18), 'the net term wins');
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'the other due date is reported: ' + string(D.ToText));
+    ReadInvoiceXml(PaymentTermsXml('20261111', NetTermXml('20261218') +
+      DiscountTermXml('20261111', '16', 'DAY', '20261231')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = EncodeDate(2026, 12, 18), 'the net term wins before the discount term');
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'reported before the discount term: ' + string(D.ToText));
+
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '16', 'DAY', '20261231') +
+      DiscountTermXml('20261111', '10', 'DAY', '20261218') + NetTermXml('20261218')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = EncodeDate(2026, 12, 18), 'net term beside two discount terms');
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'only the date not kept is reported: ' + string(D.ToText));
+    Check(Pos('due date 20261231 ', string(D.ToText)) > 0, 'the date not kept: ' + string(D.ToText));
+
+    ReadInvoiceXml(PaymentTermsXml('', DiscountTermXml('', '16', 'DAY', '20261231')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = 0, 'no period end without basis and issue date');
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '2', 'WEE', '20261125')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = 0, 'no inference for weeks');
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', 'abc', 'DAY', '20261231')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = 0, 'no inference from an unreadable period');
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('2026-11-11', '16', 'DAY', '20261231')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = 0, 'no inference from an unreadable basis date');
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('', '16', 'DAY', '20261231')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = EncodeDate(2026, 12, 31), 'period from the issue date without basis');
+    ReadInvoiceXml(PaymentTermsXml('20261111', StringReplace(DiscountTermXml('20261111', '16', 'DAY', '20261231'),
+      '>20261111</udt:DateTimeString></ram:BasisDateTime>', '/></ram:BasisDateTime>', [])), Invoice, D);
+    Check(Invoice.InvoiceDueDate = 0, 'no inference from an empty basis date');
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '0', 'DAY', '20261231')), Invoice, D);
+    Check(Invoice.InvoiceDueDate = EncodeDate(2026, 12, 31), 'a period of 0 days ends on the basis date');
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { BT-7 and BT-8 when writing: BT-8 once in UNTDID 2475, an unknown code
   unchanged, BT-8 left out next to BT-7 (BR-CO-3), both left out without a
   VAT breakdown. }
@@ -1330,6 +1462,7 @@ begin
   RegisterTest('MapCII.Phase2Extended', TestPhase2Extended);
   RegisterTest('MapCII.Phase2EN16931', TestPhase2EN16931);
   RegisterTest('MapCII.PaymentTermsOrder', TestPaymentTermsOrder);
+  RegisterTest('MapCII.PaymentTermsNetDueBesideDiscount', TestPaymentTermsNetDueBesideDiscount);
   RegisterTest('MapCII.TaxPointDateWrite', TestTaxPointDateWrite);
   RegisterTest('MapCII.TaxPointDateRead', TestTaxPointDateRead);
 end;

@@ -2756,12 +2756,19 @@ end;
   XRechnung form; otherwise the Factur-X form: the first term without
   discount terms is the net term (in any position), terms with discount
   terms become cash discounts 1 to 3 with their text, their days counted
-  from the issue date.
+  from the issue date. The due date of a discount term whose readable
+  period in days ends on a known other date is BT-9 when no net term
+  gives one (ZUGFeRD EXTENDED writes the net due date there); further
+  such dates that differ from BT-9 are reported.
   DE: BT-20/BT-9/BT-89: eine Bedingung mit Faelligkeit oder #SKONTO#-Text
   ist die XRechnung-Form; sonst die Factur-X-Form: die erste Bedingung ohne
   Skontoangaben ist die Nettobedingung (an beliebiger Stelle), Bedingungen
   mit Skontoangaben werden zu Skonto 1 bis 3 mit ihrem Text, ihre Tage ab
-  Rechnungsdatum gezaehlt. }
+  Rechnungsdatum gezaehlt. Die Faelligkeit einer Skontobedingung mit
+  eigener lesbarer Frist in Tagen, deren bekanntes Ende auf ein anderes
+  Datum faellt, ist BT-9, wenn keine Nettobedingung eine angibt (ZUGFeRD
+  EXTENDED schreibt dort das Netto-Zahlungsziel); weitere solche Daten,
+  die von BT-9 abweichen, werden gemeldet. }
 procedure TCIIReadMapper.ReadPaymentTerms(ASettlement: TLandrixCIIHeaderTradeSettlement);
 var
   Terms: TLandrixCIITradePaymentTermsList;
@@ -2770,9 +2777,10 @@ var
   I: TLandrixEInvoiceListIndex;
   Path: TLandrixEInvoiceString;
   Days: Integer;
-  Percent: Double;
+  Percent, Period: Double;
   Base, Actual: Currency;
-  Basis: TDateTime;
+  Basis, Due, PeriodEnd: TDateTime;
+  TermDues: array of TDateTime;
   NetFound: Boolean;
 begin
   Terms := ASettlement.SpecifiedTradePaymentTerms;
@@ -2791,6 +2799,7 @@ begin
     Exit;
   end;
   NetFound := False;
+  TermDues := nil;
   for I := 0 to Terms.Count - 1 do
   begin
     Term := Terms[I];
@@ -2825,8 +2834,27 @@ begin
     begin
       Days := Integer(Trunc(Decimal(Discount.BasisPeriodMeasure.Value, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure')));
       Basis := Date(Discount.BasisDateTime, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime');
+      PeriodEnd := 0;
+      if LandrixEInvoiceTryLexicalToDouble(Discount.BasisPeriodMeasure.Value, Period) and (Period >= 0) then
+      begin
+        if Basis > 0 then
+          PeriodEnd := Trunc(Basis) + Days
+        else if (Discount.BasisDateTime.Value = '') and (Discount.BasisDateTime.Format = '') and
+           (FInvoice.InvoiceIssueDate > 0) then
+          PeriodEnd := Trunc(FInvoice.InvoiceIssueDate) + Days;
+      end;
       if (Basis > 0) and (FInvoice.InvoiceIssueDate > 0) then
         Days := Days + Integer(Trunc(Basis) - Trunc(FInvoice.InvoiceIssueDate));
+      if (PeriodEnd > 0) and (Term.DueDateDateTime.Value <> '') and
+         ((Discount.BasisPeriodMeasure.UnitCode = '') or (Discount.BasisPeriodMeasure.UnitCode = 'DAY')) then
+      begin
+        Due := Date(Term.DueDateDateTime, Path + '/ram:DueDateDateTime');
+        if (Due > 0) and (Trunc(Due) <> PeriodEnd) then
+        begin
+          SetLength(TermDues, Length(TermDues) + 1);
+          TermDues[High(TermDues)] := Trunc(Due);
+        end;
+      end;
     end
     else if (Term.DueDateDateTime.Value <> '') and (FInvoice.InvoiceIssueDate > 0) then
     begin
@@ -2881,6 +2909,12 @@ begin
     Rest(Path, ['ram:Description', 'ram:DueDateDateTime', 'ram:ApplicableTradePaymentDiscountTerms',
       'ram:DirectDebitMandateID']);
   end;
+  if (Length(TermDues) > 0) and (FInvoice.InvoiceDueDate = 0) then
+    FInvoice.InvoiceDueDate := TermDues[0];
+  for I := 0 to Length(TermDues) - 1 do
+    if TermDues[I] <> Trunc(FInvoice.InvoiceDueDate) then
+      NotMapped(Path + '/ram:DueDateDateTime', 'due date ' + LandrixEInvoiceDateToCII(TermDues[I]) +
+        ' of a cash discount term beside the due date ' + LandrixEInvoiceDateToCII(FInvoice.InvoiceDueDate));
 end;
 
 procedure TCIIReadMapper.ReadTotals(ASettlement: TLandrixCIIHeaderTradeSettlement);

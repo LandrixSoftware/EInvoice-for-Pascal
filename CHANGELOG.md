@@ -87,6 +87,11 @@ Supported invoice standards are documented per release.
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
   license covers EInvoice-for-Pascal and XRechnung-for-Delphi together.
 
+### Fixed
+- Reading CII: the due date of a cash discount term whose own period (basis date plus days) ends on another date is the
+  net due date BT-9 when no net term gives one, as ZUGFeRD EXTENDED invoices write it (`#SKONTO#` term with
+  `DueDateDateTime`); it was dropped silently. Further differing dates are reported.
+
 ## [0.9.0-beta.2] - 2026-11-17
 
 Second pre-release: the KoSIT originals (report and visualization) with the XSLT engine of
