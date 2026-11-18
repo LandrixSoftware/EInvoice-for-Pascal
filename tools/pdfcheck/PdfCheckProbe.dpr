@@ -27,8 +27,10 @@
   per problem. With -pdfa it first prints "# pdfa-rule<TAB>number<TAB>full|partial|none"
   per rule of LandrixEInvoicePdfARules, then per file
   "  pdfa<TAB>complete|incomplete<TAB>failed rule numbers" (complete: the
-  facts) and "  pdfa-fail<TAB>number<TAB>violations<TAB>first one" per
-  failed rule (tools/pdfcheck/verapdf-oracle.py --native). }
+  facts), "  pdfa-fail<TAB>number<TAB>violations<TAB>first one" per
+  failed rule (tools/pdfcheck/verapdf-oracle.py --native) and, if any,
+  "  pdfa-open<TAB>rule numbers" with the fully implemented rules that stayed
+  undecided. }
 
 program PdfCheckProbe;
 
@@ -175,7 +177,7 @@ var
   Rules: TLandrixEInvoicePdfARuleCheck;
   R: TLandrixEInvoicePdfARule;
   Res: TLandrixEInvoicePdfARuleResult;
-  Failed: string;
+  Failed, Open: string;
 begin
   Rules := TLandrixEInvoicePdfARuleCheck.Create;
   try
@@ -195,6 +197,16 @@ begin
       if Res.Outcome = pro_Failed then
         WriteLn('  pdfa-fail', #9, LandrixEInvoicePdfARuleNumber(R), #9, Res.Failures, #9, Res.Detail);
     end;
+    Open := '';
+    for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
+      if (Rules.RuleResult(R).Outcome = pro_Incomplete) and (LandrixEInvoicePdfARuleCoverage(R) = prc_Full) then
+      begin
+        if Open <> '' then
+          Open := Open + ' ';
+        Open := Open + LandrixEInvoicePdfARuleNumber(R);
+      end;
+    if Open <> '' then
+      WriteLn('  pdfa-open', #9, Open);
   finally
     Rules.Free;
   end;

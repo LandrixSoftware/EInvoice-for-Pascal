@@ -99,9 +99,15 @@ type
     Pos: Integer;
     { Numbers: the value. DE: Zahlen: der Wert. }
     Value: Double;
-    { Strings and names: bytes after decoding. DE: Strings und Namen: Bytes
-      nach dem Dekodieren. }
+    { Names: bytes after decoding. Strings: the length as veraPDF measures it
+      (UTF-16 code units, see LandrixEInvoicePdfJavaStringLength), at least
+      Length and at most LengthHi.
+      DE: Namen: Bytes nach dem Dekodieren. Strings: die Laenge, wie veraPDF
+      sie misst (UTF-16-Codeeinheiten, siehe
+      LandrixEInvoicePdfJavaStringLength), mindestens Length und hoechstens
+      LengthHi. }
     Length: Integer;
+    LengthHi: Integer;
     { Names: bytes as written after the slash. DE: Namen: Bytes wie
       geschrieben nach dem Schraegstrich. }
     RawLength: Integer;
@@ -115,6 +121,10 @@ type
     { Names: a # not followed by two hex digits. DE: Namen: ein #, dem keine
       zwei Hex-Ziffern folgen. }
     BadEscape: Boolean;
+    { Part of a dictionary value a later equal key replaced.
+      DE: Teil eines Dictionary-Werts, den ein spaeterer gleicher Schluessel
+      ersetzt hat. }
+    Replaced: Boolean;
   end;
 
   { A stream as written. DE: Ein Stream, wie er geschrieben ist. }
@@ -151,6 +161,8 @@ type
     FCtxNum: array of Integer;
     FCtxGen: array of Integer;
     FCtxSource: array of TLandrixEInvoicePdfSyntaxSource;
+    { the first token of each open object }
+    FCtxFirst: array of Integer;
     FDepth: Integer;
     FTokens: array of TLandrixEInvoicePdfTokenFact;
     FTokenCount: Integer;
@@ -188,7 +200,8 @@ type
     procedure BeginObject(ANum, AGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource); override;
     procedure EndObject; override;
     procedure NumberToken(APos: Integer; AIsInteger: Boolean; AValue: Double); override;
-    procedure StringToken(APos, ALength: Integer; AHex: Boolean; AHexChars: Integer; AHexInvalid: Boolean); override;
+    procedure StringToken(APos, ALengthLo, ALengthHi: Integer; AHex: Boolean; AHexChars: Integer;
+      AHexInvalid: Boolean); override;
     procedure NameToken(APos, ARawLength, ALength: Integer; ABadEscape: Boolean); override;
     procedure StreamToken(AStream: TLandrixEInvoicePdfObject; AKeywordPos: Integer; AKeywordEol: TLandrixEInvoicePdfEol;
       ADataStart, AEndstreamPos: Integer; AEndstreamEol: TLandrixEInvoicePdfEol); override;
@@ -198,6 +211,7 @@ type
     procedure Unobserved(APos: Integer; const AText: string); override;
     procedure StreamEndByLength(AStream: TLandrixEInvoicePdfObject; AEndstreamPos: Integer;
       AEndstreamEol: TLandrixEInvoicePdfEol); override;
+    procedure Replaced(AFrom, ATo: Integer); override;
     { After ADoc.Load (with Syntax = Self): loads every object in use and
       reads header and end of file. Call it once; a document loaded without
       these facts as receiver, one that did not load or a second call give
@@ -302,7 +316,9 @@ begin
     SetLength(FCtxNum, FDepth + 8);
     SetLength(FCtxGen, FDepth + 8);
     SetLength(FCtxSource, FDepth + 8);
+    SetLength(FCtxFirst, FDepth + 8);
   end;
+  FCtxFirst[FDepth] := FTokenCount;
   FCtxNum[FDepth] := ANum;
   FCtxGen[FDepth] := AGen;
   FCtxSource[FDepth] := ASource;
@@ -338,10 +354,43 @@ begin
   FTokens[Result].Pos := APos;
   FTokens[Result].Value := 0;
   FTokens[Result].Length := 0;
+  FTokens[Result].LengthHi := 0;
   FTokens[Result].RawLength := 0;
   FTokens[Result].HexChars := 0;
   FTokens[Result].HexInvalid := False;
   FTokens[Result].BadEscape := False;
+  FTokens[Result].Replaced := False;
+end;
+
+{ The tokens of the object being parsed lie at the end of the list, in the
+  order of their positions: the first one at AFrom is found by bisection. }
+procedure TLandrixEInvoicePdfSyntaxFacts.Replaced(AFrom, ATo: Integer);
+var
+  Lo, Hi, Mid, First: Integer;
+begin
+  if FDepth = 0 then
+    Exit;
+  { the tokens of this object: from the end back to another object }
+  First := FCtxFirst[FDepth - 1];
+  if First < 0 then
+    First := 0;
+  Lo := First;
+  Hi := FTokenCount;
+  while Lo < Hi do
+  begin
+    Mid := Lo + (Hi - Lo) div 2;
+    if FTokens[Mid].Pos < AFrom then
+      Lo := Mid + 1
+    else
+      Hi := Mid;
+  end;
+  while (Lo < FTokenCount) and (FTokens[Lo].Pos < ATo) do
+  begin
+    if (FTokens[Lo].ObjNum = FCtxNum[FDepth - 1]) and (FTokens[Lo].Source = FCtxSource[FDepth - 1]) and
+      (FTokens[Lo].Pos >= AFrom) then
+      FTokens[Lo].Replaced := True;
+    Inc(Lo);
+  end;
 end;
 
 procedure TLandrixEInvoicePdfSyntaxFacts.NumberToken(APos: Integer; AIsInteger: Boolean; AValue: Double);
@@ -356,8 +405,8 @@ begin
     FTokens[I].Value := AValue;
 end;
 
-procedure TLandrixEInvoicePdfSyntaxFacts.StringToken(APos, ALength: Integer; AHex: Boolean; AHexChars: Integer;
-  AHexInvalid: Boolean);
+procedure TLandrixEInvoicePdfSyntaxFacts.StringToken(APos, ALengthLo, ALengthHi: Integer; AHex: Boolean;
+  AHexChars: Integer; AHexInvalid: Boolean);
 var
   I: Integer;
 begin
@@ -367,7 +416,8 @@ begin
     I := NewToken(ptk_String, APos);
   if I < 0 then
     Exit;
-  FTokens[I].Length := ALength;
+  FTokens[I].Length := ALengthLo;
+  FTokens[I].LengthHi := ALengthHi;
   FTokens[I].HexChars := AHexChars;
   FTokens[I].HexInvalid := AHexInvalid;
 end;
@@ -380,6 +430,7 @@ begin
   if I < 0 then
     Exit;
   FTokens[I].Length := ALength;
+  FTokens[I].LengthHi := ALength;
   FTokens[I].RawLength := ARawLength;
   FTokens[I].BadEscape := ABadEscape;
 end;

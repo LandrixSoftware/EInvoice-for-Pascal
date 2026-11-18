@@ -82,6 +82,30 @@ Supported invoice standards are documented per release.
   time fields of Marker) or a property occurs in several packets with different answers, the rule stays incomplete
   rather than failed. With this stage all 33 rules of clause 6.6 are checked. Test `PdfA.Properties`; `PdfA.VeraPdf`
   still agrees with veraPDF on all 1,600 PDFs, all 305 corpus failures of 6.6.2.3.1 found.
+- PDF/A level 1, content streams (internal unit `LandrixEInvoicePdfContent`): the content streams veraPDF reads (page
+  `/Contents`, also as an array; form XObjects called with `Do`; tiling patterns selected with `scn`/`SCN`; all glyph
+  procedures of a Type 3 font that shows text; the normal, down and rollover appearances of annotations) are
+  tokenized as veraPDF does, and the operands each operator passes on (a table of all 71 operators: `w` its last
+  operand, `cm` all numbers, `TJ` its array, inline dictionaries with keys and values, ...) count for 6.1.6-1/-2
+  and 6.1.13-1 to -5. New: 6.1.10-1 (inline image filters), 6.1.13-8 (`q` nested at most 28 levels per stream),
+  file specifications inside inline dictionaries and the association through `/AF /Name BDC` (6.8-2 to -4); a
+  file specification named only in a `/Properties` array is no longer counted as associated. These rules are now
+  fully implemented. A stream veraPDF might read differently (Flate data that is not a clean zlib stream, other
+  filters, encryption, a number on a limit, a stream reached in several contexts with different results) leaves
+  the rule incomplete. 6.1.13-3 now measures strings as veraPDF does (UTF-16 code units of the bytes decoded as
+  UTF-8), also in objects. `PdfCheckProbe -pdfa` also prints the fully implemented rules that stayed undecided
+  (`pdfa-open`). Resources, colour spaces (defaults, aliases, one-element arrays, pattern spaces), fonts, the start
+  state of forms, tiling patterns and Type 3 glyphs and the page tree (pages counted through `/Count`, resources
+  inherited from the actual parent) follow veraPDF; a broken page tree, a catalog not reached from `/Root` or a limit
+  leaves the content rules incomplete, and so does a tiling pattern veraPDF reads without `scn` (where a colour space
+  is expected), an uncoloured tiling pattern or a pattern space with an underlying space (veraPDF then changes the
+  start state of the stream's tiling patterns). The object parser now reads dictionaries as veraPDF does (a repeated key
+  replaces the value in place, null removes the entry, also against an older trailer), checks generations in object
+  headers and along reference chains, keeps integer tokens exact and takes no exponent, `Inf` or `NaN` as a number.
+  For 6.8-4 an `/AF` entry names the object at the end of its reference chain, and owners count as veraPDF builds
+  them (annotations, XObjects, fonts, structure elements). Tests `PdfA.Content` to `PdfA.Content9`; `PdfA.VeraPdf`
+  still agrees with veraPDF on all 1,600 PDFs, and the seven corpus failures in content streams it missed before are
+  found.
 
 ### Changed
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial

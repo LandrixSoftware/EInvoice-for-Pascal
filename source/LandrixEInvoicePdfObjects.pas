@@ -74,6 +74,12 @@ type
     Kind: TLandrixEInvoicePdfObjectKind;
     BoolVal: Boolean;
     NumVal: Double;
+    { An integer token within Int64, exactly (Java keeps it as a long; a
+      Double loses the low bits above 2^53).
+      DE: Ein ganzzahliges Token innerhalb von Int64, exakt (Java behaelt
+      es als long; ein Double verliert oberhalb von 2^53 die unteren Bits). }
+    NumInt: Int64;
+    NumExact: Boolean;
     StrVal: TLandrixEInvoicePdfBytes;
     NameVal: AnsiString;
     { The items of an array. DE: Die Elemente eines Arrays. }
@@ -84,6 +90,11 @@ type
       derselben Reihenfolge, ihre Werte. }
     DKeys: array of AnsiString;
     DVals: TObjectList;
+    { Keys whose last value was null: veraPDF removes them, and an older
+      trailer must not supply them again.
+      DE: Schluessel, deren letzter Wert null war: veraPDF entfernt sie, und
+      ein aelterer Trailer darf sie nicht wieder liefern. }
+    DRemoved: array of AnsiString;
     { Offset of the raw stream data in the file (after the keyword stream).
       DE: Position der rohen Streamdaten in der Datei (nach dem Schluesselwort
       stream). }
@@ -106,6 +117,16 @@ type
     { Streams that are never encrypted (xref streams).
       DE: Streams, die nie verschluesselt sind (xref-Streams). }
     NoDecrypt: Boolean;
+    { The position in the document's list of parsed objects: unique per
+      document, a key that needs no address.
+      DE: Die Position in der Liste der geparsten Objekte des Dokuments:
+      eindeutig je Dokument, ein Schluessel ohne Adresse. }
+    Serial: Integer;
+    { False when the header "n g obj" of the indirect definition had no
+      readable generation (veraPDF does not take the object).
+      DE: False, wenn der Kopf "n g obj" der indirekten Definition keine
+      lesbare Generation hatte (veraPDF nimmt das Objekt nicht). }
+    HeaderGenBad: Boolean;
     constructor Create(AKind: TLandrixEInvoicePdfObjectKind);
     destructor Destroy; override;
     function AsInt: Int64;
@@ -115,6 +136,9 @@ type
       er fehlt. }
     function RawGet(const AKey: AnsiString): TLandrixEInvoicePdfObject;
     procedure AddEntry(const AKey: AnsiString; AValue: TLandrixEInvoicePdfObject);
+    { Whether AKey was removed by a null value.
+      DE: Ob AKey durch den Wert null entfernt wurde. }
+    function WasRemoved(const AKey: AnsiString): Boolean;
     function ArrCount: Integer;
     function ArrItem(AIndex: Integer): TLandrixEInvoicePdfObject;
   end;
@@ -211,16 +235,19 @@ type
       DE: Eine Zahl, die nicht Teil einer Referenz "n g R" ist; AIsInteger:
       ohne Dezimalpunkt geschrieben. }
     procedure NumberToken(APos: Integer; AIsInteger: Boolean; AValue: Double); virtual; abstract;
-    { A string: its length in bytes after decoding; for a hexadecimal string
-      also the number of characters other than white space (hex digits or
-      not) and whether other characters than hex digits and white space
-      occur.
-      DE: Ein String: seine Laenge in Bytes nach dem Dekodieren; bei einem
-      hexadezimalen String auch die Anzahl der Zeichen ausser Leerraum
-      (Hex-Ziffern oder nicht) und ob andere
-      Zeichen als Hex-Ziffern und Leerraum vorkommen. }
-    procedure StringToken(APos, ALength: Integer; AHex: Boolean; AHexChars: Integer; AHexInvalid: Boolean);
-      virtual; abstract;
+    { A string: its length as veraPDF measures it (UTF-16 code units of the
+      bytes decoded as UTF-8, see LandrixEInvoicePdfJavaStringLength) as a
+      range ALengthLo..ALengthHi; for a hexadecimal string also the number
+      of characters other than white space (hex digits or not) and whether
+      other characters than hex digits and white space occur.
+      DE: Ein String: seine Laenge, wie veraPDF sie misst
+      (UTF-16-Codeeinheiten der als UTF-8 dekodierten Bytes, siehe
+      LandrixEInvoicePdfJavaStringLength) als Bereich ALengthLo..ALengthHi;
+      bei einem hexadezimalen String auch die Anzahl der Zeichen ausser
+      Leerraum (Hex-Ziffern oder nicht) und ob andere Zeichen als
+      Hex-Ziffern und Leerraum vorkommen. }
+    procedure StringToken(APos, ALengthLo, ALengthHi: Integer; AHex: Boolean; AHexChars: Integer;
+      AHexInvalid: Boolean); virtual; abstract;
     { A name (also a dictionary key): the bytes after the slash as written
       and after expanding #xx; ABadEscape: a # not followed by two hex
       digits.
@@ -276,6 +303,14 @@ type
       nach den Daten, das auch in den Daten liegen kann. }
     procedure StreamEndByLength(AStream: TLandrixEInvoicePdfObject; AEndstreamPos: Integer;
       AEndstreamEol: TLandrixEInvoicePdfEol); virtual; abstract;
+    { The tokens from AFrom to before ATo of the current object belong to a
+      dictionary value that a later entry with the same key replaced (the
+      dictionary keeps the last one, as veraPDF does).
+      DE: Die Token von AFrom bis vor ATo des aktuellen Objekts gehoeren zu
+      einem Dictionary-Wert, den ein spaeterer Eintrag mit demselben
+      Schluessel ersetzt hat (das Dictionary behaelt den letzten, wie
+      veraPDF). }
+    procedure Replaced(AFrom, ATo: Integer); virtual; abstract;
   end;
 
   { Tokenizer and parser of PDF objects over a byte buffer; new objects go
@@ -342,6 +377,9 @@ type
     FRootRef: TLandrixEInvoicePdfObject;
     FEncryptRef: TLandrixEInvoicePdfObject;
     FInfoRef: TLandrixEInvoicePdfObject;
+    FRootGone: Boolean;
+    FEncryptGone: Boolean;
+    FInfoGone: Boolean;
     FIdFirst: TLandrixEInvoicePdfBytes;
     FHeaderPos: Integer;
     FXrefSections: Integer;
@@ -408,9 +446,18 @@ type
       DE: Die dekodierten Daten eines Streams; False mit StreamError, wenn
       sie nicht dekodiert werden koennen. }
     function GetStreamData(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
+    { The raw data of a stream (decrypted, no filter applied); False with
+      StreamError if it cannot be found.
+      DE: Die rohen Daten eines Streams (entschluesselt, ohne Filter); False
+      mit StreamError, wenn sie sich nicht finden lassen. }
+    function GetStreamRaw(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
     { The document catalog (/Root of the trailer); nil if it is missing.
       DE: Der Dokumentkatalog (/Root des Trailers); nil, wenn er fehlt. }
     function Catalog: TLandrixEInvoicePdfObject;
+    { The trailer's /Root entry as written (a reference, unresolved).
+      DE: Der /Root-Eintrag des Trailers wie geschrieben (eine Referenz,
+      nicht aufgeloest). }
+    function RootRef: TLandrixEInvoicePdfObject;
     { The document information dictionary (/Info of the newest trailer that
       has one); nil if there is none.
       DE: Das Dokumentinformations-Dictionary (/Info des neuesten Trailers,
@@ -480,6 +527,32 @@ function LandrixEInvoicePdfDetectXmlRoot(const AData: TLandrixEInvoicePdfBytes):
 { ALen bytes from APos as AnsiString, byte by byte.
   DE: ALen Bytes ab APos als AnsiString, Byte fuer Byte. }
 function LandrixEInvoicePdfBytesToAnsi(const ABuf: TLandrixEInvoicePdfBytes; APos, ALen: Integer): AnsiString;
+
+{ Inflates a zlib stream without any tolerance: a valid header, every block
+  up to the last one, the Adler-32 check value after it and an output within
+  LandrixEInvoicePdfObjectMaxStreamSize; False otherwise. Data after the
+  check value is ignored.
+  DE: Entpackt einen zlib-Strom ohne jede Toleranz: ein gueltiger Kopf,
+  jeder Block bis zum letzten, die Adler-32-Pruefsumme danach und eine
+  Ausgabe innerhalb von LandrixEInvoicePdfObjectMaxStreamSize; sonst False.
+  Daten nach der Pruefsumme werden nicht beachtet. }
+function LandrixEInvoicePdfInflateStrict(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes): Boolean;
+
+{ The length veraPDF gives a string with these bytes (ISO 19005-2, 6.1.13,
+  as veraPDF measures it): Java decodes the bytes as UTF-8 (its default
+  character set) and counts UTF-16 code units, one per malformed sequence
+  or per malformed byte, and stores a literal string only up to about 65535
+  bytes. The result is a range ALo..AHi that covers these uncertainties;
+  ACrLf pairs of CR LF in the bytes may count as one LF.
+  DE: Die Laenge, die veraPDF einem String mit diesen Bytes gibt (ISO
+  19005-2, 6.1.13, wie veraPDF sie misst): Java dekodiert die Bytes als
+  UTF-8 (seinen Standardzeichensatz) und zaehlt UTF-16-Codeeinheiten, eine
+  je fehlerhafter Folge oder je fehlerhaftem Byte, und speichert einen
+  Literal-String nur bis etwa 65535 Bytes. Das Ergebnis ist ein Bereich
+  ALo..AHi, der diese Unsicherheiten abdeckt; ACrLf Paare CR LF in den
+  Bytes koennen als ein LF zaehlen. }
+procedure LandrixEInvoicePdfJavaStringLength(const ABytes: TLandrixEInvoicePdfBytes; ACrLf: Integer;
+  out ALo, AHi: Integer);
 
 type
   { The way a file specification is reached: the name tree /Names
@@ -666,6 +739,72 @@ begin
     Exit;
   AValue := Integer(Trunc(D));
   Result := True;
+end;
+
+{ The exact value of an integer token (optional sign, digits only) within
+  Int64. }
+function PdfIntText(const S: AnsiString; out AValue: Int64): Boolean;
+var
+  I: Integer;
+  Neg: Boolean;
+  D: Int64;
+begin
+  AValue := 0;
+  Result := False;
+  I := 1;
+  Neg := False;
+  if (Length(S) > 0) and ((S[1] = '+') or (S[1] = '-')) then
+  begin
+    Neg := S[1] = '-';
+    Inc(I);
+  end;
+  if I > Length(S) then
+    Exit;
+  while I <= Length(S) do
+  begin
+    if (S[I] < '0') or (S[I] > '9') then
+      Exit;
+    D := Ord(S[I]) - Ord('0');
+    if AValue > (High(Int64) - D) div 10 then
+      Exit;
+    AValue := AValue * 10 + D;
+    Inc(I);
+  end;
+  if Neg then
+    AValue := -AValue;
+  Result := True;
+end;
+
+{ The generation of an object header as veraPDF reads it: an integer token
+  narrowed to 32 bits like Java's intValue; False for anything else (a real
+  number, a word). }
+function HeaderGenOf(const ATok: AnsiString; out AValue: Integer): Boolean;
+var
+  V: Int64;
+begin
+  AValue := 0;
+  Result := PdfIntText(ATok, V);
+  if not Result then
+    Exit;
+  V := V and $FFFFFFFF;
+  if V >= $80000000 then
+    V := V - $100000000;
+  AValue := Integer(V);
+end;
+
+{ A letter: Val reads exponents (and FPC's Val Inf and NaN) as numbers,
+  veraPDF does not. }
+function HasNonNumberLetter(const S: AnsiString): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to Length(S) do
+    if ((S[I] >= 'A') and (S[I] <= 'Z')) or ((S[I] >= 'a') and (S[I] <= 'z')) then
+    begin
+      Result := True;
+      Exit;
+    end;
 end;
 
 { Like TokenToInt, for offsets. }
@@ -949,6 +1088,7 @@ type
     FOutLen: Integer;
     FLimit: Integer;
     FTooBig: Boolean;
+    FEnd: Integer;
     function Bits(N: Integer): Integer;
     procedure Grow(ANeed: Integer);
     function Decode(const H: TPdfHuffman): Integer;
@@ -962,6 +1102,9 @@ type
       ATooBig: the output would exceed ALimit (nothing is returned then). }
     function Run(const ASrc: TLandrixEInvoicePdfBytes; AStart: Integer; ARaw: Boolean; ALimit: Integer;
       out AOutput: TLandrixEInvoicePdfBytes; out AComplete, ATooBig: Boolean): Boolean;
+    { After a complete run: the position right after the deflate data, -1
+      otherwise. }
+    property EndPos: Integer read FEnd;
   end;
 
 const
@@ -1236,6 +1379,7 @@ begin
   FOutLen := 0;
   FLimit := ALimit;
   FTooBig := False;
+  FEnd := -1;
   AComplete := False;
   try
     if not ARaw then
@@ -1260,6 +1404,8 @@ begin
       end;
     until Last = 1;
     AComplete := True;
+    { the bit reader never holds a whole byte ahead }
+    FEnd := FPos;
   except
     on EPdfInflate do
       ;
@@ -1317,6 +1463,164 @@ begin
   finally
     Inflater.Free;
   end;
+end;
+
+function LandrixEInvoicePdfInflateStrict(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes): Boolean;
+var
+  Inflater: TPdfInflater;
+  Complete, TooBig: Boolean;
+  I, E: Integer;
+  A, B: Cardinal;
+begin
+  Result := False;
+  Inflater := TPdfInflater.Create;
+  try
+    if not Inflater.Run(ASrc, 0, False, LandrixEInvoicePdfObjectMaxStreamSize, ADst, Complete, TooBig) then
+      Exit;
+    if not Complete or TooBig then
+      Exit;
+    E := Inflater.EndPos;
+  finally
+    Inflater.Free;
+  end;
+  if (E < 0) or (E + 4 > Length(ASrc)) then
+    Exit;
+  A := 1;
+  B := 0;
+  for I := 0 to Integer(Length(ADst)) - 1 do
+  begin
+    A := (A + ADst[I]) mod 65521;
+    B := (B + A) mod 65521;
+  end;
+  Result := ((B shr 8) and $FF = ASrc[E]) and (B and $FF = ASrc[E + 1]) and ((A shr 8) and $FF = ASrc[E + 2]) and
+    (A and $FF = ASrc[E + 3]);
+end;
+
+{ UTF-16 code units of the first ACount bytes decoded as UTF-8 the way Java
+  does it: a well-formed sequence gives one unit (two above U+FFFF); a run of
+  malformed bytes gives at least one replacement character per four bytes
+  (ALo) and at most one per byte (AHi), since Java may take up to four
+  bytes as one malformed sequence. }
+procedure Utf8Units(const ABytes: TLandrixEInvoicePdfBytes; ACount: Integer; out ALo, AHi: Integer);
+var
+  I, J, Need, Run: Integer;
+  C, Lo2, Hi2, X: Byte;
+  Ok: Boolean;
+begin
+  ALo := 0;
+  AHi := 0;
+  Run := 0;
+  I := 0;
+  while I < ACount do
+  begin
+    C := ABytes[I];
+    Need := 0;
+    Lo2 := $80;
+    Hi2 := $BF;
+    if C < $80 then
+      Need := -1
+    else if (C >= $C2) and (C <= $DF) then
+      Need := 1
+    else if C = $E0 then
+    begin
+      Need := 2;
+      Lo2 := $A0;
+    end
+    else if ((C >= $E1) and (C <= $EC)) or (C = $EE) or (C = $EF) then
+      Need := 2
+    else if C = $ED then
+    begin
+      Need := 2;
+      Hi2 := $9F;
+    end
+    else if C = $F0 then
+    begin
+      Need := 3;
+      Lo2 := $90;
+    end
+    else if (C >= $F1) and (C <= $F3) then
+      Need := 3
+    else if C = $F4 then
+    begin
+      Need := 3;
+      Hi2 := $8F;
+    end;
+    if Need < 0 then
+    begin
+      { ASCII ends a malformed run }
+      Inc(ALo, (Run + 3) div 4);
+      Run := 0;
+      Inc(ALo);
+      Inc(AHi);
+      Inc(I);
+      Continue;
+    end;
+    if Need = 0 then
+    begin
+      { a byte that cannot start a sequence }
+      Inc(Run);
+      Inc(AHi);
+      Inc(I);
+      Continue;
+    end;
+    J := 1;
+    while (J <= Need) and (I + J < ACount) do
+    begin
+      X := ABytes[I + J];
+      if J = 1 then
+        Ok := (X >= Lo2) and (X <= Hi2)
+      else
+        Ok := (X >= $80) and (X <= $BF);
+      if not Ok then
+        Break;
+      Inc(J);
+    end;
+    if J > Need then
+    begin
+      Inc(ALo, (Run + 3) div 4);
+      Run := 0;
+      if Need = 3 then
+      begin
+        Inc(ALo, 2);
+        Inc(AHi, 2);
+      end
+      else
+      begin
+        Inc(ALo);
+        Inc(AHi);
+      end;
+      Inc(I, Need + 1);
+    end
+    else
+    begin
+      Inc(Run, J);
+      Inc(AHi, J);
+      Inc(I, J);
+    end;
+  end;
+  Inc(ALo, (Run + 3) div 4);
+end;
+
+procedure LandrixEInvoicePdfJavaStringLength(const ABytes: TLandrixEInvoicePdfBytes; ACrLf: Integer;
+  out ALo, AHi: Integer);
+var
+  N, Lo, Hi: Integer;
+begin
+  N := Integer(Length(ABytes));
+  Utf8Units(ABytes, N, ALo, AHi);
+  if N > 65535 then
+  begin
+    { a literal string may be stored only up to 65535 or 65536 bytes }
+    Utf8Units(ABytes, 65535, Lo, Hi);
+    if Lo < ALo then
+      ALo := Lo;
+    Utf8Units(ABytes, 65536, Lo, Hi);
+    if Hi > AHi then
+      AHi := Hi;
+  end;
+  Dec(ALo, ACrLf);
+  if ALo < 0 then
+    ALo := 0;
 end;
 
 function FilterASCIIHex(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes): Boolean;
@@ -1985,10 +2289,24 @@ begin
   Result := nil;
   if not IsDictLike then
     Exit;
-  for I := 0 to DVals.Count - 1 do
+  { a repeated key: the last value counts, as in veraPDF and PDFBox }
+  for I := DVals.Count - 1 downto 0 do
     if DKeys[I] = AKey then
     begin
       Result := TLandrixEInvoicePdfObject(DVals[I]);
+      Exit;
+    end;
+end;
+
+function TLandrixEInvoicePdfObject.WasRemoved(const AKey: AnsiString): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to Integer(Length(DRemoved)) - 1 do
+    if DRemoved[I] = AKey then
+    begin
+      Result := True;
       Exit;
     end;
 end;
@@ -2032,6 +2350,7 @@ end;
 function TLandrixEInvoicePdfLexer.NewObj(AKind: TLandrixEInvoicePdfObjectKind): TLandrixEInvoicePdfObject;
 begin
   Result := TLandrixEInvoicePdfObject.Create(AKind);
+  Result.Serial := Integer(FOwned.Count);
   FOwned.Add(Result);
 end;
 
@@ -2076,7 +2395,7 @@ end;
 
 function TLandrixEInvoicePdfLexer.ParseLiteralString: TLandrixEInvoicePdfObject;
 var
-  Depth, Oct, K, Start, CrLf: Integer;
+  Depth, Oct, K, Start, CrLf, Lo, Hi: Integer;
   B: Byte;
   Output: TPdfByteBuilder;
   Closed: Boolean;
@@ -2148,7 +2467,8 @@ begin
   Result.StrVal := BuilderDone(Output);
   if FSink <> nil then
   begin
-    FSink.StringToken(Start, Integer(Length(Result.StrVal)) - CrLf, False, 0, False);
+    LandrixEInvoicePdfJavaStringLength(Result.StrVal, CrLf, Lo, Hi);
+    FSink.StringToken(Start, Lo, Hi, False, 0, False);
     if not Closed then
       FSink.Unobserved(Start, 'string not closed');
   end;
@@ -2156,7 +2476,7 @@ end;
 
 function TLandrixEInvoicePdfLexer.ParseHexString: TLandrixEInvoicePdfObject;
 var
-  Hi, V, Start, Digits: Integer;
+  Hi, V, Start, Digits, Lo, LenHi: Integer;
   Invalid, Closed: Boolean;
   Output: TPdfByteBuilder;
 begin
@@ -2202,7 +2522,8 @@ begin
   Result.StrVal := BuilderDone(Output);
   if FSink <> nil then
   begin
-    FSink.StringToken(Start, Integer(Length(Result.StrVal)), True, Digits, Invalid);
+    LandrixEInvoicePdfJavaStringLength(Result.StrVal, 0, Lo, LenHi);
+    FSink.StringToken(Start, Lo, LenHi, True, Digits, Invalid);
     if not Closed then
       FSink.Unobserved(Start, 'hexadecimal string not closed');
   end;
@@ -2282,13 +2603,81 @@ begin
     FSink.Unobserved(FPos, 'array not closed');
 end;
 
+{ A key's slot in the open-addressing table of ParseDict. }
+function DictKeyHash(const AKey: AnsiString; AMask: Integer): Integer;
+var
+  I, H1, H2: Integer;
+begin
+  { two 20-bit hashes (no overflow) combined to 31 bits }
+  H1 := Length(AKey) and $FFFFF;
+  H2 := H1;
+  for I := 1 to Length(AKey) do
+  begin
+    H1 := ((H1 * 31) + Ord(AKey[I])) and $FFFFF;
+    H2 := ((H2 * 37) + Ord(AKey[I])) and $FFFFF;
+  end;
+  Result := ((H1 shl 11) xor H2) and AMask;
+end;
+
+{ A dictionary as veraPDF's parser builds it: a repeated key replaces the
+  value in place (the earlier value does not count), a value null removes
+  the entry (its key and value do not count); the sink learns the ranges
+  that do not count through Replaced. }
 function TLandrixEInvoicePdfLexer.ParseDict(ADepth: Integer): TLandrixEInvoicePdfObject;
 var
   KeyObj, ValObj: TLandrixEInvoicePdfObject;
-  Save, KeywordPos: Integer;
+  Save, KeywordPos, KeyStart, N, I, H, Q, Mask, Used: Integer;
   KeywordEol: TLandrixEInvoicePdfEol;
+  Keys: array of AnsiString;
+  Vals: array of TLandrixEInvoicePdfObject;
+  Starts, Ends: array of Integer;
+  Dead: array of Boolean;
+  Slots: array of Integer;
+
+  { the slot of AKey: holding the index + 1 of its latest entry (live or
+    removed; every key keeps its slot), or 0 where it would go }
+  function FindSlot(const AKey: AnsiString): Integer;
+  begin
+    Result := DictKeyHash(AKey, Mask);
+    while (Slots[Result] <> 0) and (Keys[Slots[Result] - 1] <> AKey) do
+      Result := (Result + 1) and Mask;
+  end;
+
+  { a table of twice the size: every key once }
+  procedure Grow;
+  var
+    Old: array of Integer;
+    J: Integer;
+  begin
+    { a copy: Delphi treats each array of Integer declaration as its own type }
+    Old := nil;
+    SetLength(Old, Mask + 1);
+    for J := 0 to Mask do
+      Old[J] := Slots[J];
+    Mask := 2 * Mask + 1;
+    Slots := nil;
+    SetLength(Slots, Mask + 1);
+    for J := 0 to Mask do
+      Slots[J] := 0;
+    for J := 0 to Integer(Length(Old)) - 1 do
+      if Old[J] <> 0 then
+        Slots[FindSlot(Keys[Old[J] - 1])] := Old[J];
+  end;
+
 begin
   Result := NewObj(pok_Dict);
+  Keys := nil;
+  Vals := nil;
+  Starts := nil;
+  Ends := nil;
+  Dead := nil;
+  Slots := nil;
+  N := 0;
+  Used := 0;
+  Mask := 15;
+  SetLength(Slots, Mask + 1);
+  for I := 0 to Mask do
+    Slots[I] := 0;
   Inc(FPos, 2);
   while True do
   begin
@@ -2315,6 +2704,7 @@ begin
         Inc(FPos);
       Continue;
     end;
+    KeyStart := FPos;
     KeyObj := ParseName;
     ValObj := ParseObject(ADepth + 1);
     if ValObj = nil then
@@ -2323,7 +2713,76 @@ begin
         FSink.Unobserved(FPos, 'dictionary value missing');
       Break;
     end;
-    Result.AddEntry(KeyObj.NameVal, ValObj);
+    H := FindSlot(KeyObj.NameVal);
+    if (Slots[H] <> 0) and not Dead[Slots[H] - 1] then
+    begin
+      { the key again: the new value takes the place of the old one; null
+        removes the entry }
+      I := Slots[H] - 1;
+      if FSink <> nil then
+        FSink.Replaced(Starts[I], Ends[I]);
+      Vals[I] := ValObj;
+      Starts[I] := KeyStart;
+      Ends[I] := FPos;
+      Dead[I] := ValObj.Kind = pok_Null;
+      if Dead[I] and (FSink <> nil) then
+        FSink.Replaced(KeyStart, FPos);
+    end
+    else if (Slots[H] <> 0) and (ValObj.Kind = pok_Null) then
+    begin
+      { null again for a removed key }
+      if FSink <> nil then
+        FSink.Replaced(KeyStart, FPos);
+    end
+    else
+    begin
+      { a new entry at the end (a removed key that comes back too) }
+      if N >= Length(Keys) then
+      begin
+        SetLength(Keys, 2 * N + 8);
+        SetLength(Vals, 2 * N + 8);
+        SetLength(Starts, 2 * N + 8);
+        SetLength(Ends, 2 * N + 8);
+        SetLength(Dead, 2 * N + 8);
+      end;
+      I := N;
+      Keys[I] := KeyObj.NameVal;
+      Vals[I] := ValObj;
+      Starts[I] := KeyStart;
+      Ends[I] := FPos;
+      Dead[I] := ValObj.Kind = pok_Null;
+      Inc(N);
+      if Slots[H] = 0 then
+      begin
+        Slots[H] := I + 1;
+        Inc(Used);
+        if 2 * Used > Mask then
+          Grow;
+      end
+      else
+        Slots[H] := I + 1;
+      if Dead[I] and (FSink <> nil) then
+        FSink.Replaced(KeyStart, FPos);
+    end;
+  end;
+  for I := 0 to N - 1 do
+    if not Dead[I] then
+      Result.AddEntry(Keys[I], Vals[I]);
+  { the keys whose last value was null }
+  Q := 0;
+  for H := 0 to Mask do
+    if (Slots[H] <> 0) and Dead[Slots[H] - 1] then
+      Inc(Q);
+  if Q > 0 then
+  begin
+    SetLength(Result.DRemoved, Q);
+    Q := 0;
+    for H := 0 to Mask do
+      if (Slots[H] <> 0) and Dead[Slots[H] - 1] then
+      begin
+        Result.DRemoved[Q] := Keys[Slots[H] - 1];
+        Inc(Q);
+      end;
   end;
 
   { a following stream turns the dictionary into a stream object }
@@ -2436,6 +2895,14 @@ begin
     Exit;
   end;
 
+  if HasNonNumberLetter(Tok) then
+  begin
+    { veraPDF reads no exponent: a token that starts like a number is malformed }
+    if (FSink <> nil) and (Tok[1] in ['0'..'9', '+', '-', '.']) then
+      FSink.Unobserved(SavePos, 'malformed number');
+    FPos := SavePos;
+    Exit;
+  end;
   Val(AsciiToNative(Tok), D, Code);
   if Code <> 0 then
   begin
@@ -2444,6 +2911,7 @@ begin
   end;
   Result := NewObj(pok_Num);
   Result.NumVal := D;
+  Result.NumExact := PdfIntText(Tok, Result.NumInt);
   NumTok := Tok;
   if (FSink <> nil) and not IsPdfNumberText(Tok) then
     FSink.Unobserved(SavePos, 'malformed number');
@@ -2580,12 +3048,22 @@ var
 begin
   if (ADict = nil) or not ADict.IsDictLike then
     Exit;
-  if FRootRef = nil then
+  { the newest trailer first; a key removed there by null stays removed }
+  if (FRootRef = nil) and not FRootGone then
+  begin
     FRootRef := ADict.RawGet('Root');
-  if FEncryptRef = nil then
+    FRootGone := ADict.WasRemoved('Root');
+  end;
+  if (FEncryptRef = nil) and not FEncryptGone then
+  begin
     FEncryptRef := ADict.RawGet('Encrypt');
-  if FInfoRef = nil then
+    FEncryptGone := ADict.WasRemoved('Encrypt');
+  end;
+  if (FInfoRef = nil) and not FInfoGone then
+  begin
     FInfoRef := ADict.RawGet('Info');
+    FInfoGone := ADict.WasRemoved('Info');
+  end;
   if Length(FIdFirst) = 0 then
   begin
     IdObj := ADict.RawGet('ID');
@@ -3468,6 +3946,7 @@ function TLandrixEInvoicePdfDocument.GetObject(ANum: Integer): TLandrixEInvoiceP
 var
   Lex: TLandrixEInvoicePdfLexer;
   GotNum, GotGen, ObjEnd: Integer;
+  GenBad: Boolean;
   Observed: Boolean;
   NumTok, GenTok: AnsiString;
 begin
@@ -3515,7 +3994,8 @@ begin
               if not TokenToInt(NumTok, GotNum) or (GotNum <> ANum) then
                 Exit;
               GenTok := Lex.ReadToken;
-              if not TokenToInt(GenTok, GotGen) then
+              GenBad := not HeaderGenOf(GenTok, GotGen);
+              if GenBad then
                 GotGen := FXref[ANum].Gen;
               if Observed and not (IsPdfDigits(NumTok) and IsPdfDigits(GenTok)) then
                 FSyntax.Unobserved(Integer(FXref[ANum].Offset), 'malformed object or generation number');
@@ -3524,6 +4004,8 @@ begin
               ObjEnd := Lex.Pos;
               Result := Lex.ParseObject(0);
               FCache[ANum] := Result;
+              if Result <> nil then
+                Result.HeaderGenBad := GenBad;
               if Result <> nil then
                 TagAndDecrypt(Result, ANum, GotGen, 0);
               if Observed and (Result <> nil) then
@@ -3749,6 +4231,11 @@ begin
   Result := Resolve(ADict.RawGet(AKey));
 end;
 
+function TLandrixEInvoicePdfDocument.RootRef: TLandrixEInvoicePdfObject;
+begin
+  Result := FRootRef;
+end;
+
 function TLandrixEInvoicePdfDocument.Catalog: TLandrixEInvoicePdfObject;
 begin
   Result := Resolve(FRootRef);
@@ -3788,14 +4275,11 @@ begin
     Result := O.NameVal;
 end;
 
-function TLandrixEInvoicePdfDocument.GetStreamData(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
+function TLandrixEInvoicePdfDocument.GetStreamRaw(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
 var
-  LenObj, FilterObj, ParmObj, F, P, O: TLandrixEInvoicePdfObject;
-  RawLen, EndPos, I, NFilters, Pred, Colors, Bpc, Cols, Early: Integer;
+  LenObj: TLandrixEInvoicePdfObject;
+  RawLen, EndPos, I: Integer;
   RawLen64: Int64;
-  Raw, Decoded: TLandrixEInvoicePdfBytes;
-  FName: AnsiString;
-  Ok, TooBig: Boolean;
 begin
   Result := False;
   AData := nil;
@@ -3838,13 +4322,29 @@ begin
     if (RawLen > 0) and (FBuf[AObj.StreamPos + RawLen - 1] = 13) then
       Dec(RawLen);
   end;
-  Raw := Copy(FBuf, AObj.StreamPos, RawLen);
+  AData := Copy(FBuf, AObj.StreamPos, RawLen);
 
   { with the standard security handler the raw data is encrypted; not for
     xref streams, the /Encrypt dictionary and objects of an object stream }
   if FCryptReady and FCryptStreams and not AObj.NoDecrypt and
     (AObj.OwnerNum >= 0) and (AObj.OwnerNum <> FEncryptNum) then
-    DecryptBytes(Raw, AObj.OwnerNum, AObj.OwnerGen);
+    DecryptBytes(AData, AObj.OwnerNum, AObj.OwnerGen);
+  FStreamError := '';
+  Result := True;
+end;
+
+function TLandrixEInvoicePdfDocument.GetStreamData(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
+var
+  FilterObj, ParmObj, F, P, O: TLandrixEInvoicePdfObject;
+  I, NFilters, Pred, Colors, Bpc, Cols, Early: Integer;
+  Raw, Decoded: TLandrixEInvoicePdfBytes;
+  FName: AnsiString;
+  Ok, TooBig: Boolean;
+begin
+  Result := False;
+  AData := nil;
+  if not GetStreamRaw(AObj, Raw) then
+    Exit;
 
   FilterObj := DGet(AObj, 'Filter');
   ParmObj := DGet(AObj, 'DecodeParms');

@@ -21,15 +21,16 @@
   ("6.1.2-1": clause and test number; the finding ID is "PDFA-6.1.2-1"), so
   that results compare with veraPDF rule by rule. A registry states for every
   rule how far it is implemented: prc_Full rules are checked in their whole
-  scope; prc_Partial rules miss part of it (numbers, strings and names in
-  content streams are not read yet), so a failure is evidence but no failure
-  proves nothing; prc_None rules are not checked. The checked population is
+  scope; prc_Partial rules miss part of it, so a failure is evidence but no
+  failure proves nothing; prc_None rules are not checked. The checked population is
   the live object set of the object table (also unreferenced and compressed
   objects), the newest trailer and every section of the xref chain; older
   revisions of objects are not judged. Annotations, actions and form fields
   are found where veraPDF finds them: the /Annots of the pages, the actions
   of /A, of the named /AA events, of a dictionary /OpenAction, of outline
   items and their /Next chains, the AcroForm /Fields with kids that have /T.
+  Content streams are read by LandrixEInvoicePdfContent: the operands their
+  operators pass on count for 6.1.6 and 6.1.13 like the tokens of objects.
 
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
   (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
@@ -42,16 +43,18 @@
   "PDFA-6.1.2-1"), damit sich Ergebnisse Regel fuer Regel mit veraPDF
   vergleichen lassen. Ein Register sagt fuer jede Regel, wie weit sie umgesetzt
   ist: prc_Full-Regeln werden in ihrem ganzen Umfang geprueft; prc_Partial-
-  Regeln fehlt ein Teil davon (Zahlen, Strings und Namen in Content-Streams
-  werden noch nicht gelesen), ein Verstoss ist also ein Beleg, kein Verstoss
-  beweist nichts; prc_None-Regeln werden nicht geprueft. Geprueft wird die
+  Regeln fehlt ein Teil davon, ein Verstoss ist also ein Beleg, kein
+  Verstoss beweist nichts; prc_None-Regeln werden nicht geprueft. Geprueft wird die
   lebende Objektmenge der Objekttabelle (auch Objekte ohne Verweis und
   komprimierte), der neueste Trailer und jeder Abschnitt der xref-Kette;
   aeltere Fassungen von Objekten werden nicht beurteilt. Annotationen,
   Aktionen und Formularfelder werden dort gefunden, wo veraPDF sie findet:
   die /Annots der Seiten, die Aktionen von /A, der benannten /AA-Ereignisse,
   eines Dictionary-/OpenAction, von Gliederungseintraegen und ihren
-  /Next-Ketten, die AcroForm-/Fields mit Kindern, die /T haben. }
+  /Next-Ketten, die AcroForm-/Fields mit Kindern, die /T haben.
+  Content-Streams liest LandrixEInvoicePdfContent: die Operanden, die ihre
+  Operatoren weitergeben, zaehlen fuer 6.1.6 und 6.1.13 wie die Token von
+  Objekten. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -156,10 +159,23 @@ type
     FNodesC: Integer;
     FWalkBroken: Boolean;
     FAssoc: array of Boolean;
+    { associations made in the page tree (doubtful where veraPDF may see
+      other pages) }
+    FAssocPage: array of Boolean;
+    FAFInPages: Boolean;
+    { the pages veraPDF sees may differ (page associations doubtful) }
+    FAFPagesUnsure: Boolean;
     FSpecSeen: array of Boolean;
     FSpecs: array of TLandrixEInvoicePdfObject;
     FSpecNums: array of Integer;
     FSpecCount: Integer;
+    { object numbers /AF /Name BDC in content streams associates certainly or
+      possibly (6.8-4) }
+    FContentSure: array of Boolean;
+    FContentMaybe: array of Boolean;
+    { the /AF walk (6.8-4): objects visited, pages found, pages unsure }
+    FAFSeen: array of Byte;
+    FAFUnsure: Boolean;
     FNodesOc: Integer;
     { the metadata streams other dictionaries name (6.6.2.1), by object
       number }
@@ -214,6 +230,22 @@ type
     procedure WalkValue(AObj: TLandrixEInvoicePdfObject; ANum, ADepth: Integer);
     procedure WalkEmbeddedFiles(ANode: TLandrixEInvoicePdfObject; ADepth: Integer);
     procedure SpecFail(ARule: TLandrixEInvoicePdfARule; AIndex: Integer; const ADetail: string);
+    procedure CheckContent;
+    procedure RegisterAF(AObj: TLandrixEInvoicePdfObject);
+    function AFBudget(ADepth: Integer): Boolean;
+    function AFRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
+    function AFGet(AObj: TLandrixEInvoicePdfObject; const AKey: AnsiString): TLandrixEInvoicePdfObject;
+    function AFFirstVisit(ARaw: TLandrixEInvoicePdfObject; AKind: Byte): Boolean;
+    function AFPages(ANode, AInherited: TLandrixEInvoicePdfObject; ADepth: Integer): Integer;
+    procedure AFPage(APage, ARes: TLandrixEInvoicePdfObject);
+    procedure AFResources(ARes: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure AFXObject(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure AFAppearance(AStream: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure AFFont(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure AFGState(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure AFPattern(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure AFStruct(AKids: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure CollectAF;
     procedure CheckFileSpecs;
     procedure CheckOptionalContent;
     procedure CheckCatalogLate;
@@ -263,7 +295,8 @@ uses
   SysUtils,
   Classes,
   Contnrs,
-  LandrixXmlBase;
+  LandrixXmlBase,
+  LandrixEInvoicePdfContent;
 
 type
   TOcNames = array of TLandrixEInvoiceString;
@@ -285,8 +318,8 @@ const
     (Number: '6.1.3-3'; Coverage: prc_Full; Text: 'Nothing but one end of line follows the last %%EOF'),
     (Number: '6.1.4-2'; Coverage: prc_Full;
       Text: 'The keyword xref and the first subsection header are separated by one end of line'),
-    (Number: '6.1.6-1'; Coverage: prc_Partial; Text: 'A hexadecimal string has an even number of characters'),
-    (Number: '6.1.6-2'; Coverage: prc_Partial; Text: 'A hexadecimal string holds only hexadecimal digits'),
+    (Number: '6.1.6-1'; Coverage: prc_Full; Text: 'A hexadecimal string has an even number of characters'),
+    (Number: '6.1.6-2'; Coverage: prc_Full; Text: 'A hexadecimal string holds only hexadecimal digits'),
     (Number: '6.1.7.1-1'; Coverage: prc_Full; Text: 'The /Length of a stream matches its data'),
     (Number: '6.1.7.1-2'; Coverage: prc_Full;
       Text: 'stream is followed by CR LF or LF, endstream is preceded by an end of line'),
@@ -296,17 +329,17 @@ const
     (Number: '6.1.8-1'; Coverage: prc_None; Text: 'Font, colourant and structure type names are valid UTF-8'),
     (Number: '6.1.9-1'; Coverage: prc_Full;
       Text: 'One white-space character between object number, generation and obj; end of line around obj and endobj'),
-    (Number: '6.1.10-1'; Coverage: prc_None; Text: 'Inline images use only permitted filters'),
+    (Number: '6.1.10-1'; Coverage: prc_Full; Text: 'Inline images use only permitted filters'),
     (Number: '6.1.12-1'; Coverage: prc_Full; Text: 'A permissions dictionary holds only UR3 and DocMDP'),
     (Number: '6.1.12-2'; Coverage: prc_Full;
       Text: 'With DocMDP, signature references have no DigestLocation, DigestMethod or DigestValue'),
-    (Number: '6.1.13-1'; Coverage: prc_Partial; Text: 'Integers lie between -2147483648 and 2147483647'),
-    (Number: '6.1.13-2'; Coverage: prc_Partial; Text: 'Real numbers lie within +/-3.403E38'),
-    (Number: '6.1.13-3'; Coverage: prc_Partial; Text: 'Strings are at most 32767 bytes long'),
-    (Number: '6.1.13-4'; Coverage: prc_Partial; Text: 'Names are at most 127 bytes long'),
-    (Number: '6.1.13-5'; Coverage: prc_Partial; Text: 'Real numbers are zero or at least 1.175E-38 away from it'),
+    (Number: '6.1.13-1'; Coverage: prc_Full; Text: 'Integers lie between -2147483648 and 2147483647'),
+    (Number: '6.1.13-2'; Coverage: prc_Full; Text: 'Real numbers lie within +/-3.403E38'),
+    (Number: '6.1.13-3'; Coverage: prc_Full; Text: 'Strings are at most 32767 characters long'),
+    (Number: '6.1.13-4'; Coverage: prc_Full; Text: 'Names are at most 127 bytes long'),
+    (Number: '6.1.13-5'; Coverage: prc_Full; Text: 'Real numbers are zero or at least 1.175E-38 away from it'),
     (Number: '6.1.13-7'; Coverage: prc_Full; Text: 'At most 8388607 indirect objects'),
-    (Number: '6.1.13-8'; Coverage: prc_None; Text: 'q/Q pairs are nested at most 28 levels deep'),
+    (Number: '6.1.13-8'; Coverage: prc_Full; Text: 'q/Q pairs are nested at most 28 levels deep'),
     (Number: '6.1.13-9'; Coverage: prc_None; Text: 'A DeviceN colour space has at most 32 colourants'),
     (Number: '6.1.13-10'; Coverage: prc_None; Text: 'CID values are at most 65535'),
     (Number: '6.1.13-11'; Coverage: prc_Full; Text: 'Page boundaries are between 3 and 14400 units in each direction'),
@@ -386,10 +419,10 @@ const
     (Number: '6.6.4-6'; Coverage: prc_Full; Text: 'pdfaid:amd has the prefix pdfaid'),
     (Number: '6.6.4-7'; Coverage: prc_Full; Text: 'pdfaid:corr has the prefix pdfaid'),
     (Number: '6.8-1'; Coverage: prc_Full; Text: 'An embedded file has a MIME type /Subtype of the form type/subtype'),
-    (Number: '6.8-2'; Coverage: prc_Partial;
+    (Number: '6.8-2'; Coverage: prc_Full;
       Text: 'A file specification of an embedded file has /F and /UF'),
-    (Number: '6.8-3'; Coverage: prc_Partial; Text: 'A file specification has /AFRelationship'),
-    (Number: '6.8-4'; Coverage: prc_Partial;
+    (Number: '6.8-3'; Coverage: prc_Full; Text: 'A file specification has /AFRelationship'),
+    (Number: '6.8-4'; Coverage: prc_Full;
       Text: 'A file specification is an associated file (in an /AF array)'),
     (Number: '6.9-1'; Coverage: prc_Full; Text: 'An optional content configuration has a non-empty /Name'),
     (Number: '6.9-2'; Coverage: prc_Full; Text: 'The names of the optional content configurations are unique'),
@@ -743,6 +776,9 @@ begin
   FNodesOc := 0;
   FWalkBroken := False;
   FAssoc := nil;
+  FAssocPage := nil;
+  FAFInPages := False;
+  FAFPagesUnsure := False;
   FSpecSeen := nil;
   FSpecs := nil;
   FSpecNums := nil;
@@ -759,6 +795,10 @@ begin
   FLive := nil;
   FLiveCount := 0;
   FLiveByNum := nil;
+  FContentSure := nil;
+  FContentMaybe := nil;
+  FAFSeen := nil;
+  FAFUnsure := False;
 end;
 
 procedure TLandrixEInvoicePdfARuleCheck.Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer;
@@ -920,6 +960,7 @@ begin
     MarkStageB;
     MarkLateA;
   end;
+  CheckContent;
   CheckFileSpecs;
   CheckMetadata;
 
@@ -1187,11 +1228,13 @@ begin
 end;
 
 { 6.1.6 and 6.1.13-1 to -5 on the numbers, strings and names of live
-  objects and of the newest trailer (partial: content streams are not
-  read).
+  objects and of the newest trailer (content streams: CheckContent). A
+  string's length is measured as veraPDF measures it; where that is not
+  certain on the limit, the rule stays undecided.
   DE: 6.1.6 und 6.1.13-1 bis -5 an den Zahlen, Strings und Namen lebender
-  Objekte und des neuesten Trailers (teilweise: Content-Streams werden
-  nicht gelesen). }
+  Objekte und des neuesten Trailers (Content-Streams: CheckContent). Die
+  Laenge eines Strings wird gemessen, wie veraPDF sie misst; wo das an der
+  Grenze nicht sicher ist, bleibt die Regel offen. }
 procedure TLandrixEInvoicePdfARuleCheck.CheckTokens;
 var
   I: Integer;
@@ -1201,7 +1244,7 @@ begin
   for I := 0 to FFacts.TokenCount - 1 do
   begin
     T := FFacts.Tokens[I];
-    if not TokenLive(T) then
+    if T.Replaced or not TokenLive(T) then
       Continue;
     if T.ObjNum < 0 then
       Where := 'trailer'
@@ -1222,7 +1265,9 @@ begin
         begin
           if T.Length > 32767 then
             Fail(par_6_1_13_3, T.ObjNum, T.ObjGen, T.Source, T.Pos, Where + ': string of ' + IntToStr(T.Length) +
-              ' bytes');
+              ' characters')
+          else if T.LengthHi > 32767 then
+            FIncomplete[par_6_1_13_3] := True;
           if T.Kind = ptk_HexString then
           begin
             if Odd(T.HexChars) then
@@ -1360,11 +1405,13 @@ begin
     Crop := Box;
   TypeObj := FDoc.DGet(ANode, 'Type');
   Kids := FDoc.DGet(ANode, 'Kids');
-  if (Kids <> nil) and (Kids.Kind = pok_Arr) and not ((TypeObj <> nil) and (TypeObj.Kind = pok_Name) and
-    (TypeObj.NameVal = 'Page')) then
+  { veraPDF makes the root a node whatever its /Type }
+  if (ADepth = 0) or ((Kids <> nil) and (Kids.Kind = pok_Arr) and not ((TypeObj <> nil) and
+    (TypeObj.Kind = pok_Name) and (TypeObj.NameVal = 'Page'))) then
   begin
-    for I := 0 to Kids.ArrCount - 1 do
-      CheckPages(FDoc.Resolve(Kids.ArrItem(I)), Media, Crop, ADepth + 1);
+    if (Kids <> nil) and (Kids.Kind = pok_Arr) then
+      for I := 0 to Kids.ArrCount - 1 do
+        CheckPages(FDoc.Resolve(Kids.ArrItem(I)), Media, Crop, ADepth + 1);
     Exit;
   end;
   CheckBox(Media, 'MediaBox');
@@ -1833,8 +1880,8 @@ end;
 { The object numbers an array names by reference. }
 procedure TLandrixEInvoicePdfARuleCheck.AddAssoc(AArr: TLandrixEInvoicePdfObject);
 var
-  I: Integer;
-  Item: TLandrixEInvoicePdfObject;
+  I, N, Depth: Integer;
+  Item, O: TLandrixEInvoicePdfObject;
 begin
   if (AArr = nil) or (AArr.Kind <> pok_Arr) or FWalkBroken then
     Exit;
@@ -1849,8 +1896,27 @@ begin
   for I := 0 to AArr.ArrCount - 1 do
   begin
     Item := AArr.ArrItem(I);
-    if (Item <> nil) and (Item.Kind = pok_Ref) and (Item.RefNum >= 0) and (Item.RefNum < Integer(Length(FAssoc))) then
-      FAssoc[Item.RefNum] := True;
+    { the reference must name the object in use, generation included }
+    if (Item <> nil) and (Item.Kind = pok_Ref) and (AFRef(Item) <> nil) then
+    begin
+      { an object that holds a reference stands for the object it names }
+      N := Item.RefNum;
+      O := FDoc.GetObject(N);
+      Depth := 0;
+      while (O <> nil) and (O.Kind = pok_Ref) and (Depth < 32) do
+      begin
+        N := O.RefNum;
+        O := FDoc.GetObject(N);
+        Inc(Depth);
+      end;
+      if (N >= 0) and (N < Integer(Length(FAssoc))) then
+      begin
+        if FAFInPages then
+          FAssocPage[N] := True
+        else
+          FAssoc[N] := True;
+      end;
+    end;
   end;
 end;
 
@@ -1875,18 +1941,16 @@ end;
 
 { 6.8: a value and the direct values in it. A dictionary with /Type
   /Filespec is a file specification (ANum: its object number if it is the
-  object itself, else -1); an /AF array and the arrays of a /Properties
-  dictionary (resources of marked content, which may name associated files)
-  mark the objects they name.
+  object itself, else -1). The /AF arrays that associate files are
+  collected by CollectAF.
   DE: 6.8: ein Wert und die direkten Werte darin. Ein Dictionary mit /Type
   /Filespec ist eine Dateispezifikation (ANum: seine Objektnummer, wenn es
-  das Objekt selbst ist, sonst -1); ein /AF-Array und die Arrays eines
-  /Properties-Dictionarys (Ressourcen markierter Inhalte, die zugeordnete
-  Dateien nennen koennen) markieren die Objekte, die sie nennen. }
+  das Objekt selbst ist, sonst -1). Die /AF-Arrays, die Dateien zuordnen,
+  sammelt CollectAF. }
 procedure TLandrixEInvoicePdfARuleCheck.WalkValue(AObj: TLandrixEInvoicePdfObject; ANum, ADepth: Integer);
 var
-  I, K: Integer;
-  V, P, T: TLandrixEInvoicePdfObject;
+  I: Integer;
+  V, T: TLandrixEInvoicePdfObject;
 begin
   if FWalkBroken then
     Exit;
@@ -1920,15 +1984,6 @@ begin
     V := TLandrixEInvoicePdfObject(AObj.DVals[I]);
     if V = nil then
       Continue;
-    if AObj.DKeys[I] = 'AF' then
-      AddAssoc(FDoc.Resolve(V))
-    else if AObj.DKeys[I] = 'Properties' then
-    begin
-      P := FDoc.Resolve(V);
-      if (P <> nil) and P.IsDictLike then
-        for K := 0 to Integer(P.DVals.Count) - 1 do
-          AddAssoc(FDoc.Resolve(TLandrixEInvoicePdfObject(P.DVals[K])));
-    end;
     if (V.Kind = pok_Arr) or (V.Kind = pok_Dict) then
       WalkValue(V, -1, ADepth + 1);
   end;
@@ -1941,8 +1996,8 @@ end;
   Durchlauf). }
 procedure TLandrixEInvoicePdfARuleCheck.WalkEmbeddedFiles(ANode: TLandrixEInvoicePdfObject; ADepth: Integer);
 var
-  Arr, Raw, V, T, Kids: TLandrixEInvoicePdfObject;
-  I, Num: Integer;
+  Arr, Raw, V, T, Kids, O: TLandrixEInvoicePdfObject;
+  I, Num, Depth: Integer;
 begin
   if (ANode = nil) or not ANode.IsDictLike or FWalkBroken then
     Exit;
@@ -1972,10 +2027,20 @@ begin
         T := FDoc.DGet(V, 'Type');
         if not ((T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Filespec')) then
         begin
+          Num := -1;
           if (Raw <> nil) and (Raw.Kind = pok_Ref) then
-            Num := Raw.RefNum
-          else
-            Num := -1;
+          begin
+            { the object at the end of a reference chain, as /AF names it }
+            Num := Raw.RefNum;
+            O := FDoc.GetObject(Num);
+            Depth := 0;
+            while (O <> nil) and (O.Kind = pok_Ref) and (Depth < 32) do
+            begin
+              Num := O.RefNum;
+              O := FDoc.GetObject(Num);
+              Inc(Depth);
+            end;
+          end;
           AddSpec(V, Num);
         end;
       end;
@@ -2000,29 +2065,467 @@ begin
     FailAt(ARule, FSpecs[AIndex], ADetail);
 end;
 
+{ 6.1.6, 6.1.10-1, 6.1.13-1 to -5, 6.1.13-8 and 6.8-2 to -4 in the content
+  streams veraPDF reads (LandrixEInvoicePdfContent): certain findings fail
+  the rule, uncertain ones leave it undecided; the associations of /AF
+  /Name BDC are kept for 6.8-4.
+  DE: 6.1.6, 6.1.10-1, 6.1.13-1 bis -5, 6.1.13-8 und 6.8-2 bis -4 in den
+  Content-Streams, die veraPDF liest (LandrixEInvoicePdfContent): sichere
+  Befunde verletzen die Regel, unsichere lassen sie offen; die Zuordnungen
+  durch /AF /Name BDC bleiben fuer 6.8-4. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckContent;
+const
+  RuleOf: array[TLandrixEInvoicePdfContentCheck] of TLandrixEInvoicePdfARule = (par_6_1_13_1, par_6_1_13_2,
+    par_6_1_13_5, par_6_1_13_3, par_6_1_6_1, par_6_1_6_2, par_6_1_13_4, par_6_1_10_1, par_6_1_13_8, par_6_8_2,
+    par_6_8_3, par_6_8_4);
+var
+  Walk: TLandrixEInvoicePdfContentWalk;
+  F: TLandrixEInvoicePdfContentFinding;
+  C: TLandrixEInvoicePdfContentCheck;
+  I: Integer;
+begin
+  SetLength(FContentSure, FDoc.XrefCount);
+  SetLength(FContentMaybe, FDoc.XrefCount);
+  Walk := TLandrixEInvoicePdfContentWalk.Create(FDoc);
+  try
+    Walk.Run;
+    for I := 0 to Walk.FindingCount - 1 do
+    begin
+      F := Walk.Finding(I);
+      Fail(RuleOf[F.Check], F.ObjNum, F.ObjGen, pss_File, -1, F.Detail);
+    end;
+    for C := Low(TLandrixEInvoicePdfContentCheck) to High(TLandrixEInvoicePdfContentCheck) do
+      if Walk.Uncertain(C) then
+        FIncomplete[RuleOf[C]] := True;
+    for I := 0 to FDoc.XrefCount - 1 do
+    begin
+      FContentSure[I] := Walk.AssociatedSure(I);
+      FContentMaybe[I] := Walk.AssociatedMaybe(I);
+    end;
+  finally
+    Walk.Free;
+  end;
+end;
+
+{ The /AF array of AObj (resolved) associates the objects its references
+  name. }
+procedure TLandrixEInvoicePdfARuleCheck.RegisterAF(AObj: TLandrixEInvoicePdfObject);
+begin
+  if (AObj <> nil) and AObj.IsDictLike then
+    AddAssoc(AFGet(AObj, 'AF'));
+end;
+
+function TLandrixEInvoicePdfARuleCheck.AFBudget(ADepth: Integer): Boolean;
+begin
+  Inc(FNodesC);
+  Result := not FWalkBroken and (ADepth <= MaxTreeDepth) and (FNodesC <= MaxWalkNodes);
+  if not Result then
+    BreakWalk;
+end;
+
+{ A reference to the object in use with that number and generation (nil
+  otherwise, veraPDF reads null); a direct object as it is. }
+function TLandrixEInvoicePdfARuleCheck.AFRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
+var
+  E: TLandrixEInvoicePdfXrefEntry;
+  Depth, Num, Gen: Integer;
+begin
+  Result := ARaw;
+  Depth := 0;
+  while (Result <> nil) and (Result.Kind = pok_Ref) do
+  begin
+    Inc(Depth);
+    E := FDoc.XrefEntry(Result.RefNum);
+    if Depth > 32 then
+    begin
+      { veraPDF may follow it further }
+      FAFUnsure := True;
+      Result := nil;
+      Exit;
+    end;
+    if not E.Known or (E.Kind = pxk_Free) or (E.Gen <> Result.RefGen) then
+    begin
+      Result := nil;
+      Exit;
+    end;
+    Gen := Result.RefGen;
+    Num := Result.RefNum;
+    Result := FDoc.GetObject(Num);
+    { the object header must carry the generation too }
+    if (Result <> nil) and (Result.OwnerNum = Num) and ((Result.OwnerGen <> Gen) or Result.HeaderGenBad) then
+    begin
+      Result := nil;
+      Exit;
+    end;
+  end;
+end;
+
+function TLandrixEInvoicePdfARuleCheck.AFGet(AObj: TLandrixEInvoicePdfObject;
+  const AKey: AnsiString): TLandrixEInvoicePdfObject;
+begin
+  Result := nil;
+  if (AObj <> nil) and AObj.IsDictLike then
+    Result := AFRef(AObj.RawGet(AKey));
+end;
+
+{ XObjects, fonts, patterns and graphics states are walked once per object
+  and role (AKind a bit: 1 XObject, 2 font, 4 graphics state, 8 pattern). }
+function TLandrixEInvoicePdfARuleCheck.AFFirstVisit(ARaw: TLandrixEInvoicePdfObject; AKind: Byte): Boolean;
+begin
+  Result := True;
+  if (ARaw = nil) or (ARaw.Kind <> pok_Ref) or (ARaw.RefNum < 0) or (ARaw.RefNum >= Integer(Length(FAFSeen))) then
+    Exit;
+  { a reference to no object in use gives nothing and marks nothing }
+  if AFRef(ARaw) = nil then
+    Exit;
+  Result := (FAFSeen[ARaw.RefNum] and AKind) = 0;
+  FAFSeen[ARaw.RefNum] := FAFSeen[ARaw.RefNum] or AKind;
+end;
+
+{ An integer as veraPDF's getIntegerKey reads it: a number truncated toward
+  zero, a string its byte length; False for anything else. }
+function AFInteger(V: TLandrixEInvoicePdfObject; out AValue: Int64): Boolean;
+begin
+  Result := False;
+  AValue := 0;
+  if V = nil then
+    Exit;
+  if V.Kind = pok_Num then
+  begin
+    { an integer token as Java's long; else Java's (long) cast, which
+      saturates beyond about 9e18 }
+    if V.NumExact then
+      AValue := V.NumInt
+    else if V.NumVal >= 9.0E18 then
+      AValue := High(Int64)
+    else if V.NumVal <= -9.0E18 then
+      AValue := Low(Int64)
+    else
+      AValue := Trunc(V.NumVal);
+    Result := True;
+  end
+  else if V.Kind = pok_Str then
+  begin
+    AValue := Length(V.StrVal);
+    Result := True;
+  end;
+  { Long.intValue: the low 32 bits }
+  AValue := AValue and $FFFFFFFF;
+  if AValue > $7FFFFFFF then
+    AValue := AValue - $100000000;
+end;
+
+{ The pages below ANode; the number of leaves. veraPDF finds a page by its
+  index through the /Count of the nodes: where one does not match, it may
+  see fewer or other pages. }
+function TLandrixEInvoicePdfARuleCheck.AFPages(ANode, AInherited: TLandrixEInvoicePdfObject; ADepth: Integer): Integer;
+var
+  Kids, T, Inh, R: TLandrixEInvoicePdfObject;
+  Count: Int64;
+  I: Integer;
+begin
+  Result := 0;
+  if (ANode = nil) or not ANode.IsDictLike then
+  begin
+    FAFUnsure := True;
+    FAFPagesUnsure := True;
+    Exit;
+  end;
+  if not AFBudget(ADepth) then
+    Exit;
+  { the root's /Type is not read; a page's /Kids neither }
+  T := nil;
+  if ADepth > 0 then
+    T := AFGet(ANode, 'Type');
+  Kids := nil;
+  if not ((T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Page')) then
+    Kids := AFGet(ANode, 'Kids');
+  { resources: the node's own, else those inherited in the walk (not from
+    /Parent) }
+  Inh := AInherited;
+  R := ANode.RawGet('Resources');
+  if R <> nil then
+    Inh := AFRef(R);
+  { veraPDF makes the root a node and tells the kids by /Type; another type
+    stops its walk }
+  if (ADepth > 0) and ((T = nil) or (T.Kind <> pok_Name) or ((T.NameVal <> 'Page') and (T.NameVal <> 'Pages'))) then
+  begin
+    FAFUnsure := True;
+    FAFPagesUnsure := True;
+  end;
+  if (ADepth = 0) or ((T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Pages')) or
+    ((Kids <> nil) and (Kids.Kind = pok_Arr) and not ((T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Page'))) then
+  begin
+    if (Kids <> nil) and (Kids.Kind = pok_Arr) then
+      for I := 0 to Kids.ArrCount - 1 do
+        Inc(Result, AFPages(AFRef(Kids.ArrItem(I)), Inh, ADepth + 1));
+    { a /Count that is no integer counts 0 }
+    if not AFInteger(AFGet(ANode, 'Count'), Count) then
+      Count := 0;
+    if Count <> Result then
+    begin
+      FAFUnsure := True;
+      FAFPagesUnsure := True;
+    end;
+    Exit;
+  end;
+  Result := 1;
+  AFPage(ANode, Inh);
+end;
+
+{ A page: its /AF, its resources (own or inherited), its annotations with
+  their /AF and their appearances N, D and R (a stream or every stream of a
+  state dictionary). }
+procedure TLandrixEInvoicePdfARuleCheck.AFPage(APage, ARes: TLandrixEInvoicePdfObject);
+const
+  ApKeys: array[0..2] of AnsiString = ('N', 'D', 'R');
+var
+  Annots, A, AP, V, S: TLandrixEInvoicePdfObject;
+  I, K, J: Integer;
+begin
+  RegisterAF(APage);
+  AFResources(ARes, 1);
+  Annots := AFGet(APage, 'Annots');
+  if (Annots = nil) or (Annots.Kind <> pok_Arr) then
+    Exit;
+  for I := 0 to Annots.ArrCount - 1 do
+  begin
+    { veraPDF builds annotations from dictionaries only }
+    A := AFRef(Annots.ArrItem(I));
+    if (A = nil) or (A.Kind <> pok_Dict) then
+      Continue;
+    RegisterAF(A);
+    AP := AFGet(A, 'AP');
+    if (AP = nil) or not AP.IsDictLike then
+      Continue;
+    for K := 0 to High(ApKeys) do
+    begin
+      V := AFGet(AP, ApKeys[K]);
+      if V = nil then
+        Continue;
+      if V.Kind = pok_Stream then
+        AFAppearance(V, 1)
+      else if V.Kind = pok_Dict then
+        for J := 0 to Integer(V.DVals.Count) - 1 do
+        begin
+          S := AFRef(TLandrixEInvoicePdfObject(V.DVals[J]));
+          if (S <> nil) and (S.Kind = pok_Stream) then
+            AFAppearance(S, 1);
+        end;
+    end;
+  end;
+end;
+
+procedure TLandrixEInvoicePdfARuleCheck.AFAppearance(AStream: TLandrixEInvoicePdfObject; ADepth: Integer);
+begin
+  if not AFBudget(ADepth) then
+    Exit;
+  RegisterAF(AStream);
+  AFResources(AFGet(AStream, 'Resources'), ADepth + 1);
+end;
+
+{ A resource dictionary: every XObject (its /AF), the resources of forms,
+  Type 3 fonts (also the font of an ExtGState) and patterns. }
+procedure TLandrixEInvoicePdfARuleCheck.AFResources(ARes: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  C: TLandrixEInvoicePdfObject;
+  I: Integer;
+begin
+  if (ARes = nil) or not ARes.IsDictLike or not AFBudget(ADepth) then
+    Exit;
+  C := AFGet(ARes, 'XObject');
+  if (C <> nil) and C.IsDictLike then
+    for I := 0 to Integer(C.DVals.Count) - 1 do
+      AFXObject(TLandrixEInvoicePdfObject(C.DVals[I]), ADepth + 1);
+  C := AFGet(ARes, 'Font');
+  if (C <> nil) and C.IsDictLike then
+    for I := 0 to Integer(C.DVals.Count) - 1 do
+      AFFont(TLandrixEInvoicePdfObject(C.DVals[I]), ADepth + 1);
+  C := AFGet(ARes, 'ExtGState');
+  if (C <> nil) and C.IsDictLike then
+    for I := 0 to Integer(C.DVals.Count) - 1 do
+      AFGState(TLandrixEInvoicePdfObject(C.DVals[I]), ADepth + 1);
+  C := AFGet(ARes, 'Pattern');
+  if (C <> nil) and C.IsDictLike then
+    for I := 0 to Integer(C.DVals.Count) - 1 do
+      AFPattern(TLandrixEInvoicePdfObject(C.DVals[I]), ADepth + 1);
+end;
+
+{ A form, image or PostScript XObject (a stream or a dictionary with that
+  /Subtype): its own /AF; a form's resources. veraPDF 1.30.4 does not go on
+  from an image to its masks. }
+procedure TLandrixEInvoicePdfARuleCheck.AFXObject(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  X, Sub: TLandrixEInvoicePdfObject;
+begin
+  if not AFFirstVisit(ARaw, 1) or not AFBudget(ADepth) then
+    Exit;
+  X := AFRef(ARaw);
+  if (X = nil) or not X.IsDictLike then
+    Exit;
+  Sub := AFGet(X, 'Subtype');
+  if (Sub = nil) or (Sub.Kind <> pok_Name) or
+    ((Sub.NameVal <> 'Form') and (Sub.NameVal <> 'Image') and (Sub.NameVal <> 'PS')) then
+    Exit;
+  RegisterAF(X);
+  if Sub.NameVal = 'Form' then
+    AFResources(AFGet(X, 'Resources'), ADepth + 1);
+end;
+
+procedure TLandrixEInvoicePdfARuleCheck.AFFont(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  F, Sub: TLandrixEInvoicePdfObject;
+begin
+  if not AFFirstVisit(ARaw, 2) or not AFBudget(ADepth) then
+    Exit;
+  F := AFRef(ARaw);
+  if (F = nil) or (F.Kind <> pok_Dict) then
+    Exit;
+  Sub := AFGet(F, 'Subtype');
+  if (Sub <> nil) and (Sub.Kind = pok_Name) and (Sub.NameVal = 'Type3') then
+    AFResources(AFGet(F, 'Resources'), ADepth + 1);
+end;
+
+procedure TLandrixEInvoicePdfARuleCheck.AFGState(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  G, F: TLandrixEInvoicePdfObject;
+begin
+  if not AFFirstVisit(ARaw, 4) or not AFBudget(ADepth) then
+    Exit;
+  G := AFRef(ARaw);
+  if (G = nil) or not G.IsDictLike then
+    Exit;
+  F := AFGet(G, 'Font');
+  if (F <> nil) and (F.Kind = pok_Arr) and (F.ArrCount > 0) then
+    AFFont(F.ArrItem(0), ADepth + 1);
+end;
+
+procedure TLandrixEInvoicePdfARuleCheck.AFPattern(ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  P: TLandrixEInvoicePdfObject;
+  T: Int64;
+  K: Integer;
+begin
+  if not AFFirstVisit(ARaw, 8) or not AFBudget(ADepth) then
+    Exit;
+  P := AFRef(ARaw);
+  K := 0;
+  while (P <> nil) and (P.Kind = pok_Arr) and (P.ArrCount = 1) do
+  begin
+    Inc(K);
+    if K > 32 then
+    begin
+      FAFUnsure := True;
+      Exit;
+    end;
+    P := AFRef(P.ArrItem(0));
+  end;
+  if (P = nil) or not P.IsDictLike then
+    Exit;
+  if not AFInteger(AFGet(P, 'PatternType'), T) then
+    Exit;
+  if T = 1 then
+    AFResources(AFGet(P, 'Resources'), ADepth + 1)
+  else if T = 2 then
+    AFGState(P.RawGet('ExtGState'), ADepth + 1);
+end;
+
+{ The structure elements below /StructTreeRoot: a /K dictionary or the
+  dictionaries of a /K array without /Type or with /Type /StructElem. }
+procedure TLandrixEInvoicePdfARuleCheck.AFStruct(AKids: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  I, N: Integer;
+  E, T: TLandrixEInvoicePdfObject;
+begin
+  if (AKids = nil) or not AFBudget(ADepth) then
+    Exit;
+  if AKids.Kind = pok_Arr then
+    N := AKids.ArrCount
+  else
+    N := 1;
+  for I := 0 to N - 1 do
+  begin
+    if AKids.Kind = pok_Arr then
+      E := AFRef(AKids.ArrItem(I))
+    else
+      E := AKids;
+    if (E = nil) or (E.Kind <> pok_Dict) then
+      Continue;
+    T := AFGet(E, 'Type');
+    if (T <> nil) and (T.Kind = pok_Name) and (T.NameVal <> 'StructElem') then
+      Continue;
+    RegisterAF(E);
+    AFStruct(AFGet(E, 'K'), ADepth + 1);
+  end;
+end;
+
+{ 6.8-4: the /AF arrays veraPDF registers: of the catalog, of every page
+  of the page tree, of the annotations of a page and their appearance
+  streams, of every XObject in the resources reached from pages and
+  appearances (through forms, Type 3 fonts, the fonts of graphics states
+  and patterns; used or not) and of the structure elements. Where the pages
+  veraPDF sees may differ (/Count does not match), an unassociated file
+  specification is no proven failure.
+  DE: 6.8-4: die /AF-Arrays, die veraPDF registriert: des Katalogs, jeder
+  Seite des Seitenbaums, der Annotationen einer Seite und ihrer
+  Erscheinungs-Streams, jedes XObjects in den Ressourcen, die von Seiten
+  und Erscheinungen aus erreicht werden (ueber Forms, Type-3-Schriften, die
+  Schriften von Grafikzustaenden und Muster; benutzt oder nicht) und der
+  Strukturelemente. Wo die Seiten, die veraPDF sieht, abweichen koennen
+  (/Count passt nicht), ist eine nicht zugeordnete Dateispezifikation kein
+  belegter Verstoss. }
+procedure TLandrixEInvoicePdfARuleCheck.CollectAF;
+var
+  Root: TLandrixEInvoicePdfObject;
+  I: Integer;
+  RootOk: Boolean;
+begin
+  SetLength(FAFSeen, FDoc.XrefCount);
+  for I := 0 to Integer(Length(FAFSeen)) - 1 do
+    FAFSeen[I] := 0;
+  { the catalog as veraPDF reaches it, generations checked; otherwise every
+    association is doubtful }
+  RootOk := (FDoc.RootRef <> nil) and (FDoc.RootRef.Kind = pok_Ref) and (AFRef(FDoc.RootRef) = FDoc.Catalog);
+  if not RootOk then
+  begin
+    FAFUnsure := True;
+    FAFPagesUnsure := True;
+  end;
+  FAFInPages := not RootOk;
+  RegisterAF(FDoc.Catalog);
+  FAFInPages := True;
+  try
+    AFPages(AFGet(FDoc.Catalog, 'Pages'), nil, 0);
+  finally
+    FAFInPages := not RootOk;
+  end;
+  Root := AFGet(FDoc.Catalog, 'StructTreeRoot');
+  if (Root <> nil) and Root.IsDictLike then
+    AFStruct(AFGet(Root, 'K'), 0);
+  FAFInPages := False;
+end;
+
 { 6.8 as veraPDF reads it: the file specifications are the dictionaries with
   /Type /Filespec in all live objects (also unreferenced and compressed
   ones, also nested) and the values of the EmbeddedFiles name tree. 6.8-1:
   the streams under /EF (F, UF, DOS, Mac, Unix) have a MIME type /Subtype;
   6.8-2: with /EF, /F and /UF are strings; 6.8-3: /AFRelationship is a name;
-  6.8-4: an indirect file specification that an /AF array names. A direct
-  one is never associated; one that no /AF array and no array of a
-  /Properties dictionary names cannot become associated through marked
-  content either, so that failure is proven although content streams are not
-  read. File specifications inside content streams are not seen: 6.8-2 to
-  6.8-4 are partial.
+  6.8-4: an indirect file specification that an /AF array veraPDF reads
+  names (CollectAF) or that /AF /Name BDC associates in a content stream
+  veraPDF reads. A direct one
+  is never associated. File specifications inside content streams (in
+  inline dictionaries) are checked by CheckContent.
   DE: 6.8, wie veraPDF es liest: die Dateispezifikationen sind die
   Dictionaries mit /Type /Filespec in allen lebenden Objekten (auch ohne
   Verweis und komprimiert, auch verschachtelt) und die Werte des
   EmbeddedFiles-Namensbaums. 6.8-1: die Streams unter /EF (F, UF, DOS, Mac,
   Unix) haben einen MIME-Typ /Subtype; 6.8-2: mit /EF sind /F und /UF
   Strings; 6.8-3: /AFRelationship ist ein Name; 6.8-4: eine indirekte
-  Dateispezifikation, die ein /AF-Array nennt. Eine direkte ist nie
-  zugeordnet; eine, die kein /AF-Array und kein Array eines
-  /Properties-Dictionarys nennt, kann auch ueber markierte Inhalte nicht
-  zugeordnet werden, dieser Verstoss ist also belegt, obwohl Content-Streams
-  nicht gelesen werden. Dateispezifikationen in Content-Streams werden nicht
-  gesehen: 6.8-2 bis 6.8-4 sind teilweise umgesetzt. }
+  Dateispezifikation, die ein /AF-Array nennt, das veraPDF liest
+  (CollectAF), oder die /AF /Name BDC in einem Content-Stream zuordnet, den
+  veraPDF liest. Eine direkte ist nie
+  zugeordnet. Dateispezifikationen in Content-Streams (in
+  Inline-Dictionaries) prueft CheckContent. }
 procedure TLandrixEInvoicePdfARuleCheck.CheckFileSpecs;
 const
   EFKeys: array[0..4] of AnsiString = ('F', 'UF', 'DOS', 'Mac', 'Unix');
@@ -2032,11 +2535,13 @@ var
   Obj, D, F, UF, R, EF, S, Sub, Names: TLandrixEInvoicePdfObject;
 begin
   SetLength(FAssoc, FDoc.XrefCount);
+  SetLength(FAssocPage, FDoc.XrefCount);
   SetLength(FSpecSeen, FDoc.XrefCount);
   SetLength(FMetaSeen, FDoc.XrefCount);
   for N := 0 to FDoc.XrefCount - 1 do
   begin
     FAssoc[N] := False;
+    FAssocPage[N] := False;
     FSpecSeen[N] := False;
     FMetaSeen[N] := False;
   end;
@@ -2058,7 +2563,10 @@ begin
     Names := FDoc.DGet(FDoc.Catalog, 'Names');
     if (Names <> nil) and Names.IsDictLike then
       WalkEmbeddedFiles(FDoc.DGet(Names, 'EmbeddedFiles'), 0);
-  end;
+    CollectAF;
+  end
+  else
+    FAFUnsure := True;
 
   for I := 0 to FSpecCount - 1 do
   begin
@@ -2075,10 +2583,12 @@ begin
       SpecFail(par_6_8_3, I, 'file specification without /AFRelationship');
     if FSpecNums[I] < 0 then
       SpecFail(par_6_8_4, I, 'direct file specification, not associated')
-    else if not FAssoc[FSpecNums[I]] then
+    else if not FAssoc[FSpecNums[I]] and not FContentSure[FSpecNums[I]] and
+      not (FAssocPage[FSpecNums[I]] and not FAFPagesUnsure) then
     begin
-      { a truncated array (incomplete facts) may hide the association }
-      if FWalkBroken or not FFacts.Complete then
+      { a truncated array (incomplete facts) or a content stream not read
+        with certainty may hide the association }
+      if FWalkBroken or not FFacts.Complete or FContentMaybe[FSpecNums[I]] or FAFUnsure then
         FIncomplete[par_6_8_4] := True
       else
         SpecFail(par_6_8_4, I, 'file specification in no /AF array');

@@ -31,7 +31,8 @@
   (6.8 to 6.11). PdfA.Metadata: the XMP packets (6.6.2.1, 6.6.4); PdfA.XmpReader:
   the XMP reader's valid, rejected and undecided forms; PdfA.Extension: the
   extension schemas (6.6.2.3.2, 6.6.2.3.3); PdfA.Properties: the XMP
-  properties and their value types (6.6.2.3.1). Accepted
+  properties and their value types (6.6.2.3.1); PdfA.Content: the content
+  streams (operands, q nesting, inline images, file specifications). Accepted
   differences are listed in
   tests/data/pdfa-exceptions.txt (path, rule, reason). }
 
@@ -1211,14 +1212,17 @@ begin
 
   { the same rules met: an /Order with a label and a nested array, /AS null,
     /Requirements without /S, /PresSteps null; file specification 11 is
-    named only in a /Properties array, so marked content may associate it }
+    named in a /Properties array that /AF /MC0 BDC in the page's content
+    uses, so it is associated }
   Pdf := BuildPdf(GoodHeader, [
     '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /AF [10 0 R] /Requirements << >> /Names << /EmbeddedFiles << ' +
       '/Names [(a) 10 0 R] >> >> /OCProperties << /OCGs [20 0 R] /D << /Name (cfg) /Order [(label) [20 0 R]] >> ' +
       '/Configs [<< /Name (other) /AS null >>] >> >>' + LF + 'endobj' + LF,
     '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
     '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /PresSteps null ' +
-      '/Resources << /Properties << /MC0 [11 0 R] >> >> >>' + LF + 'endobj' + LF,
+      '/Resources << /Properties << /MC0 [11 0 R] >> >> /Contents 4 0 R >>' + LF + 'endobj' + LF,
+    '4 0 obj' + LF + '<< /Length 16 >>' + LF + 'stream' + LF + '/AF /MC0 BDC EMC' + LF + 'endstream' + LF + 'endobj' +
+      LF,
     '10 0 obj' + LF + '<< /Type /Filespec /F (a.xml) /UF (a.xml) /AFRelationship /Data /EF << /F 12 0 R /UF 12 0 R >> >>' +
       LF + 'endobj' + LF,
     '11 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF,
@@ -1234,7 +1238,7 @@ begin
       Rules.Check(Doc, Facts);
       CheckEqualsStr('6.6.2.1-1', FailedRules(Rules), 'failed rules');
       Check(Rules.RuleResult(par_6_8_1).Outcome = pro_Passed, '6.8-1 passed');
-      Check(Rules.RuleResult(par_6_8_4).Outcome = pro_Incomplete, '6.8-4 incomplete (partial)');
+      Check(Rules.RuleResult(par_6_8_4).Outcome = pro_Passed, '6.8-4 passed (/AF /MC0 BDC)');
       Check(Rules.RuleResult(par_6_9_3).Outcome = pro_Passed, '6.9-3 passed (label, nested array)');
       Check(Rules.RuleResult(par_6_9_4).Outcome = pro_Passed, '6.9-4 passed (/AS null)');
       Check(Rules.RuleResult(par_6_10_2).Outcome = pro_Passed, '6.10-2 passed (/PresSteps null)');
@@ -1488,6 +1492,683 @@ begin
     Rules.Free;
     Facts.Free;
   end;
+end;
+
+{ A stream object with the data AData and more dictionary entries ADict. }
+function StreamObj(ANum: Integer; const AData, ADict: AnsiString): AnsiString;
+begin
+  Result := IntToAnsi(ANum) + ' 0 obj' + LF + '<< /Length ' + IntToAnsi(Length(AData)) + ADict + ' >>' + LF + 'stream' +
+    LF + AData + LF + 'endstream' + LF + 'endobj' + LF;
+end;
+
+{ A one-page document: the page's content AContent (stream 4 with the
+  dictionary entries AContentDict), more page entries APage, the resources
+  ARes and further objects AExtra (numbers from 10 on). }
+function ContentPdf(const AContent, AContentDict, APage, ARes: AnsiString; const AExtra: array of AnsiString): AnsiString;
+var
+  Objs: array of AnsiString;
+  I: Integer;
+begin
+  Objs := nil;
+  SetLength(Objs, 4);
+  Objs[0] := '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R >>' + LF + 'endobj' + LF;
+  Objs[1] := '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF;
+  Objs[2] := '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R ' + APage +
+    ' /Resources << ' + ARes + ' >> >>' + LF + 'endobj' + LF;
+  Objs[3] := StreamObj(4, AContent, AContentDict);
+  for I := 0 to Integer(High(AExtra)) do
+    if AExtra[I] <> '' then
+    begin
+      SetLength(Objs, Length(Objs) + 1);
+      Objs[High(Objs)] := AExtra[I];
+    end;
+  Result := BuildPdf(GoodHeader, Objs, LF, FileId, LF);
+end;
+
+function OutcomeOf(const APdf: AnsiString; ARule: TLandrixEInvoicePdfARule): TLandrixEInvoicePdfARuleOutcome;
+var
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+begin
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(APdf, Facts);
+    try
+      Rules.Check(Doc, Facts);
+      Result := Rules.RuleResult(ARule).Outcome;
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
+function OutcomeText(AOutcome: TLandrixEInvoicePdfARuleOutcome): string;
+const
+  Names: array[TLandrixEInvoicePdfARuleOutcome] of string = ('not checked', 'passed', 'failed', 'incomplete');
+begin
+  Result := Names[AOutcome];
+end;
+
+procedure CheckOutcome(const APdf: AnsiString; ARule: TLandrixEInvoicePdfARule;
+  AExpected: TLandrixEInvoicePdfARuleOutcome; const AMessage: string);
+begin
+  CheckEqualsStr(OutcomeText(AExpected), OutcomeText(OutcomeOf(APdf, ARule)), AMessage);
+end;
+
+function Saves(ACount: Integer): AnsiString;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to ACount do
+    Result := Result + 'q ';
+end;
+
+function Bytes3(ACount: Integer; A, B, C: AnsiChar): AnsiString;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, 3 * ACount);
+  for I := 0 to ACount - 1 do
+  begin
+    Result[3 * I + 1] := A;
+    Result[3 * I + 2] := B;
+    Result[3 * I + 3] := C;
+  end;
+end;
+
+function Bytes2(ACount: Integer; A, B: AnsiChar): AnsiString;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, 2 * ACount);
+  for I := 0 to ACount - 1 do
+  begin
+    Result[2 * I + 1] := A;
+    Result[2 * I + 2] := B;
+  end;
+end;
+
+{ The content streams as veraPDF reads them: only the operands an operator
+  passes on count, q nests per stream, inline image filters, the streams
+  that are reached (forms with Do, patterns with scn, Type 3 glyphs with a
+  text show, appearances), what makes a stream unread or not decided, file
+  specifications in inline dictionaries and /AF /Name BDC. }
+procedure TestPdfAContent;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Form, Glyph, Pat: AnsiString;
+begin
+  { operands: w checks its last operand only }
+  CheckOutcome(ContentPdf('2147483648 w', '', '', '', NoExtra), par_6_1_13_1, pro_Failed, 'w 2147483648');
+  CheckOutcome(ContentPdf('2147483648 1 w', '', '', '', NoExtra), par_6_1_13_1, pro_Passed, 'w takes the last operand');
+  CheckOutcome(ContentPdf('1 2147483648 Td', '', '', '', NoExtra), par_6_1_13_1, pro_Failed, 'Td vertical offset');
+  CheckOutcome(ContentPdf('[1 2147483648] 0 d', '', '', '', NoExtra), par_6_1_13_1, pro_Failed, 'd dash array');
+  CheckOutcome(ContentPdf('2147483648 0 0 RG', '', '', '', NoExtra), par_6_1_13_1, pro_Failed, 'RG colour values');
+  CheckOutcome(ContentPdf('0 0 d1 2147483648 0 0 RG', '', '', '', NoExtra), par_6_1_13_1, pro_Passed,
+    'colour operators off after d1');
+  CheckOutcome(ContentPdf('- w', '', '', '', NoExtra), par_6_1_13_1, pro_Failed, '"-" is the smallest integer');
+  CheckOutcome(ContentPdf('. w', '', '', '', NoExtra), par_6_1_13_2, pro_Failed, '"." is the largest real');
+  CheckOutcome(ContentPdf('340400000000000000000000000000000000000.0 w', '', '', '', NoExtra), par_6_1_13_2,
+    pro_Failed, 'real above the limit');
+  CheckOutcome(ContentPdf('340300000000000000000000000000000000000.0 w', '', '', '', NoExtra), par_6_1_13_2,
+    pro_Incomplete, 'real on the limit');
+  CheckOutcome(ContentPdf('0.00000000000000000000000000000000000000001 w', '', '', '', NoExtra), par_6_1_13_5,
+    pro_Failed, 'real too close to zero');
+  CheckOutcome(ContentPdf('<A Z 3> Tj', '', '', '', NoExtra), par_6_1_6_1, pro_Failed, 'hex count 3');
+  CheckOutcome(ContentPdf('<A Z 3> Tj', '', '', '', NoExtra), par_6_1_6_2, pro_Failed, 'hex Z');
+  CheckOutcome(ContentPdf('<A Z 3> 1 w', '', '', '', NoExtra), par_6_1_6_2, pro_Passed, 'a hex string w drops');
+  CheckOutcome(ContentPdf('/' + Repeated('n', 128) + ' BMC EMC', '', '', '', NoExtra), par_6_1_13_4, pro_Failed,
+    'tag name of 128 bytes');
+  CheckOutcome(ContentPdf('(' + Repeated('a', 32768) + ') Tj', '', '', '', NoExtra), par_6_1_13_3, pro_Failed,
+    '32768 characters');
+  CheckOutcome(ContentPdf('(' + Bytes2(16384, AnsiChar($C3), AnsiChar($A9)) + ') Tj', '', '', '', NoExtra),
+    par_6_1_13_3, pro_Passed, '32768 bytes of 16384 characters');
+  { q nesting: 29 saves fail; a form starts its own stack }
+  CheckOutcome(ContentPdf(Saves(29), '', '', '', NoExtra), par_6_1_13_8, pro_Failed, '29 saves');
+  CheckOutcome(ContentPdf(Saves(28) + 'Q ' + Saves(1), '', '', '', NoExtra), par_6_1_13_8, pro_Passed, '28 saves');
+  Form := StreamObj(10, Saves(2), ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]');
+  CheckOutcome(ContentPdf(Saves(27) + '/X1 Do', '', '', '/XObject << /X1 10 0 R >>', [Form]), par_6_1_13_8,
+    pro_Passed, '27 saves and a form with 2');
+  Form := StreamObj(10, Saves(29), ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]');
+  CheckOutcome(ContentPdf('/X1 Do', '', '', '/XObject << /X1 10 0 R >>', [Form]), par_6_1_13_8, pro_Failed,
+    'a form with 29 saves');
+  CheckOutcome(ContentPdf('', '', '', '/XObject << /X1 10 0 R >>', [Form]), par_6_1_13_8, pro_Passed, 'an unused form');
+  { tiling pattern selected with scn; Type 3 glyphs once text is shown;
+    appearances of annotations }
+  Pat := StreamObj(10, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 10 0 R >>', [Pat]), par_6_1_13_8,
+    pro_Failed, 'a pattern selected');
+  CheckOutcome(ContentPdf('', '', '', '/Pattern << /P1 10 0 R >>', [Pat]), par_6_1_13_8, pro_Passed,
+    'a pattern not selected');
+  Glyph := StreamObj(11, '0 0 d0 ' + Saves(29), '');
+  CheckOutcome(ContentPdf('BT /F1 1 Tf ET', '', '', '/Font << /F1 10 0 R >>',
+    ['10 0 obj' + LF + '<< /Type /Font /Subtype /Type3 /CharProcs << /a 11 0 R >> /FontBBox [0 0 1 1] ' +
+    '/FontMatrix [1 0 0 1 0 0] /FirstChar 0 /LastChar 0 /Widths [1] >>' + LF + 'endobj' + LF, Glyph]), par_6_1_13_8,
+    pro_Passed, 'a Type 3 font selected only');
+  CheckOutcome(ContentPdf('BT /F1 1 Tf () Tj ET', '', '', '/Font << /F1 10 0 R >>',
+    ['10 0 obj' + LF + '<< /Type /Font /Subtype /Type3 /CharProcs << /a 11 0 R >> /FontBBox [0 0 1 1] ' +
+    '/FontMatrix [1 0 0 1 0 0] /FirstChar 0 /LastChar 0 /Widths [1] >>' + LF + 'endobj' + LF, Glyph]), par_6_1_13_8,
+    pro_Failed, 'a Type 3 font showing text');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '',
+    ['10 0 obj' + LF + '<< /Type /Annot /Subtype /Square /Rect [0 0 1 1] /F 4 /AP << /N 11 0 R /D << /Off 12 0 R >> >> >>' +
+    LF + 'endobj' + LF, StreamObj(11, '', ''), StreamObj(12, Saves(29), '')]), par_6_1_13_8, pro_Failed,
+    'a down appearance in a state dictionary');
+  { inline images }
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /F /LZW ID x EI', '', '', '', NoExtra), par_6_1_10_1, pro_Failed,
+    'inline image with LZW');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /F [/LZW 7] ID x EI', '', '', '', NoExtra), par_6_1_10_1,
+    pro_Passed, 'a filter array with a number has no filters');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /F /AHx ID 78> EI', '', '', '', NoExtra), par_6_1_10_1,
+    pro_Passed, 'ASCIIHex abbreviated');
+  CheckOutcome(ContentPdf('0 0 d1 BI /W 1 /H 1 /BPC 1 /F /LZW ID x EI', '', '', '', NoExtra), par_6_1_10_1,
+    pro_Passed, 'colour operators off: the image is not read');
+  CheckOutcome(ContentPdf('0 0 d1 BI /W 1 /H 1 /BPC 1 /IM true /F /LZW ID x EI', '', '', '', NoExtra), par_6_1_10_1,
+    pro_Failed, 'an image mask is read');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 ID xEI EIx EI 2147483648 w', '', '', '', NoExtra), par_6_1_13_1,
+    pro_Failed, 'EI only before white space and a known operator');
+  { what veraPDF does not read }
+  CheckOutcome(ContentPdf('2147483648 w [1 2', '', '', '', NoExtra), par_6_1_13_1, pro_Passed,
+    'an unclosed array drops the stream');
+  CheckOutcome(ContentPdf('2147483648 w ] 2147483648 w', '', '', '', NoExtra), par_6_1_13_1, pro_Failed,
+    'a stray ] keeps what came before');
+  CheckOutcome(ContentPdf('2147483648 w', ' /Filter /Foo', '', '', NoExtra), par_6_1_13_1, pro_Passed,
+    'an unknown filter gives no data');
+  CheckOutcome(ContentPdf('2147483648 w', ' /Filter /ASCIIHexDecode', '', '', NoExtra), par_6_1_13_1,
+    pro_Incomplete, 'another filter: not decided');
+  CheckOutcome(ContentPdf('2147483648 w', ' /Filter /FlateDecode', '', '', NoExtra), par_6_1_13_1, pro_Incomplete,
+    'damaged Flate data: not decided');
+  { file specifications in inline dictionaries: not the outer one }
+  CheckOutcome(ContentPdf('/Span << /X << /Type /Filespec /EF << >> >> >> BDC EMC', '', '', '', NoExtra), par_6_8_2,
+    pro_Failed, 'nested file specification without /F and /UF');
+  CheckOutcome(ContentPdf('/Span << /X << /Type /Filespec /EF << >> >> >> BDC EMC', '', '', '', NoExtra), par_6_8_4,
+    pro_Failed, 'nested file specification is direct');
+  CheckOutcome(ContentPdf('/Span << /Type /Filespec /EF << >> >> BDC EMC', '', '', '', NoExtra), par_6_8_3, pro_Passed,
+    'the outer dictionary is no file specification');
+  { /AF /Name BDC associates, DP does not }
+  CheckOutcome(ContentPdf('/AF /MC0 BDC EMC', '', '', '/Properties << /MC0 [10 0 R] >>',
+    ['10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF]), par_6_8_4,
+    pro_Passed, '/AF /MC0 BDC');
+  CheckOutcome(ContentPdf('/AF /MC0 DP', '', '', '/Properties << /MC0 [10 0 R] >>',
+    ['10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF]), par_6_8_4,
+    pro_Failed, '/AF /MC0 DP');
+  CheckOutcome(ContentPdf('/AF /MC0 BDC EMC', ' /Filter /ASCIIHexDecode', '', '/Properties << /MC0 [10 0 R] >>',
+    ['10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF]), par_6_8_4,
+    pro_Incomplete, 'a stream not read may associate');
+  CheckOutcome(ContentPdf('', '', '/X << /AF [10 0 R] >>', '',
+    ['10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF]), par_6_8_4,
+    pro_Failed, 'the /AF of an arbitrary dictionary does not associate');
+  CheckOutcome(ContentPdf('', '', '/AF [10 0 R]', '',
+    ['10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF]), par_6_8_4,
+    pro_Passed, 'the /AF of a page associates');
+  CheckOutcome(ContentPdf('', '', '', '/XObject << /I 11 0 R >>',
+    ['10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF,
+    StreamObj(11, 'x', ' /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray ' +
+    '/BitsPerComponent 8 /AF [10 0 R]')]), par_6_8_4, pro_Passed, 'the /AF of an unused image XObject associates');
+  CheckOutcome(ContentPdf('', '', '/AF [10 1 R]', '',
+    ['10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF]), par_6_8_4,
+    pro_Failed, 'a reference with another generation does not associate');
+end;
+
+function ObjText(ANum: Integer; const ABody: AnsiString): AnsiString;
+begin
+  Result := IntToAnsi(ANum) + ' 0 obj' + LF + ABody + LF + 'endobj' + LF;
+end;
+
+{ Rounds 60 and 61 of the reviews: B tokens, ExtGState streams, default
+  spaces of forms, named device spaces, one-element arrays, generations on
+  every hop, the tree parent's resources, /AF visits, repeated keys in
+  resources, large dictionaries, page tree types and integer keys. }
+procedure TestPdfAContent4;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Pat, Glyph, Font, Spec, Form29, Img, Pdf, Keys: AnsiString;
+  I: Integer;
+begin
+  Spec := ObjText(10, '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>');
+  Form29 := StreamObj(13, Saves(29), ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]');
+  Img := ObjText(12, '<< /Type /XObject /Subtype /Image /AF [10 0 R] >>');
+  CheckOutcome(ContentPdf('B2147483648 w', '', '', '', NoExtra), par_6_1_13_1, pro_Passed,
+    'a token starting with B is one operator');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 ID x EI BX1 2147483648 w EI', '', '', '', NoExtra),
+    par_6_1_13_1, pro_Passed, 'BX1 after EI rejects that EI');
+  Glyph := StreamObj(11, '0 0 d0 ' + Saves(29), '');
+  Font := ObjText(10, '<< /Type /Font /Subtype /Type3 /CharProcs << /a 11 0 R >> /FontBBox [0 0 1 1] ' +
+    '/FontMatrix [1 0 0 1 0 0] /FirstChar 0 /LastChar 0 /Widths [1] >>');
+  CheckOutcome(ContentPdf('BT /G gs () Tj ET', '', '', '/ExtGState << /G 12 0 R >>',
+    [Font, Glyph, StreamObj(12, 'x', ' /Font [10 0 R 1]')]), par_6_1_13_8, pro_Failed, 'an ExtGState stream');
+  Pat := StreamObj(10, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/ColorSpace << /DefaultGray /Pattern >> /Pattern << /P1 10 0 R >> ' +
+    '/XObject << /F 12 0 R >>', [Pat, StreamObj(12, '/P1 scn', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]),
+    par_6_1_13_8, pro_Failed, 'a form inherits the initial pattern space');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/ColorSpace << /DefaultGray /Pattern >> /Pattern << /P1 10 0 R >> ' +
+    '/XObject << /F 12 0 R >>', [Pat, StreamObj(12, '0 g /P1 scn', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]),
+    par_6_1_13_8, pro_Passed, 'g in a form without resources has no default');
+  CheckOutcome(ContentPdf('/C cs /P1 scn', '', '', '/ColorSpace << /C /DeviceGray /DefaultGray /Pattern >> ' +
+    '/Pattern << /P1 10 0 R >>', [Pat]), par_6_1_13_8, pro_Failed, 'a named device space has its default');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/ColorSpace << /C /Pattern >> /Pattern << /P1 10 0 R >> ' +
+    '/XObject << /F 12 0 R >>', [Pat, StreamObj(12, '/C cs /P1 scn', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1] ' +
+    '/Resources << /ColorSpace << /C [/CalGray] >> >>')]), par_6_1_13_8, pro_Failed,
+    '[/CalGray] gives no space: the page''s counts');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject 12 0 R', [ObjText(12, '14 1 R'), ObjText(14, '<< /F 13 0 R >>'),
+    Form29]), par_6_1_13_8, pro_Passed, 'the generation of a second hop');
+  { resources come from the parent in the tree, not from /Parent }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>'),
+    ObjText(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources << /XObject << /I 12 0 R >> >> >>'),
+    ObjText(3, '<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] >>'),
+    ObjText(4, '<< /Type /Pages /Kids [] /Count 0 >>'), Spec, Img], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_8_4, pro_Passed, 'resources of the tree parent');
+  CheckOutcome(ContentPdf('', '', '', '/XObject << /A 12 1 R /B 12 0 R >>', [Spec, Img]), par_6_8_4, pro_Passed,
+    'a stale reference does not hide the object');
+  CheckOutcome(ContentPdf('', '', '', '/XObject << /I 12 0 R /I null >>', [Spec, Img]), par_6_8_4, pro_Failed,
+    'an XObject entry removed by null');
+  Keys := '';
+  for I := 1 to 1001 do
+    Keys := Keys + '/K' + IntToAnsi(I) + ' 0 ';
+  CheckOutcome(ContentPdf('', '', '/X << ' + Keys + '/Z 2147483648 /Z 0 >>', '', NoExtra), par_6_1_13_1, pro_Passed,
+    'a replaced value in a large dictionary');
+  { a /Pages node without /Kids is no page }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>'),
+    ObjText(2, '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 1 >>'),
+    ObjText(3, '<< /Type /Pages /Parent 2 0 R /Count 0 /Contents 7 0 R >>'),
+    ObjText(4, '<< /Type /Pages /Parent 2 0 R /Kids [5 0 R] /Count 1 >>'),
+    ObjText(5, '<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] >>'),
+    StreamObj(7, '2147483648 w', '')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Passed, 'a /Pages node without /Kids');
+  { /Count read as veraPDF reads an integer }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>'),
+    ObjText(2, '<< /Type /Pages /Kids [4 0 R] /Count 2 >>'),
+    ObjText(4, '<< /Type /Pages /Parent 2 0 R /Kids [5 0 R 6 0 R] /Count 2.9 >>'),
+    ObjText(5, '<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] >>'),
+    ObjText(6, '<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] /Contents 7 0 R >>'),
+    StreamObj(7, '2147483648 w', '')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Failed, '/Count 2.9 counts 2');
+  CheckOutcome(ContentPdf('', '', '', '/Pattern << /P 14 0 R >>', [Spec, Img,
+    ObjText(14, '<< /PatternType (x) /Resources << /XObject << /I 12 0 R >> >> >>')]), par_6_8_4, pro_Passed,
+    'a pattern type (x) is 1');
+end;
+
+{ Round 61 of the reviews: a null at the growth of a dictionary, colour
+  space names through the resources, defaults where the name was found,
+  one-element pattern arrays, Java's int narrowing, the page tree root,
+  pages beyond /Count, a missing /Count of an empty node. }
+procedure TestPdfAContent5;
+var
+  Pat, Spec, Form29, Pdf: AnsiString;
+begin
+  Spec := ObjText(10, '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>');
+  Form29 := StreamObj(13, Saves(29), ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]');
+  CheckOutcome(ContentPdf('/Z Do', '', '', '/XObject << /A 0 /B 0 /C 0 /D 0 /E 0 /F 0 /G 0 /Z null /Z 13 0 R >>',
+    [Form29]), par_6_1_13_8, pro_Failed, 'a key again after null at the growth of the table');
+  CheckOutcome(ContentPdf('/Z Do', '', '', '/XObject << /A 0 /B 0 /C 0 /D 0 /E 0 /F 0 /G 0 /Z null /C 13 0 R ' +
+    '/C null /Z 13 0 R >>', [Form29]), par_6_1_13_8, pro_Failed, 'tombstones and the table');
+  Pat := StreamObj(11, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/ColorSpace << /C /DeviceGray /DefaultGray /Pattern >> ' +
+    '/Pattern << /P1 11 0 R >> /XObject << /F 12 0 R >>', [Pat, StreamObj(12, '/C cs /P1 scn',
+    ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_1_13_8, pro_Failed,
+    'the default of the resources the name was found in');
+  CheckOutcome(ContentPdf('0 g /P1 scn', '', '', '/ColorSpace << /DeviceGray /Pattern >> /Pattern << /P1 11 0 R >>',
+    [Pat]), par_6_1_13_8, pro_Failed, 'g looks up /DeviceGray in the resources');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/ColorSpace << /Pattern /DeviceRGB >> ' +
+    '/Pattern << /P1 11 0 R >>', [Pat]), par_6_1_13_8, pro_Passed, 'a resource named /Pattern');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/ColorSpace << /DefaultGray /Alias /Alias /Pattern >> ' +
+    '/Pattern << /P1 11 0 R >>', [Pat]), par_6_1_13_8, pro_Failed, 'an alias');
+  CheckOutcome(ContentPdf('/P1 scn', '', '', '/ColorSpace << /DefaultGray /Alias /Alias /Pattern >> ' +
+    '/Pattern << /P1 11 0 R >>', [Pat]), par_6_1_13_8, pro_Failed, 'a default through an alias');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 [11 0 R] >>', [Pat]), par_6_1_13_8,
+    pro_Failed, 'a one-element pattern array');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 11 0 R >>',
+    [StreamObj(11, Saves(29), ' /PatternType 4294967297 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 ' +
+    '/YStep 1 /Resources << >>')]), par_6_1_13_8, pro_Failed, 'the pattern type as an int');
+  { the root is a node whatever its /Type }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>'),
+    ObjText(2, '<< /Type /Page /Kids [3 0 R] /Count 1 >>'),
+    ObjText(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R >>'),
+    StreamObj(7, '2147483648 w', '')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Failed, 'a root with /Type /Page');
+  { a page beyond /Count may be no page for veraPDF }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>'),
+    ObjText(2, '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 1 >>'),
+    ObjText(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>'),
+    ObjText(4, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /AF [10 0 R] >>'), Spec], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_8_4, pro_Incomplete, 'an association beyond /Count');
+  { an empty node without /Count counts 0 }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>'),
+    ObjText(2, '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 1 >>'),
+    ObjText(3, '<< /Type /Pages /Parent 2 0 R /Kids [] >>'),
+    ObjText(4, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R >>'),
+    StreamObj(7, '2147483648 w', '')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Failed, 'an empty node without /Count');
+end;
+
+{ Round 65 of the reviews: uncoloured tiling patterns, tiling patterns in
+  colour space positions, a pattern resource with an underlying space. }
+procedure TestPdfAContent9;
+var
+  Pat, P1: AnsiString;
+begin
+  Pat := StreamObj(11, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/Pattern cs /PU scn /PC scn', '', '', '/Pattern << /PU 12 0 R /PC 13 0 R >>',
+    [StreamObj(12, 'q Q', ' /PatternType 1 /PaintType 2 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1'),
+    StreamObj(13, '99999999999 g', ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1')]),
+    par_6_1_13_1, pro_Incomplete, 'an uncoloured pattern turns colour off for all');
+  CheckOutcome(ContentPdf('/CS1 cs', '', '', '/ColorSpace << /CS1 11 0 R >>', [Pat]), par_6_1_13_8, pro_Incomplete,
+    'a tiling pattern as a colour space');
+  P1 := StreamObj(12, '/P2 scn', ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/Pattern cs /PA scn /P1 scn', '', '', '/ColorSpace << /DefaultGray /Pattern >> ' +
+    '/Pattern << /PA [/Pattern /DeviceRGB] /P1 12 0 R /P2 11 0 R >>', [Pat, P1]), par_6_1_13_8, pro_Incomplete,
+    'a pattern resource with an underlying space');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 11 0 R >>', [Pat]), par_6_1_13_8,
+    pro_Failed, 'a tiling pattern only as a pattern');
+end;
+
+{ Round 64 of the reviews: a tiling pattern starts with the state its
+  calling stream started with, a Type 3 glyph with the current state, an
+  underlying pattern space is not followed, exponents are no numbers. }
+procedure TestPdfAContent8;
+var
+  Pat, P1, Font: AnsiString;
+begin
+  Pat := StreamObj(11, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  P1 := StreamObj(12, '/P2 scn', ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/Pattern cs /X Do', '', '', '/Pattern << /P1 12 0 R /P2 11 0 R >> /XObject << /X 13 0 R >>',
+    [Pat, P1, StreamObj(13, '/P1 scn', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_1_13_8, pro_Failed,
+    'a pattern starts with the state its form started with');
+  Font := ObjText(14, '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] ' +
+    '/CharProcs << /a 15 0 R >> /Encoding << /Type /Encoding /Differences [97 /a] >> /FirstChar 97 /LastChar 97 ' +
+    '/Widths [1] >>');
+  CheckOutcome(ContentPdf('/Pattern cs BT /F1 1 Tf (a) Tj ET', '', '', '/Font << /F1 14 0 R >> ' +
+    '/Pattern << /P2 11 0 R >>', [Pat, Font, StreamObj(15, '/P2 scn', '')]), par_6_1_13_8, pro_Failed,
+    'a glyph starts with the current state');
+  CheckOutcome(ContentPdf('/PCS cs /P1 scn', '', '', '/ColorSpace << /PCS [/Pattern /DeviceRGB] >> ' +
+    '/Pattern << /P1 12 0 R /P2 11 0 R >>', [Pat, P1]), par_6_1_13_8, pro_Incomplete,
+    'an underlying pattern space');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 11 0 R >>',
+    [StreamObj(11, Saves(29), ' /PatternType 1e0 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] ' +
+    '/XStep 1 /YStep 1 /Resources << >>')]), par_6_1_13_8, pro_Incomplete, 'an exponent is no number');
+end;
+
+{ Round 63 of the reviews: exact large integers, the initial colour space of
+  patterns and Type 3 glyphs, aliases only where they were found, deep
+  pattern arrays, name tree values through a chain, header generations. }
+procedure TestPdfAContent7;
+var
+  Pat, P1, Pdf, Deep: AnsiString;
+  I: Integer;
+begin
+  Pat := StreamObj(11, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 11 0 R >>',
+    [StreamObj(11, Saves(29), ' /PatternType 9007199254740993 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] ' +
+    '/XStep 1 /YStep 1 /Resources << >>')]), par_6_1_13_8, pro_Failed, 'a pattern type above 2^53');
+  { the pattern's own default does not set its initial space }
+  P1 := StreamObj(12, '/P scn', ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << /ColorSpace << /DefaultGray /Pattern >> /Pattern << /P 11 0 R >> >>');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 12 0 R >>', [Pat, P1]), par_6_1_13_8,
+    pro_Passed, 'a pattern starts with the top-level space');
+  { the page's default does }
+  P1 := StreamObj(12, '/P scn', ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/ColorSpace << /DefaultGray /Pattern >> ' +
+    '/Pattern << /P1 12 0 R /P 11 0 R >>', [Pat, P1]), par_6_1_13_8, pro_Failed,
+    'a pattern starts with the page''s default');
+  { an alias of a form is not looked up in the page's resources }
+  CheckOutcome(ContentPdf('/F Do', '', '', '/ColorSpace << /Alias /Pattern >> /Pattern << /P 11 0 R >> ' +
+    '/XObject << /F 12 0 R >>', [Pat, StreamObj(12, '/CS1 cs /P scn', ' /Type /XObject /Subtype /Form ' +
+    '/BBox [0 0 1 1] /Resources << /ColorSpace << /CS1 /Alias >> >>')]), par_6_1_13_8, pro_Passed,
+    'an alias only where it was found');
+  Deep := '11 0 R';
+  for I := 1 to 33 do
+    Deep := '[' + Deep + ']';
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 ' + Deep + ' >>', [Pat]), par_6_1_13_8,
+    pro_Incomplete, 'thirty-three one-element arrays');
+  { a name tree value through an object holding a reference }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R /AF [5 0 R] /Names << /EmbeddedFiles << /Names [(a) 7 0 R] >> >> >>'),
+    ObjText(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>'),
+    ObjText(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>'),
+    ObjText(5, '<< /F (m) /UF (m) /AFRelationship /Data >>'),
+    ObjText(7, '5 0 R')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_8_4, pro_Passed, 'a name tree value through a chain');
+  { a real number as the generation of an object header: not the object }
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 13 0 R >>',
+    ['13 0.0 obj' + LF + '<< /Length ' + IntToAnsi(Length(Saves(29))) + ' /Type /XObject /Subtype /Form ' +
+    '/BBox [0 0 1 1] >>' + LF + 'stream' + LF + Saves(29) + LF + 'endstream' + LF + 'endobj' + LF]), par_6_1_13_8,
+    pro_Incomplete, 'a real number as a header generation');
+end;
+
+{ Round 62 of the reviews: many tombstones, aliases resolved where they
+  were found, defaults before entries, built-in spaces before the page's,
+  unusable defaults, deep pattern arrays, /AF through an object holding a
+  reference, object headers, large integers, the root in the page check. }
+procedure TestPdfAContent6;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Pat, Spec, Pdf, Pairs: AnsiString;
+  I: Integer;
+begin
+  Spec := ObjText(10, '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>');
+  Pairs := '';
+  for I := 1 to 20000 do
+    Pairs := Pairs + '/K 1 /K null ';
+  CheckOutcome(ContentPdf('', '', '/X << ' + Pairs + '/K 2147483648 >>', '', NoExtra), par_6_1_13_1, pro_Failed,
+    'many tombstones of one key');
+  Pat := StreamObj(11, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/ColorSpace << /C /Alias /Alias /Pattern >> /Pattern << /P1 11 0 R >> ' +
+    '/XObject << /F 12 0 R >>', [Pat, StreamObj(12, '/C cs /P1 scn', ' /Type /XObject /Subtype /Form ' +
+    '/BBox [0 0 1 1] /Resources << /ColorSpace << /Alias /DeviceRGB >> >>')]), par_6_1_13_8, pro_Failed,
+    'an alias is resolved where it was found');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/ColorSpace << /DeviceRGB /Pattern >> /Pattern << /P1 11 0 R >> ' +
+    '/XObject << /F 12 0 R >>', [Pat, StreamObj(12, '0 0 0 rg /P1 scn', ' /Type /XObject /Subtype /Form ' +
+    '/BBox [0 0 1 1] /Resources << /ColorSpace << >> >>')]), par_6_1_13_8, pro_Passed,
+    'the built-in space before the page''s entry');
+  CheckOutcome(ContentPdf('0 g /P1 scn', '', '', '/ColorSpace << /DeviceGray /Pattern /DefaultGray /DeviceRGB >> ' +
+    '/Pattern << /P1 11 0 R >>', [Pat]), par_6_1_13_8, pro_Passed, 'the default before the entry');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/ColorSpace << /Pattern 7 >> /Pattern << /P1 11 0 R >>',
+    [Pat]), par_6_1_13_8, pro_Passed, 'an unusable /Pattern entry');
+  CheckOutcome(ContentPdf(Saves(29), '', '', '/ColorSpace << /DefaultGray 9 >>', NoExtra), par_6_1_13_8, pro_Failed,
+    'an unusable default leaves the device space');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 [[[[[[[[[11 0 R]]]]]]]]] >>', [Pat]),
+    par_6_1_13_8, pro_Failed, 'nine one-element arrays');
+  CheckOutcome(ContentPdf('', '', '/AF [14 0 R]', '', [Spec, ObjText(14, '10 0 R')]), par_6_8_4, pro_Passed,
+    '/AF through an object holding a reference');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 13 0 R >>',
+    ['13 1 obj' + LF + '<< /Length 1 /Type /XObject /Subtype /Form /BBox [0 0 1 1] >>' + LF + 'stream' + LF + 'q' + LF +
+    'endstream' + LF + 'endobj' + LF]), par_6_1_13_8, pro_Passed, 'an object header of another generation');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 13 0 R >>',
+    ['13 x obj' + LF + '<< /Length ' + IntToAnsi(Length(Saves(29))) + ' /Type /XObject /Subtype /Form ' +
+    '/BBox [0 0 1 1] >>' + LF + 'stream' + LF + Saves(29) + LF + 'endstream' + LF + 'endobj' + LF]), par_6_1_13_8,
+    pro_Incomplete, 'an object header without a generation');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn', '', '', '/Pattern << /P1 11 0 R >>',
+    [StreamObj(11, Saves(29), ' /PatternType 1125899906842625 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] ' +
+    '/XStep 1 /YStep 1 /Resources << >>')]), par_6_1_13_8, pro_Failed, 'a large pattern type as an int');
+  { the page check: the root is a node }
+  Pdf := BuildPdf(GoodHeader, [
+    ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>'),
+    ObjText(2, '<< /Type /Page /Kids [3 0 R] /Count 1 >>'),
+    ObjText(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /PresSteps << >> >>')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_10_2, pro_Failed, 'the page check walks below a root with /Type /Page');
+end;
+
+{ Round 59 of the reviews: f/t/n tokens and d0/d1, fonts of Tf and gs, the
+  initial pattern space, resource fallback per category, generations on the
+  way, /AF owners, intermediate /Count, array identity, null keys, the last
+  of repeated keys, BI after EI, unread callers, the live token limit. }
+procedure TestPdfAContent3;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Pat, Glyph, Font, Spec, Form29, Pdf, K: AnsiString;
+begin
+  Spec := '10 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF;
+  Form29 := StreamObj(13, Saves(29), ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]');
+  CheckOutcome(ContentPdf('f2147483648 w', '', '', '', NoExtra), par_6_1_13_1, pro_Passed,
+    'a token starting with f is one operator');
+  CheckOutcome(ContentPdf('d1q 2147483648 g', '', '', '', NoExtra), par_6_1_13_1, pro_Failed,
+    'd1q is one undefined operator');
+  Glyph := StreamObj(11, '0 0 d0 ' + Saves(29), '');
+  Font := '10 0 obj' + LF + '<< /Type /Font /Subtype /Type3 /CharProcs << /a 11 0 R >> /FontBBox [0 0 1 1] ' +
+    '/FontMatrix [1 0 0 1 0 0] /FirstChar 0 /LastChar 0 /Widths [1] >>' + LF + 'endobj' + LF;
+  CheckOutcome(ContentPdf('BT /F1 1 Tf /GS gs () Tj ET', '', '',
+    '/Font << /F1 10 0 R >> /ExtGState << /GS << /Font [<< >> 1] >> >>', [Font, Glyph]), par_6_1_13_8, pro_Failed,
+    'gs keeps the font where it has none to build');
+  CheckOutcome(ContentPdf('BT /F1 1 Tf /F2 1 Tf () Tj ET', '', '', '/Font << /F1 10 0 R >>', [Font, Glyph]),
+    par_6_1_13_8, pro_Passed, 'Tf without a font clears it');
+  Pat := StreamObj(10, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/P1 scn', '', '', '/ColorSpace << /DefaultGray /Pattern >> /Pattern << /P1 10 0 R >>',
+    [Pat]), par_6_1_13_8, pro_Failed, 'the initial space is DefaultGray');
+  CheckOutcome(ContentPdf('/Pattern cs 0 scn /P1 scn', '', '', '/Pattern << /P1 10 0 R >>', [Pat]), par_6_1_13_8,
+    pro_Passed, 'scn without a name leaves the pattern space');
+  { a local XObject veraPDF does not build falls back to the page's }
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 11 0 R /G 13 0 R >>',
+    [StreamObj(11, '/G Do', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1] /Resources << /XObject << /G 12 0 R >> >>'),
+    StreamObj(12, 'x', ' /Type /XObject /Subtype /Foo'), Form29]), par_6_1_13_8, pro_Failed,
+    'an XObject of unknown subtype falls back');
+  { any local /Properties entry hides the page's }
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 11 0 R >> /Properties << /MC0 [10 0 R] >>',
+    [Spec, StreamObj(11, '/AF /MC0 BDC EMC', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1] ' +
+    '/Resources << /Properties << /MC0 7 >> >>')]), par_6_8_4, pro_Failed, 'a local property hides the page''s');
+  { generations on the way to an object }
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject 12 1 R',
+    ['12 0 obj' + LF + '<< /F 13 0 R >>' + LF + 'endobj' + LF, Form29]), par_6_1_13_8, pro_Passed,
+    'a category dictionary of another generation');
+  CheckOutcome(ContentPdf('', '', '/Annots [12 1 R]', '',
+    [Spec, '12 0 obj' + LF + '<< /Type /Annot /Subtype /Square /Rect [0 0 1 1] /AF [10 0 R] >>' + LF + 'endobj' + LF]),
+    par_6_8_4, pro_Failed, 'an annotation of another generation');
+  { /AF owners }
+  CheckOutcome(ContentPdf('', '', '/Annots [12 0 R]', '',
+    [Spec, StreamObj(12, 'x', ' /Type /Annot /Subtype /Square /Rect [0 0 1 1] /AF [10 0 R]')]), par_6_8_4, pro_Failed,
+    'an annotation stream is no annotation');
+  CheckOutcome(ContentPdf('', '', '', '/XObject << /I 12 0 R >>',
+    [Spec, '12 0 obj' + LF + '<< /Type /XObject /Subtype /Image /AF [10 0 R] >>' + LF + 'endobj' + LF]), par_6_8_4,
+    pro_Passed, 'an image XObject dictionary associates');
+  { an intermediate /Count hides a page from veraPDF }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 3 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>' + LF + 'endobj' + LF,
+    '4 0 obj' + LF + '<< /Type /Pages /Parent 2 0 R /Kids [5 0 R 6 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '5 0 obj' + LF + '<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] >>' + LF + 'endobj' + LF,
+    '6 0 obj' + LF + '<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] /Contents 7 0 R >>' + LF + 'endobj' + LF,
+    StreamObj(7, '2147483648 w', '')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Incomplete, 'an intermediate /Count does not match');
+  { two array objects with the same member are two identities }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 20 0 R ' +
+    '/Resources << /XObject << /F 13 0 R >> >> >>' + LF + 'endobj' + LF,
+    '4 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 21 0 R >>' + LF + 'endobj' + LF,
+    StreamObj(5, '/F Do', ''), Form29,
+    '20 0 obj' + LF + '[5 0 R]' + LF + 'endobj' + LF,
+    '21 0 obj' + LF + '[5 0 R]' + LF + 'endobj' + LF], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_8, pro_Failed, 'two arrays with the same member');
+  { null removes a key; the last of repeated keys counts }
+  K := '/' + Repeated('k', 128);
+  CheckOutcome(ContentPdf('', '', '/K << ' + K + ' null >>', '', NoExtra), par_6_1_13_4, pro_Passed,
+    'a key with null is removed');
+  CheckOutcome(ContentPdf('', '', '/K << ' + K + ' 1 ' + K + ' null >>', '', NoExtra), par_6_1_13_4, pro_Passed,
+    'a key replaced by null is removed');
+  CheckOutcome(ContentPdf('', '', '/K << ' + K + ' null ' + K + ' 2 >>', '', NoExtra), par_6_1_13_4, pro_Failed,
+    'a key set again after null');
+  CheckOutcome(ContentPdf('2147483648 w', '', '/Contents 12 0 R', '', [StreamObj(12, '1 w', '')]), par_6_1_13_1,
+    pro_Passed, 'the last /Contents counts');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 ID x EI BI /W 1 /H 1 /CS /G /BPC 8 ID y EI 2147483648 w', '', '',
+    '', NoExtra), par_6_1_13_1, pro_Incomplete, 'BI after EI is not decided');
+  { an unread page may reach the appearance's form first, in another state }
+  CheckOutcome(ContentPdf('>', ' /Filter /ASCIIHexDecode', '/Annots [12 0 R]', '',
+    [StreamObj(11, '2147483648 g', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]'),
+    '12 0 obj' + LF + '<< /Type /Annot /Subtype /Square /Rect [0 0 1 1] /AP << /N 11 0 R >> >>' + LF + 'endobj' + LF]),
+    par_6_1_13_1, pro_Incomplete, 'an appearance behind an unread page');
+  CheckOutcome(ContentPdf('[' + Bytes2(500001, '1', ' ') + '] pop 2147483648 w', '', '', '', NoExtra), par_6_1_13_1,
+    pro_Incomplete, 'too many values alive');
+end;
+
+{ Round 58 of the reviews: operator boundaries, tokens starting with I, the
+  inline image length, null values, pattern and default colour spaces,
+  generations, the font of a graphics state, the page count, repeated keys,
+  long reals, Java's UTF-8 decoding. }
+procedure TestPdfAContent2;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Pat, Glyph, Font, Pdf: AnsiString;
+begin
+  CheckOutcome(ContentPdf('2147483648 w%c' + LF + '1 w', '', '', '', NoExtra), par_6_1_13_1, pro_Passed,
+    'w%c is one undefined operator');
+  CheckOutcome(ContentPdf('q2147483648 w', '', '', '', NoExtra), par_6_1_13_1, pro_Failed, 'q ends at a digit');
+  CheckOutcome(ContentPdf('2147483648 w Ix', '', '', '', NoExtra), par_6_1_13_1, pro_Incomplete,
+    'a token starting with I is not decided');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /L 3 ID xEI 2147483648 w', '', '', '', NoExtra), par_6_1_13_1,
+    pro_Failed, '/L counts EI');
+  CheckOutcome(ContentPdf('/Span << /' + Repeated('k', 128) + ' null >> BDC EMC', '', '', '', NoExtra), par_6_1_13_4,
+    pro_Passed, 'a key with null is removed');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /F null /Filter /LZW ID x EI', '', '', '', NoExtra),
+    par_6_1_10_1, pro_Failed, '/F null leaves /Filter');
+  Pat := StreamObj(10, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << >>');
+  CheckOutcome(ContentPdf('/Pattern cs /Missing scn /P1 scn', '', '', '/Pattern << /P1 10 0 R >>', [Pat]),
+    par_6_1_13_8, pro_Passed, 'a missing pattern ends the pattern space');
+  CheckOutcome(ContentPdf('0 g /P1 scn', '', '', '/ColorSpace << /DefaultGray /Pattern >> /Pattern << /P1 10 0 R >>',
+    [Pat]), par_6_1_13_8, pro_Failed, 'DefaultGray is a pattern space');
+  CheckOutcome(ContentPdf('/X1 Do', '', '', '/XObject << /X1 10 1 R >>',
+    [StreamObj(10, Saves(29), ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_1_13_8, pro_Passed,
+    'a reference with another generation');
+  Glyph := StreamObj(11, '0 0 d0 ' + Saves(29), '');
+  Font := '10 0 obj' + LF + '<< /Type /Font /Subtype /Type3 /CharProcs << /a 11 0 R >> /FontBBox [0 0 1 1] ' +
+    '/FontMatrix [1 0 0 1 0 0] /FirstChar 0 /LastChar 0 /Widths [1] >>' + LF + 'endobj' + LF;
+  CheckOutcome(ContentPdf('BT /GS gs () Tj ET', '', '', '/ExtGState << /GS << /Font [10 0 R 1] >> >>', [Font, Glyph]),
+    par_6_1_13_8, pro_Failed, 'the font of a graphics state');
+  CheckOutcome(ContentPdf(Repeated('0', 405) + Repeated('9', 39) + '.0 w', '', '', '', NoExtra), par_6_1_13_2,
+    pro_Failed, 'leading zeros are not cut');
+  CheckOutcome(ContentPdf('0.' + Repeated('0', 405) + Repeated('9', 39) + ' w', '', '', '', NoExtra), par_6_1_13_5,
+    pro_Incomplete, 'a real that may underflow to zero');
+  CheckOutcome(ContentPdf('(' + Bytes3(11000, AnsiChar($ED), AnsiChar($A0), AnsiChar($80)) + ') Tj', '', '', '',
+    NoExtra), par_6_1_13_3, pro_Incomplete, 'Java may take three bytes as one malformed sequence');
+  { /Count 1 with two pages: veraPDF may see only the first }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>' + LF + 'endobj' + LF,
+    '4 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R >>' + LF + 'endobj' + LF,
+    StreamObj(5, '2147483648 w', '')], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Incomplete, '/Count does not match the pages');
+  { a repeated key: the dictionary keeps the last value }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /K << /X 2147483648 /X 0 >> >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Passed, 'a replaced value does not count');
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /K << /X 0 /X 2147483648 >> >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  CheckOutcome(Pdf, par_6_1_13_1, pro_Failed, 'the last value counts');
 end;
 
 procedure TestPdfAProperties;
@@ -1938,6 +2619,15 @@ begin
   RegisterTest('PdfA.XmpReader', TestPdfAXmpReader);
   RegisterTest('PdfA.Extension', TestPdfAExtension);
   RegisterTest('PdfA.Properties', TestPdfAProperties);
+  RegisterTest('PdfA.Content', TestPdfAContent);
+  RegisterTest('PdfA.Content2', TestPdfAContent2);
+  RegisterTest('PdfA.Content3', TestPdfAContent3);
+  RegisterTest('PdfA.Content4', TestPdfAContent4);
+  RegisterTest('PdfA.Content5', TestPdfAContent5);
+  RegisterTest('PdfA.Content6', TestPdfAContent6);
+  RegisterTest('PdfA.Content7', TestPdfAContent7);
+  RegisterTest('PdfA.Content8', TestPdfAContent8);
+  RegisterTest('PdfA.Content9', TestPdfAContent9);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 
