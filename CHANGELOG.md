@@ -96,6 +96,9 @@ Supported invoice standards are documented per release.
   lists the differences in `tools/kosit/kosit-exceptions.txt`). `kosit-oracle.py` no longer reports
   exceptions for `--report` differences as unused when it runs without `--report`, and a report
   difference carries the digests of both masked reports, so an exception covers exactly that pair.
+- Validation guide: the validators are not thread-safe (schemas and rules load on first use); give
+  each thread its own validators and result objects, or let one thread at a time validate; the
+  remaining 32-bit x86 effect on the FPU control word is described there.
 
 ## [0.9.0-beta.2] - 2026-11-17
 

@@ -146,6 +146,16 @@ end.
 - Schemas und Regeln werden beim ersten Gebrauch geladen und behalten: Das erste Dokument einer
   Konfiguration dauert einige Sekunden, die weiteren Millisekunden. Die Validatoren für die
   Laufzeit der Anwendung behalten.
+- Threads: Die Validatoren sind nicht threadsicher. Weil Schemas und Regeln beim ersten Gebrauch
+  geladen werden, können zwei Threads, die mit demselben `TLandrixEInvoiceValidator` prüfen
+  (direkt oder über einen Dokument-Validator, bei dem er registriert ist), dieselbe Datei
+  gleichzeitig laden und ablegen. Jedem Thread eigene Validatoren und einen eigenen
+  `TLandrixEInvoiceDocumentValidator` geben oder immer nur einen Thread prüfen lassen (etwa hinter
+  einer Sperre). Jedes laufende Dokument braucht ein eigenes Ergebnisobjekt und einen eigenen
+  Stream; ein Ergebnis wird geleert, wenn die nächste Validierung hinein beginnt. Unter 32-Bit-x86
+  bleibt eine gemeinsame Wirkung: Das Lesen von Zahlen ändert kurz das FPU-Steuerwort, und die
+  Laufzeitbibliothek legt es als prozessweiten Standard ab; ein Thread, der genau dann startet,
+  erbt die verringerte Genauigkeit. Paralleles Prüfen ist noch nicht getestet.
 - Eine fehlende Regeldatei oder ein Schema, das nicht lädt, löst `ELandrixEInvoiceError` aus: ein
   Problem der Einrichtung, nicht des Dokuments. Eine Konfiguration, die diese Bibliothek nicht
   ausführen kann (anderes `acceptMatch`, Szenario ohne match-Ausdruck), lehnt

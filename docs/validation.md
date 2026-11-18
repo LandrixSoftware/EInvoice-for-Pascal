@@ -144,6 +144,15 @@ end.
 - Schemas and rules are loaded on first use and kept: the first document of a configuration
   takes a few seconds, the next ones milliseconds. Keep the validators for the lifetime of your
   application.
+- Threads: the validators are not thread-safe. Because schemas and rules are loaded on first use,
+  two threads that validate with the same `TLandrixEInvoiceValidator` (directly or through a
+  document validator it is registered with) may load and store the same file at the same time.
+  Give each thread its own validators and its own `TLandrixEInvoiceDocumentValidator`, or let
+  one thread at a time validate (for example behind a lock). Each document in progress needs its
+  own result object and its own stream; a result is cleared when the next validation into it
+  starts. On 32-bit x86 one shared effect remains: reading numbers briefly changes the FPU control
+  word, and the runtime stores it as the process-wide default, so a thread that starts at that
+  moment inherits the reduced precision. Parallel validation has not been tested yet.
 - A missing rule file or a schema that does not load raises `ELandrixEInvoiceError`: a problem of
   the setup, not of the document. A configuration this library cannot run (another
   `acceptMatch`, a scenario without a match expression) is refused by `LoadConfiguration`.
