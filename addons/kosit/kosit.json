@@ -64,8 +64,8 @@
     {
       "modules": ["bis"],
       "file": "PEPPOL-EN16931-UBL.sch",
-      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/806866bd2bd91d7e9623b68f08164e8fbe9e67a0/rules/sch/PEPPOL-EN16931-UBL.sch",
-      "sha256": "62e5b67892f12755352d78b06f63229a02cc2eccc748677c56efbc8dbcb336e3"
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/38d693d71d28d813781323a6ca97324edcc4d239/rules/sch/PEPPOL-EN16931-UBL.sch",
+      "sha256": "f637444fab75a6da7e5004f94a6de8e71383ef5658dafe6c68925103b17ea148"
     }
   ],
   "landrixxml": {

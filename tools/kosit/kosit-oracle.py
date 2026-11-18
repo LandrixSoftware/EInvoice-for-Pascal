@@ -128,6 +128,7 @@ import argparse
 import collections
 import fnmatch
 import glob
+import hashlib
 import os
 import platform
 import re
@@ -344,7 +345,8 @@ def masked_report(path, messages, well_formedness=False, spaces=None):
 
 
 def report_lines(theirs_path, ours_path, html, document=None):
-    """[] if equal, else a line naming the first difference."""
+    """[] if equal, else a line naming the first difference and the digests
+    of both masked reports (an exception then covers exactly this pair)."""
     kind = "html" if html else "xml"
     messages = parser_messages(re.sub(r"\.html$", ".xml", theirs_path)) + \
         parser_messages(re.sub(r"\.html$", ".xml", ours_path))
@@ -361,8 +363,9 @@ def report_lines(theirs_path, ours_path, html, document=None):
     if a is None or b is None:
         return ["report %s %s" % (kind, "KoSIT has none" if a is None else "the probe has none")]
     i = next((k for k in range(min(len(a), len(b))) if a[k] != b[k]), min(len(a), len(b)))
-    return ["report %s differs at %d: KoSIT %r, probe %r" % (kind, i, a[max(0, i - 30):i + 30],
-                                                              b[max(0, i - 30):i + 30])]
+    return ["report %s differs at %d: KoSIT %r, probe %r (sha256 %s, %s)" % (
+        kind, i, a[max(0, i - 30):i + 30], b[max(0, i - 30):i + 30],
+        hashlib.sha256(a.encode("utf-8")).hexdigest()[:16], hashlib.sha256(b.encode("utf-8")).hexdigest()[:16])]
 
 
 def input_lines(path, document=None, check_hash=False):
@@ -808,9 +811,11 @@ def main():
     names = [os.path.basename(f) for f, _ in pairs]
     for pattern, diff, used in exceptions:
         # an exception for a corpus that did not run is not unused, nor one
-        # for the report input without --report-input
+        # for the report input without --report-input or for the report
+        # without --report
         if not used and any(fnmatch.fnmatch(n, pattern) for n in names) and (
-                args.report_input or not diff.startswith(("- input ", "+ input "))):
+                args.report_input or not diff.startswith(("- input ", "+ input "))) and (
+                args.report or not diff.startswith(("- report ", "+ report "))):
             print("  unused exception: %s\t%s" % (pattern, diff))
             unexpected += 1
     print("%d documents compared (corpus %s); '-' KoSIT only, '+' probe only" % (compared, args.corpus))

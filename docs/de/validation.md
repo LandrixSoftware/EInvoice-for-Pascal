@@ -13,6 +13,13 @@ Die Dokumentvalidierung kommt zum selben Urteil wie der KoSIT-Validator (Java); 
 Repositorys vergleichen sie mit dessen Berichten. Sie braucht die unten beschriebenen
 Konfigurations- und Regeldateien; diese gehören nicht zur Bibliothek.
 
+Eine bekannte Ausnahme: Die Peppol-Regeldatei (`PEPPOL-EN16931-UBL.sch`) ist der OpenPEPPOL-Hotfix
+3.0.22, die Peppol-BIS-Konfiguration von KoSIT dagegen noch 3.0.21. PEPPOL-EN16931-P0112 nimmt
+deshalb den Rechnungstyp 384 zwischen zwei slowakischen Parteien (nach Präfix der USt-IdNr., sonst
+Land der Anschrift) an, deren Anschriften nicht beide in Deutschland liegen; der KoSIT-Validator lehnt
+ihn ab, und ihre Meldung weicht von der im KoSIT-Bericht ab. Das gilt, bis KoSIT eine neuere
+Konfiguration veröffentlicht.
+
 > **Vorschau.** Dokumentvalidierung, Berichte und Darstellung der Rechnung liegen in Units mit
 > der Markierung `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
 > `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
@@ -39,7 +46,7 @@ beim Herausgeber, prüft ihre SHA-256 (festgeschrieben in
 | `validator-configuration-bis/` | KoSIT-Konfiguration Peppol BIS Billing 3.0.21 | `bis` |
 | `validator-configuration-zugferd/` | Konfiguration ZUGFeRD 2.5.2 / Factur-X 1.09.2, Stand 2026-10-15, mit ihren Schematron-Quellen | `zugferd` |
 | `rules/en16931-ubl.xml`, `en16931-cii.xml`, `xrechnung-ubl.xml`, `xrechnung-cii.xml` | die Schematron von EN 16931 und XRechnung, von LandrixXML übersetzt (aus dem Submodul kopiert oder vom LandrixXML-Release geladen) | `xrechnung`, `bis` (nur UBL) |
-| `rules/PEPPOL-EN16931-UBL.sch` | die Peppol-Schematron (OpenPEPPOL, Mai-2026-Release 3.0.21) | `bis` |
+| `rules/PEPPOL-EN16931-UBL.sch` | die Peppol-Schematron (OpenPEPPOL, Hotfix 3.0.22 vom Oktober 2026) | `bis` |
 | `rules/NOTICE.md` | Herkunft und Lizenzen der vier Regeldateien (der Hinweis des LandrixXML-Ordners, aus dem sie kommen; seine übrigen Abschnitte gelten hier nicht) | `xrechnung`, `bis` |
 | `xrechnung-visualization/` | die KoSIT-XRechnung-Visualisierung, Stand 2026-01-31; benutzt wird ihr Ordner `xsl/` ([Die Rechnung anzeigen](#die-rechnung-anzeigen)) | `visualization` |
 
@@ -239,7 +246,8 @@ end;
   Dokument, der Wortlaut von Wohlgeformtheits- und XML-Schema-Meldungen (der KoSIT-Validator zeigt
   die Texte von Xerces in der Sprache des Systems) und die Form der Schematron-Orte der
   Konfigurationen Peppol BIS und ZUGFeRD (`/Q{namespace}name[1]`, wie die XRechnung-Konfiguration
-  sie schreibt).
+  sie schreibt). Bis KoSIT seine Peppol-BIS-Konfiguration aktualisiert, weicht auch der Text einer
+  fehlgeschlagenen PEPPOL-EN16931-P0112 ab (siehe die Peppol-Ausnahme oben).
 - `Report.Accepted` ist die Bewertung des Bericht-Stylesheets. Bei Peppol BIS kann es die Annahme
   eines Dokuments mit nur Warnungen empfehlen, das der Validator ablehnt (siehe oben).
 - `TLandrixEInvoiceValidator.Validate` liefert das Ergebnis der unteren Ebene; `CreateReport(Result,

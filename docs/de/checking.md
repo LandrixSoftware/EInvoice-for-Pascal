@@ -44,7 +44,7 @@ XRechnung eine Warnung und in Peppol ein Fehler. Nicht jede Regel kann an dem sc
 Bibliothek schreibt: ein Prozentsatz, Grundbetrag, Bruttopreis oder eine Basismenge von 0 wird
 nicht geschrieben, und das Modell hält eine Steuersumme je Währung.
 
-Für Peppol werden auch die Regeln geprüft, die nur das Peppol-Schematron 3.0.21 enthält: die
+Für Peppol werden auch die Regeln geprüft, die nur das Peppol-Schematron 3.0.22 enthält: die
 übrigen PEPPOL-EN16931-Regeln (Bemerkungen, Profil, Typcodes, Befreiungsgrund-Codes, die
 Peppol-Codelisten), PEPPOL-COMMON-R040 bis R057 (Formate und Prüfziffern von Kennungen je Schema,
 z. B. GLN sowie norwegische, dänische, belgische, italienische, schwedische und australische

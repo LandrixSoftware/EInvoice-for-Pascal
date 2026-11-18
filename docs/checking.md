@@ -41,7 +41,7 @@ Saxon processor of the validator computes it). R120 (line net amount) is a warni
 error in Peppol. Not every rule can fail on what the library writes: a percentage, base amount,
 gross price or base quantity of 0 is not written, and the model holds one VAT total per currency.
 
-For Peppol, the rules that only the Peppol Schematron 3.0.21 contains are checked as well: the
+For Peppol, the rules that only the Peppol Schematron 3.0.22 contains are checked as well: the
 other PEPPOL-EN16931 rules (notes, profile, type codes, exemption reason codes, the Peppol code
 lists), PEPPOL-COMMON-R040 to R057 (formats and check digits of identifiers by scheme, e.g. GLN,
 Norwegian, Danish, Belgian, Italian, Swedish and Australian numbers) and the national rules of

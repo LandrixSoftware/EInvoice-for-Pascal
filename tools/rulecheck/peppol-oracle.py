@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Oracle for the Peppol rules: the unit test sets of OpenPEPPOL
-(peppol-bis-invoice-3, rules/unit-UBL-*, the branch whose schematron is
-Peppol BIS Billing 3.0.21) hold one fragment per test with the expected
+(peppol-bis-invoice-3, rules/unit-UBL-*, tag 3.0.22, the October 2026
+hotfix of Peppol BIS Billing 3.0) hold one fragment per test with the expected
 outcome of the rules in its scope ('success': the rule holds, 'error' or
 'warning': it fires). Every fragment is written to build/peppol-oracle/docs/
 and read and checked with RuleCheckProbe against Peppol BIS 3.0 (-peppol).
@@ -34,8 +34,8 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
-TESTS = os.path.join(os.path.dirname(REPO), "landrix-einvoice-docs", "Peppol BIS Billing 3.0 - May 2026 Release",
-                     "peppol-bis-invoice-3-806866bd2bd9", "rules")
+TESTS = os.path.join(os.path.dirname(REPO), "landrix-einvoice-docs", "Peppol BIS Billing 3.0 - 3.0.22 Hotfix",
+                     "peppol-bis-invoice-3-38d693d71d28", "rules")
 EXCEPTIONS = os.path.join(HERE, "peppol-exceptions.txt")
 OUT = os.path.join(REPO, "build", "peppol-oracle")
 VEFA = "{http://difi.no/xsd/vefa/validator/1.0}"

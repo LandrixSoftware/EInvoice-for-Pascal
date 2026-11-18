@@ -23,8 +23,8 @@ Corpora:
                 schematron, checked there against the configuration's XSLT),
                 with their NOTICE.md (tests/data/local/kosit/rules); the
                 paths below that folder are kept
-  kosit-peppol  the Peppol BIS Billing 3.0.21 schematron PEPPOL-EN16931-UBL.sch
-                (May 2026 release), which the validator compiles when it
+  kosit-peppol  the Peppol BIS Billing 3.0.22 schematron PEPPOL-EN16931-UBL.sch
+                (October 2026 hotfix), which the validator compiles when it
                 loads (tests/data/local/kosit/peppol); its EN16931 rules are
                 the en16931-ubl of kosit-rules
   verapdf       the veraPDF test corpus 1.30.4 (CC BY 4.0) for PDF/A-2 and
@@ -84,7 +84,7 @@ SOURCES = {
         "target": "kosit/rules",
     },
     "kosit-peppol": {
-        "root": "Peppol BIS Billing 3.0 - May 2026 Release",
+        "root": "Peppol BIS Billing 3.0 - 3.0.22 Hotfix",
         "include": ["PEPPOL-EN16931-UBL.sch"],
         "flatten": False,
         "exclude": [],

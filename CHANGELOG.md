@@ -86,6 +86,16 @@ Supported invoice standards are documented per release.
 ### Changed
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
   license covers EInvoice-for-Pascal and XRechnung-for-Delphi together.
+- Peppol rules: the Peppol Schematron 3.0.22 (OpenPEPPOL October 2026 hotfix, RFC-607) replaces 3.0.21.
+  PEPPOL-EN16931-P0112 now also restricts the invoice type code 389 to German parties, and allows 384
+  between two Slovak parties as well (Slovakia by the VAT identifier prefix, for the seller also that of
+  the tax representative, else the postal country). The pin in `addons/kosit/kosit.json` and the
+  OpenPEPPOL unit tests of `tools/rulecheck/peppol-oracle.py` follow; the KoSIT configuration Peppol BIS
+  stays at 3.0.21 until KoSIT publishes a newer one, so for 384 between Slovak parties whose postal
+  addresses are not both in Germany the native validation accepts what the KoSIT validator rejects (documented in the validation guide; the oracle
+  lists the differences in `tools/kosit/kosit-exceptions.txt`). `kosit-oracle.py` no longer reports
+  exceptions for `--report` differences as unused when it runs without `--report`, and a report
+  difference carries the digests of both masked reports, so an exception covers exactly that pair.
 
 ## [0.9.0-beta.2] - 2026-11-17
 

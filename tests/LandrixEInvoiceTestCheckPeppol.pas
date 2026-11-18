@@ -656,6 +656,46 @@ begin
   end;
 end;
 
+{ PEPPOL-EN16931-P0112 (3.0.22): 326 and 389 between German parties only,
+  384 between German or between Slovak parties; Slovakia by $supplierCountry
+  and $customerCountry (VAT prefix first). }
+procedure TestTypeCodeCountries;
+var
+  Invoice: TLandrixInvoice;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceTypeCode := itc_SelfbilledInvoice;
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil), '389 between German parties');
+    Invoice.AccountingCustomerParty.Address.CountryCode := 'AT';
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil), '389 with a buyer in Austria');
+    Invoice.InvoiceTypeCode := itc_PartialInvoice;
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil), '326 with a buyer in Austria');
+    SetCountries(Invoice, 'SK', 'SK');
+    Invoice.AccountingSupplierParty.VATCompanyID := 'SK2020273893';
+    Invoice.AccountingCustomerParty.VATCompanyID := '';
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil), '326 between Slovak parties');
+    Invoice.InvoiceTypeCode := itc_CorrectedInvoice;
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil), '384 between Slovak parties');
+    Invoice.AccountingSupplierParty.VATCompanyID := 'DE123456789';
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil),
+      '384: the VAT prefix DE wins over the postal country SK');
+    { the seller falls back to the tax representative's VAT prefix }
+    SetCountries(Invoice, 'AT', ' sk ');
+    Invoice.AccountingSupplierParty.VATCompanyID := '';
+    Invoice.TaxRepresentativeParty.Name := 'Representative';
+    Invoice.TaxRepresentativeParty.VATCompanyID := 'sk2020273893';
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil),
+      '384: representative sk, buyer postal sk (upper case, normalized)');
+    Invoice.AccountingCustomerParty.VATCompanyID := 'ATU12345678';
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'PEPPOL-EN16931-P0112', nil),
+      '384: the buyer VAT prefix AT wins over the postal country SK');
+  finally
+    Invoice.Free;
+  end;
+end;
+
 { The identifiers the PEPPOL-COMMON rules assume are those of the mapped
   UBL model: the global identifier with the default scheme 0088, the legal
   registration and the electronic address with their schemes, the payee
@@ -815,6 +855,7 @@ begin
   RegisterTest('CheckPeppol.Complete', TestComplete);
   RegisterTest('CheckPeppol.RuleCases', TestRuleCases);
   RegisterTest('CheckPeppol.Countries', TestCountries);
+  RegisterTest('CheckPeppol.TypeCodeCountries', TestTypeCodeCountries);
   RegisterTest('CheckPeppol.WrittenIdentifiers', TestWrittenIdentifiers);
   RegisterTest('CheckPeppol.RuleLookup', TestRuleLookup);
   RegisterTest('CheckPeppol.Payments', TestPayments);

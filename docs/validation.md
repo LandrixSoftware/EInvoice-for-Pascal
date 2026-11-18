@@ -13,6 +13,13 @@ Document validation gives the same verdict as the KoSIT validator (Java), checke
 reports in the repository's tests. It needs the configuration files and rule files described
 below; they are not part of the library.
 
+One known exception: the Peppol rule file (`PEPPOL-EN16931-UBL.sch`) is the OpenPEPPOL hotfix
+3.0.22, while KoSIT's Peppol BIS configuration is still 3.0.21. PEPPOL-EN16931-P0112 therefore
+accepts the invoice type code 384 between two Slovak parties (by VAT identifier prefix, else postal
+country) whose postal addresses are not both in Germany, which the KoSIT validator rejects,
+and its message differs from the one in KoSIT's report. This lasts until KoSIT publishes a newer
+configuration.
+
 > **Preview.** Document validation, the reports and the invoice rendering live in units marked
 > `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
 > `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
@@ -38,7 +45,7 @@ from its publisher, verifies its SHA-256 (pinned in
 | `validator-configuration-bis/` | KoSIT configuration Peppol BIS Billing 3.0.21 | `bis` |
 | `validator-configuration-zugferd/` | ZUGFeRD 2.5.2 / Factur-X 1.09.2 configuration, 2026-10-15, with its Schematron sources | `zugferd` |
 | `rules/en16931-ubl.xml`, `en16931-cii.xml`, `xrechnung-ubl.xml`, `xrechnung-cii.xml` | the EN 16931 and XRechnung Schematron, compiled by LandrixXML (copied from the submodule or downloaded from the LandrixXML release) | `xrechnung`, `bis` (UBL only) |
-| `rules/PEPPOL-EN16931-UBL.sch` | the Peppol Schematron (OpenPEPPOL, May 2026 release 3.0.21) | `bis` |
+| `rules/PEPPOL-EN16931-UBL.sch` | the Peppol Schematron (OpenPEPPOL, October 2026 hotfix 3.0.22) | `bis` |
 | `rules/NOTICE.md` | sources and licences of the four rule files (the notice of the LandrixXML folder they come from; its other sections do not apply here) | `xrechnung`, `bis` |
 | `xrechnung-visualization/` | the KoSIT XRechnung visualization, release 2026-01-31; its `xsl/` folder is used ([Showing the invoice](#showing-the-invoice)) | `visualization` |
 
@@ -234,7 +241,8 @@ end;
   reference, the wording of well-formedness and XML schema messages (the KoSIT validator shows
   Xerces' texts in the language of the system) and the form of Schematron locations of the
   Peppol BIS and ZUGFeRD configurations (`/Q{namespace}name[1]`, as the XRechnung configuration
-  writes them).
+  writes them). Until KoSIT updates its Peppol BIS configuration, the text of a failed
+  PEPPOL-EN16931-P0112 differs as well (see the Peppol exception at the top).
 - `Report.Accepted` is the assessment of the report stylesheet. For Peppol BIS it can recommend to
   accept a document with only warnings, which the validator rejects (see above).
 - `TLandrixEInvoiceValidator.Validate` gives the lower-level result; `CreateReport(Result,

@@ -19,7 +19,7 @@ long `-Target` path (260 characters with its deepest file); PowerShell 7 can.
 | Module | Installs |
 |---|---|
 | `xrechnung` | `validator-configuration-xrechnung/` (KoSIT, XRechnung 3.0.2, 2026-08-31); `rules/en16931-ubl.xml`, `en16931-cii.xml`, `xrechnung-ubl.xml`, `xrechnung-cii.xml`, `NOTICE.md` |
-| `bis` | `validator-configuration-bis/` (KoSIT, Peppol BIS Billing 3.0.21); `rules/en16931-ubl.xml`, `PEPPOL-EN16931-UBL.sch` (OpenPEPPOL, May 2026 release 3.0.21), `NOTICE.md` |
+| `bis` | `validator-configuration-bis/` (KoSIT, Peppol BIS Billing 3.0.21); `rules/en16931-ubl.xml`, `PEPPOL-EN16931-UBL.sch` (OpenPEPPOL, October 2026 hotfix 3.0.22), `NOTICE.md` |
 | `zugferd` | `validator-configuration-zugferd/` (ZUGFeRD 2.5.2 / Factur-X 1.09.2, 2026-10-15, with its Schematron sources) |
 | `visualization` | `xrechnung-visualization/` (KoSIT XRechnung visualization 2026-01-31); its `xsl/` folder is what `LandrixEInvoiceKositVisualization` reads (the PDF stylesheets for Apache FOP are not used) |
 
