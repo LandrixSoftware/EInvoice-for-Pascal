@@ -464,6 +464,12 @@ type
   UTF-16-Text und entfallen bei PDFDocEncoding. }
 function LandrixEInvoicePdfTextToString(const ABytes: TLandrixEInvoicePdfBytes): TLandrixEInvoiceString;
 
+{ The UTF-16 code unit of one byte in PDFDocEncoding (ISO 32000-1, annex D);
+  bytes the table leaves undefined map to themselves.
+  DE: Die UTF-16-Codeeinheit eines Bytes in PDFDocEncoding (ISO 32000-1,
+  Anhang D); Bytes, die die Tabelle offen laesst, bilden auf sich selbst ab. }
+function LandrixEInvoicePdfDocChar(AByte: Byte): Word;
+
 { Local name of the XML root element, '' if the data is not XML; works on
   the bytes, so no XML parser runs (and no external entity is resolved).
   DE: Lokalname des XML-Wurzelelements, '', wenn die Daten kein XML sind;
@@ -4096,6 +4102,16 @@ const
     $201E, $201C, $201D, $2018, $2019, $201A, $2122, $FB01, $FB02, $0141, $0152, $0160,
     $0178, $017D, $0131, $0142, $0153, $0161, $017E, $009F, $20AC);
 
+function LandrixEInvoicePdfDocChar(AByte: Byte): Word;
+begin
+  case AByte of
+    $18..$1F: Result := PdfDocLow[AByte];
+    $80..$A0: Result := PdfDocHigh[AByte];
+  else
+    Result := AByte;
+  end;
+end;
+
 { A PDF text string: UTF-16BE (or LE) with byte order mark, UTF-8 with byte
   order mark (PDF 2.0), else PDFDocEncoding. Zero characters end UTF-16
   text and are dropped from PDFDocEncoding.
@@ -4152,12 +4168,7 @@ begin
   begin
     if ABytes[I] = 0 then
       Continue;
-    case ABytes[I] of
-      $18..$1F: W := PdfDocLow[ABytes[I]];
-      $80..$A0: W := PdfDocHigh[ABytes[I]];
-    else
-      W := ABytes[I];
-    end;
+    W := LandrixEInvoicePdfDocChar(ABytes[I]);
     Inc(Count);
     Result[Count] := WideChar(W);
   end;

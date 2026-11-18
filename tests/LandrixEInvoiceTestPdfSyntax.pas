@@ -26,7 +26,9 @@
   veraPDF passes, and no rule may pass (a full rule on complete facts) that
   veraPDF fails. PdfA.Limits: a cycle of form fields ends at the node budget
   and leaves its rule incomplete. PdfA.Interactive: annotations, forms and
-  actions (6.3 to 6.5) with the details of veraPDF's reading. Accepted differences are listed in
+  actions (6.3 to 6.5) with the details of veraPDF's reading. PdfA.Files:
+  embedded files, optional content, alternate presentations and requirements
+  (6.8 to 6.11). Accepted differences are listed in
   tests/data/pdfa-exceptions.txt (path, rule, reason). }
 
 unit LandrixEInvoiceTestPdfSyntax;
@@ -1091,6 +1093,134 @@ begin
   end;
 end;
 
+procedure TestPdfAFiles;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+begin
+  { catalog: /Requirements [] (6.11-1); /AlternatePresentations in the name
+    dictionary (6.10-1); configurations: /D "cfg" whose /Order misses group
+    21 (6.9-3), "cfg" again in UTF-16 with /AS (6.9-2, 6.9-4), an empty name
+    (6.9-1); page 3 with /PresSteps (6.10-2) and a direct file specification
+    (6.8-4); 10: associated file specification, fine; 11: name tree value
+    without /Type, no /UF and /AFRelationship, in no /AF array (6.8-2, 6.8-3,
+    6.8-4), its stream 13 under F and UF has /Subtype /text (6.8-1 twice) }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /AF [10 0 R] /Requirements [] /Names << /EmbeddedFiles << ' +
+      '/Names [(a) 10 0 R (b) 11 0 R] >> /AlternatePresentations << >> >> /OCProperties << /OCGs [20 0 R 21 0 R] ' +
+      '/D << /Name (cfg) /Order [20 0 R] >> /Configs [<< /Name <FEFF006300660067> /AS [] >> << /Name () >>] >> >>' + LF +
+      'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /PresSteps << >> ' +
+      '/X << /Type /Filespec /F (c) /UF (c) /AFRelationship /Data >> >>' + LF + 'endobj' + LF,
+    '10 0 obj' + LF + '<< /Type /Filespec /F (a.xml) /UF (a.xml) /AFRelationship /Data /EF << /F 12 0 R >> >>' + LF +
+      'endobj' + LF,
+    '11 0 obj' + LF + '<< /F (b) /EF << /F 13 0 R /UF 13 0 R >> >>' + LF + 'endobj' + LF,
+    '12 0 obj' + LF + '<< /Type /EmbeddedFile /Subtype /application#2Fxml /Length 0 >>' + LF + 'stream' + LF + LF +
+      'endstream' + LF + 'endobj' + LF,
+    '13 0 obj' + LF + '<< /Type /EmbeddedFile /Subtype /text /Length 0 >>' + LF + 'stream' + LF + LF + 'endstream' + LF +
+      'endobj' + LF,
+    '20 0 obj' + LF + '<< /Type /OCG /Name (g1) >>' + LF + 'endobj' + LF,
+    '21 0 obj' + LF + '<< /Type /OCG /Name (g2) >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.8-1 6.8-2 6.8-3 6.8-4 6.9-1 6.9-2 6.9-3 6.9-4 6.10-1 6.10-2 6.11-1', FailedRules(Rules),
+        'failed rules');
+      CheckEquals(2, Rules.RuleResult(par_6_8_1).Failures, 'stream 13 under F and UF');
+      CheckEquals(11, Rules.RuleResult(par_6_8_1).ObjNum, 'file specification 11');
+      CheckEquals(1, Rules.RuleResult(par_6_8_3).Failures, 'only file specification 11 lacks /AFRelationship');
+      CheckEquals(2, Rules.RuleResult(par_6_8_4).Failures, 'file specification 11 and the direct one');
+      CheckEquals(1, Rules.RuleResult(par_6_9_2).Failures, '/D never fails, its UTF-16 twin does');
+      CheckEquals(3, Rules.RuleResult(par_6_10_2).ObjNum, 'page 3');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+
+  { the same rules met: an /Order with a label and a nested array, /AS null,
+    /Requirements without /S, /PresSteps null; file specification 11 is
+    named only in a /Properties array, so marked content may associate it }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /AF [10 0 R] /Requirements << >> /Names << /EmbeddedFiles << ' +
+      '/Names [(a) 10 0 R] >> >> /OCProperties << /OCGs [20 0 R] /D << /Name (cfg) /Order [(label) [20 0 R]] >> ' +
+      '/Configs [<< /Name (other) /AS null >>] >> >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /PresSteps null ' +
+      '/Resources << /Properties << /MC0 [11 0 R] >> >> >>' + LF + 'endobj' + LF,
+    '10 0 obj' + LF + '<< /Type /Filespec /F (a.xml) /UF (a.xml) /AFRelationship /Data /EF << /F 12 0 R /UF 12 0 R >> >>' +
+      LF + 'endobj' + LF,
+    '11 0 obj' + LF + '<< /Type /Filespec /F (m) /UF (m) /AFRelationship /Data >>' + LF + 'endobj' + LF,
+    '12 0 obj' + LF + '<< /Type /EmbeddedFile /Subtype /application#2Fxml /Length 0 >>' + LF + 'stream' + LF + LF +
+      'endstream' + LF + 'endobj' + LF,
+    '20 0 obj' + LF + '<< /Type /OCG /Name (g1) >>' + LF + 'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('', FailedRules(Rules), 'failed rules');
+      Check(Rules.RuleResult(par_6_8_1).Outcome = pro_Passed, '6.8-1 passed');
+      Check(Rules.RuleResult(par_6_8_4).Outcome = pro_Incomplete, '6.8-4 incomplete (partial)');
+      Check(Rules.RuleResult(par_6_9_3).Outcome = pro_Passed, '6.9-3 passed (label, nested array)');
+      Check(Rules.RuleResult(par_6_9_4).Outcome = pro_Passed, '6.9-4 passed (/AS null)');
+      Check(Rules.RuleResult(par_6_10_2).Outcome = pro_Passed, '6.10-2 passed (/PresSteps null)');
+      Check(Rules.RuleResult(par_6_11_1).Outcome = pro_Passed, '6.11-1 passed (no /S)');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+
+  { limits and decoding: the EmbeddedFiles name tree 5 is its own kid, so
+    the unassociated file specification 10 is no proven failure of 6.8-4;
+    /D's /Order 30 contains itself (incomplete, no failure); group 20 has no
+    name, and an /Order entry without a string name removes nothing (6.9-3
+    once, in the first of /Configs); <FEFFD8000041> is a high surrogate
+    without its low one, which Java decodes with the next unit as one U+FFFD,
+    equal to <FEFFFFFD> (6.9-2) }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles 5 0 R >> /OCProperties << ' +
+      '/OCGs [20 0 R] /D << /Name (cfg) /Order 30 0 R >> /Configs [<< /Name <FEFFD8000041> /Order [20 0 R] >> ' +
+      '<< /Name <FEFFFFFD> >>] >> >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>' + LF + 'endobj' + LF,
+    '5 0 obj' + LF + '<< /Kids [5 0 R] >>' + LF + 'endobj' + LF,
+    '10 0 obj' + LF + '<< /Type /Filespec /F (a) /UF (a) /AFRelationship /Data >>' + LF + 'endobj' + LF,
+    '20 0 obj' + LF + '<< /Type /OCG >>' + LF + 'endobj' + LF,
+    '30 0 obj' + LF + '[30 0 R]' + LF + 'endobj' + LF], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.9-2 6.9-3', FailedRules(Rules), 'failed rules');
+      Check(Rules.RuleResult(par_6_8_1).Outcome = pro_Incomplete, '6.8-1 incomplete (name tree cycle)');
+      CheckEquals(1, Rules.RuleResult(par_6_9_3).Failures, 'the /Order cycle of /D is no failure');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
 procedure TestPdfAVeraPdf;
 var
   Expected, Exceptions, Used: TStringList;
@@ -1226,6 +1356,7 @@ begin
   RegisterTest('PdfA.Limits', TestPdfALimits);
   RegisterTest('PdfA.Interactive', TestPdfAInteractive);
   RegisterTest('PdfA.Interactive2', TestPdfAInteractive2);
+  RegisterTest('PdfA.Files', TestPdfAFiles);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

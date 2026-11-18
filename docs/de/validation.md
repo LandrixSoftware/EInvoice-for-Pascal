@@ -168,8 +168,9 @@ end.
 
 - `Res.Status[Teil]` je Teil: `evp_Read` (Lesen über die Fassade), `evp_KoSIT`, `evp_ModelCheck`
   (die eigenen Regeln der Bibliothek), `evp_PdfEmbedding` und `evp_PdfMetadata` (PDF-Ebenen 2 und
-  3), `evp_PdfA` (PDF/A-3b, Ebene 1: bisher die Regeln der Abschnitte 6.1 (Dateistruktur) und 6.3
-  bis 6.5 (Annotationen, Formulare, Aktionen);
+  3), `evp_PdfA` (PDF/A-3b, Ebene 1: bisher die Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
+  bis 6.5 (Annotationen, Formulare, Aktionen) und 6.8 bis 6.11 (eingebettete Dateien, optionale Inhalte,
+  Präsentationen, Anforderungen);
   `evr_Failed` bei einem Verstoß, sonst `evr_Incomplete`, weil nicht jede PDF/A-Regel umgesetzt
   ist; zählt nicht für das Urteil).
 - `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part`. Befunde der

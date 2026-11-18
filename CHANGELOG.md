@@ -45,6 +45,18 @@ Supported invoice standards are documented per release.
   `/OpenAction`, outline items and `/Next` chains; the AcroForm fields). The signature rules 6.4.3 are not
   implemented yet. Tests `PdfA.Interactive` and `PdfA.Interactive2` (every rule and the details of
   veraPDF's reading); `PdfA.VeraPdf` agrees with veraPDF on all 1,600 PDFs.
+- PDF/A level 1, rest of stage A: the rules of clauses 6.8 (embedded files: MIME type, `/F` and `/UF`,
+  `/AFRelationship`, associated files), 6.9 (optional content configurations: name, unique names, `/Order`
+  lists every group, no `/AS`), 6.10 (no `/AlternatePresentations`, no `/PresSteps`) and 6.11 (no
+  `/Requirements`), read as veraPDF reads them: file specifications are the `/Type /Filespec` dictionaries
+  of all objects and the values of the EmbeddedFiles name tree; a file specification counts as associated
+  only when it is indirect and named in an `/AF` array. 6.8-2 to 6.8-4 stay partial until content streams
+  are read; a missing association is reported only when no `/AF` array and no `/Properties` array names
+  the file specification. Test `PdfA.Files`; `PdfA.VeraPdf` still agrees with veraPDF on all 1,600 PDFs.
+
+### Changed
+- Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
+  license covers EInvoice-for-Pascal and XRechnung-for-Delphi together.
 
 ## [0.9.0-beta.2] - 2026-11-17
 

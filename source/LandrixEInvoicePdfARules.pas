@@ -13,7 +13,9 @@
 }
 
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.3 (annotations), 6.4
-  (interactive forms) and 6.5 (actions) of ISO 19005-3, checked on the raw
+  (interactive forms), 6.5 (actions), 6.8 (embedded files), 6.9 (optional
+  content), 6.10 (alternate presentations) and 6.11 (requirements) of ISO
+  19005-3, checked on the raw
   syntax facts of LandrixEInvoicePdfSyntax and the objects of the document.
   The rules carry the numbers of the veraPDF validation profile
   ("6.1.2-1": clause and test number; the finding ID is "PDFA-6.1.2-1"), so
@@ -30,8 +32,10 @@
   items and their /Next chains, the AcroForm /Fields with kids that have /T.
 
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
-  (Annotationen), 6.4 (interaktive Formulare) und 6.5 (Aktionen) der ISO
-  19005-3, geprueft auf den rohen Syntax-Tatsachen von
+  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.8
+  (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10 (alternative
+  Darstellungen) und 6.11 (Anforderungen) der ISO 19005-3, geprueft auf den
+  rohen Syntax-Tatsachen von
   LandrixEInvoicePdfSyntax und den Objekten des Dokuments. Die Regeln tragen die Nummern des
   veraPDF-Pruefprofils ("6.1.2-1": Abschnitt und Testnummer; die Befund-ID ist
   "PDFA-6.1.2-1"), damit sich Ergebnisse Regel fuer Regel mit veraPDF
@@ -64,10 +68,10 @@ uses
   LandrixEInvoicePdfSyntax;
 
 type
-  { The rules of clauses 6.1 and 6.3 to 6.5 in the veraPDF profile PDF/A-3B,
-    named after clause and test number.
-    DE: Die Regeln der Abschnitte 6.1 und 6.3 bis 6.5 im veraPDF-Profil
-    PDF/A-3B, benannt nach Abschnitt und Testnummer. }
+  { The rules of clauses 6.1, 6.3 to 6.5 and 6.8 to 6.11 in the veraPDF
+    profile PDF/A-3B, named after clause and test number.
+    DE: Die Regeln der Abschnitte 6.1, 6.3 bis 6.5 und 6.8 bis 6.11 im
+    veraPDF-Profil PDF/A-3B, benannt nach Abschnitt und Testnummer. }
   TLandrixEInvoicePdfARule = (
     par_6_1_2_1, par_6_1_2_2, par_6_1_3_1, par_6_1_3_2, par_6_1_3_3, par_6_1_4_2, par_6_1_6_1, par_6_1_6_2,
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
@@ -75,7 +79,9 @@ type
     par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11,
     par_6_3_1_1, par_6_3_2_1, par_6_3_2_2, par_6_3_3_1, par_6_3_3_2, par_6_3_3_3, par_6_3_3_4,
     par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
-    par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2);
+    par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2,
+    par_6_8_1, par_6_8_2, par_6_8_3, par_6_8_4, par_6_9_1, par_6_9_2, par_6_9_3, par_6_9_4,
+    par_6_10_1, par_6_10_2, par_6_11_1);
 
   { How far a rule is implemented: in its whole scope, in part of it, not
     at all.
@@ -135,6 +141,17 @@ type
       fields and outline items walked for stage B }
     FNodes: Integer;
     FNodesB: Integer;
+    { the walk of all objects for 6.8: nodes visited; object numbers named in
+      an /AF array or in an array of a /Properties dictionary; the file
+      specifications found with their object number (-1 if direct) }
+    FNodesC: Integer;
+    FWalkBroken: Boolean;
+    FAssoc: array of Boolean;
+    FSpecSeen: array of Boolean;
+    FSpecs: array of TLandrixEInvoicePdfObject;
+    FSpecNums: array of Integer;
+    FSpecCount: Integer;
+    FNodesOc: Integer;
     procedure Reset;
     procedure Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource;
       APos: Integer; const ADetail: string);
@@ -168,6 +185,16 @@ type
     procedure CheckFormField(AField: TLandrixEInvoicePdfObject; ADepth: Integer);
     procedure CheckCatalogActions;
     procedure CheckOutline(AItem: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure MarkLateA;
+    procedure BreakWalk;
+    procedure AddAssoc(AArr: TLandrixEInvoicePdfObject);
+    procedure AddSpec(ASpec: TLandrixEInvoicePdfObject; ANum: Integer);
+    procedure WalkValue(AObj: TLandrixEInvoicePdfObject; ANum, ADepth: Integer);
+    procedure WalkEmbeddedFiles(ANode: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure SpecFail(ARule: TLandrixEInvoicePdfARule; AIndex: Integer; const ADetail: string);
+    procedure CheckFileSpecs;
+    procedure CheckOptionalContent;
+    procedure CheckCatalogLate;
   public
     constructor Create;
     { Checks every implemented rule. ADoc was loaded with AFacts as receiver
@@ -201,9 +228,16 @@ function LandrixEInvoicePdfARuleCoverage(ARule: TLandrixEInvoicePdfARule): TLand
 implementation
 
 uses
-  SysUtils;
+  SysUtils,
+  Classes,
+  Contnrs,
+  LandrixXmlBase,
+  LandrixEInvoiceTypes;
 
 type
+  TOcNames = array of TLandrixEInvoiceString;
+  TOcFlags = array of Boolean;
+
   TRuleInfo = record
     Number: string;
     Coverage: TLandrixEInvoicePdfARuleCoverage;
@@ -268,13 +302,34 @@ const
       Text: 'Only the actions GoTo, GoToR, GoToE, Thread, URI, Named and SubmitForm'),
     (Number: '6.5.1-2'; Coverage: prc_Full; Text: 'Only the named actions NextPage, PrevPage, FirstPage and LastPage'),
     (Number: '6.5.2-1'; Coverage: prc_Full; Text: 'The catalog has no additional actions /AA'),
-    (Number: '6.5.2-2'; Coverage: prc_Full; Text: 'A page has no additional actions /AA'));
+    (Number: '6.5.2-2'; Coverage: prc_Full; Text: 'A page has no additional actions /AA'),
+    (Number: '6.8-1'; Coverage: prc_Full; Text: 'An embedded file has a MIME type /Subtype of the form type/subtype'),
+    (Number: '6.8-2'; Coverage: prc_Partial;
+      Text: 'A file specification of an embedded file has /F and /UF'),
+    (Number: '6.8-3'; Coverage: prc_Partial; Text: 'A file specification has /AFRelationship'),
+    (Number: '6.8-4'; Coverage: prc_Partial;
+      Text: 'A file specification is an associated file (in an /AF array)'),
+    (Number: '6.9-1'; Coverage: prc_Full; Text: 'An optional content configuration has a non-empty /Name'),
+    (Number: '6.9-2'; Coverage: prc_Full; Text: 'The names of the optional content configurations are unique'),
+    (Number: '6.9-3'; Coverage: prc_Full; Text: 'The /Order of a configuration lists every optional content group'),
+    (Number: '6.9-4'; Coverage: prc_Full; Text: 'An optional content configuration has no /AS'),
+    (Number: '6.10-1'; Coverage: prc_Full; Text: 'The name dictionary has no /AlternatePresentations'),
+    (Number: '6.10-2'; Coverage: prc_Full; Text: 'A page has no /PresSteps'),
+    (Number: '6.11-1'; Coverage: prc_Full; Text: 'The catalog has no /Requirements'));
 
   { most pages and AcroForm fields walked together }
   MaxNodes = 200000;
   MaxTreeDepth = 64;
   { longest /Parent chain of a form field followed }
   MaxParentChain = 1024;
+  { most dictionaries and arrays visited in the walk of all objects }
+  MaxWalkNodes = 4000000;
+  MaxWalkDepth = 128;
+  { most optional content groups and configurations compared by name }
+  MaxOcNames = 4096;
+  { most work (entries visited, names compared) for /OCGs and the /Order
+    arrays }
+  MaxOcWork = 20000000;
 
 function LandrixEInvoicePdfARuleNumber(ARule: TLandrixEInvoicePdfARule): string;
 begin
@@ -330,6 +385,235 @@ begin
     Result := 0;
 end;
 
+{ Object ANum, nil if it cannot be read. }
+function ObjectOrNil(ADoc: TLandrixEInvoicePdfDocument; ANum: Integer): TLandrixEInvoicePdfObject;
+begin
+  try
+    Result := ADoc.GetObject(ANum);
+  except
+    on EOutOfMemory do
+      raise;
+    on Exception do
+      Result := nil;
+  end;
+end;
+
+{ 6.8-1: a MIME type as the profile's pattern ^[-\w+\.]+\/[-\w+\.]+$ (a
+  JavaScript pattern, \w is ASCII): letters, digits, '_', '-', '+', '.' on
+  both sides of one '/'.
+  DE: 6.8-1: ein MIME-Typ wie das Muster des Profils ^[-\w+\.]+\/[-\w+\.]+$
+  (ein JavaScript-Muster, \w ist ASCII): Buchstaben, Ziffern, '_', '-', '+',
+  '.' auf beiden Seiten genau eines '/'. }
+function IsMimeType(const S: AnsiString): Boolean;
+var
+  I, Slash: Integer;
+  C: AnsiChar;
+begin
+  Result := False;
+  Slash := 0;
+  for I := 1 to Length(S) do
+  begin
+    C := S[I];
+    if C = '/' then
+    begin
+      if Slash > 0 then
+        Exit;
+      Slash := I;
+    end
+    else if not (((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z')) or ((C >= '0') and (C <= '9')) or
+      (C = '_') or (C = '-') or (C = '+') or (C = '.')) then
+      Exit;
+  end;
+  Result := (Slash > 1) and (Slash < Length(S));
+end;
+
+{ A text string of an optional content name as veraPDF decodes it: UTF-16BE
+  after FE FF (malformed surrogates and an odd last byte are replacement
+  characters as in Java), UTF-8 after
+  EF BB BF, else PDFDocEncoding; zero characters stay. False for malformed
+  UTF-8, whose exact text is not known (AText is then not empty).
+  DE: Ein Textstring eines Namens optionaler Inhalte, wie veraPDF ihn
+  dekodiert: UTF-16BE nach FE FF (fehlerhafte Surrogate und ein ungerades
+  letztes Byte sind Ersatzzeichen wie in Java), UTF-8 nach EF BB BF, sonst PDFDocEncoding; Nullzeichen
+  bleiben. False bei fehlerhaftem UTF-8, dessen genauer Text unbekannt ist
+  (AText ist dann nicht leer). }
+function OcText(const ABytes: TLandrixEInvoicePdfBytes; out AText: TLandrixEInvoiceString): Boolean;
+var
+  N, I, Count: Integer;
+  W, W2: Word;
+  Utf8: TLandrixXmlUtf8;
+begin
+  Result := True;
+  AText := '';
+  N := Integer(Length(ABytes));
+  if (N >= 2) and (ABytes[0] = $FE) and (ABytes[1] = $FF) then
+  begin
+    { as Java's UTF-16BE decoder: a high surrogate takes the next unit with
+      it (both one replacement character if that is no low surrogate); a
+      lone low surrogate and the bytes left at the end are one replacement
+      character each }
+    SetLength(AText, (N - 1) div 2);
+    Count := 0;
+    I := 2;
+    while I < N do
+    begin
+      Inc(Count);
+      if N - I < 2 then
+      begin
+        AText[Count] := WideChar($FFFD);
+        Break;
+      end;
+      W := Word((ABytes[I] shl 8) or ABytes[I + 1]);
+      if (W >= $D800) and (W <= $DBFF) then
+      begin
+        if N - I < 4 then
+        begin
+          AText[Count] := WideChar($FFFD);
+          Break;
+        end;
+        W2 := Word((ABytes[I + 2] shl 8) or ABytes[I + 3]);
+        if (W2 >= $DC00) and (W2 <= $DFFF) then
+        begin
+          AText[Count] := WideChar(W);
+          Inc(Count);
+          AText[Count] := WideChar(W2);
+        end
+        else
+          AText[Count] := WideChar($FFFD);
+        Inc(I, 4);
+      end
+      else
+      begin
+        if (W >= $DC00) and (W <= $DFFF) then
+          AText[Count] := WideChar($FFFD)
+        else
+          AText[Count] := WideChar(W);
+        Inc(I, 2);
+      end;
+    end;
+    SetLength(AText, Count);
+    Exit;
+  end;
+  if (N >= 3) and (ABytes[0] = $EF) and (ABytes[1] = $BB) and (ABytes[2] = $BF) then
+  begin
+    Utf8 := '';
+    SetLength(Utf8, N - 3);
+    for I := 3 to N - 1 do
+      Utf8[I - 2] := AnsiChar(ABytes[I]);
+    try
+      AText := LandrixEInvoiceUtf8ToString(Utf8);
+    except
+      on EOutOfMemory do
+        raise;
+      on Exception do
+      begin
+        AText := '?';
+        Result := False;
+      end;
+    end;
+    Exit;
+  end;
+  SetLength(AText, N);
+  for I := 0 to N - 1 do
+    AText[I + 1] := WideChar(LandrixEInvoicePdfDocChar(ABytes[I]));
+end;
+
+{ The /Name of an optional content group or configuration; a missing name
+  or one that is no string counts as ''. False for malformed UTF-8.
+  DE: Der /Name einer Gruppe oder Konfiguration optionaler Inhalte; ein
+  fehlender Name oder einer, der kein String ist, zaehlt als ''. False bei
+  fehlerhaftem UTF-8. }
+function OcEntryName(ADoc: TLandrixEInvoicePdfDocument; ADict: TLandrixEInvoicePdfObject;
+  out AName: TLandrixEInvoiceString): Boolean;
+var
+  N: TLandrixEInvoicePdfObject;
+begin
+  AName := '';
+  Result := True;
+  N := ADoc.DGet(ADict, 'Name');
+  if (N <> nil) and (N.Kind = pok_Str) then
+    Result := OcText(N.StrVal, AName);
+end;
+
+function OcContains(const ANames: TOcNames; ACount: Integer; const AName: TLandrixEInvoiceString): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to ACount - 1 do
+    if ANames[I] = AName then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ Adds AName unless it is there; False beyond MaxOcNames. }
+function OcAdd(var ANames: TOcNames; var ACount: Integer; const AName: TLandrixEInvoiceString): Boolean;
+begin
+  Result := True;
+  if OcContains(ANames, ACount, AName) then
+    Exit;
+  if ACount >= MaxOcNames then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if ACount = Integer(Length(ANames)) then
+    SetLength(ANames, 16 + 2 * ACount);
+  ANames[ACount] := AName;
+  Inc(ACount);
+end;
+
+{ 6.9-3: marks the groups whose names an /Order array (and the arrays in it)
+  names with a dictionary whose /Name is a string (a group without a name
+  stays unmarked); labels are ignored. False if cut short (a limit or a
+  malformed name).
+  DE: 6.9-3: markiert die Gruppen, deren Namen ein /Order-Array (und die
+  Arrays darin) mit einem Dictionary nennt, dessen /Name ein String ist
+  (eine Gruppe ohne Namen bleibt unmarkiert); Beschriftungen zaehlen nicht.
+  False, wenn abgebrochen (eine Grenze oder ein fehlerhafter Name). }
+function OcRemoveOrder(ADoc: TLandrixEInvoicePdfDocument; AOrder: TLandrixEInvoicePdfObject; const AGroups: TOcNames;
+  ACount: Integer; var ARemoved: TOcFlags; var ANodes: Integer; ADepth: Integer): Boolean;
+var
+  I, K: Integer;
+  V, N: TLandrixEInvoicePdfObject;
+  Name: TLandrixEInvoiceString;
+begin
+  Result := False;
+  { every entry counts, labels too: arrays may be shared many times }
+  Inc(ANodes, 1 + AOrder.ArrCount);
+  if (ANodes > MaxOcWork) or (ADepth > MaxTreeDepth) then
+    Exit;
+  for I := 0 to AOrder.ArrCount - 1 do
+  begin
+    V := ADoc.Resolve(AOrder.ArrItem(I));
+    if V = nil then
+      Continue;
+    if V.Kind = pok_Arr then
+    begin
+      if not OcRemoveOrder(ADoc, V, AGroups, ACount, ARemoved, ANodes, ADepth + 1) then
+        Exit;
+    end
+    else if V.Kind = pok_Dict then
+    begin
+      { only a name that is a string removes a group }
+      Inc(ANodes, 1 + ACount);
+      if ANodes > MaxOcWork then
+        Exit;
+      N := ADoc.DGet(V, 'Name');
+      if (N = nil) or (N.Kind <> pok_Str) then
+        Continue;
+      if not OcText(N.StrVal, Name) then
+        Exit;
+      for K := 0 to ACount - 1 do
+        if AGroups[K] = Name then
+          ARemoved[K] := True;
+    end;
+  end;
+  Result := True;
+end;
+
 constructor TLandrixEInvoicePdfARuleCheck.Create;
 begin
   inherited Create;
@@ -357,6 +641,14 @@ begin
   end;
   FNodes := 0;
   FNodesB := 0;
+  FNodesC := 0;
+  FNodesOc := 0;
+  FWalkBroken := False;
+  FAssoc := nil;
+  FSpecSeen := nil;
+  FSpecs := nil;
+  FSpecNums := nil;
+  FSpecCount := 0;
   FLive := nil;
   FLiveCount := 0;
   FLiveByNum := nil;
@@ -510,6 +802,8 @@ begin
     CheckPages(FDoc.DGet(FDoc.Catalog, 'Pages'), nil, nil, 0);
     CheckForm;
     CheckCatalogActions;
+    CheckOptionalContent;
+    CheckCatalogLate;
   end
   else
   begin
@@ -517,7 +811,9 @@ begin
     FIncomplete[par_6_1_12_2] := True;
     FIncomplete[par_6_1_13_11] := True;
     MarkStageB;
+    MarkLateA;
   end;
+  CheckFileSpecs;
 
   for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
     if Rules[R].Coverage = prc_None then
@@ -934,6 +1230,7 @@ begin
   if (ANode = nil) or not ANode.IsDictLike then
   begin
     FIncomplete[par_6_1_13_11] := True;
+    FIncomplete[par_6_10_2] := True;
     MarkStageB;
     Exit;
   end;
@@ -941,6 +1238,7 @@ begin
   if (ADepth > MaxTreeDepth) or (FNodes > MaxNodes) then
   begin
     FIncomplete[par_6_1_13_11] := True;
+    FIncomplete[par_6_10_2] := True;
     MarkStageB;
     Exit;
   end;
@@ -970,6 +1268,12 @@ begin
   if Known(ANode, 'AA') then
     FailAt(par_6_5_2_2, ANode, 'page with /AA');
   CheckEvents(FDoc.DGet(ANode, 'AA'), ['O', 'C']);
+  { 6.10-2: the page's own /PresSteps, not inherited; any value but null
+    DE: 6.10-2: das eigene /PresSteps der Seite, nicht geerbt; jeder Wert
+    ausser null }
+  A := FDoc.DGet(ANode, 'PresSteps');
+  if (A <> nil) and (A.Kind <> pok_Null) then
+    FailAt(par_6_10_2, ANode, 'page with /PresSteps');
   Annots := FDoc.DGet(ANode, 'Annots');
   if (Annots <> nil) and (Annots.Kind = pok_Arr) then
     for I := 0 to Annots.ArrCount - 1 do
@@ -1395,6 +1699,447 @@ begin
     CheckOutline(FDoc.DGet(Item, 'First'), ADepth + 1);
     Item := FDoc.DGet(Item, 'Next');
   end;
+end;
+
+{ The rules of 6.8 to 6.11 cannot all be checked: no catalog. }
+procedure TLandrixEInvoicePdfARuleCheck.MarkLateA;
+var
+  R: TLandrixEInvoicePdfARule;
+begin
+  for R := par_6_8_1 to par_6_11_1 do
+    FIncomplete[R] := True;
+end;
+
+{ The walk of all objects missed something (an object not readable, a
+  limit): the file specifications are not all known, and one that no array
+  seen names is no proven failure of 6.8-4. }
+procedure TLandrixEInvoicePdfARuleCheck.BreakWalk;
+begin
+  FWalkBroken := True;
+  FIncomplete[par_6_8_1] := True;
+  FIncomplete[par_6_8_2] := True;
+  FIncomplete[par_6_8_3] := True;
+  FIncomplete[par_6_8_4] := True;
+end;
+
+{ The object numbers an array names by reference. }
+procedure TLandrixEInvoicePdfARuleCheck.AddAssoc(AArr: TLandrixEInvoicePdfObject);
+var
+  I: Integer;
+  Item: TLandrixEInvoicePdfObject;
+begin
+  if (AArr = nil) or (AArr.Kind <> pok_Arr) or FWalkBroken then
+    Exit;
+  { every item counts against the walk budget: many dictionaries may name
+    the same large array }
+  Inc(FNodesC, AArr.ArrCount);
+  if FNodesC > MaxWalkNodes then
+  begin
+    BreakWalk;
+    Exit;
+  end;
+  for I := 0 to AArr.ArrCount - 1 do
+  begin
+    Item := AArr.ArrItem(I);
+    if (Item <> nil) and (Item.Kind = pok_Ref) and (Item.RefNum >= 0) and (Item.RefNum < Integer(Length(FAssoc))) then
+      FAssoc[Item.RefNum] := True;
+  end;
+end;
+
+{ A file specification, once per indirect object. }
+procedure TLandrixEInvoicePdfARuleCheck.AddSpec(ASpec: TLandrixEInvoicePdfObject; ANum: Integer);
+begin
+  if ANum >= 0 then
+  begin
+    if (ANum >= Integer(Length(FSpecSeen))) or FSpecSeen[ANum] then
+      Exit;
+    FSpecSeen[ANum] := True;
+  end;
+  if FSpecCount = Integer(Length(FSpecs)) then
+  begin
+    SetLength(FSpecs, 16 + 2 * FSpecCount);
+    SetLength(FSpecNums, 16 + 2 * FSpecCount);
+  end;
+  FSpecs[FSpecCount] := ASpec;
+  FSpecNums[FSpecCount] := ANum;
+  Inc(FSpecCount);
+end;
+
+{ 6.8: a value and the direct values in it. A dictionary with /Type
+  /Filespec is a file specification (ANum: its object number if it is the
+  object itself, else -1); an /AF array and the arrays of a /Properties
+  dictionary (resources of marked content, which may name associated files)
+  mark the objects they name.
+  DE: 6.8: ein Wert und die direkten Werte darin. Ein Dictionary mit /Type
+  /Filespec ist eine Dateispezifikation (ANum: seine Objektnummer, wenn es
+  das Objekt selbst ist, sonst -1); ein /AF-Array und die Arrays eines
+  /Properties-Dictionarys (Ressourcen markierter Inhalte, die zugeordnete
+  Dateien nennen koennen) markieren die Objekte, die sie nennen. }
+procedure TLandrixEInvoicePdfARuleCheck.WalkValue(AObj: TLandrixEInvoicePdfObject; ANum, ADepth: Integer);
+var
+  I, K: Integer;
+  V, P, T: TLandrixEInvoicePdfObject;
+begin
+  if FWalkBroken then
+    Exit;
+  Inc(FNodesC);
+  if (FNodesC > MaxWalkNodes) or (ADepth > MaxWalkDepth) then
+  begin
+    BreakWalk;
+    Exit;
+  end;
+  if AObj.Kind = pok_Arr then
+  begin
+    for I := 0 to AObj.ArrCount - 1 do
+    begin
+      V := AObj.ArrItem(I);
+      if (V <> nil) and ((V.Kind = pok_Arr) or (V.Kind = pok_Dict)) then
+        WalkValue(V, -1, ADepth + 1);
+    end;
+    Exit;
+  end;
+  if not AObj.IsDictLike then
+    Exit;
+  if AObj.Kind = pok_Dict then
+  begin
+    T := FDoc.DGet(AObj, 'Type');
+    if (T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Filespec') then
+      AddSpec(AObj, ANum);
+  end;
+  for I := 0 to Integer(AObj.DVals.Count) - 1 do
+  begin
+    V := TLandrixEInvoicePdfObject(AObj.DVals[I]);
+    if V = nil then
+      Continue;
+    if AObj.DKeys[I] = 'AF' then
+      AddAssoc(FDoc.Resolve(V))
+    else if AObj.DKeys[I] = 'Properties' then
+    begin
+      P := FDoc.Resolve(V);
+      if (P <> nil) and P.IsDictLike then
+        for K := 0 to Integer(P.DVals.Count) - 1 do
+          AddAssoc(FDoc.Resolve(TLandrixEInvoicePdfObject(P.DVals[K])));
+    end;
+    if (V.Kind = pok_Arr) or (V.Kind = pok_Dict) then
+      WalkValue(V, -1, ADepth + 1);
+  end;
+end;
+
+{ 6.8: the values of the EmbeddedFiles name tree are file specifications
+  also without /Type (those with /Type /Filespec the walk found).
+  DE: 6.8: die Werte des EmbeddedFiles-Namensbaums sind
+  Dateispezifikationen auch ohne /Type (die mit /Type /Filespec fand der
+  Durchlauf). }
+procedure TLandrixEInvoicePdfARuleCheck.WalkEmbeddedFiles(ANode: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  Arr, Raw, V, T, Kids: TLandrixEInvoicePdfObject;
+  I, Num: Integer;
+begin
+  if (ANode = nil) or not ANode.IsDictLike or FWalkBroken then
+    Exit;
+  Inc(FNodesC);
+  if (FNodesC > MaxWalkNodes) or (ADepth > MaxTreeDepth) then
+  begin
+    BreakWalk;
+    Exit;
+  end;
+  Arr := FDoc.DGet(ANode, 'Names');
+  if (Arr <> nil) and (Arr.Kind = pok_Arr) then
+  begin
+    { a node listed twice in /Kids is walked twice: its entries count }
+    Inc(FNodesC, Arr.ArrCount);
+    if FNodesC > MaxWalkNodes then
+    begin
+      BreakWalk;
+      Exit;
+    end;
+    I := 1;
+    while I < Arr.ArrCount do
+    begin
+      Raw := Arr.ArrItem(I);
+      V := FDoc.Resolve(Raw);
+      if (V <> nil) and (V.Kind = pok_Dict) then
+      begin
+        T := FDoc.DGet(V, 'Type');
+        if not ((T <> nil) and (T.Kind = pok_Name) and (T.NameVal = 'Filespec')) then
+        begin
+          if (Raw <> nil) and (Raw.Kind = pok_Ref) then
+            Num := Raw.RefNum
+          else
+            Num := -1;
+          AddSpec(V, Num);
+        end;
+      end;
+      Inc(I, 2);
+    end;
+  end;
+  Kids := FDoc.DGet(ANode, 'Kids');
+  if (Kids <> nil) and (Kids.Kind = pok_Arr) then
+    for I := 0 to Kids.ArrCount - 1 do
+      WalkEmbeddedFiles(FDoc.Resolve(Kids.ArrItem(I)), ADepth + 1);
+end;
+
+procedure TLandrixEInvoicePdfARuleCheck.SpecFail(ARule: TLandrixEInvoicePdfARule; AIndex: Integer;
+  const ADetail: string);
+var
+  Num: Integer;
+begin
+  Num := FSpecNums[AIndex];
+  if Num >= 0 then
+    Fail(ARule, Num, FDoc.XrefEntry(Num).Gen, pss_File, -1, 'object ' + IntToStr(Num) + ': ' + ADetail)
+  else
+    FailAt(ARule, FSpecs[AIndex], ADetail);
+end;
+
+{ 6.8 as veraPDF reads it: the file specifications are the dictionaries with
+  /Type /Filespec in all live objects (also unreferenced and compressed
+  ones, also nested) and the values of the EmbeddedFiles name tree. 6.8-1:
+  the streams under /EF (F, UF, DOS, Mac, Unix) have a MIME type /Subtype;
+  6.8-2: with /EF, /F and /UF are strings; 6.8-3: /AFRelationship is a name;
+  6.8-4: an indirect file specification that an /AF array names. A direct
+  one is never associated; one that no /AF array and no array of a
+  /Properties dictionary names cannot become associated through marked
+  content either, so that failure is proven although content streams are not
+  read. File specifications inside content streams are not seen: 6.8-2 to
+  6.8-4 are partial.
+  DE: 6.8, wie veraPDF es liest: die Dateispezifikationen sind die
+  Dictionaries mit /Type /Filespec in allen lebenden Objekten (auch ohne
+  Verweis und komprimiert, auch verschachtelt) und die Werte des
+  EmbeddedFiles-Namensbaums. 6.8-1: die Streams unter /EF (F, UF, DOS, Mac,
+  Unix) haben einen MIME-Typ /Subtype; 6.8-2: mit /EF sind /F und /UF
+  Strings; 6.8-3: /AFRelationship ist ein Name; 6.8-4: eine indirekte
+  Dateispezifikation, die ein /AF-Array nennt. Eine direkte ist nie
+  zugeordnet; eine, die kein /AF-Array und kein Array eines
+  /Properties-Dictionarys nennt, kann auch ueber markierte Inhalte nicht
+  zugeordnet werden, dieser Verstoss ist also belegt, obwohl Content-Streams
+  nicht gelesen werden. Dateispezifikationen in Content-Streams werden nicht
+  gesehen: 6.8-2 bis 6.8-4 sind teilweise umgesetzt. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckFileSpecs;
+const
+  EFKeys: array[0..4] of AnsiString = ('F', 'UF', 'DOS', 'Mac', 'Unix');
+var
+  N, I, K: Integer;
+  X: TLandrixEInvoicePdfXrefEntry;
+  Obj, D, F, UF, R, EF, S, Sub, Names: TLandrixEInvoicePdfObject;
+begin
+  SetLength(FAssoc, FDoc.XrefCount);
+  SetLength(FSpecSeen, FDoc.XrefCount);
+  for N := 0 to FDoc.XrefCount - 1 do
+  begin
+    FAssoc[N] := False;
+    FSpecSeen[N] := False;
+  end;
+  for N := 0 to FDoc.XrefCount - 1 do
+  begin
+    if FWalkBroken then
+      Break;
+    X := FDoc.XrefEntry(N);
+    if not X.Known or (X.Kind = pxk_Free) then
+      Continue;
+    Obj := ObjectOrNil(FDoc, N);
+    if Obj = nil then
+      BreakWalk
+    else
+      WalkValue(Obj, N, 0);
+  end;
+  if FDoc.Catalog <> nil then
+  begin
+    Names := FDoc.DGet(FDoc.Catalog, 'Names');
+    if (Names <> nil) and Names.IsDictLike then
+      WalkEmbeddedFiles(FDoc.DGet(Names, 'EmbeddedFiles'), 0);
+  end;
+
+  for I := 0 to FSpecCount - 1 do
+  begin
+    D := FSpecs[I];
+    if Known(D, 'EF') then
+    begin
+      F := FDoc.DGet(D, 'F');
+      UF := FDoc.DGet(D, 'UF');
+      if not ((F <> nil) and (F.Kind = pok_Str) and (UF <> nil) and (UF.Kind = pok_Str)) then
+        SpecFail(par_6_8_2, I, 'file specification of an embedded file without /F and /UF');
+    end;
+    R := FDoc.DGet(D, 'AFRelationship');
+    if (R = nil) or (R.Kind <> pok_Name) then
+      SpecFail(par_6_8_3, I, 'file specification without /AFRelationship');
+    if FSpecNums[I] < 0 then
+      SpecFail(par_6_8_4, I, 'direct file specification, not associated')
+    else if not FAssoc[FSpecNums[I]] then
+    begin
+      { a truncated array (incomplete facts) may hide the association }
+      if FWalkBroken or not FFacts.Complete then
+        FIncomplete[par_6_8_4] := True
+      else
+        SpecFail(par_6_8_4, I, 'file specification in no /AF array');
+    end;
+    EF := FDoc.DGet(D, 'EF');
+    if (EF <> nil) and EF.IsDictLike then
+      for K := 0 to High(EFKeys) do
+      begin
+        S := FDoc.DGet(EF, EFKeys[K]);
+        if (S = nil) or (S.Kind <> pok_Stream) then
+          Continue;
+        Sub := FDoc.DGet(S, 'Subtype');
+        if (Sub = nil) or (Sub.Kind <> pok_Name) then
+          SpecFail(par_6_8_1, I, 'embedded file without /Subtype')
+        else if not IsMimeType(Sub.NameVal) then
+          SpecFail(par_6_8_1, I, 'embedded file with /Subtype ' + AsciiText(Sub.NameVal));
+      end;
+  end;
+end;
+
+{ 6.9 on the configurations /D and /Configs of the catalog's /OCProperties:
+  a name that is a non-empty string (6.9-1), unique among the configurations
+  with /D first (6.9-2; only the later one of two fails), an /Order array
+  that names every optional content group of /OCGs (6.9-3; compared by
+  name, as veraPDF does), no /AS (6.9-4).
+  DE: 6.9 an den Konfigurationen /D und /Configs der /OCProperties des
+  Katalogs: ein Name, der ein nicht leerer String ist (6.9-1), eindeutig
+  unter den Konfigurationen mit /D zuerst (6.9-2; nur die spaetere von
+  zweien ist verletzt), ein /Order-Array, das jede Gruppe optionaler
+  Inhalte aus /OCGs nennt (6.9-3; verglichen nach Namen, wie veraPDF es
+  tut), kein /AS (6.9-4). }
+procedure TLandrixEInvoicePdfARuleCheck.CheckOptionalContent;
+var
+  OCP, OCGs, G, Configs, C, N, O: TLandrixEInvoicePdfObject;
+  Cfgs: array of TLandrixEInvoicePdfObject;
+  Groups, Seen: TOcNames;
+  Removed: TOcFlags;
+  GroupCount, SeenCount, CfgCount, I, K: Integer;
+  GroupsOk, HasD, HasName, NameOk: Boolean;
+  Name: TLandrixEInvoiceString;
+begin
+  Groups := nil;
+  Seen := nil;
+  Cfgs := nil;
+  Removed := nil;
+  OCP := FDoc.DGet(FDoc.Catalog, 'OCProperties');
+  if (OCP = nil) or (OCP.Kind <> pok_Dict) then
+    Exit;
+  GroupCount := 0;
+  GroupsOk := True;
+  OCGs := FDoc.DGet(OCP, 'OCGs');
+  if (OCGs <> nil) and (OCGs.Kind = pok_Arr) then
+    for I := 0 to OCGs.ArrCount - 1 do
+    begin
+      G := FDoc.Resolve(OCGs.ArrItem(I));
+      if (G = nil) or (G.Kind <> pok_Dict) then
+        Continue;
+      { the name compares count against the /Order work budget }
+      Inc(FNodesOc, 1 + GroupCount);
+      if (FNodesOc > MaxOcWork) or not OcEntryName(FDoc, G, Name) or not OcAdd(Groups, GroupCount, Name) then
+      begin
+        GroupsOk := False;
+        Break;
+      end;
+    end;
+
+  CfgCount := 0;
+  C := FDoc.DGet(OCP, 'D');
+  HasD := (C <> nil) and (C.Kind = pok_Dict);
+  Configs := FDoc.DGet(OCP, 'Configs');
+  if (Configs <> nil) and (Configs.Kind = pok_Arr) then
+    SetLength(Cfgs, Configs.ArrCount + 1)
+  else
+    SetLength(Cfgs, 1);
+  if HasD then
+  begin
+    Cfgs[0] := C;
+    CfgCount := 1;
+  end;
+  if (Configs <> nil) and (Configs.Kind = pok_Arr) then
+    for I := 0 to Configs.ArrCount - 1 do
+    begin
+      C := FDoc.Resolve(Configs.ArrItem(I));
+      if (C <> nil) and (C.Kind = pok_Dict) then
+      begin
+        Cfgs[CfgCount] := C;
+        Inc(CfgCount);
+      end;
+    end;
+
+  { beyond MaxOcNames configurations the rest stays unchecked }
+  if CfgCount > MaxOcNames then
+  begin
+    CfgCount := MaxOcNames;
+    FIncomplete[par_6_9_1] := True;
+    FIncomplete[par_6_9_2] := True;
+    FIncomplete[par_6_9_3] := True;
+    FIncomplete[par_6_9_4] := True;
+  end;
+  SeenCount := 0;
+  for I := 0 to CfgCount - 1 do
+  begin
+    C := Cfgs[I];
+    N := FDoc.DGet(C, 'Name');
+    HasName := (N <> nil) and (N.Kind = pok_Str);
+    NameOk := True;
+    Name := '';
+    if HasName then
+      NameOk := OcText(N.StrVal, Name);
+    if not HasName or (Name = '') then
+      FailAt(par_6_9_1, C, 'optional content configuration without a name');
+    if HasName then
+      if not NameOk then
+        FIncomplete[par_6_9_2] := True
+      else if not ((I = 0) and HasD) and OcContains(Seen, SeenCount, Name) then
+        FailAt(par_6_9_2, C, 'optional content configuration name used twice')
+      else if not OcAdd(Seen, SeenCount, Name) then
+        FIncomplete[par_6_9_2] := True;
+
+    O := FDoc.DGet(C, 'Order');
+    if (O <> nil) and (O.Kind = pok_Arr) then
+      if not GroupsOk then
+        FIncomplete[par_6_9_3] := True
+      else
+      begin
+        SetLength(Removed, GroupCount);
+        for K := 0 to GroupCount - 1 do
+          Removed[K] := False;
+        if not OcRemoveOrder(FDoc, O, Groups, GroupCount, Removed, FNodesOc, 0) then
+          FIncomplete[par_6_9_3] := True
+        else
+          for K := 0 to GroupCount - 1 do
+            if not Removed[K] then
+            begin
+              FailAt(par_6_9_3, C, 'optional content group missing from /Order');
+              Break;
+            end;
+      end;
+
+    if Known(C, 'AS') then
+      FailAt(par_6_9_4, C, 'optional content configuration with /AS');
+  end;
+end;
+
+{ 6.10-1: no /AlternatePresentations in the name dictionary; 6.11-1: no
+  /Requirements in the catalog as veraPDF reads it (an array, or a
+  dictionary whose /S is a name).
+  DE: 6.10-1: kein /AlternatePresentations im Namens-Dictionary; 6.11-1:
+  keine /Requirements im Katalog, wie veraPDF sie liest (ein Array oder ein
+  Dictionary, dessen /S ein Name ist). }
+procedure TLandrixEInvoicePdfARuleCheck.CheckCatalogLate;
+var
+  Cat, Names, V, S: TLandrixEInvoicePdfObject;
+begin
+  Cat := FDoc.Catalog;
+  Names := FDoc.DGet(Cat, 'Names');
+  if (Names <> nil) and Names.IsDictLike then
+  begin
+    V := FDoc.DGet(Names, 'AlternatePresentations');
+    if (V <> nil) and (V.Kind <> pok_Null) then
+      FailAt(par_6_10_1, Names, 'name dictionary with /AlternatePresentations');
+  end;
+  V := FDoc.DGet(Cat, 'Requirements');
+  if V <> nil then
+    if V.Kind = pok_Arr then
+      FailAt(par_6_11_1, Cat, 'catalog with /Requirements')
+    else if V.Kind = pok_Dict then
+    begin
+      S := FDoc.DGet(V, 'S');
+      if (S <> nil) and (S.Kind = pok_Name) then
+        FailAt(par_6_11_1, Cat, 'catalog with /Requirements');
+    end;
 end;
 
 procedure TLandrixEInvoicePdfARuleCheck.CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string);

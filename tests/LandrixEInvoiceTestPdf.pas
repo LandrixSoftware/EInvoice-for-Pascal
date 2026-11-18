@@ -1348,10 +1348,22 @@ begin
       Inc(Result);
 end;
 
+{ Level 1 (PDF/A) findings: the deliberately broken file specifications of
+  these tests also break the PDF/A rules of clause 6.8. }
+function IsPdfAFinding(D: TLandrixEInvoiceDiagnostic): Boolean;
+begin
+  Result := Copy(string(D.Path), 1, 6) = 'PDF/A ';
+end;
+
 { Level 2 findings: all others. }
 function EmbeddingCount(AResult: TLandrixEInvoicePdfCheckResult): Integer;
+var
+  I: Integer;
 begin
-  Result := Integer(AResult.Diagnostics.Count) - MetadataCount(AResult);
+  Result := 0;
+  for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
+    if not IsMetadataFinding(AResult.Diagnostics[I]) and not IsPdfAFinding(AResult.Diagnostics[I]) then
+      Inc(Result);
 end;
 
 function EmbeddingErrors(AResult: TLandrixEInvoicePdfCheckResult): Integer;
@@ -1360,7 +1372,19 @@ var
 begin
   Result := 0;
   for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
-    if not IsMetadataFinding(AResult.Diagnostics[I]) and (AResult.Diagnostics[I].Severity = eds_Error) then
+    if not IsMetadataFinding(AResult.Diagnostics[I]) and not IsPdfAFinding(AResult.Diagnostics[I]) and
+      (AResult.Diagnostics[I].Severity = eds_Error) then
+      Inc(Result);
+end;
+
+{ Errors of every level. }
+function AllErrors(AResult: TLandrixEInvoicePdfCheckResult): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
+    if AResult.Diagnostics[I].Severity = eds_Error then
       Inc(Result);
 end;
 
@@ -1801,7 +1825,8 @@ begin
     { nothing to do }
     RunCheck(SimplePdf('/Names << /EmbeddedFiles << /Names [(zugferd-invoice.xml) 4 0 R] >> >>',
       '<< /F (zugferd-invoice.xml) /EF << /F 5 0 R >> >>', '', CheckXml), R);
-    CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'ZUGFeRD 2.0');
+    { the errors of the first pass (PDF/A 6.8 of the bare file specification) stay as they are }
+    CheckEquals(AllErrors(R), Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'ZUGFeRD 2.0');
     Check(not R.FactsChecked and (R.Status[epl_Embedding] = eps_Incomplete), 'ZUGFeRD 2.0 untouched');
     R.Clear;
     CheckEquals(0, Checker.CheckInvoiceFacts(R, FacturXFacts(epr_Minimum, 'DE', 'DE')), 'not checked yet');
