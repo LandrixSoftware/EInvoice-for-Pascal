@@ -135,10 +135,10 @@ type
     pr_DERT02);
 
   { One rule: identifier, severity (fatal: eds_Error), business terms (the
-    diagnostic path), message and origin. Every row applies to Peppol BIS
+    Terms of the diagnostic), message and origin. Every row applies to Peppol BIS
     (UBL) only; a national rule tests its country itself.
     DE: Eine Regel: Kennung, Schwere (fatal: eds_Error), Geschaeftsbegriffe
-    (der Meldungspfad), Meldung und Herkunft. Jede Zeile gilt nur fuer
+    (Terms der Meldung), Meldung und Herkunft. Jede Zeile gilt nur fuer
     Peppol BIS (UBL); eine nationale Regel prueft ihr Land selbst. }
   TPeppolRow = record
     ID: string;
@@ -2236,10 +2236,10 @@ var
 begin
   if ADiagnostics = nil then
     Exit;
-  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, TLandrixEInvoiceString(ARow.Terms), 0, 0, 0,
-    TLandrixEInvoiceString(ARow.Message));
+  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, '', 0, 0, 0, TLandrixEInvoiceString(ARow.Message));
   D.Severity := ARow.Severity;
   D.RuleID := TLandrixEInvoiceString(ARow.ID);
+  D.Terms := TLandrixEInvoiceString(ARow.Terms);
 end;
 
 function Applies(const ASpec: TLandrixEInvoiceSpec): Boolean;

@@ -94,7 +94,31 @@ for I := 0 to Integer(D.Count) - 1 do
     WriteLn(string(D[I].RuleID), ' ', string(D[I].Message));
 ```
 
-`D.ToText` liefert alle Einträge, einen je Zeile.
+Jeder Verstoß gegen eine Regel auf dem Rechnungsmodell nennt in `Terms` die Geschäftsbegriffe,
+um die es in der Regel geht (z. B. `BT-106, BT-131`); die Factur-X-Code-Asserts behalten den
+Elementpfad in `Path`. Die Rechenregeln sagen zusätzlich, was sie erwartet und gefunden haben:
+BR-CO-10 bis BR-CO-17, BR-FXEXT-CO-10 bis BR-FXEXT-CO-13, BR-FXEXT-CO-15, BR-FXEXT-CO-16,
+BR-DEX-09 und PEPPOL-EN16931-R040, R046 und R120 setzen `Expected` und `Found` (Dezimalzahlen
+mit `.`; `Found` wie geschrieben, `Expected` wie die Regel ihn berechnet, unter Umständen mit
+mehr Nachkommastellen), `Calculation` (wie der erwartete Wert zustande kam, englisch; der
+Wortlaut kann sich ändern) und
+`Path`, den Modellpfad der ersten falschen Stelle, z. B. `InvoiceLines[0].LineAmount` oder
+`TaxAmountSubtotals[1].TaxAmount` (Indizes ab 0). R041, R042, R110, R111, R121 und R130 setzen
+nur den Pfad. BR-CO-17 vergleicht Beträge ohne Vorzeichen, wie die offizielle Regel, und zeigt
+sie so (außer bei einem Satz, der auf 0 rundet: dann muss der Steuerbetrag selbst auf 0 runden). Eine Regel, die mehrere Stellen beurteilt, meldet die erste. Schreibt das Ziel
+Unterpositionen flach, entfällt ein Pfad in die Positionen, weil er nicht zu Ihrer Rechnung
+passen würde. Die übrigen Regeln lassen diese Felder vorerst leer. Lesen und Schreiben nutzen
+`Path` weiterhin für den Elementpfad.
+
+```pascal
+for I := 0 to Integer(D.Count) - 1 do
+  if D[I].Expected <> '' then
+    WriteLn(string(D[I].RuleID), ' bei ', string(D[I].Path), ': erwartet ', string(D[I].Expected),
+      ', gefunden ', string(D[I].Found), ' (', string(D[I].Calculation), ')');
+```
+
+`D.ToText` liefert alle Einträge, einen je Zeile, mit den Begriffen nach dem Pfad und erwartetem
+und gefundenem Wert nach dem Text. Einen Eintrag mit allen Feldern kopiert `AddCopy`.
 
 ## Eine gelesene Rechnung prüfen
 

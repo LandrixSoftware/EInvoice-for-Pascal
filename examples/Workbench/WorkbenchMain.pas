@@ -609,6 +609,13 @@ begin
     S := S + ': ' + UI(D.Message);
     if D.Path <> '' then
       S := S + ' (' + UI(D.Path) + ')';
+    if D.Terms <> '' then
+      S := S + ' (' + UI(D.Terms) + ')';
+    if (D.Expected <> '') or (D.Found <> '') then
+      S := S + ' ' + T('expected', 'erwartet') + ' ' + UI(D.Expected) + ', ' + T('found', 'gefunden') + ' ' +
+        UI(D.Found);
+    if D.Calculation <> '' then
+      S := S + ' [' + UI(D.Calculation) + ']';
     Log(S);
   end;
 end;
@@ -915,6 +922,13 @@ begin
       S := S + ': ' + UI(F.Text);
       if F.Location <> '' then
         S := S + ' (' + UI(F.Location) + ')';
+      if F.Terms <> '' then
+        S := S + ' (' + UI(F.Terms) + ')';
+      if (F.Expected <> '') or (F.Found <> '') then
+        S := S + ' ' + T('expected', 'erwartet') + ' ' + UI(F.Expected) + ', ' + T('found', 'gefunden') + ' ' +
+          UI(F.Found);
+      if F.Calculation <> '' then
+        S := S + ' [' + UI(F.Calculation) + ']';
       Lines.Add(S);
     end;
     mmCheck.Lines.Assign(Lines);

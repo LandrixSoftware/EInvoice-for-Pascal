@@ -50,6 +50,7 @@ uses
   LandrixEInvoiceUBL,
   LandrixEInvoiceMapUBL,
   LandrixEInvoiceCheck,
+  LandrixEInvoiceSubLines,
   LandrixEInvoiceTestFramework;
 
 function SpecFor(const ATarget: TLandrixEInvoiceTarget): TLandrixEInvoiceSpec;
@@ -788,7 +789,7 @@ begin
     Check(D[0].Kind = edk_RuleViolation, 'kind');
     Check(D[0].Severity = eds_Error, 'severity');
     CheckEqualsInvoiceStr('LX-CC-01', D[0].RuleID, 'rule');
-    CheckEqualsInvoiceStr('BG-16', D[0].Path, 'business terms as path');
+    CheckEqualsInvoiceStr('BG-16', D[0].Terms, 'business terms as path');
     Check(Pos('RuleViolation [LX-CC-01] BG-16: ', string(D.ToText)) > 0, 'ToText: ' + string(D.ToText));
     Check(not LandrixEInvoiceCheckRule(Invoice, SpecFor(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL)),
       'LX-CC-01', nil), 'nil diagnostics');
@@ -1357,10 +1358,10 @@ begin
     end;
     D.Clear;
     LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D);
-    CheckEqualsInvoiceStr('BT-9', D[0].Path, 'due date: business term');
-    CheckEqualsInvoiceStr('BT-7', D[1].Path, 'VAT point date: business term');
-    CheckEqualsInvoiceStr('BT-73', D[2].Path, 'period start: business term');
-    CheckEqualsInvoiceStr('BT-135', D[3].Path, 'line period end: business term');
+    CheckEqualsInvoiceStr('BT-9', D[0].Terms, 'due date: business term');
+    CheckEqualsInvoiceStr('BT-7', D[1].Terms, 'VAT point date: business term');
+    CheckEqualsInvoiceStr('BT-73', D[2].Terms, 'period start: business term');
+    CheckEqualsInvoiceStr('BT-135', D[3].Terms, 'line period end: business term');
     Check(D[0].Severity = eds_Error, 'an error');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-29', nil), 'BR-29 skipped');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-30', nil), 'BR-30 skipped');
@@ -1380,8 +1381,8 @@ begin
       CheckEquals(2, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D), 'NaN dates: two errors, no rule, target ' +
         IntToStr(Ord(K)) + ': ' + string(D.ToText));
     end;
-    CheckEqualsInvoiceStr('BT-2', D[0].Path, 'invoice date: business term');
-    CheckEqualsInvoiceStr('BT-X-200', D[1].Path, 'despatch advice date: business term');
+    CheckEqualsInvoiceStr('BT-2', D[0].Terms, 'invoice date: business term');
+    CheckEqualsInvoiceStr('BT-X-200', D[1].Terms, 'despatch advice date: business term');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-03', nil), 'BR-03 skipped');
   finally
     Invoice.Free;
@@ -1449,8 +1450,8 @@ begin
     end;
     D.Clear;
     LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D);
-    CheckEqualsInvoiceStr('BT-152', D[0].Path, 'line rate: business term');
-    CheckEqualsInvoiceStr('BT-119', D[1].Path, 'breakdown rate: business term');
+    CheckEqualsInvoiceStr('BT-152', D[0].Terms, 'line rate: business term');
+    CheckEqualsInvoiceStr('BT-119', D[1].Terms, 'breakdown rate: business term');
     Check(D[0].Severity = eds_Error, 'an error');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-S-05', nil), 'BR-S-05 skipped');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', nil), 'BR-CO-17 skipped');
@@ -1471,8 +1472,8 @@ begin
       CheckEquals(4, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(K), D), 'NaN and huge: four errors, target ' +
         IntToStr(Ord(K)) + ': ' + string(D.ToText));
     end;
-    CheckEqualsInvoiceStr('BT-129', D[0].Path, 'quantity: business term');
-    CheckEqualsInvoiceStr('BT-20', D[3].Path, 'cash discount: business term');
+    CheckEqualsInvoiceStr('BT-129', D[0].Terms, 'quantity: business term');
+    CheckEqualsInvoiceStr('BT-20', D[3].Terms, 'cash discount: business term');
   finally
     Invoice.Free;
   end;
@@ -2509,6 +2510,193 @@ begin
   end;
 end;
 
+{ The details of the calculation rules: model path, expected and found
+  value, how the expected value was computed; ToText shows them. A line
+  the target writes flat has no model path. }
+procedure TestRuleDetails;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Sub: TLandrixInvoiceLine;
+  I: Integer;
+
+  procedure Expect(AKind: TTargetKind; const ARule, APath, AExpected, AFound, ACalculation: string);
+  begin
+    D.Clear;
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(AKind), TLandrixEInvoiceString(ARule), D),
+      ARule + ' violated');
+    CheckEquals(1, Integer(D.Count), ARule + ': one diagnostic');
+    if D.Count = 0 then
+      Exit;
+    CheckEqualsInvoiceStr(TLandrixEInvoiceString(APath), D[0].Path, ARule + ': path');
+    CheckEqualsInvoiceStr(TLandrixEInvoiceString(AExpected), D[0].Expected, ARule + ': expected');
+    CheckEqualsInvoiceStr(TLandrixEInvoiceString(AFound), D[0].Found, ARule + ': found');
+    if ACalculation <> '' then
+      Check(Pos(ACalculation, string(D[0].Calculation)) > 0, ARule + ': calculation "' +
+        string(D[0].Calculation) + '"');
+  end;
+
+  procedure Reset;
+  begin
+    Invoice.Free;
+    Invoice := TLandrixInvoice.Create;
+    FillComplete(Invoice);
+  end;
+
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := nil;
+  try
+    Reset;
+    Invoice.LineAmount := 99;
+    Expect(tk_XRUBL, 'BR-CO-10', 'LineAmount', '100.00', '99.00', 'net amounts (BT-131) of 1 line');
+    CheckEqualsInvoiceStr('BT-106, BT-131', D[0].Terms, 'BR-CO-10: terms');
+    Check(Pos('RuleViolation [BR-CO-10] LineAmount (BT-106, BT-131): ', string(D.ToText)) > 0, 'ToText: ' + string(D.ToText));
+    Check(Pos(' (expected 100.00, found 99.00)', string(D.ToText)) > 0, 'ToText details: ' + string(D.ToText));
+    Reset;
+    Invoice.TaxExclusiveAmount := 101;
+    Expect(tk_XRUBL, 'BR-CO-13', 'TaxExclusiveAmount', '100.00', '101.00', '(BT-106) 100.00 - ');
+    Reset;
+    Invoice.TaxAmountTotal := 20;
+    Expect(tk_XRCII, 'BR-CO-14', 'TaxAmountTotal', '19.00', '20.00', 'of 1 VAT breakdown');
+    Reset;
+    Invoice.TaxInclusiveAmount := 120;
+    Expect(tk_XRCII, 'BR-CO-15', 'TaxInclusiveAmount', '119.00', '120.00', 'CII also accepts');
+    Reset;
+    Invoice.PayableAmount := CentsValue(-5);
+    Expect(tk_XRUBL, 'BR-CO-16', 'PayableAmount', '119.00', '-0.05', 'with VAT (BT-112) 119.00 - paid');
+    Reset;
+    Invoice.LineAmount := CentsValue(10002);
+    Expect(tk_FXExtended, 'BR-FXEXT-CO-10', 'LineAmount', '100.00', '100.02', 'up to 0.01');
+    { BR-CO-17: the first wrong breakdown, rounded half up, the sign of the
+      taxable amount }
+    Reset;
+    with Invoice.TaxAmountSubtotals.AddTaxAmount do
+    begin
+      TaxableAmount := CentsValue(50);
+      TaxAmount := 2;
+      TaxCategory := idtfcc_S_StandardRate;
+      TaxPercent := 19;
+    end;
+    Expect(tk_XRUBL, 'BR-CO-17', 'TaxAmountSubtotals[1].TaxAmount', '0.10', '2.00', 'may be less than 1.00');
+    Expect(tk_XRCII, 'BR-CO-17', 'TaxAmountSubtotals[1].TaxAmount', '0.10', '2.00', 'may be up to 1.00');
+    Invoice.TaxAmountSubtotals[0].TaxAmount := -21;
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := -100;
+    Expect(tk_XRUBL, 'BR-CO-17', 'TaxAmountSubtotals[0].TaxAmount', '19.00', '21.00',
+      'magnitude of the VAT category taxable amount (BT-116) 100.00 x');
+    { a later rate that cannot be written skips the rule, as before }
+    Invoice.TaxAmountSubtotals[1].TaxPercent := 1e24;
+    D.Clear;
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', D), 'BR-CO-17 skipped: ' + string(D.ToText));
+    Reset;
+    Invoice.TaxAmountSubtotals[0].TaxPercent := 0.4;
+    Expect(tk_XRUBL, 'BR-CO-17', 'TaxAmountSubtotals[0].TaxAmount', '0.00', '19.00', 'rounds to 0');
+    { the Peppol allowance and line rules }
+    Reset;
+    AddAllowanceCharge(Invoice, False, True, True);
+    Invoice.AllowanceCharges[0].BaseAmount := 100;
+    Invoice.AllowanceCharges[0].MultiplierFactorNumeric := 10;
+    Invoice.AllowanceCharges[0].Amount := 5;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R040', 'AllowanceCharges[0].Amount', '10.00', '5.00',
+      'base amount 100.00 x percentage 10 / 100 (BT-93 x BT-94 / 100); the difference may be up to 0.02');
+    Invoice.AllowanceCharges[0].BaseAmount := 0;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R041', 'AllowanceCharges[0].BaseAmount', '', '', '');
+    Invoice.AllowanceCharges[0].BaseAmount := 100;
+    Invoice.AllowanceCharges[0].MultiplierFactorNumeric := 0;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R042', 'AllowanceCharges[0].MultiplierFactorNumeric', '', '', '');
+    Invoice.AllowanceCharges[0].MultiplierFactorNumeric := 10;
+    Invoice.AllowanceCharges[0].ChargeIndicator := True;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R040', 'AllowanceCharges[0].Amount', '10.00', '5.00', '(BT-100 x BT-101 / 100)');
+    Reset;
+    Invoice.InvoiceLines[0].Quantity := 3;
+    Invoice.InvoiceLines[0].NetPriceAmount := 33.3;
+    Expect(tk_XRCII, 'PEPPOL-EN16931-R120', 'InvoiceLines[0].LineAmount', '99.90', '100.00',
+      'invoiced quantity (BT-129) 3 x (item net price (BT-146) 33.30 / ');
+    Reset;
+    Invoice.InvoiceLines[0].GrossPriceAmount := 110;
+    Invoice.InvoiceLines[0].DiscountOnTheGrossPrice := 5;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R046', 'InvoiceLines[0].NetPriceAmount', '105.00', '100.00',
+      'gross price (BT-148) 110.00 - item price discount (BT-147) 5.00');
+    { the price as written: three decimals are written as four }
+    Invoice.InvoiceLines[0].NetPriceAmount := 4.125;
+    Invoice.InvoiceLines[0].GrossPriceAmount := 5;
+    Invoice.InvoiceLines[0].DiscountOnTheGrossPrice := 1;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R046', 'InvoiceLines[0].NetPriceAmount', '4.00', '4.1250', '');
+    { BR-FXEXT-CO-13 near the Int64 limit in cents: the expected value is
+      exact, the comparison as before }
+    Reset;
+    Invoice.InvoiceLines.Clear;
+    for I := 1 to 100 do
+      with Invoice.InvoiceLines.AddInvoiceLine do
+      begin
+        ID := TLandrixEInvoiceString(IntToStr(I));
+        LineAmount := CentsValue(92233720368547758);
+      end;
+    AddAllowanceCharge(Invoice, True, True, True);
+    Invoice.AllowanceCharges[0].Amount := CentsValue(10);
+    Invoice.TaxExclusiveAmount := 1;
+    Expect(tk_FXExtended, 'BR-FXEXT-CO-13', 'TaxExclusiveAmount', '92233720368547758.10', '1.00', '');
+    { the line rules that report the path only, on a second line }
+    Reset;
+    Sub := Invoice.InvoiceLines.AddInvoiceLine;
+    Sub.ID := '2';
+    Sub.Name := 'Item';
+    Sub.Quantity := 1;
+    Sub.UnitCode := iuc_piece;
+    Sub.NetPriceAmount := 0;
+    Sub.TaxCategory := idtfcc_S_StandardRate;
+    Sub.TaxPercent := 19;
+    Invoice.InvoicePeriodStartDate := EncodeDate(2026, 10, 5);
+    Invoice.InvoicePeriodEndDate := EncodeDate(2026, 10, 10);
+    Sub.InvoiceLinePeriodStartDate := EncodeDate(2026, 10, 1);
+    Sub.InvoiceLinePeriodEndDate := EncodeDate(2026, 10, 11);
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R110', 'InvoiceLines[1].InvoiceLinePeriodStartDate', '', '', '');
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R111', 'InvoiceLines[1].InvoiceLinePeriodEndDate', '', '', '');
+    Sub.BaseQuantity := -1;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R121', 'InvoiceLines[1].BaseQuantity', '', '', '');
+    Sub.BaseQuantity := 1;
+    Sub.BaseQuantityUnitCodeOther := 'KGM';
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R130', 'InvoiceLines[1].BaseQuantityUnitCodeOther', '', '', '');
+    { a sub line: nested, the path leads to it; written flat, no path }
+    Reset;
+    Sub := Invoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine;
+    Sub.ID := '1.1';
+    Sub.Name := 'Part';
+    Sub.Quantity := 1;
+    Sub.UnitCode := iuc_piece;
+    Sub.NetPriceAmount := 10;
+    Sub.LineAmount := 9;
+    Sub.TaxCategory := idtfcc_S_StandardRate;
+    Sub.TaxPercent := 19;
+    if LandrixEInvoiceSubLinesNested(Invoice, SpecOf(tk_XRCII)) then
+      Expect(tk_XRCII, 'PEPPOL-EN16931-R120', 'InvoiceLines[0].SubInvoiceLines[0].LineAmount', '10.00', '9.00', '')
+    else
+      Expect(tk_XRCII, 'PEPPOL-EN16931-R120', '', '10.00', '9.00', '');
+    Check(not LandrixEInvoiceSubLinesNested(Invoice, SpecOf(tk_Peppol)), 'Peppol BIS writes sub lines flat');
+    Expect(tk_Peppol, 'PEPPOL-EN16931-R120', '', '10.00', '9.00', '');
+    { a document level path survives the flat copy }
+    Invoice.TaxAmountTotal := 20;
+    Expect(tk_Peppol, 'BR-CO-14', 'TaxAmountTotal', '19.00', '20.00', '');
+    Invoice.TaxAmountTotal := 19;
+    { a number the flat copy leaves out (the group line) is not reported }
+    Invoice.InvoiceLines[0].BaseQuantity := 1e24;
+    D.Clear;
+    LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D);
+    CheckEquals(0, D.CountOf(edk_ConversionFailed), 'group line left out: ' + string(D.ToText));
+    D.Clear;
+    LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D);
+    CheckEquals(1, D.CountOf(edk_ConversionFailed), 'group line written nested: ' + string(D.ToText));
+    Invoice.InvoiceLines[0].BaseQuantity := 0;
+    Check(LandrixEInvoiceSubLinesNested(Invoice, SpecOf(tk_XRUBL)), 'XRechnung UBL writes sub lines nested');
+    Sub.GrossPriceAmount := 12;
+    Sub.DiscountOnTheGrossPrice := 1;
+    Expect(tk_XRUBL, 'PEPPOL-EN16931-R046', 'InvoiceLines[0].SubInvoiceLines[0].NetPriceAmount', '11.00', '10.00', '');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Check.RuleDiagnostic', TestRuleDiagnostic);
@@ -2538,6 +2726,7 @@ begin
   RegisterTest('Check.CodeListDeltas', TestCodeListDeltas);
   RegisterTest('Check.CodeListsAsWritten', TestCodeListsAsWritten);
   RegisterTest('Check.PeppolRules', TestPeppolRules);
+  RegisterTest('Check.RuleDetails', TestRuleDetails);
 end;
 
 end.

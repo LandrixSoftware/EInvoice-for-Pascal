@@ -129,8 +129,19 @@ type
       DE: Wird aus der Art gesetzt (LandrixEInvoiceDiagnosticDefaultSeverity);
       der Code, der den Eintrag anlegt, darf sie aendern. }
     Severity: TLandrixEInvoiceDiagnosticSeverity;
-    { Element path, e.g. /rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID.
-      DE: Elementpfad, z. B. /rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID. }
+    { Where. Reading, writing and the Factur-X code asserts: the element
+      path, e.g. /rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID. The
+      rule check of the invoice model: the model path of the first place
+      that violates the rule, e.g. InvoiceLines[0].LineAmount (indexes from
+      0, sub lines as InvoiceLines[0].SubInvoiceLines[1]), '' when the rule
+      names no single place. The PDF checker: the place in the PDF.
+      DE: Wo. Lesen, Schreiben und die Factur-X-Code-Asserts: der
+      Elementpfad, z. B. /rsm:CrossIndustryInvoice/rsm:ExchangedDocument/ram:ID.
+      Die Regelpruefung des Rechnungsmodells: der Modellpfad der ersten
+      Stelle, die die Regel verletzt, z. B. InvoiceLines[0].LineAmount
+      (Indizes ab 0, Unterpositionen als
+      InvoiceLines[0].SubInvoiceLines[1]), '', wenn die Regel keine
+      einzelne Stelle nennt. Der PDF-Pruefer: der Ort im PDF. }
     Path: TLandrixEInvoiceString;
     Line: Integer;
     Column: Integer;
@@ -143,6 +154,36 @@ type
       oder LX-CC-04); '' bei den anderen Arten. Regelkennungen sind
       stabil. }
     RuleID: TLandrixEInvoiceString;
+    { Rule check and calculation of the invoice model: the business terms
+      the entry is about, e.g. 'BT-106, BT-131'; '' otherwise.
+      DE: Regelpruefung und Berechnung des Rechnungsmodells: die
+      Geschaeftsbegriffe, um die es in dem Eintrag geht, z. B.
+      'BT-106, BT-131'; sonst ''. }
+    Terms: TLandrixEInvoiceString;
+    { Rule check: the value the rule expects and the value found at Path,
+      as text (decimal numbers with '.'; Found as written, Expected as the
+      rule computes it, possibly with more decimals; a rule that compares
+      magnitudes, as BR-CO-17 does, gives both without sign); '' when the
+      rule does not give them.
+      DE: Regelpruefung: der Wert, den die Regel erwartet, und der Wert, der
+      bei Path steht, als Text (Dezimalzahlen mit '.'; Found wie
+      geschrieben, Expected wie die Regel ihn berechnet, unter Umstaenden
+      mit mehr Nachkommastellen; eine Regel, die Betraege ohne Vorzeichen
+      vergleicht, wie BR-CO-17, gibt beide ohne Vorzeichen an); '', wenn
+      die Regel sie nicht angibt. }
+    Expected: TLandrixEInvoiceString;
+    Found: TLandrixEInvoiceString;
+    { Rule check: how Expected was computed, in English for people (e.g.
+      'sum of the line net amounts (BT-131) of 3 lines'); the wording may
+      change in any release; '' when the rule does not give it.
+      DE: Regelpruefung: wie Expected berechnet wurde, englisch fuer
+      Menschen (z. B. 'sum of the line net amounts (BT-131) of 3 lines');
+      der Wortlaut kann sich in jeder Version aendern; '', wenn die Regel
+      ihn nicht angibt. }
+    Calculation: TLandrixEInvoiceString;
+    { Copies every field of ASource.
+      DE: Uebernimmt jedes Feld von ASource. }
+    procedure Assign(ASource: TLandrixEInvoiceDiagnostic);
   end;
 
   { List of diagnostics (owns its entries).
@@ -157,15 +198,24 @@ type
     function AddDiagnostic(AKind: TLandrixEInvoiceDiagnosticKind;
       const APath: TLandrixEInvoiceString; ALine, AColumn: Integer; AOffset: Int64;
       const AMessage: TLandrixEInvoiceString): TLandrixEInvoiceDiagnostic;
+    { Adds a copy of ASource (every field) and returns it.
+      DE: Fuegt eine Kopie von ASource (jedes Feld) hinzu und liefert sie. }
+    function AddCopy(ASource: TLandrixEInvoiceDiagnostic): TLandrixEInvoiceDiagnostic;
     { Number of entries of one kind. DE: Anzahl der Eintraege einer Art. }
     function CountOf(AKind: TLandrixEInvoiceDiagnosticKind): Integer;
     { True if an entry has the severity eds_Error.
       DE: True, wenn ein Eintrag die Schwere eds_Error hat. }
     function HasErrors: Boolean;
     { All entries, one per line: "line:column kind path: message", with
-      " [rule]" after the kind when RuleID is set.
+      " [rule]" after the kind when RuleID is set, the terms after the path
+      (in parentheses when there is a path, else in its place) and
+      " (expected ..., found ...)" after the message when one of them is
+      set.
       DE: Alle Eintraege, einer je Zeile: "Zeile:Spalte Art Pfad: Text",
-      mit " [Regel]" nach der Art, wenn RuleID gesetzt ist. }
+      mit " [Regel]" nach der Art, wenn RuleID gesetzt ist, den Begriffen
+      nach dem Pfad (in Klammern, wenn es einen Pfad gibt, sonst an seiner
+      Stelle) und " (expected ..., found ...)" nach dem Text, wenn eines
+      davon gesetzt ist. }
     function ToText: TLandrixEInvoiceString;
   end;
 
@@ -212,6 +262,22 @@ begin
   Result := KindNames[AKind];
 end;
 
+procedure TLandrixEInvoiceDiagnostic.Assign(ASource: TLandrixEInvoiceDiagnostic);
+begin
+  Kind := ASource.Kind;
+  Severity := ASource.Severity;
+  Path := ASource.Path;
+  Line := ASource.Line;
+  Column := ASource.Column;
+  Offset := ASource.Offset;
+  Message := ASource.Message;
+  RuleID := ASource.RuleID;
+  Terms := ASource.Terms;
+  Expected := ASource.Expected;
+  Found := ASource.Found;
+  Calculation := ASource.Calculation;
+end;
+
 function TLandrixEInvoiceDiagnostics.GetItem(Index: TLandrixEInvoiceListIndex): TLandrixEInvoiceDiagnostic;
 begin
   Result := TLandrixEInvoiceDiagnostic(inherited Items[Index]);
@@ -229,6 +295,13 @@ begin
   Result.Column := AColumn;
   Result.Offset := AOffset;
   Result.Message := AMessage;
+  Add(Result);
+end;
+
+function TLandrixEInvoiceDiagnostics.AddCopy(ASource: TLandrixEInvoiceDiagnostic): TLandrixEInvoiceDiagnostic;
+begin
+  Result := TLandrixEInvoiceDiagnostic.Create;
+  Result.Assign(ASource);
   Add(Result);
 end;
 
@@ -257,6 +330,7 @@ function TLandrixEInvoiceDiagnostics.ToText: TLandrixEInvoiceString;
 var
   I: TLandrixEInvoiceListIndex;
   D: TLandrixEInvoiceDiagnostic;
+  Where: TLandrixEInvoiceString;
 begin
   Result := '';
   for I := 0 to Count - 1 do
@@ -266,7 +340,16 @@ begin
       TLandrixEInvoiceString(IntToStr(D.Column)) + ' ' + KindNames[D.Kind];
     if D.RuleID <> '' then
       Result := Result + ' [' + D.RuleID + ']';
-    Result := Result + ' ' + D.Path + ': ' + D.Message + #13#10;
+    Where := D.Path;
+    if D.Terms <> '' then
+      if Where = '' then
+        Where := D.Terms
+      else
+        Where := Where + ' (' + D.Terms + ')';
+    Result := Result + ' ' + Where + ': ' + D.Message;
+    if (D.Expected <> '') or (D.Found <> '') then
+      Result := Result + ' (expected ' + D.Expected + ', found ' + D.Found + ')';
+    Result := Result + #13#10;
   end;
 end;
 

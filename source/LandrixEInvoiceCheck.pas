@@ -276,10 +276,10 @@ type
     cr_BRCL21XR, cr_BRCL21BIS, cr_BRCL22, cr_BRCL23XR, cr_BRCL23BIS, cr_BRCL24, cr_BRCL25, cr_BRCL26);
 
   { One check row: identifier, the specifications it applies to, severity,
-    business terms (used as diagnostic path), message and origin. Legacy
+    business terms (the Terms of the diagnostic), message and origin. Legacy
     rows run only through LandrixEInvoiceCheckRule.
     DE: Eine Pruefzeile: Kennung, die Spezifikationen, fuer die sie gilt,
-    Schwere, Geschaeftsbegriffe (als Meldungspfad), Meldung und Herkunft.
+    Schwere, Geschaeftsbegriffe (Terms der Meldung), Meldung und Herkunft.
     Altzeilen laufen nur ueber LandrixEInvoiceCheckRule. }
   TCheckRow = record
     ID: string;
@@ -2123,6 +2123,120 @@ begin
   Result := ExactOf(LandrixEInvoicePriceToLexical(Writable(AValue)));
 end;
 
+{ --- details of a violation ------------------------------------------------------ }
+
+type
+  { What a rule reports beside the violation: Path, Expected, Found and
+    Calculation of TLandrixEInvoiceDiagnostic; '' when the rule gives
+    none. The rule sets them where it decides.
+    DE: Was eine Regel neben dem Verstoss meldet: Path, Expected, Found und
+    Calculation von TLandrixEInvoiceDiagnostic; '', wenn die Regel nichts
+    angibt. Die Regel setzt sie dort, wo sie entscheidet. }
+  TRuleDetail = record
+    Path: TLandrixEInvoiceString;
+    Expected: TLandrixEInvoiceString;
+    Found: TLandrixEInvoiceString;
+    Calculation: TLandrixEInvoiceString;
+  end;
+
+procedure ClearDetail(out ADetail: TRuleDetail);
+begin
+  ADetail.Path := '';
+  ADetail.Expected := '';
+  ADetail.Found := '';
+  ADetail.Calculation := '';
+end;
+
+procedure SetDetail(var ADetail: TRuleDetail; const APath, AExpected, AFound,
+  ACalculation: TLandrixEInvoiceString);
+begin
+  ADetail.Path := APath;
+  ADetail.Expected := AExpected;
+  ADetail.Found := AFound;
+  ADetail.Calculation := ACalculation;
+end;
+
+{ An exact number as text: '.' before the decimals, trailing zeros removed
+  down to AMinDecimals ('-12.30' with 2). }
+function ExactText(const A: TExact; AMinDecimals: Integer): TLandrixEInvoiceString;
+var
+  I, N, P, Decimals: Integer;
+begin
+  Result := '';
+  N := Integer(Length(A.Digits));
+  for I := N - 1 downto 0 do
+    Result := Result + WideChar(Ord('0') + A.Digits[I]);
+  if A.Scale < 0 then
+    for I := 1 to -A.Scale do
+      Result := Result + '0'
+  else
+  begin
+    while Length(Result) <= A.Scale do
+      Result := '0' + Result;
+    if A.Scale > 0 then
+      Result := Copy(Result, 1, Length(Result) - A.Scale) + '.' + Copy(Result, Length(Result) - A.Scale + 1, A.Scale);
+  end;
+  while (Length(Result) > 1) and (Result[1] = '0') and (Result[2] <> '.') do
+    Delete(Result, 1, 1);
+  P := Pos('.', Result);
+  if P > 0 then
+  begin
+    while Result[Length(Result)] = '0' do
+      Delete(Result, Length(Result), 1);
+    if Result[Length(Result)] = '.' then
+      Delete(Result, Length(Result), 1);
+  end;
+  P := Pos('.', Result);
+  if P = 0 then
+    Decimals := 0
+  else
+    Decimals := Length(Result) - P;
+  if (Decimals = 0) and (AMinDecimals > 0) then
+    Result := Result + '.';
+  while Decimals < AMinDecimals do
+  begin
+    Result := Result + '0';
+    Inc(Decimals);
+  end;
+  if A.Negative and (N > 0) then
+    Result := '-' + Result;
+end;
+
+{ An amount in cents as text with two decimals ('-12.30'). }
+function CentsText(ACents: Int64): TLandrixEInvoiceString;
+var
+  E: TExact;
+begin
+  E := ExactInt(ACents);
+  Inc(E.Scale, 2);
+  Result := ExactText(E, 2);
+end;
+
+{ The largest integer not above A. }
+function ExactFloor(const A: TExact): TExact;
+var
+  I, N: Integer;
+  Fraction: Boolean;
+begin
+  if A.Scale <= 0 then
+  begin
+    Result := A;
+    Exit;
+  end;
+  N := A.Scale;
+  if N > Integer(Length(A.Digits)) then
+    N := Integer(Length(A.Digits));
+  Fraction := False;
+  for I := 0 to N - 1 do
+    if A.Digits[I] <> 0 then
+      Fraction := True;
+  Result.Scale := 0;
+  Result.Digits := Trimmed(Copy(A.Digits, N, Integer(Length(A.Digits)) - N));
+  Result.Negative := A.Negative and (Integer(Length(Result.Digits)) > 0);
+  if A.Negative and Fraction then
+    Result := ExactSub(Result, ExactOf('1'));
+end;
+
 { --- calculation rules ---------------------------------------------------------- }
 
 { An amount as written, in cents (LandrixEInvoiceAmountToLexical); from
@@ -2217,10 +2331,12 @@ end;
   um Bemessungsgrundlage x Satz / 100, auf Cent gerundet (XPath round:
   halb aufwaerts), in UBL echt, in CII einschliesslich. Der Satz, wie er
   geschrieben wird (zwei Nachkommastellen), genau fuer jede Groesse. }
-function TaxAmountWrong(ATax: TLandrixInvoiceTaxAmount; AStrict: Boolean): Boolean;
+function TaxAmountWrong(ATax: TLandrixInvoiceTaxAmount; AStrict: Boolean; const APath: TLandrixEInvoiceString;
+  var ADetail: TRuleDetail): Boolean;
 var
-  Tax: Int64;
-  Rate: TExact;
+  Tax, Taxable: Int64;
+  Rate, X: TExact;
+  Allowed: TLandrixEInvoiceString;
 begin
   Tax := Cents(ATax.TaxAmount);
   Rate := RateExact(ATax.TaxPercent);
@@ -2228,22 +2344,87 @@ begin
   if (ExactCompare(Rate, ExactOf('-0.5')) >= 0) and (ExactCompare(Rate, ExactOf('0.5')) < 0) then
   begin
     Result := (Tax < -50) or (Tax >= 50);
+    if Result then
+      SetDetail(ADetail, APath, '0.00', CentsText(Tax), 'the VAT category rate (BT-119) ' + ExactText(Rate, 2) +
+        ' rounds to 0, so the VAT category tax amount (BT-117) has to round to 0');
     Exit;
   end;
+  Taxable := Cents(ATax.TaxableAmount);
   if AStrict then
-    Result := not TaxWithin(Cents(ATax.TaxableAmount), Rate, Tax, 100)
+    Result := not TaxWithin(Taxable, Rate, Tax, 100)
   else
-    Result := not TaxWithin(Cents(ATax.TaxableAmount), Rate, Tax, 101);
+    Result := not TaxWithin(Taxable, Rate, Tax, 101);
+  if not Result then
+    Exit;
+  { the expected amount as TaxWithin compares it: |taxable| x rate / 100
+    rounded half up to cents (XPath round), against the magnitude of the
+    tax amount
+    DE: der erwartete Betrag, wie TaxWithin ihn vergleicht:
+    |Bemessungsgrundlage| x Satz / 100, halb aufwaerts auf Cent gerundet
+    (XPath round), gegen den Betrag des Steuerbetrags ohne Vorzeichen }
+  X := ExactMul(ExactInt(Abs(Taxable)), Rate);
+  Inc(X.Scale, 2);
+  X := ExactFloor(ExactAdd(X, ExactOf('0.5')));
+  Inc(X.Scale, 2);
+  if AStrict then
+    Allowed := 'less than 1.00'
+  else
+    Allowed := 'up to 1.00';
+  SetDetail(ADetail, APath, ExactText(X, 2), CentsText(Abs(Tax)), 'magnitude of the VAT category taxable amount ' +
+    '(BT-116) ' + CentsText(Abs(Taxable)) + ' x VAT category rate (BT-119) ' + ExactText(Rate, 2) +
+    ' / 100, rounded to cents, against the magnitude of the VAT category tax amount (BT-117); the difference ' +
+    'may be ' + Allowed);
 end;
 
 { The calculation rules on the totals as written.
   DE: Die Rechenregeln auf den geschriebenen Summen. }
 function CalculationViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
-  const ASpec: TLandrixEInvoiceSpec): Boolean;
+  const ASpec: TLandrixEInvoiceSpec; var ADetail: TRuleDetail): Boolean;
 var
   Lines, Allowances, Charges, Expected: Int64;
   LineCount, AllLines, AllowanceCount, ChargeCount, I: Integer;
   Tolerance: Int64;
+  Calculation: TLandrixEInvoiceString;
+  Scratch: TRuleDetail;
+
+  function Count(AValue: Integer; const AOne, AMany: TLandrixEInvoiceString): TLandrixEInvoiceString;
+  begin
+    if AValue = 1 then
+      Result := '1 ' + AOne
+    else
+      Result := TLandrixEInvoiceString(IntToStr(AValue)) + ' ' + AMany;
+  end;
+
+  function Within(ACents: Int64): TLandrixEInvoiceString;
+  begin
+    Result := '; the difference may be up to ' + CentsText(ACents);
+  end;
+
+  { sets the detail of a violated total rule
+    DE: setzt die Einzelheiten einer verletzten Summenregel }
+  procedure Total(AViolated: Boolean; const APath: TLandrixEInvoiceString; AExpected, AFound: Int64;
+    const ACalculation: TLandrixEInvoiceString);
+  begin
+    if AViolated then
+      SetDetail(ADetail, APath, CentsText(AExpected), CentsText(AFound), ACalculation);
+  end;
+
+  { an amount in cents, exact (sums of several amounts cannot overflow)
+    DE: ein Betrag in Cent, genau (Summen mehrerer Betraege laufen nicht
+    ueber) }
+  function CentsExact(ACents: Int64): TExact;
+  begin
+    Result := ExactInt(ACents);
+    Inc(Result.Scale, 2);
+  end;
+
+  procedure TotalExact(AViolated: Boolean; const APath: TLandrixEInvoiceString; const AExpected: TExact;
+    AFound: Int64; const ACalculation: TLandrixEInvoiceString);
+  begin
+    if AViolated then
+      SetDetail(ADetail, APath, ExactText(AExpected, 2), CentsText(AFound), ACalculation);
+  end;
+
 begin
   Lines := 0;
   LineCount := 0;
@@ -2256,14 +2437,34 @@ begin
   Result := False;
   case AIndex of
     cr_BRCO10:
-      Result := Cents(AInvoice.LineAmount) <> Lines;
+      begin
+        Result := Cents(AInvoice.LineAmount) <> Lines;
+        Total(Result, 'LineAmount', Lines, Cents(AInvoice.LineAmount), 'sum of the invoice line net amounts (BT-131) of ' +
+          Count(LineCount, 'line', 'lines'));
+      end;
     cr_BRCO11:
-      Result := Cents(AInvoice.AllowanceTotalAmount) <> Allowances;
+      begin
+        Result := Cents(AInvoice.AllowanceTotalAmount) <> Allowances;
+        Total(Result, 'AllowanceTotalAmount', Allowances, Cents(AInvoice.AllowanceTotalAmount),
+          'sum of the document level allowance amounts (BT-92) of ' +
+          Count(AllowanceCount, 'allowance', 'allowances'));
+      end;
     cr_BRCO12:
-      Result := Cents(AInvoice.ChargeTotalAmount) <> Charges;
+      begin
+        Result := Cents(AInvoice.ChargeTotalAmount) <> Charges;
+        Total(Result, 'ChargeTotalAmount', Charges, Cents(AInvoice.ChargeTotalAmount),
+          'sum of the document level charge amounts (BT-99) of ' + Count(ChargeCount, 'charge', 'charges'));
+      end;
     cr_BRCO13:
-      Result := Cents(AInvoice.TaxExclusiveAmount) <>
-        Cents(AInvoice.LineAmount) - Cents(AInvoice.AllowanceTotalAmount) + Cents(AInvoice.ChargeTotalAmount);
+      begin
+        Expected := Cents(AInvoice.LineAmount) - Cents(AInvoice.AllowanceTotalAmount) +
+          Cents(AInvoice.ChargeTotalAmount);
+        Result := Cents(AInvoice.TaxExclusiveAmount) <> Expected;
+        Total(Result, 'TaxExclusiveAmount', Expected, Cents(AInvoice.TaxExclusiveAmount),
+          'sum of invoice line net amounts (BT-106) ' + CentsText(Cents(AInvoice.LineAmount)) +
+          ' - sum of allowances (BT-107) ' + CentsText(Cents(AInvoice.AllowanceTotalAmount)) +
+          ' + sum of charges (BT-108) ' + CentsText(Cents(AInvoice.ChargeTotalAmount)));
+      end;
     cr_BRCO14:
       { UBL: no breakdown, no rule; CII: the empty sum is 0 }
       if (ASpec.Target.Syntax = esy_CII) or (AInvoice.TaxAmountSubtotals.Count > 0) then
@@ -2272,17 +2473,30 @@ begin
         for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
           Inc(Expected, Cents(AInvoice.TaxAmountSubtotals[I].TaxAmount));
         Result := Cents(AInvoice.TaxAmountTotal) <> Expected;
+        Total(Result, 'TaxAmountTotal', Expected, Cents(AInvoice.TaxAmountTotal),
+          'sum of the VAT category tax amounts (BT-117) of ' +
+          Count(Integer(AInvoice.TaxAmountSubtotals.Count), 'VAT breakdown', 'VAT breakdowns'));
       end;
     cr_BRCO15:
       { CII also accepts BT-112 = BT-109 }
-      Result := (Cents(AInvoice.TaxInclusiveAmount) <>
-        Cents(AInvoice.TaxExclusiveAmount) + Cents(AInvoice.TaxAmountTotal)) and
-        ((ASpec.Target.Syntax <> esy_CII) or
-         (Cents(AInvoice.TaxInclusiveAmount) <> Cents(AInvoice.TaxExclusiveAmount)));
+      begin
+        Expected := Cents(AInvoice.TaxExclusiveAmount) + Cents(AInvoice.TaxAmountTotal);
+        Result := (Cents(AInvoice.TaxInclusiveAmount) <> Expected) and
+          ((ASpec.Target.Syntax <> esy_CII) or
+           (Cents(AInvoice.TaxInclusiveAmount) <> Cents(AInvoice.TaxExclusiveAmount)));
+        Calculation := 'invoice total without VAT (BT-109) ' + CentsText(Cents(AInvoice.TaxExclusiveAmount)) +
+          ' + invoice total VAT amount (BT-110) ' + CentsText(Cents(AInvoice.TaxAmountTotal));
+        if ASpec.Target.Syntax = esy_CII then
+          Calculation := Calculation + '; CII also accepts the total without VAT';
+        Total(Result, 'TaxInclusiveAmount', Expected, Cents(AInvoice.TaxInclusiveAmount), Calculation);
+      end;
     cr_BRCO16, cr_BRFXEXTCO16, cr_BRDEX09:
       begin
         Expected := Cents(AInvoice.TaxInclusiveAmount) - Cents(AInvoice.PrepaidAmount) +
           Cents(AInvoice.PayableRoundingAmount);
+        Calculation := 'invoice total with VAT (BT-112) ' + CentsText(Cents(AInvoice.TaxInclusiveAmount)) +
+          ' - paid amount (BT-113) ' + CentsText(Cents(AInvoice.PrepaidAmount)) + ' + rounding amount (BT-114) ' +
+          CentsText(Cents(AInvoice.PayableRoundingAmount));
         if ThirdPartyWritten(AInvoice, ASpec) then
         begin
           { BR-CO-16 gives way to BR-DEX-09 (KoSIT: information in the
@@ -2290,26 +2504,66 @@ begin
           if AIndex = cr_BRCO16 then
             Exit;
           Inc(Expected, ThirdPartyCents(AInvoice));
+          Calculation := Calculation + ' + third-party payments ' + CentsText(ThirdPartyCents(AInvoice));
         end
         else if AIndex = cr_BRDEX09 then
           Exit;
         Result := Cents(AInvoice.PayableAmount) <> Expected;
+        Total(Result, 'PayableAmount', Expected, Cents(AInvoice.PayableAmount), Calculation);
       end;
     cr_BRCO17:
+      { every breakdown is judged (a later rate that cannot be written
+        skips the rule), the details are those of the first wrong one
+        DE: jede Aufschluesselung wird beurteilt (ein spaeterer Satz, der
+        sich nicht schreiben laesst, laesst die Regel entfallen), die
+        Einzelheiten sind die der ersten falschen }
       for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
-        if TaxAmountWrong(AInvoice.TaxAmountSubtotals[I], ASpec.Target.Syntax = esy_UBL) then
+      begin
+        ClearDetail(Scratch);
+        if TaxAmountWrong(AInvoice.TaxAmountSubtotals[I], ASpec.Target.Syntax = esy_UBL,
+           'TaxAmountSubtotals[' + TLandrixEInvoiceString(IntToStr(I)) + '].TaxAmount', Scratch) and not Result then
+        begin
           Result := True;
+          ADetail := Scratch;
+        end;
+      end;
     cr_BRFXEXTCO10:
-      Result := Abs(Cents(AInvoice.LineAmount) - Lines) > AllLines;
+      begin
+        Result := Abs(Cents(AInvoice.LineAmount) - Lines) > AllLines;
+        Total(Result, 'LineAmount', Lines, Cents(AInvoice.LineAmount), 'sum of the line net amounts (BT-131) of ' +
+          Count(LineCount, 'line', 'lines') + ' without status or with status DETAIL' + Within(AllLines));
+      end;
     cr_BRFXEXTCO11:
-      Result := Abs(Cents(AInvoice.AllowanceTotalAmount) - Allowances) > AllowanceCount;
+      begin
+        Result := Abs(Cents(AInvoice.AllowanceTotalAmount) - Allowances) > AllowanceCount;
+        Total(Result, 'AllowanceTotalAmount', Allowances, Cents(AInvoice.AllowanceTotalAmount),
+          'sum of the document level allowance amounts (BT-92) of ' +
+          Count(AllowanceCount, 'allowance', 'allowances') + Within(AllowanceCount));
+      end;
     cr_BRFXEXTCO12:
-      Result := Abs(Cents(AInvoice.ChargeTotalAmount) - Charges) > ChargeCount;
+      begin
+        Result := Abs(Cents(AInvoice.ChargeTotalAmount) - Charges) > ChargeCount;
+        Total(Result, 'ChargeTotalAmount', Charges, Cents(AInvoice.ChargeTotalAmount),
+          'sum of the document level charge amounts (BT-99) of ' + Count(ChargeCount, 'charge', 'charges') +
+          Within(ChargeCount));
+      end;
     cr_BRFXEXTCO13:
-      Result := Abs(Cents(AInvoice.TaxExclusiveAmount) - Lines + Allowances - Charges) > Tolerance;
+      begin
+        Result := Abs(Cents(AInvoice.TaxExclusiveAmount) - Lines + Allowances - Charges) > Tolerance;
+        TotalExact(Result, 'TaxExclusiveAmount', ExactAdd(ExactSub(CentsExact(Lines), CentsExact(Allowances)),
+          CentsExact(Charges)), Cents(AInvoice.TaxExclusiveAmount),
+          'sum of the line net amounts (BT-131) ' + CentsText(Lines) + ' - sum of the allowances (BT-92) ' +
+          CentsText(Allowances) + ' + sum of the charges (BT-99) ' + CentsText(Charges) + Within(Tolerance));
+      end;
     cr_BRFXEXTCO15:
-      Result := Abs(Cents(AInvoice.TaxInclusiveAmount) - Cents(AInvoice.TaxAmountTotal) -
-        Cents(AInvoice.TaxExclusiveAmount)) > Tolerance;
+      begin
+        Result := Abs(Cents(AInvoice.TaxInclusiveAmount) - Cents(AInvoice.TaxAmountTotal) -
+          Cents(AInvoice.TaxExclusiveAmount)) > Tolerance;
+        TotalExact(Result, 'TaxInclusiveAmount', ExactAdd(CentsExact(Cents(AInvoice.TaxExclusiveAmount)),
+          CentsExact(Cents(AInvoice.TaxAmountTotal))), Cents(AInvoice.TaxInclusiveAmount),
+          'invoice total without VAT (BT-109) ' + CentsText(Cents(AInvoice.TaxExclusiveAmount)) +
+          ' + invoice total VAT amount (BT-110) ' + CentsText(Cents(AInvoice.TaxAmountTotal)) + Within(Tolerance));
+      end;
   else
     { the other rules are no calculation rules }
     ;
@@ -3760,10 +4014,12 @@ end;
   Positionsebene neben einem Prozentsatz auch als 0. R040: Betrag =
   Grundbetrag x Prozentsatz / 100 innerhalb der Toleranz. }
 function PeppolAllowanceViolated(AIndex: TCheckRuleIndex; AItem: TLandrixInvoiceAllowanceCharge;
-  AOnLine: Boolean; APercentDecimals: Integer; const ASlack: TExact): Boolean;
+  AOnLine: Boolean; APercentDecimals: Integer; const ASlack: TExact; const APath: TLandrixEInvoiceString;
+  var ADetail: TRuleDetail): Boolean;
 var
   HasPercent, HasBase: Boolean;
-  Expected: TExact;
+  Expected, Percent: TExact;
+  Terms: TLandrixEInvoiceString;
 begin
   HasPercent := AItem.MultiplierFactorNumeric <> 0;
   HasBase := (AItem.BaseAmount <> 0) or (AOnLine and HasPercent);
@@ -3772,14 +4028,38 @@ begin
     cr_PeppolR040:
       if HasPercent and HasBase then
       begin
-        Expected := ExactDiv(ExactMul(AmountExact(AItem.BaseAmount),
-          ExactOf(LandrixEInvoiceDecimalToLexical(Writable(AItem.MultiplierFactorNumeric), APercentDecimals))), ExactOf('100'));
+        Percent := ExactOf(LandrixEInvoiceDecimalToLexical(Writable(AItem.MultiplierFactorNumeric),
+          APercentDecimals));
+        Expected := ExactDiv(ExactMul(AmountExact(AItem.BaseAmount), Percent), ExactOf('100'));
         Result := not WithinSlack(AmountExact(AItem.Amount), Expected, ASlack);
+        if Result then
+        begin
+          if AOnLine and AItem.ChargeIndicator then
+            Terms := 'BT-142 x BT-143'
+          else if AOnLine then
+            Terms := 'BT-137 x BT-138'
+          else if AItem.ChargeIndicator then
+            Terms := 'BT-100 x BT-101'
+          else
+            Terms := 'BT-93 x BT-94';
+          SetDetail(ADetail, APath + '.Amount', ExactText(Expected, 2), LandrixEInvoiceAmountToLexical(AItem.Amount),
+            'base amount ' + LandrixEInvoiceAmountToLexical(AItem.BaseAmount) + ' x percentage ' +
+            ExactText(Percent, 0) + ' / 100 (' + Terms + ' / 100); the difference may be up to ' +
+            ExactText(ASlack, 2));
+        end;
       end;
     cr_PeppolR041:
-      Result := HasPercent and not HasBase;
+      begin
+        Result := HasPercent and not HasBase;
+        if Result then
+          ADetail.Path := APath + '.BaseAmount';
+      end;
     cr_PeppolR042:
-      Result := HasBase and not HasPercent;
+      begin
+        Result := HasBase and not HasPercent;
+        if Result then
+          ADetail.Path := APath + '.MultiplierFactorNumeric';
+      end;
   else
     { the other rules are no allowance rules }
     ;
@@ -3787,18 +4067,22 @@ begin
 end;
 
 function PeppolLineAllowancesViolated(AIndex: TCheckRuleIndex; ALines: TLandrixInvoiceLines; ASubLines: Boolean;
-  APercentDecimals: Integer; const ASlack: TExact): Boolean;
+  APercentDecimals: Integer; const ASlack: TExact; const APath: TLandrixEInvoiceString;
+  var ADetail: TRuleDetail): Boolean;
 var
   I, J: TLandrixEInvoiceListIndex;
+  Line: TLandrixEInvoiceString;
 begin
   Result := True;
   for I := 0 to ALines.Count - 1 do
   begin
+    Line := APath + '[' + TLandrixEInvoiceString(IntToStr(I)) + ']';
     for J := 0 to ALines[I].AllowanceCharges.Count - 1 do
-      if PeppolAllowanceViolated(AIndex, ALines[I].AllowanceCharges[J], True, APercentDecimals, ASlack) then
+      if PeppolAllowanceViolated(AIndex, ALines[I].AllowanceCharges[J], True, APercentDecimals, ASlack,
+         Line + '.AllowanceCharges[' + TLandrixEInvoiceString(IntToStr(J)) + ']', ADetail) then
         Exit;
     if ASubLines and PeppolLineAllowancesViolated(AIndex, ALines[I].SubInvoiceLines, True, APercentDecimals,
-       ASlack) then
+       ASlack, Line + '.SubInvoiceLines', ADetail) then
       Exit;
   end;
   Result := False;
@@ -3818,7 +4102,7 @@ end;
   DE: Dokument- und Positionsebene; UBL prueft nur die Nachlaesse und
   Zuschlaege von cac:InvoiceLine, CII die jeder geschriebenen Position. }
 function PeppolAllowancesViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
-  const ASpec: TLandrixEInvoiceSpec): Boolean;
+  const ASpec: TLandrixEInvoiceSpec; var ADetail: TRuleDetail): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
   Slack: TExact;
@@ -3828,7 +4112,8 @@ begin
   Result := True;
   Slack := PeppolSlack(AInvoice, ASpec);
   for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
-    if PeppolAllowanceViolated(AIndex, AInvoice.AllowanceCharges[I], False, 4, Slack) then
+    if PeppolAllowanceViolated(AIndex, AInvoice.AllowanceCharges[I], False, 4, Slack,
+       'AllowanceCharges[' + TLandrixEInvoiceString(IntToStr(I)) + ']', ADetail) then
       Exit;
   IsCII := ASpec.Target.Syntax = esy_CII;
   if IsCII then
@@ -3836,7 +4121,7 @@ begin
   else
     Decimals := 2;
   Result := PeppolLineAllowancesViolated(AIndex, AInvoice.InvoiceLines, IsCII and SubLinesWritten(AInvoice, ASpec),
-    Decimals, Slack);
+    Decimals, Slack, 'InvoiceLines', ADetail);
 end;
 
 { The VAT accounting currency (BT-6) is written when it differs from the
@@ -3923,17 +4208,25 @@ end;
   fehlende oder 0-Basismenge zaehlt als 1); R121 Basismenge ueber 0; R130
   die Einheit der Basismenge ist die der Menge. }
 function PeppolLineViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; ALine: TLandrixInvoiceLine;
-  const ASlack: TExact): Boolean;
+  const ASlack: TExact; const APath: TLandrixEInvoiceString; var ADetail: TRuleDetail): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
-  Base, Allowances, Charges, Value: TExact;
+  Base, Allowances, Charges, Value, Quantity: TExact;
   BaseUnit: TLandrixEInvoiceString;
 begin
   Result := False;
   case AIndex of
     cr_PeppolR046:
-      Result := (ALine.GrossPriceAmount <> 0) and (ExactCompare(PriceExact(ALine.NetPriceAmount),
-        ExactSub(PriceExact(ALine.GrossPriceAmount), PriceExact(ALine.DiscountOnTheGrossPrice))) <> 0);
+      if ALine.GrossPriceAmount <> 0 then
+      begin
+        Value := ExactSub(PriceExact(ALine.GrossPriceAmount), PriceExact(ALine.DiscountOnTheGrossPrice));
+        Result := ExactCompare(PriceExact(ALine.NetPriceAmount), Value) <> 0;
+        if Result then
+          SetDetail(ADetail, APath + '.NetPriceAmount', ExactText(Value, 2),
+            LandrixEInvoicePriceToLexical(Writable(ALine.NetPriceAmount)), 'item gross price (BT-148) ' +
+            ExactText(PriceExact(ALine.GrossPriceAmount), 2) + ' - item price discount (BT-147) ' +
+            ExactText(PriceExact(ALine.DiscountOnTheGrossPrice), 2));
+      end;
     cr_PeppolR110:
       Result := PeriodWritten(AInvoice.InvoicePeriodStartDate, AInvoice.InvoicePeriodEndDate) and
         PeriodDateSet(AInvoice.InvoicePeriodStartDate) and
@@ -3962,9 +4255,16 @@ begin
             Charges := ExactAdd(Charges, AmountExact(ALine.AllowanceCharges[I].Amount))
           else
             Allowances := ExactAdd(Allowances, AmountExact(ALine.AllowanceCharges[I].Amount));
-        Value := ExactSub(ExactAdd(ExactMul(ExactOf(LandrixEInvoiceQuantityToLexical(Writable(ALine.Quantity))),
-          ExactDiv(PriceExact(ALine.NetPriceAmount), Base)), Charges), Allowances);
+        Quantity := ExactOf(LandrixEInvoiceQuantityToLexical(Writable(ALine.Quantity)));
+        Value := ExactSub(ExactAdd(ExactMul(Quantity, ExactDiv(PriceExact(ALine.NetPriceAmount), Base)), Charges),
+          Allowances);
         Result := not WithinSlack(AmountExact(ALine.LineAmount), Value, ASlack);
+        if Result then
+          SetDetail(ADetail, APath + '.LineAmount', ExactText(Value, 2), LandrixEInvoiceAmountToLexical(ALine.LineAmount),
+            'invoiced quantity (BT-129) ' + ExactText(Quantity, 0) + ' x (item net price (BT-146) ' +
+            ExactText(PriceExact(ALine.NetPriceAmount), 2) + ' / item price base quantity (BT-149) ' +
+            ExactText(Base, 0) + ') + line charges (BT-141) ' + ExactText(Charges, 2) + ' - line allowances (BT-136) ' +
+            ExactText(Allowances, 2) + '; the difference may be up to ' + ExactText(ASlack, 2));
       end;
     cr_PeppolR121:
       Result := (ALine.BaseQuantity <> 0) and
@@ -3980,18 +4280,41 @@ begin
     { the other rules are no Peppol line rules }
     ;
   end;
+  if not Result then
+    Exit;
+  case AIndex of
+    cr_PeppolR110:
+      ADetail.Path := APath + '.InvoiceLinePeriodStartDate';
+    cr_PeppolR111:
+      ADetail.Path := APath + '.InvoiceLinePeriodEndDate';
+    cr_PeppolR121:
+      ADetail.Path := APath + '.BaseQuantity';
+    cr_PeppolR130:
+      if Present(LandrixEInvoiceUnitCodeToStr(ALine.BaseQuantityUnitCode)) then
+        ADetail.Path := APath + '.BaseQuantityUnitCode'
+      else
+        ADetail.Path := APath + '.BaseQuantityUnitCodeOther';
+  else
+    { R046 and R120 set their details above }
+    ;
+  end;
 end;
 
 function AnyPeppolLineViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; ALines: TLandrixInvoiceLines;
-  ASubLines: Boolean; const ASlack: TExact): Boolean;
+  ASubLines: Boolean; const ASlack: TExact; const APath: TLandrixEInvoiceString; var ADetail: TRuleDetail): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
+  Line: TLandrixEInvoiceString;
 begin
   Result := True;
   for I := 0 to ALines.Count - 1 do
-    if PeppolLineViolated(AIndex, AInvoice, ALines[I], ASlack) or
-       (ASubLines and AnyPeppolLineViolated(AIndex, AInvoice, ALines[I].SubInvoiceLines, True, ASlack)) then
+  begin
+    Line := APath + '[' + TLandrixEInvoiceString(IntToStr(I)) + ']';
+    if PeppolLineViolated(AIndex, AInvoice, ALines[I], ASlack, Line, ADetail) or
+       (ASubLines and AnyPeppolLineViolated(AIndex, AInvoice, ALines[I].SubInvoiceLines, True, ASlack,
+       Line + '.SubInvoiceLines', ADetail)) then
       Exit;
+  end;
   Result := False;
 end;
 
@@ -4002,13 +4325,19 @@ end;
   und R130 (Kontext cac:Price) auch an cac:SubInvoiceLine; CII prueft jede
   Position. Unterpositionen zaehlen nur, wo sie geschrieben werden. }
 function PeppolLinesViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
-  const ASpec: TLandrixEInvoiceSpec): Boolean;
+  const ASpec: TLandrixEInvoiceSpec; var ADetail: TRuleDetail): Boolean;
 begin
   Result := AnyPeppolLineViolated(AIndex, AInvoice, AInvoice.InvoiceLines, SubLinesWritten(AInvoice, ASpec) and
-    ((ASpec.Target.Syntax = esy_CII) or (AIndex in [cr_PeppolR046, cr_PeppolR130])), PeppolSlack(AInvoice, ASpec));
+    ((ASpec.Target.Syntax = esy_CII) or (AIndex in [cr_PeppolR046, cr_PeppolR130])), PeppolSlack(AInvoice, ASpec),
+    'InvoiceLines', ADetail);
 end;
 
-function Violated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+{ Whether rule AIndex is violated; ADetail gets what the rule reports
+  beside that (only where it is violated).
+  DE: Ob die Regel AIndex verletzt ist; ADetail erhaelt, was die Regel
+  daneben meldet (nur bei einem Verstoss). }
+function Violated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
+  var ADetail: TRuleDetail): Boolean;
 var
   NoDefaultEM, IsPeppol: Boolean;
   Seller, Buyer: TLandrixInvoiceAccountingParty;
@@ -4236,15 +4565,15 @@ begin
       Result := TaxCurrencyWritten(AInvoice) and
         (NormalizedSpace(AInvoice.TaxCurrencyCode) = NormalizedSpace(AInvoice.InvoiceCurrencyCode));
     cr_PeppolR040, cr_PeppolR041, cr_PeppolR042:
-      Result := PeppolAllowancesViolated(AIndex, AInvoice, ASpec);
+      Result := PeppolAllowancesViolated(AIndex, AInvoice, ASpec, ADetail);
     cr_PeppolR053, cr_PeppolR054, cr_PeppolR055:
       Result := PeppolTaxTotalViolated(AIndex, AInvoice, ASpec);
     cr_PeppolR046, cr_PeppolR110, cr_PeppolR111, cr_PeppolR120XR, cr_PeppolR120BIS, cr_PeppolR121, cr_PeppolR130:
-      Result := PeppolLinesViolated(AIndex, AInvoice, ASpec);
+      Result := PeppolLinesViolated(AIndex, AInvoice, ASpec, ADetail);
     cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17,
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
     cr_BRDEX09:
-      Result := CalculationViolated(AIndex, AInvoice, ASpec);
+      Result := CalculationViolated(AIndex, AInvoice, ASpec, ADetail);
     cr_BRCL01..cr_BRCL26:
       Result := CodeListViolated(AIndex, AInvoice, ASpec);
   end;
@@ -4271,9 +4600,10 @@ begin
     AFound.NaN := True;
   if ADiagnostics = nil then
     Exit;
-  D := ADiagnostics.AddDiagnostic(edk_ConversionFailed, TLandrixEInvoiceString(ATerms), 0, 0, 0,
+  D := ADiagnostics.AddDiagnostic(edk_ConversionFailed, '', 0, 0, 0,
     AWhat + ' cannot be written (NaN, infinite or 1e23 and above); the rules that cannot judge it are skipped');
   D.Severity := eds_Error;
+  D.Terms := TLandrixEInvoiceString(ATerms);
 end;
 
 { The percentage of each allowance or charge, and its rate on document
@@ -4368,9 +4698,10 @@ begin
   Inc(AFound.Count);
   if ADiagnostics = nil then
     Exit;
-  D := ADiagnostics.AddDiagnostic(edk_ConversionFailed, TLandrixEInvoiceString(ATerms), 0, 0, 0,
+  D := ADiagnostics.AddDiagnostic(edk_ConversionFailed, '', 0, 0, 0,
     AWhat + ' cannot be written (NaN or outside 0001-9999); the rules that cannot judge it are skipped');
   D.Severity := eds_Error;
+  D.Terms := TLandrixEInvoiceString(ATerms);
 end;
 
 { The dates of the lines and sub lines; a delivery note date only with its
@@ -4465,17 +4796,16 @@ begin
   ReportUnwritableDates(AInvoice, ADiagnostics, Result);
 end;
 
-procedure AddViolation(ADiagnostics: TLandrixEInvoiceDiagnostics; const AID, ATerms, AMessage: string;
-  ASeverity: TLandrixEInvoiceDiagnosticSeverity);
-var
-  D: TLandrixEInvoiceDiagnostic;
+function AddViolation(ADiagnostics: TLandrixEInvoiceDiagnostics; const AID, ATerms, AMessage: string;
+  ASeverity: TLandrixEInvoiceDiagnosticSeverity): TLandrixEInvoiceDiagnostic;
 begin
+  Result := nil;
   if ADiagnostics = nil then
     Exit;
-  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, TLandrixEInvoiceString(ATerms), 0, 0, 0,
-    TLandrixEInvoiceString(AMessage));
-  D.Severity := ASeverity;
-  D.RuleID := TLandrixEInvoiceString(AID);
+  Result := ADiagnostics.AddDiagnostic(edk_RuleViolation, '', 0, 0, 0, TLandrixEInvoiceString(AMessage));
+  Result.Severity := ASeverity;
+  Result.RuleID := TLandrixEInvoiceString(AID);
+  Result.Terms := TLandrixEInvoiceString(ATerms);
 end;
 
 { Violated; a rule that cannot judge a number the writers cannot format
@@ -4484,28 +4814,47 @@ end;
   Writer nicht formatieren koennen, gilt als erfuellt
   (EUnwritableNumber). }
 function ViolatedWritable(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice;
-  const ASpec: TLandrixEInvoiceSpec): Boolean;
+  const ASpec: TLandrixEInvoiceSpec; var ADetail: TRuleDetail): Boolean;
 begin
   try
-    Result := Violated(AIndex, AInvoice, ASpec);
+    Result := Violated(AIndex, AInvoice, ASpec, ADetail);
   except
     on EUnwritableNumber do
       Result := False;
   end;
 end;
 
-{ Runs rule AIndex if it applies; False and a diagnostic on a violation.
+{ Runs rule AIndex if it applies; False and a diagnostic on a violation,
+  with the details of the rule. AFlattened: AInvoice is the flat copy of
+  the caller's invoice (sub lines the target does not write nested), so a
+  model path into its lines would not fit the caller's invoice and is left
+  out.
   DE: Fuehrt die Regel AIndex aus, wenn sie gilt; False und eine Meldung
-  bei einem Verstoss. }
+  bei einem Verstoss, mit den Einzelheiten der Regel. AFlattened:
+  AInvoice ist die flache Kopie der Rechnung des Aufrufers
+  (Unterpositionen, die das Ziel nicht verschachtelt schreibt), ein
+  Modellpfad in ihre Positionen passte nicht zur Rechnung des Aufrufers und
+  entfaellt. }
 function Run(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
-  ADiagnostics: TLandrixEInvoiceDiagnostics): Boolean;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; AFlattened: Boolean): Boolean;
+var
+  Detail: TRuleDetail;
+  D: TLandrixEInvoiceDiagnostic;
 begin
   Result := True;
-  if not Applies(CheckRows[AIndex], ASpec) or not ViolatedWritable(AIndex, AInvoice, ASpec) then
+  ClearDetail(Detail);
+  if not Applies(CheckRows[AIndex], ASpec) or not ViolatedWritable(AIndex, AInvoice, ASpec, Detail) then
     Exit;
   Result := False;
-  AddViolation(ADiagnostics, CheckRows[AIndex].ID, CheckRows[AIndex].Terms, CheckRows[AIndex].Message,
+  D := AddViolation(ADiagnostics, CheckRows[AIndex].ID, CheckRows[AIndex].Terms, CheckRows[AIndex].Message,
     CheckRows[AIndex].Severity);
+  if D = nil then
+    Exit;
+  if not (AFlattened and (Copy(Detail.Path, 1, 12) = 'InvoiceLines')) then
+    D.Path := Detail.Path;
+  D.Expected := Detail.Expected;
+  D.Found := Detail.Found;
+  D.Calculation := Detail.Calculation;
 end;
 
 { Runs VAT rule AGroup/ANumber (EN 16931 targets, the profiles of
@@ -4556,23 +4905,27 @@ var
   Flat: TLandrixInvoice;
   Found: TUnwritable;
 begin
-  { numbers and dates the writers write but cannot format: errors; the
-    rules that cannot judge them hold, with a NaN no rule runs
-    DE: Zahlen und Daten, die die Writer nicht formatieren koennen: Fehler;
-    die Regeln, die sie nicht beurteilen koennen, gelten als erfuellt, bei
-    NaN laeuft keine Regel }
-  Found := ReportUnwritableValues(AInvoice, ADiagnostics);
-  Result := Found.Count;
-  if Found.NaN then
-    Exit;
   { checked as written: sub lines the target does not write nested are
-    flat (the writer reports that) }
+    flat (the writer reports that)
+    DE: geprueft wie geschrieben: Unterpositionen, die das Ziel nicht
+    verschachtelt schreibt, sind flach (das meldet der Writer) }
   Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
   try
     if Flat <> nil then
       AInvoice := Flat;
+    { numbers and dates the writers write but cannot format: errors (only
+      what is written: lines the flat copy leaves out do not count); the
+      rules that cannot judge them hold, with a NaN no rule runs
+      DE: Zahlen und Daten, die die Writer schreiben, aber nicht formatieren
+      koennen: Fehler (nur was geschrieben wird: Positionen, die die flache
+      Kopie weglaesst, zaehlen nicht); die Regeln, die sie nicht beurteilen
+      koennen, gelten als erfuellt, bei NaN laeuft keine Regel }
+    Found := ReportUnwritableValues(AInvoice, ADiagnostics);
+    Result := Found.Count;
+    if Found.NaN then
+      Exit;
     for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
-      if not CheckRows[I].Legacy and not Run(I, AInvoice, ASpec, ADiagnostics) and
+      if not CheckRows[I].Legacy and not Run(I, AInvoice, ASpec, ADiagnostics, Flat <> nil) and
          (CheckRows[I].Severity = eds_Error) then
         Inc(Result);
     if TryCollectTaxUses(AInvoice, ASpec, TaxUses) then
@@ -4612,7 +4965,6 @@ begin
       if CheckRows[I].Legacy then
         Inc(LegacyRows);
     end;
-  Unwritable := ReportUnwritableValues(AInvoice, nil);
   Flat := nil;
   if (Rows = 0) or (LegacyRows < Rows) then
     Flat := LandrixEInvoiceFlattenSubLines(AInvoice, ASpec, nil);
@@ -4620,6 +4972,8 @@ begin
     Written := AInvoice;
     if Flat <> nil then
       Written := Flat;
+    { as LandrixEInvoiceCheckInvoice: only what is written counts }
+    Unwritable := ReportUnwritableValues(Written, nil);
     { an identifier can have one row per syntax or standard (BR-51, BR-CL-21) }
     for I := Low(TCheckRuleIndex) to High(TCheckRuleIndex) do
       if TLandrixEInvoiceString(CheckRows[I].ID) = ARuleID then
@@ -4629,10 +4983,10 @@ begin
           Continue;
         if CheckRows[I].Legacy then
         begin
-          if not Run(I, AInvoice, ASpec, ADiagnostics) then
+          if not Run(I, AInvoice, ASpec, ADiagnostics, False) then
             Result := False;
         end
-        else if not Run(I, Written, ASpec, ADiagnostics) then
+        else if not Run(I, Written, ASpec, ADiagnostics, Flat <> nil) then
           Result := False;
       end;
     if Found then

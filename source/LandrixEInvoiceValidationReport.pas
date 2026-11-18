@@ -13,7 +13,7 @@
 }
 
 { Writes the result of a validation (LandrixEInvoiceValidation) as an XML
-  report of format version 1.0, namespace
+  report of format version 1.1, namespace
   urn:landrix:einvoice:validation-report:1, schema
   schemas/landrix-einvoice-validation-report-1.xsd: the document, the
   verdict, every part with its status, the PDF facts and the flat list of
@@ -23,7 +23,7 @@
   sanitized, so the report never fails
   because of the document it describes.
   DE: Schreibt das Ergebnis einer Pruefung (LandrixEInvoiceValidation) als
-  XML-Bericht im Format 1.0, Namespace
+  XML-Bericht im Format 1.1, Namespace
   urn:landrix:einvoice:validation-report:1, Schema
   schemas/landrix-einvoice-validation-report-1.xsd: das Dokument, das
   Urteil, jeden Teil mit seinem Status, die PDF-Fakten und die flache
@@ -89,7 +89,7 @@ uses
 
 const
   ReportNamespace = 'urn:landrix:einvoice:validation-report:1';
-  ReportVersion = '1.0';
+  ReportVersion = '1.1';
   GeneratorName = 'EInvoice-for-Pascal';
 
   VerdictNames: array[TLandrixEInvoiceVerdict] of TLandrixXmlUtf8 = ('accepted', 'rejected', 'incomplete');
@@ -261,6 +261,21 @@ begin
     TokenAttribute(W, 'step', StepNames[F.Step]);
     if F.Predicted then
       W.AttributeUtf8('predicted', 'true');
+    { since 1.1: the details of the rule check; location keeps its meaning
+      of 1.0 (the business terms of a rule check finding), the model path
+      is modelPath
+      DE: seit 1.1: die Einzelheiten der Regelpruefung; location behaelt
+      seine Bedeutung aus 1.0 (die Geschaeftsbegriffe eines Befunds der
+      Regelpruefung), der Modellpfad ist modelPath }
+    { a finding with terms comes from the rule check of the invoice model
+      (every rule row names its terms)
+      DE: ein Befund mit Begriffen stammt aus der Regelpruefung des
+      Rechnungsmodells (jede Regelzeile nennt ihre Begriffe) }
+    if F.Terms <> '' then
+      TextAttribute(W, 'modelPath', F.Location, Sanitized);
+    TextAttribute(W, 'expected', F.Expected, Sanitized);
+    TextAttribute(W, 'found', F.Found, Sanitized);
+    TextAttribute(W, 'calculation', F.Calculation, Sanitized);
     if F.Line > 0 then
     begin
       W.Attribute('line', IntToStr(F.Line));
@@ -275,7 +290,10 @@ begin
       else
         W.AttributeUtf8('positionIn', 'invoice');
     end;
-    Location := LandrixEInvoiceReportSanitize(F.Location, Sanitized);
+    if F.Terms <> '' then
+      Location := LandrixEInvoiceReportSanitize(F.Terms, Sanitized)
+    else
+      Location := LandrixEInvoiceReportSanitize(F.Location, Sanitized);
     Text := LandrixEInvoiceReportSanitize(F.Text, Sanitized);
     SanitizedAttribute(W, Sanitized);
     if Location <> '' then

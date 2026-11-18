@@ -142,10 +142,13 @@ type
     scenario, a processing error, a part that raised, a document that
     could not be read), the rule of the PDF checker (BR-HYBRID-..,
     LX-PDF-..). Location: the XPath location (KoSIT), the element path
-    (reading, rule check) or the place in the PDF as the PDF checker writes
-    it (e.g. /Root/Names/EmbeddedFiles/Names[1]/UF, XMP fx:Version); Line
-    and Column 0 when unknown (KoSIT, reading, the rule check and
-    BR-HYBRID-12: in the invoice XML; LX-PDF-11: in the XMP packet).
+    (reading, the Factur-X code asserts), the model path of the rule check
+    (see TLandrixEInvoiceDiagnostic.Path; often '') or the place in the PDF
+    as the PDF checker writes it (e.g. /Root/Names/EmbeddedFiles/Names[1]/UF,
+    XMP fx:Version); Line and Column 0 when unknown (KoSIT, reading, the
+    rule check and BR-HYBRID-12: in the invoice XML; LX-PDF-11: in the XMP
+    packet). Terms, Expected, Found and Calculation: as in
+    TLandrixEInvoiceDiagnostic (rule check), '' otherwise.
     DE: Ein Befund. RuleID: der KoSIT-Code (cvc-..., generic-error oder
     die id des asserts bzw. reports), die Regelkennung der eigenen
     Regelpruefung (z. B. BR-DE-15), beim Lesen die Art der Meldung (z. B.
@@ -153,10 +156,13 @@ type
     Szenario, ein Verarbeitungsfehler, ein Teil mit Ausnahme, ein Dokument,
     das sich nicht lesen liess), die Regel des PDF-Pruefers (BR-HYBRID-..,
     LX-PDF-..). Location: der XPath-Ort (KoSIT), der Elementpfad (Lesen,
-    Regelpruefung) oder der Ort im PDF, wie der PDF-Pruefer ihn schreibt
-    (z. B. /Root/Names/EmbeddedFiles/Names[1]/UF, XMP fx:Version); Line
-    und Column 0, wenn unbekannt (KoSIT, Lesen, Regelpruefung und
-    BR-HYBRID-12: in der Rechnungs-XML; LX-PDF-11: im XMP-Paket). }
+    die Factur-X-Code-Asserts), der Modellpfad der Regelpruefung (siehe
+    TLandrixEInvoiceDiagnostic.Path; oft '') oder der Ort im PDF, wie der
+    PDF-Pruefer ihn schreibt (z. B. /Root/Names/EmbeddedFiles/Names[1]/UF,
+    XMP fx:Version); Line und Column 0, wenn unbekannt (KoSIT, Lesen,
+    Regelpruefung und BR-HYBRID-12: in der Rechnungs-XML; LX-PDF-11: im
+    XMP-Paket). Terms, Expected, Found und Calculation: wie in
+    TLandrixEInvoiceDiagnostic (Regelpruefung), sonst ''. }
   TLandrixEInvoiceFinding = class(TObject)
   private
     FPart: TLandrixEInvoiceValidationPart;
@@ -168,6 +174,10 @@ type
     FText: TLandrixEInvoiceString;
     FPredicted: Boolean;
     FStep: TLandrixEInvoiceFindingStep;
+    FTerms: TLandrixEInvoiceString;
+    FExpected: TLandrixEInvoiceString;
+    FFound: TLandrixEInvoiceString;
+    FCalculation: TLandrixEInvoiceString;
   public
     { The part that reported it. DE: Der Teil, der ihn gemeldet hat. }
     property Part: TLandrixEInvoiceValidationPart read FPart;
@@ -189,6 +199,16 @@ type
     { KoSIT: the step that reported it; efs_None otherwise.
       DE: KoSIT: der Schritt, der ihn gemeldet hat; sonst efs_None. }
     property Step: TLandrixEInvoiceFindingStep read FStep;
+    { Rule check: the fields of the same name of TLandrixEInvoiceDiagnostic
+      (business terms, expected and found value, how the expected value
+      came about); '' otherwise.
+      DE: Regelpruefung: die gleichnamigen Felder von
+      TLandrixEInvoiceDiagnostic (Geschaeftsbegriffe, erwarteter und
+      gefundener Wert, wie der erwartete Wert zustande kam); sonst ''. }
+    property Terms: TLandrixEInvoiceString read FTerms;
+    property Expected: TLandrixEInvoiceString read FExpected;
+    property Found: TLandrixEInvoiceString read FFound;
+    property Calculation: TLandrixEInvoiceString read FCalculation;
   end;
 
   { The result of a validation.
@@ -216,6 +236,7 @@ type
     function AddFinding(APart: TLandrixEInvoiceValidationPart; const ARuleID: TLandrixEInvoiceString;
       ASeverity: TLandrixEInvoiceDiagnosticSeverity; const ALocation: TLandrixEInvoiceString;
       ALine, AColumn: Integer; const AText: TLandrixEInvoiceString): TLandrixEInvoiceFinding;
+    procedure AddDiagnosticFinding(APart: TLandrixEInvoiceValidationPart; ADiagnostic: TLandrixEInvoiceDiagnostic);
   public
     constructor Create;
     destructor Destroy; override;
@@ -524,6 +545,21 @@ begin
   Result.FText := AText;
   Result.FPredicted := (APart = evp_ModelCheck) and (ARuleID <> '');
   Result.FStep := efs_None;
+end;
+
+{ A finding from a diagnostic of the rule check or the PDF checker, with
+  its rule details. }
+procedure TLandrixEInvoiceDocumentValidation.AddDiagnosticFinding(APart: TLandrixEInvoiceValidationPart;
+  ADiagnostic: TLandrixEInvoiceDiagnostic);
+var
+  F: TLandrixEInvoiceFinding;
+begin
+  F := AddFinding(APart, ADiagnostic.RuleID, ADiagnostic.Severity, ADiagnostic.Path, ADiagnostic.Line,
+    ADiagnostic.Column, ADiagnostic.Message);
+  F.FTerms := ADiagnostic.Terms;
+  F.FExpected := ADiagnostic.Expected;
+  F.FFound := ADiagnostic.Found;
+  F.FCalculation := ADiagnostic.Calculation;
 end;
 
 { A part that raised: a document the facade cannot read fails reading;
@@ -984,7 +1020,7 @@ begin
   for Part := evp_PdfEmbedding to evp_PdfA do
     for I := 0 to D.Count - 1 do
       if PdfFindingPart(D[I]) = Part then
-        AResult.AddFinding(Part, D[I].RuleID, D[I].Severity, D[I].Path, D[I].Line, D[I].Column, D[I].Message);
+        AResult.AddDiagnosticFinding(Part, D[I]);
   for J := 0 to AResult.FindingCount - First - 1 do
     AResult.FFindings.Move(First + J, J);
   Embedding := PartStatusOf(Pdf.Status[epl_Embedding]);
@@ -1067,8 +1103,7 @@ begin
         end;
       end;
       for I := 0 to D.Count - 1 do
-        AResult.AddFinding(evp_ModelCheck, D[I].RuleID, D[I].Severity, D[I].Path, D[I].Line, D[I].Column,
-          D[I].Message);
+        AResult.AddDiagnosticFinding(evp_ModelCheck, D[I]);
       if Errors > 0 then
         AResult.FStatus[evp_ModelCheck] := evr_Failed
       else

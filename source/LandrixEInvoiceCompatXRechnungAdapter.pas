@@ -502,7 +502,6 @@ const
 var
   Doc: TLandrixEInvoiceDocument;
   I: TLandrixEInvoiceListIndex;
-  Item: TLandrixEInvoiceDiagnostic;
   Text: string;
 begin
   Result := False;
@@ -516,13 +515,7 @@ begin
       AInvoice.Assign(Doc.Invoice);
       if ADiagnostics <> nil then
         for I := 0 to Doc.Diagnostics.Count - 1 do
-        begin
-          Item := ADiagnostics.AddDiagnostic(Doc.Diagnostics[I].Kind, Doc.Diagnostics[I].Path,
-            Doc.Diagnostics[I].Line, Doc.Diagnostics[I].Column, Doc.Diagnostics[I].Offset,
-            Doc.Diagnostics[I].Message);
-          Item.Severity := Doc.Diagnostics[I].Severity;
-          Item.RuleID := Doc.Diagnostics[I].RuleID;
-        end;
+          ADiagnostics.AddCopy(Doc.Diagnostics[I]);
     finally
       Doc.Free;
     end;

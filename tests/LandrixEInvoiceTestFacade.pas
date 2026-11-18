@@ -150,6 +150,24 @@ begin
   end;
 end;
 
+{ BR-CO-10 with its details (LineAmount 99 instead of 100). }
+procedure CheckDetails(D: TLandrixEInvoiceDiagnostics; const AWhere: string);
+var
+  I: TLandrixEInvoiceListIndex;
+begin
+  for I := 0 to D.Count - 1 do
+    if D[I].RuleID = 'BR-CO-10' then
+    begin
+      CheckEqualsInvoiceStr('LineAmount', D[I].Path, AWhere + ': path');
+      CheckEqualsInvoiceStr('BT-106, BT-131', D[I].Terms, AWhere + ': terms');
+      CheckEqualsInvoiceStr('100.00', D[I].Expected, AWhere + ': expected');
+      CheckEqualsInvoiceStr('99.00', D[I].Found, AWhere + ': found');
+      Check(D[I].Calculation <> '', AWhere + ': calculation');
+      Exit;
+    end;
+  Check(False, AWhere + ': BR-CO-10 reported: ' + string(D.ToText));
+end;
+
 { A rule error refuses the write: no file, the exception carries the
   diagnostics; the options let it through. }
 procedure TestRefuse;
@@ -158,6 +176,8 @@ var
   D: TLandrixEInvoiceDiagnostics;
   FileName: TLandrixEInvoiceString;
   Dir: string;
+  I: TLandrixEInvoiceListIndex;
+  Found: Boolean;
 begin
   D := TLandrixEInvoiceDiagnostics.Create;
   Invoice := TLandrixInvoice.Create;
@@ -183,6 +203,43 @@ begin
     TLandrixEInvoice.SaveToFile(Invoice, FileName, XRUBL, [eio_WriteDespiteErrors]);
     Check(Pos(AnsiString('CustomizationID'), ReadText(FileName)) > 0, 'written despite errors');
     Check(TLandrixEInvoice.SaveToUtf8(Invoice, XRUBL, [eio_NoRuleCheck]) <> '', 'no rule check');
+    { the details of a rule reach the caller's list and the exception }
+    Invoice.BuyerReference := 'LW-1';
+    Invoice.LineAmount := 99;
+    D.Clear;
+    try
+      TLandrixEInvoice.SaveToFile(Invoice, FileName, XRUBL, [], D);
+      FailNotRaised('ELandrixEInvoiceWriteError');
+    except
+      on E: ELandrixEInvoiceWriteError do
+        CheckDetails(E.Diagnostics, 'exception');
+    end;
+    CheckDetails(D, 'caller''s list');
+    { a sub line Peppol BIS writes flat: the check through the facade
+      gives no path into the lines }
+    Invoice.LineAmount := 100;
+    with Invoice.InvoiceLines[0].SubInvoiceLines.AddInvoiceLine do
+    begin
+      ID := '1.1';
+      Name := 'Part';
+      Quantity := 1;
+      UnitCode := iuc_piece;
+      NetPriceAmount := 10;
+      LineAmount := 9;
+      TaxCategory := idtfcc_S_StandardRate;
+      TaxPercent := 19;
+    end;
+    D.Clear;
+    TLandrixEInvoice.Check(Invoice, TLandrixEInvoiceTargets.PeppolBIS('3.0'), [], D);
+    Found := False;
+    for I := 0 to D.Count - 1 do
+      if D[I].RuleID = 'PEPPOL-EN16931-R120' then
+      begin
+        Found := True;
+        CheckEqualsInvoiceStr('', D[I].Path, 'flat sub line: no path');
+        CheckEqualsInvoiceStr('10.00', D[I].Expected, 'flat sub line: expected');
+      end;
+    Check(Found, 'R120 on the flat sub line: ' + string(D.ToText));
   finally
     Invoice.Free;
     D.Free;

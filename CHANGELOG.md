@@ -8,6 +8,19 @@ Supported invoice standards are documented per release.
 ## [Unreleased]
 
 ### Added
+- Rule details: `TLandrixEInvoiceDiagnostic` has new fields `Terms`, `Expected`, `Found` and
+  `Calculation` and the methods `Assign` and `AddCopy` (the facade and the XRechnung adapter copy
+  every field). The calculation rules BR-CO-10 to BR-CO-17, BR-FXEXT-CO-10 to BR-FXEXT-CO-13,
+  BR-FXEXT-CO-15, BR-FXEXT-CO-16, BR-DEX-09 and PEPPOL-EN16931-R040, R046 and R120 report the
+  expected and the found value, how
+  the expected value came about and the model path of the first wrong place (e.g.
+  `InvoiceLines[0].LineAmount`); R041, R042, R110, R111, R121 and R130 report the path. The
+  validation findings carry the same fields, the XML report writes them as attributes `modelPath`,
+  `expected`, `found` and `calculation` (format version 1.1), the HTML report and the Workbench
+  show them. The rule check through the facade judges the caller's invoice, so its paths fit the
+  caller's invoice; paths into lines the target writes flat are left out. Numbers and dates that
+  cannot be written count only where they are written (not in group lines or INFORMATION lines
+  the flat copy leaves out), also for direct calls of the check.
 - PDF/A oracle (preparation of the native PDF/A-3b check, level 1 of the PDF checker):
   `addons/java-tools/install-tools.ps1` installs the veraPDF 1.30.4 command line (its IzPack
   installer unattended, the command line pack only), `tools/testdata/sync-local.py` the veraPDF
@@ -84,6 +97,11 @@ Supported invoice standards are documented per release.
   still agrees with veraPDF on all 1,600 PDFs, all 305 corpus failures of 6.6.2.3.1 found.
 
 ### Changed
+- Diagnostics: the business terms of a rule violation (and of the values the rule check and the
+  calculation cannot write or judge) are in the new field `Terms`, no longer in `Path`. For the
+  rule check `Path` is now the model path of the violation, or empty; reading and writing keep
+  the element path. `ToText` shows the terms where the path stood, so its output is unchanged
+  for entries without a path. The XML report keeps writing them as `location`.
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
   license covers EInvoice-for-Pascal and XRechnung-for-Delphi together.
 - Peppol rules: the Peppol Schematron 3.0.22 (OpenPEPPOL October 2026 hotfix, RFC-607) replaces 3.0.21.

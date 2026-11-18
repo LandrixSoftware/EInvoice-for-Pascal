@@ -182,6 +182,7 @@ var
   Sanitized: Boolean;
   What: string;
   Location: TLandrixXmlNode;
+  Wanted, ModelPath: TLandrixEInvoiceString;
 begin
   for S := Low(TLandrixEInvoiceDiagnosticSeverity) to High(TLandrixEInvoiceDiagnosticSeverity) do
     Counts[S] := 0;
@@ -212,10 +213,25 @@ begin
       begin
         Check(AttrW(F, 'rule') = Finding.RuleID, What + ' rule');
         Check(ChildElement(F, 'text').TextW = Finding.Text, What + ' text');
-        if Finding.Location = '' then
+        { 1.1: a finding of the rule check keeps its terms as location, the
+          model path is modelPath
+          DE: 1.1: ein Befund der Regelpruefung behaelt seine Begriffe als
+          location, der Modellpfad ist modelPath }
+        Wanted := Finding.Location;
+        ModelPath := '';
+        if Finding.Terms <> '' then
+        begin
+          Wanted := Finding.Terms;
+          ModelPath := Finding.Location;
+        end;
+        if Wanted = '' then
           Check(Location = nil, What + ' no location')
         else
-          Check((Location <> nil) and (Location.TextW = Finding.Location), What + ' location');
+          Check((Location <> nil) and (Location.TextW = Wanted), What + ' location');
+        Check(AttrW(F, 'modelPath') = ModelPath, What + ' model path');
+        Check(AttrW(F, 'expected') = Finding.Expected, What + ' expected');
+        Check(AttrW(F, 'found') = Finding.Found, What + ' found');
+        Check(AttrW(F, 'calculation') = Finding.Calculation, What + ' calculation');
       end;
     end;
     Inc(I);
@@ -295,6 +311,7 @@ var
   What: string;
   Finding: TLandrixEInvoiceFinding;
   Sanitized: Boolean;
+  Shown, Wanted: TLandrixEInvoiceString;
 begin
   Html := HtmlUtf8(AResult, '', ALanguage);
   What := AName + ' (HTML ' + IntToStr(Ord(ALanguage)) + ')';
@@ -357,9 +374,22 @@ begin
           Cell := NthChild(Row, 'td', 2);
           Check(Cell.TextW = Finding.RuleID, What + ': rule ' + IntToStr(I));
           Cell := NthChild(Row, 'td', 4);
-          Check(Cell.TextW = Finding.Location, What + ': location ' + IntToStr(I));
+          Shown := Cell.TextW;
+          Wanted := Finding.Location;
+          if Finding.Terms <> '' then
+            if Wanted = '' then
+              Wanted := Finding.Terms
+            else
+              Wanted := Wanted + ' (' + Finding.Terms + ')';
+          Check(Shown = Wanted, What + ': location ' + IntToStr(I) + ' "' + string(Shown) + '" <> "' +
+            string(Wanted) + '"');
           Cell := NthChild(Row, 'td', 5);
-          Check(Cell.TextW = Finding.Text, What + ': text ' + IntToStr(I));
+          { the details of the rule check follow the text
+            DE: die Einzelheiten der Regelpruefung folgen dem Text }
+          if (Finding.Expected = '') and (Finding.Found = '') and (Finding.Calculation = '') then
+            Check(Cell.TextW = Finding.Text, What + ': text ' + IntToStr(I))
+          else
+            Check(Copy(Cell.TextW, 1, Length(Finding.Text)) = Finding.Text, What + ': text ' + IntToStr(I));
         end;
       end;
       Check(NthChild(Body, 'tr', AResult.FindingCount) = nil, What + ': one row per finding');
@@ -385,7 +415,7 @@ begin
     Doc.LoadFromUtf8(Xml);
     Root := Doc.Root;
     CheckEqualsStr(ReportNs, Root.NamespaceUri, AName + ': report namespace');
-    CheckEqualsStr('1.0', Attr(Root, 'version'), AName + ': report version');
+    CheckEqualsStr('1.1', Attr(Root, 'version'), AName + ': report version');
     N := ChildElement(Root, 'verdict');
     Check((N <> nil) and (N.Text = VerdictTokens[AResult.Verdict]), AName + ': report verdict');
     N := ChildElement(Root, 'document');

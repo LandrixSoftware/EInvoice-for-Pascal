@@ -595,17 +595,27 @@ type
   end;
   TVatGroups = array of TVatGroup;
 
-procedure CalcError(var AState: TCalcState; const APath, AMessage: TLandrixEInvoiceString);
+procedure CalcReport(var AState: TCalcState; ASeverity: TLandrixEInvoiceDiagnosticSeverity;
+  const ATerms, AMessage: TLandrixEInvoiceString);
+var
+  D: TLandrixEInvoiceDiagnostic;
 begin
-  Inc(AState.Errors);
-  if AState.Diagnostics <> nil then
-    AState.Diagnostics.AddDiagnostic(edk_InvalidValue, APath, 0, 0, 0, AMessage).Severity := eds_Error;
+  if AState.Diagnostics = nil then
+    Exit;
+  D := AState.Diagnostics.AddDiagnostic(edk_InvalidValue, '', 0, 0, 0, AMessage);
+  D.Severity := ASeverity;
+  D.Terms := ATerms;
 end;
 
-procedure CalcWarning(var AState: TCalcState; const APath, AMessage: TLandrixEInvoiceString);
+procedure CalcError(var AState: TCalcState; const ATerms, AMessage: TLandrixEInvoiceString);
 begin
-  if AState.Diagnostics <> nil then
-    AState.Diagnostics.AddDiagnostic(edk_InvalidValue, APath, 0, 0, 0, AMessage).Severity := eds_Warning;
+  Inc(AState.Errors);
+  CalcReport(AState, eds_Error, ATerms, AMessage);
+end;
+
+procedure CalcWarning(var AState: TCalcState; const ATerms, AMessage: TLandrixEInvoiceString);
+begin
+  CalcReport(AState, eds_Warning, ATerms, AMessage);
 end;
 
 { AValue rounded to cents, half away from zero (as the writers round), not
