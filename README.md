@@ -25,7 +25,8 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
     everything the semantic model does not cover: CII with everything Factur-X EXTENDED has,
     UBL with the elements of EN 16931, XRechnung and Peppol (an extensible positive list).
 - Validation without Java: documents are checked against the official KoSIT configurations
-  (XML schema and Schematron) natively, with the same verdict as the KoSIT validator; the
+  (XML schema and Schematron) natively, with the same verdict as the KoSIT validator (one
+  documented Peppol exception, see the validation guide); the
   KoSIT report and the KoSIT XRechnung visualization are made with the XSLT engine of LandrixXML,
   and invoices are shown as HTML or Markdown.
 - No dependency on MSXML or other XML libraries: XML is handled by
@@ -63,7 +64,7 @@ would write. Each family is compared with an official reference:
 | all EN 16931 targets | BR-01 to BR-65, BR-CO-..., the VAT category rules BR-S-... to BR-AG-... | KoSIT XRechnung test suite |
 | XRechnung 3.0 | BR-DE-..., BR-DEX-09, the code lists BR-CL-01 to BR-CL-26, the PEPPOL-EN16931 rules of its schematron | KoSIT XRechnung test suite |
 | ZUGFeRD / Factur-X 1.09 | the EN 16931 rules per profile, BR-FXEXT-... (EXTENDED), the 366 code asserts FX-SCH-A-... | KoSIT validator on the ZUGFeRD examples and mutants |
-| Peppol BIS 3.0.21 | the whole Peppol schematron: PEPPOL-EN16931-..., PEPPOL-COMMON-... (identifier check digits), the national rules of DE, DK, GR, IS, IT, NL, NO and SE | OpenPEPPOL unit tests |
+| Peppol BIS 3.0.22 | the whole Peppol schematron: PEPPOL-EN16931-..., PEPPOL-COMMON-... (identifier check digits), the national rules of DE, DK, GR, IS, IT, NL, NO and SE | OpenPEPPOL unit tests |
 
 In all about 380 rule identifiers and the 366 Factur-X code asserts. The check does not replace
 schema validation; see [Checking](docs/checking.md) for the details and the known limits.

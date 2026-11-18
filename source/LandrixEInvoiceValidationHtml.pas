@@ -96,7 +96,8 @@ type
     lbXmpVersion, lbXmpConformanceLevel, lbXmpPdfA, lbFindings, lbSeverity, lbRule, lbStep, lbPosition,
     lbLocation, lbText, lbNoFindings, lbErrors, lbWarnings, lbInfos, lbError1, lbWarning1, lbInfo1,
     lbPredictedCount, lbPredicted,
-    lbPredictedNote, lbLine, lbColumn, lbInInvoice, lbInXmp, lbSanitizedNote, lbGenerator);
+    lbPredictedNote, lbLine, lbColumn, lbInInvoice, lbInXmp, lbSanitizedNote, lbGenerator, lbExpected, lbFound,
+    lbCalculation);
 
 const
   { HTML snippets, ASCII with character references; written as they are }
@@ -111,7 +112,8 @@ const
      'predicted',
      'Predicted: the library''s own rule check predicts what KoSIT would report. It does not decide the ' +
      'verdict and is not counted with the errors, warnings and infos.', 'line', 'column', 'in the invoice',
-     'in the XMP metadata', 'Characters that XML does not allow were replaced by U+FFFD.', 'Written by'),
+     'in the XMP metadata', 'Characters that XML does not allow were replaced by U+FFFD.', 'Written by',
+     'Expected', 'found', 'Calculation'),
     ('Pr&#252;fbericht', 'Urteil', 'Dokument', 'Name', 'Herkunft', 'Wurzelelement', 'Syntax',
      'Spezifikationskennung (BT-24)', 'Gesch&#228;ftsprozess (BT-23)', 'Spezifikation', 'Stand der Bibliothek',
      'Nutzt die Extension', 'ja', 'nein', 'Teile', 'Teil', 'Status', 'Einzelheiten', 'Konfiguration', 'Szenario',
@@ -123,7 +125,8 @@ const
      'Vorhergesagt: Die eigene Regelpr&#252;fung der Bibliothek sagt voraus, was KoSIT melden w&#252;rde. ' +
      'Sie entscheidet nicht &#252;ber das Urteil und z&#228;hlt nicht zu Fehlern, Warnungen und Hinweisen.',
      'Zeile', 'Spalte', 'in der Rechnung', 'in den XMP-Metadaten',
-     'Zeichen, die XML nicht erlaubt, wurden durch U+FFFD ersetzt.', 'Erstellt mit'));
+     'Zeichen, die XML nicht erlaubt, wurden durch U+FFFD ersetzt.', 'Erstellt mit',
+     'Erwartet', 'gefunden', 'Rechenweg'));
 
   VerdictLabels: array[TLandrixEInvoiceReportLanguage, TLandrixEInvoiceVerdict] of AnsiString = (
     ('Accepted', 'Rejected', 'Incomplete'),
@@ -488,8 +491,31 @@ begin
     end;
     P.Raw('</td><td class="loc">');
     P.Text(F.Location);
+    if F.Terms <> '' then
+      if F.Location = '' then
+        P.Text(F.Terms)
+      else
+        P.Text(' (' + F.Terms + ')');
     P.Raw('</td><td class="text">');
     P.Text(F.Text);
+    if (F.Expected <> '') or (F.Found <> '') then
+    begin
+      P.Raw('<br/>');
+      P.Lbl(lbExpected);
+      P.Raw(': ');
+      P.Text(F.Expected);
+      P.Raw(', ');
+      P.Lbl(lbFound);
+      P.Raw(': ');
+      P.Text(F.Found);
+    end;
+    if F.Calculation <> '' then
+    begin
+      P.Raw('<br/>');
+      P.Lbl(lbCalculation);
+      P.Raw(': ');
+      P.Text(F.Calculation);
+    end;
     P.Raw('</td></tr>'#10);
   end;
   P.Raw('</tbody></table>'#10);

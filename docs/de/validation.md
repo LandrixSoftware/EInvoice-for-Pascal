@@ -13,6 +13,13 @@ Die Dokumentvalidierung kommt zum selben Urteil wie der KoSIT-Validator (Java); 
 Repositorys vergleichen sie mit dessen Berichten. Sie braucht die unten beschriebenen
 Konfigurations- und Regeldateien; diese gehören nicht zur Bibliothek.
 
+Eine bekannte Ausnahme: Die Peppol-Regeldatei (`PEPPOL-EN16931-UBL.sch`) ist der OpenPEPPOL-Hotfix
+3.0.22, die Peppol-BIS-Konfiguration von KoSIT dagegen noch 3.0.21. PEPPOL-EN16931-P0112 nimmt
+deshalb den Rechnungstyp 384 zwischen zwei slowakischen Parteien (nach Präfix der USt-IdNr., sonst
+Land der Anschrift) an, deren Anschriften nicht beide in Deutschland liegen; der KoSIT-Validator lehnt
+ihn ab, und ihre Meldung weicht von der im KoSIT-Bericht ab. Das gilt, bis KoSIT eine neuere
+Konfiguration veröffentlicht.
+
 > **Vorschau.** Dokumentvalidierung, Berichte und Darstellung der Rechnung liegen in Units mit
 > der Markierung `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
 > `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
@@ -39,7 +46,7 @@ beim Herausgeber, prüft ihre SHA-256 (festgeschrieben in
 | `validator-configuration-bis/` | KoSIT-Konfiguration Peppol BIS Billing 3.0.21 | `bis` |
 | `validator-configuration-zugferd/` | Konfiguration ZUGFeRD 2.5.2 / Factur-X 1.09.2, Stand 2026-10-15, mit ihren Schematron-Quellen | `zugferd` |
 | `rules/en16931-ubl.xml`, `en16931-cii.xml`, `xrechnung-ubl.xml`, `xrechnung-cii.xml` | die Schematron von EN 16931 und XRechnung, von LandrixXML übersetzt (aus dem Submodul kopiert oder vom LandrixXML-Release geladen) | `xrechnung`, `bis` (nur UBL) |
-| `rules/PEPPOL-EN16931-UBL.sch` | die Peppol-Schematron (OpenPEPPOL, Mai-2026-Release 3.0.21) | `bis` |
+| `rules/PEPPOL-EN16931-UBL.sch` | die Peppol-Schematron (OpenPEPPOL, Hotfix 3.0.22 vom Oktober 2026) | `bis` |
 | `rules/NOTICE.md` | Herkunft und Lizenzen der vier Regeldateien (der Hinweis des LandrixXML-Ordners, aus dem sie kommen; seine übrigen Abschnitte gelten hier nicht) | `xrechnung`, `bis` |
 | `xrechnung-visualization/` | die KoSIT-XRechnung-Visualisierung, Stand 2026-01-31; benutzt wird ihr Ordner `xsl/` ([Die Rechnung anzeigen](#die-rechnung-anzeigen)) | `visualization` |
 
@@ -139,6 +146,16 @@ end.
 - Schemas und Regeln werden beim ersten Gebrauch geladen und behalten: Das erste Dokument einer
   Konfiguration dauert einige Sekunden, die weiteren Millisekunden. Die Validatoren für die
   Laufzeit der Anwendung behalten.
+- Threads: Die Validatoren sind nicht threadsicher. Weil Schemas und Regeln beim ersten Gebrauch
+  geladen werden, können zwei Threads, die mit demselben `TLandrixEInvoiceValidator` prüfen
+  (direkt oder über einen Dokument-Validator, bei dem er registriert ist), dieselbe Datei
+  gleichzeitig laden und ablegen. Jedem Thread eigene Validatoren und einen eigenen
+  `TLandrixEInvoiceDocumentValidator` geben oder immer nur einen Thread prüfen lassen (etwa hinter
+  einer Sperre). Jedes laufende Dokument braucht ein eigenes Ergebnisobjekt und einen eigenen
+  Stream; ein Ergebnis wird geleert, wenn die nächste Validierung hinein beginnt. Unter 32-Bit-x86
+  bleibt eine gemeinsame Wirkung: Das Lesen von Zahlen ändert kurz das FPU-Steuerwort, und die
+  Laufzeitbibliothek legt es als prozessweiten Standard ab; ein Thread, der genau dann startet,
+  erbt die verringerte Genauigkeit. Paralleles Prüfen ist noch nicht getestet.
 - Eine fehlende Regeldatei oder ein Schema, das nicht lädt, löst `ELandrixEInvoiceError` aus: ein
   Problem der Einrichtung, nicht des Dokuments. Eine Konfiguration, die diese Bibliothek nicht
   ausführen kann (anderes `acceptMatch`, Szenario ohne match-Ausdruck), lehnt
@@ -174,7 +191,9 @@ end.
   (eingebettete Dateien, optionale Inhalte, Präsentationen, Anforderungen);
   `evr_Failed` bei einem Verstoß, sonst `evr_Incomplete`, weil nicht jede PDF/A-Regel umgesetzt
   ist; zählt nicht für das Urteil).
-- `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part`. Befunde der
+- `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part` und für die
+  Regelprüfung `Terms`, `Expected`, `Found` und `Calculation` (siehe [Prüfen](checking.md);
+  `Location` ist dann der Modellpfad, oft leer). Befunde der
   eigenen Regeln sind als `Predicted` markiert: Sie sagen voraus, was KoSIT meldet, und ändern das
   Urteil nie. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-01 bis LX-PDF-11
   (eigene Prüfungen) und PDFA-<Abschnitt>-<Test> (PDF/A, nummeriert wie bei veraPDF, z. B.
@@ -205,6 +224,10 @@ finally
   Free;
 end;
 ```
+
+Der XML-Bericht folgt `schemas/landrix-einvoice-validation-report-1.xsd` (Formatversion 1.1; seit
+1.1 trägt ein Befund der Regelprüfung `modelPath`, `expected`, `found` und `calculation` als
+Attribute; sein `location` sind weiter die Geschäftsbegriffe).
 
 Der KoSIT-Prüfbericht: der Bericht, den der KoSIT-Validator schreibt, auf demselben Weg erzeugt.
 Der Berichtseingang (`LandrixEInvoiceKositReportInput`: Engine, Zeit, Hash des Dokuments, das
@@ -239,7 +262,8 @@ end;
   Dokument, der Wortlaut von Wohlgeformtheits- und XML-Schema-Meldungen (der KoSIT-Validator zeigt
   die Texte von Xerces in der Sprache des Systems) und die Form der Schematron-Orte der
   Konfigurationen Peppol BIS und ZUGFeRD (`/Q{namespace}name[1]`, wie die XRechnung-Konfiguration
-  sie schreibt).
+  sie schreibt). Bis KoSIT seine Peppol-BIS-Konfiguration aktualisiert, weicht auch der Text einer
+  fehlgeschlagenen PEPPOL-EN16931-P0112 ab (siehe die Peppol-Ausnahme oben).
 - `Report.Accepted` ist die Bewertung des Bericht-Stylesheets. Bei Peppol BIS kann es die Annahme
   eines Dokuments mit nur Warnungen empfehlen, das der Validator ablehnt (siehe oben).
 - `TLandrixEInvoiceValidator.Validate` liefert das Ergebnis der unteren Ebene; `CreateReport(Result,

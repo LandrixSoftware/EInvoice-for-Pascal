@@ -14,7 +14,7 @@
                xrechnung-ubl/-cii.xml
     bis        KoSIT configuration Peppol BIS Billing 3.0.21, the rule file
                en16931-ubl.xml and PEPPOL-EN16931-UBL.sch (OpenPEPPOL,
-               May 2026 release 3.0.21)
+               October 2026 hotfix 3.0.22)
     zugferd    ZUGFeRD 2.5.2 / Factur-X 1.09.2 configuration (2026-10-15);
                it ships its own Schematron sources
     visualization

@@ -41,7 +41,7 @@ Saxon processor of the validator computes it). R120 (line net amount) is a warni
 error in Peppol. Not every rule can fail on what the library writes: a percentage, base amount,
 gross price or base quantity of 0 is not written, and the model holds one VAT total per currency.
 
-For Peppol, the rules that only the Peppol Schematron 3.0.21 contains are checked as well: the
+For Peppol, the rules that only the Peppol Schematron 3.0.22 contains are checked as well: the
 other PEPPOL-EN16931 rules (notes, profile, type codes, exemption reason codes, the Peppol code
 lists), PEPPOL-COMMON-R040 to R057 (formats and check digits of identifiers by scheme, e.g. GLN,
 Norwegian, Danish, Belgian, Italian, Swedish and Australian numbers) and the national rules of
@@ -88,7 +88,31 @@ for I := 0 to Integer(D.Count) - 1 do
     WriteLn(string(D[I].RuleID), ' ', string(D[I].Message));
 ```
 
-`D.ToText` returns all entries, one per line.
+Every violation of a rule on the invoice model names the business terms the rule is about in
+`Terms` (e.g. `BT-106, BT-131`); the Factur-X code asserts keep the element path in `Path`. The
+calculation rules also tell what they expected and found: BR-CO-10 to BR-CO-17,
+BR-FXEXT-CO-10 to BR-FXEXT-CO-13, BR-FXEXT-CO-15, BR-FXEXT-CO-16, BR-DEX-09 and
+PEPPOL-EN16931-R040, R046 and R120 set `Expected` and `Found` (decimal numbers with `.`; `Found`
+as written, `Expected` as the rule computes it, which can have more decimals), `Calculation`
+(how the expected value came about, in English; the wording may change) and
+`Path`, the model path of the first wrong place, e.g. `InvoiceLines[0].LineAmount` or
+`TaxAmountSubtotals[1].TaxAmount` (indexes from 0). R041, R042, R110, R111, R121 and R130 set
+the path only. BR-CO-17 compares magnitudes, as the official rule does, so it shows them (except
+for a rate that rounds to 0, where the tax amount itself must round to 0). A rule
+that judges several places reports the first one. When the target writes
+sub lines flat, a path into the lines is left out, as it would not fit your invoice. The other
+rules leave these fields empty for now. Reading and writing keep using `Path` for the element
+path.
+
+```pascal
+for I := 0 to Integer(D.Count) - 1 do
+  if D[I].Expected <> '' then
+    WriteLn(string(D[I].RuleID), ' at ', string(D[I].Path), ': expected ', string(D[I].Expected),
+      ', found ', string(D[I].Found), ' (', string(D[I].Calculation), ')');
+```
+
+`D.ToText` returns all entries, one per line, with the terms after the path and expected and
+found value after the message. To copy an entry with every field, use `AddCopy`.
 
 ## Checking a read invoice
 

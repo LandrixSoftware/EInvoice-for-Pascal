@@ -304,7 +304,8 @@ begin
     K := D[I].Kind;
     if (D[I].Severity = eds_Error) or (K in [edk_UnknownElement, edk_DuplicateElement, edk_ConversionFailed]) or
        (not AOnlyBroken and (K in [edk_NotMapped, edk_NotAllowed])) then
-      AFindings.Add(AStage + ' ' + string(LandrixEInvoiceDiagnosticKindToStr(K)) + ' ' + string(D[I].Path));
+      AFindings.Add(AStage + ' ' + string(LandrixEInvoiceDiagnosticKindToStr(K)) + ' ' +
+        Trim(string(D[I].Path) + ' ' + string(D[I].Terms)));
   end;
 end;
 
@@ -397,7 +398,7 @@ begin
             for K := 0 to D.Count - 1 do
               if D[K].Severity = eds_Error then
                 Findings.Add('cross ' + string(LandrixEInvoiceDiagnosticKindToStr(D[K].Kind)) + ' ' +
-                  string(D[K].Path));
+                  Trim(string(D[K].Path) + ' ' + string(D[K].Terms)));
           end;
         end;
       end;

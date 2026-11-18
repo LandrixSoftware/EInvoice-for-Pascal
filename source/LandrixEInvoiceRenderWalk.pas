@@ -1349,6 +1349,7 @@ procedure WriteDocument(T: TLandrixEInvoiceRenderTarget; ADocument: TLandrixEInv
 var
   Info: TLandrixEInvoiceDocumentInfo;
   D: TLandrixEInvoiceDiagnostic;
+  Where: TLandrixEInvoiceString;
   I, Shown: Integer;
   Spec: TLandrixEInvoiceString;
 
@@ -1385,7 +1386,12 @@ begin
     D := ADocument.Diagnostics[I];
     if not T.ShowsDiagnostic(D.Kind) then
       Continue;
-    T.DoDiagnostic(Shown, D.Kind, D.Line, D.Column, D.Path, D.Message);
+    { a rule violation without a model path names its business terms
+      DE: ein Regelverstoss ohne Modellpfad nennt seine Geschaeftsbegriffe }
+    Where := D.Path;
+    if Where = '' then
+      Where := D.Terms;
+    T.DoDiagnostic(Shown, D.Kind, D.Line, D.Column, Where, D.Message);
     Inc(Shown);
   end;
   T.DoEndDocument(Shown);

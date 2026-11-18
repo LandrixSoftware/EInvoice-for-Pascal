@@ -519,16 +519,10 @@ function CopyDiagnostics(ASource: TLandrixEInvoiceDiagnostics;
   AStart: TLandrixEInvoiceListIndex): TLandrixEInvoiceDiagnostics;
 var
   I: TLandrixEInvoiceListIndex;
-  Item: TLandrixEInvoiceDiagnostic;
 begin
   Result := TLandrixEInvoiceDiagnostics.Create;
   for I := AStart to ASource.Count - 1 do
-  begin
-    Item := Result.AddDiagnostic(ASource[I].Kind, ASource[I].Path, ASource[I].Line, ASource[I].Column,
-      ASource[I].Offset, ASource[I].Message);
-    Item.Severity := ASource[I].Severity;
-    Item.RuleID := ASource[I].RuleID;
-  end;
+    Result.AddCopy(ASource[I]);
 end;
 
 { BT-24 of a syntax model must belong to the entry it is written for.
@@ -583,13 +577,19 @@ begin
       mk_Invoice:
         begin
           Invoice := TLandrixInvoice(AModel);
-          { one flat copy for the checks and the mapping (sub lines the
-            target does not write nested); reported once, here }
+          { the flat copy for the mapping (sub lines the target does not
+            write nested); reported once, here. The rule check makes its
+            own from the caller's invoice. }
           Flat := LandrixEInvoiceFlattenSubLines(Invoice, ASpec, ADiagnostics);
           if Flat <> nil then
             Invoice := Flat;
+          { the check gets the caller's invoice: it judges the flat copy
+            itself, and model paths in its findings fit the caller's lines
+            DE: die Pruefung erhaelt die Rechnung des Aufrufers: sie
+            beurteilt die flache Kopie selbst, und Modellpfade in ihren
+            Befunden passen zu den Positionen des Aufrufers }
           if not (eio_NoRuleCheck in AOptions) then
-            LandrixEInvoiceCheckInvoice(Invoice, ASpec, ADiagnostics);
+            LandrixEInvoiceCheckInvoice(TLandrixInvoice(AModel), ASpec, ADiagnostics);
           if ASpec.Target.Syntax = esy_CII then
           begin
             CII := LandrixEInvoiceInvoiceToCII(Invoice, ASpec, ADiagnostics);

@@ -385,7 +385,7 @@ begin
           if (D[K].Severity = eds_Error) or (D[K].Kind = edk_NotAllowed) then
           begin
             Finding := TargetSuffix[T] + ' write ' + string(LandrixEInvoiceDiagnosticKindToStr(D[K].Kind)) + ' ' +
-              string(D[K].Path) + ': ' + string(D[K].Message);
+              Trim(string(D[K].Path) + ' ' + string(D[K].Terms)) + ': ' + string(D[K].Message);
             if not Allowed(Finding, AAllowed) then
             begin
               Inc(Failed);

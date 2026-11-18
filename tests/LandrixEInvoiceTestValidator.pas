@@ -730,6 +730,27 @@ begin
   Result.Position := 0;
 end;
 
+{ an XRechnung UBL invoice whose sum of line net amounts (BT-106) is 99 instead of 100 (BR-CO-10) }
+function WrongTotalStream: TMemoryStream;
+var
+  Invoice: TLandrixInvoice;
+  Xml: TLandrixXmlUtf8;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.LineAmount := 99;
+    Xml := TLandrixEInvoice.SaveToUtf8(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL),
+      [eio_WriteDespiteErrors]);
+  finally
+    Invoice.Free;
+  end;
+  Result := TMemoryStream.Create;
+  if Length(Xml) > 0 then
+    Result.WriteBuffer(PAnsiChar(Xml)^, Length(Xml));
+  Result.Position := 0;
+end;
+
 { an XRechnung UBL invoice as a stream }
 function InvoiceStream(AWithBuyerReference: Boolean): TMemoryStream;
 begin
@@ -1556,6 +1577,24 @@ begin
     end;
     CheckGoldenReport(ReportUtf8(R, 'invoice.xml'), 'xml-no-kosit.xml');
     CheckGoldenReport(HtmlUtf8(R, 'invoice.xml', eln_English), 'xml-no-kosit.html');
+    { the details of a calculation rule in both reports (1.1) }
+    S := WrongTotalStream;
+    try
+      DV.ValidateStream(S, R);
+    finally
+      S.Free;
+    end;
+    CheckValidationReport(R, 'rule details');
+    Xml := ReportUtf8(R, 'invoice.xml');
+    Check(Pos(TLandrixXmlUtf8('rule="BR-CO-10" severity="error" predicted="true" modelPath="LineAmount" ' +
+      'expected="100.00" found="99.00" calculation="sum of the invoice line net amounts (BT-131) of 1 line">'), Xml) > 0,
+      'BR-CO-10 details in the XML report: ' + LandrixXmlUtf8ToString(Xml));
+    Check(Pos(TLandrixXmlUtf8('<location>BT-106, BT-131</location>'), Xml) > 0, 'BR-CO-10 terms as location');
+    Check(Pos(TLandrixXmlUtf8('<td class="loc">LineAmount (BT-106, BT-131)</td>'), HtmlUtf8(R, 'invoice.xml',
+      eln_English)) > 0, 'BR-CO-10 path and terms in the HTML report');
+    Check(Pos(TLandrixXmlUtf8('<br/>Expected: 100.00, found: 99.00<br/>Calculation: sum of the invoice line net ' +
+      'amounts (BT-131) of 1 line</td>'), HtmlUtf8(R, 'invoice.xml', eln_English)) > 0,
+      'BR-CO-10 details in the HTML report');
     { a PDF without XMP: level 3 fails, line and column in the XMP packet }
     ValidateBytes(DV, XRechnungPdf(False, False), R);
     CheckGoldenReport(ReportUtf8(R, 'invoice.pdf'), 'pdf-no-xmp.xml');
@@ -1788,7 +1827,7 @@ begin
     R.Free;
   end;
   CheckEqualsStr('', ReportSchemaErrors(Xml), 'new result valid');
-  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.0"', '1" version="1.1" future="x"')),
+  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.1"', '1" version="1.2" future="x"')),
     'minor version with a new attribute');
   CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '</validationReport>',
     '<future xmlns="urn:example:future"/></validationReport>')), 'minor version with a new element');
@@ -1800,7 +1839,7 @@ begin
     '', 'second verdict invalid');
   Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<part name="kosit"', '<part name="read"')) <> '',
     'a part twice invalid');
-  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.0"', '1" version="2.0"')) <> '', 'major version 2 invalid');
+  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.1"', '1" version="2.0"')) <> '', 'major version 2 invalid');
   Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<verdict>incomplete</verdict>', '<verdict>maybe</verdict>')) <> '',
     'unknown verdict invalid');
   Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<part name="read" status="notRun"/>', '')) <> '',

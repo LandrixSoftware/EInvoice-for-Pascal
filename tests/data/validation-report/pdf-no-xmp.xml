@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<validationReport xmlns="urn:landrix:einvoice:validation-report:1" version="1.0">
+<validationReport xmlns="urn:landrix:einvoice:validation-report:1" version="1.1">
   <generator name="EInvoice-for-Pascal" version="@VERSION@"/>
   <document name="invoice.pdf" source="pdf" rootName="CrossIndustryInvoice" syntax="cii" customizationId="urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" profileId="urn:fdc:peppol.eu:2017:poacc:billing:01:1.0">
     <specification standard="xrechnung" syntax="cii" version="3.0" libraryRelease="3.0.2"/>

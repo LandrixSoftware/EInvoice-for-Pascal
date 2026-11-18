@@ -13,6 +13,13 @@ Document validation gives the same verdict as the KoSIT validator (Java), checke
 reports in the repository's tests. It needs the configuration files and rule files described
 below; they are not part of the library.
 
+One known exception: the Peppol rule file (`PEPPOL-EN16931-UBL.sch`) is the OpenPEPPOL hotfix
+3.0.22, while KoSIT's Peppol BIS configuration is still 3.0.21. PEPPOL-EN16931-P0112 therefore
+accepts the invoice type code 384 between two Slovak parties (by VAT identifier prefix, else postal
+country) whose postal addresses are not both in Germany, which the KoSIT validator rejects,
+and its message differs from the one in KoSIT's report. This lasts until KoSIT publishes a newer
+configuration.
+
 > **Preview.** Document validation, the reports and the invoice rendering live in units marked
 > `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
 > `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
@@ -38,7 +45,7 @@ from its publisher, verifies its SHA-256 (pinned in
 | `validator-configuration-bis/` | KoSIT configuration Peppol BIS Billing 3.0.21 | `bis` |
 | `validator-configuration-zugferd/` | ZUGFeRD 2.5.2 / Factur-X 1.09.2 configuration, 2026-10-15, with its Schematron sources | `zugferd` |
 | `rules/en16931-ubl.xml`, `en16931-cii.xml`, `xrechnung-ubl.xml`, `xrechnung-cii.xml` | the EN 16931 and XRechnung Schematron, compiled by LandrixXML (copied from the submodule or downloaded from the LandrixXML release) | `xrechnung`, `bis` (UBL only) |
-| `rules/PEPPOL-EN16931-UBL.sch` | the Peppol Schematron (OpenPEPPOL, May 2026 release 3.0.21) | `bis` |
+| `rules/PEPPOL-EN16931-UBL.sch` | the Peppol Schematron (OpenPEPPOL, October 2026 hotfix 3.0.22) | `bis` |
 | `rules/NOTICE.md` | sources and licences of the four rule files (the notice of the LandrixXML folder they come from; its other sections do not apply here) | `xrechnung`, `bis` |
 | `xrechnung-visualization/` | the KoSIT XRechnung visualization, release 2026-01-31; its `xsl/` folder is used ([Showing the invoice](#showing-the-invoice)) | `visualization` |
 
@@ -137,6 +144,15 @@ end.
 - Schemas and rules are loaded on first use and kept: the first document of a configuration
   takes a few seconds, the next ones milliseconds. Keep the validators for the lifetime of your
   application.
+- Threads: the validators are not thread-safe. Because schemas and rules are loaded on first use,
+  two threads that validate with the same `TLandrixEInvoiceValidator` (directly or through a
+  document validator it is registered with) may load and store the same file at the same time.
+  Give each thread its own validators and its own `TLandrixEInvoiceDocumentValidator`, or let
+  one thread at a time validate (for example behind a lock). Each document in progress needs its
+  own result object and its own stream; a result is cleared when the next validation into it
+  starts. On 32-bit x86 one shared effect remains: reading numbers briefly changes the FPU control
+  word, and the runtime stores it as the process-wide default, so a thread that starts at that
+  moment inherits the reduced precision. Parallel validation has not been tested yet.
 - A missing rule file or a schema that does not load raises `ELandrixEInvoiceError`: a problem of
   the setup, not of the document. A configuration this library cannot run (another
   `acceptMatch`, a scenario without a match expression) is refused by `LoadConfiguration`.
@@ -171,7 +187,9 @@ end.
   files, optional content, presentations, requirements);
   `evr_Failed` on a violation, otherwise `evr_Incomplete`, as not every PDF/A rule is implemented;
   it does not count for the verdict).
-- `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part`. Findings of
+- `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part`, and for
+  the rule check `Terms`, `Expected`, `Found` and `Calculation` (see [Checking](checking.md);
+  `Location` is then the model path, often empty). Findings of
   the library's own rules are marked `Predicted`: they predict what KoSIT reports and never change
   the verdict. PDF findings have the identifiers BR-HYBRID-... (ZUGFeRD), LX-PDF-01 to LX-PDF-11
   (own checks) and PDFA-<clause>-<test> (PDF/A, numbered as in veraPDF, e.g. PDFA-6.1.7.1-1).
@@ -201,6 +219,10 @@ finally
   Free;
 end;
 ```
+
+The XML report follows `schemas/landrix-einvoice-validation-report-1.xsd` (format version 1.1;
+since 1.1 a finding of the rule check carries `modelPath`, `expected`, `found` and `calculation`
+as attributes; its `location` is still the business terms).
 
 The KoSIT report: the report the KoSIT validator writes, made the same way. The report input
 (`LandrixEInvoiceKositReportInput`: engine, time, document hash, the chosen scenario, the steps,
@@ -234,7 +256,8 @@ end;
   reference, the wording of well-formedness and XML schema messages (the KoSIT validator shows
   Xerces' texts in the language of the system) and the form of Schematron locations of the
   Peppol BIS and ZUGFeRD configurations (`/Q{namespace}name[1]`, as the XRechnung configuration
-  writes them).
+  writes them). Until KoSIT updates its Peppol BIS configuration, the text of a failed
+  PEPPOL-EN16931-P0112 differs as well (see the Peppol exception at the top).
 - `Report.Accepted` is the assessment of the report stylesheet. For Peppol BIS it can recommend to
   accept a document with only warnings, which the validator rejects (see above).
 - `TLandrixEInvoiceValidator.Validate` gives the lower-level result; `CreateReport(Result,

@@ -13,7 +13,7 @@
 }
 
 { The rules that only the Peppol BIS Billing 3.0 schematron (release
-  3.0.21, UBL) contains: the PEPPOL-EN16931 rules XRechnung does not share,
+  3.0.22, UBL) contains: the PEPPOL-EN16931 rules XRechnung does not share,
   PEPPOL-COMMON (identifier formats and check digits, see
   LandrixEInvoiceIdentifiers) and the national rules. The rules the
   XRechnung schematron has as well (PEPPOL-EN16931-R003, R005, R010, R020,
@@ -32,7 +32,7 @@
   normalize-space.
 
   DE: Die Regeln, die nur das Schematron von Peppol BIS Billing 3.0
-  (Release 3.0.21, UBL) enthaelt: die PEPPOL-EN16931-Regeln, die XRechnung
+  (Release 3.0.22, UBL) enthaelt: die PEPPOL-EN16931-Regeln, die XRechnung
   nicht teilt, PEPPOL-COMMON (Formate und Pruefziffern von Kennungen, siehe
   LandrixEInvoiceIdentifiers) und die nationalen Regeln. Die Regeln, die
   auch das XRechnung-Schematron hat (PEPPOL-EN16931-R003, R005, R010, R020,
@@ -135,10 +135,10 @@ type
     pr_DERT02);
 
   { One rule: identifier, severity (fatal: eds_Error), business terms (the
-    diagnostic path), message and origin. Every row applies to Peppol BIS
+    Terms of the diagnostic), message and origin. Every row applies to Peppol BIS
     (UBL) only; a national rule tests its country itself.
     DE: Eine Regel: Kennung, Schwere (fatal: eds_Error), Geschaeftsbegriffe
-    (der Meldungspfad), Meldung und Herkunft. Jede Zeile gilt nur fuer
+    (Terms der Meldung), Meldung und Herkunft. Jede Zeile gilt nur fuer
     Peppol BIS (UBL); eine nationale Regel prueft ihr Land selbst. }
   TPeppolRow = record
     ID: string;
@@ -149,7 +149,7 @@ type
   end;
 
 const
-  PeppolSource = 'Peppol BIS Billing 3.0.21';
+  PeppolSource = 'Peppol BIS Billing 3.0.22';
 
   PeppolRows: array[TPeppolRuleIndex] of TPeppolRow = (
     (ID: 'PEPPOL-EN16931-R002'; Severity: eds_Error; Terms: 'BT-22';
@@ -186,8 +186,8 @@ const
      Message: 'the exemption reason code VATEX-EU-J (BT-121) requires the VAT category E (BT-118)';
      Source: PeppolSource),
     (ID: 'PEPPOL-EN16931-P0112'; Severity: eds_Error; Terms: 'BT-3';
-     Message: 'the invoice type codes 326 and 384 (BT-3) are allowed only when seller and buyer are located in ' +
-       'Germany';
+     Message: 'the invoice type codes 326 and 389 (BT-3) are allowed only when seller and buyer are located in ' +
+       'Germany, 384 only when both are located in Germany or both in Slovakia';
      Source: PeppolSource),
     (ID: 'PEPPOL-EN16931-CL001'; Severity: eds_Error; Terms: 'BT-125';
      Message: 'the MIME code of an attached document (BT-125) shall be from the Peppol subset of the IANA list';
@@ -566,9 +566,9 @@ const
      Message: 'between German parties an external document location (BT-124) should be an absolute URL';
      Source: PeppolSource));
 
-  { The lists of the Peppol schematron 3.0.21 ($ISO4217, $MIMECODE,
+  { The lists of the Peppol schematron 3.0.22 ($ISO4217, $MIMECODE,
     $UNCL2005, $UNCL5189, $UNCL7161, $eaid; the type codes of P0100).
-    DE: Die Listen des Peppol-Schematrons 3.0.21. }
+    DE: Die Listen des Peppol-Schematrons 3.0.22. }
   PeppolCurrencies = 'AED AFN ALL AMD AOA ARS AUD AWG AZN BAM BBD BDT BHD BIF BMD BND BOB BOV BRL BSD BTN BWP ' +
     'BYN BZD CAD CDF CHE CHF CHW CLF CLP CNY COP COU CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP ' +
     'GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD ' +
@@ -2172,8 +2172,16 @@ begin
     pr_P0100:
       Result := IsInvoice and (TypeCode <> '') and ApprovedProfile(WrittenProfile(AInvoice, ASpec)) and
         not InList(TypeCode, PeppolInvoiceTypeCodes);
+    { Since 3.0.22 (RFC-607): 389 as well, and 384 between two Slovak
+      parties; Germany by the postal country, Slovakia by $supplierCountry
+      and $customerCountry.
+      DE: Seit 3.0.22 (RFC-607) auch 389, und 384 zwischen zwei
+      slowakischen Parteien; Deutschland nach dem Land der Anschrift,
+      die Slowakei nach $supplierCountry und $customerCountry. }
     pr_P0112:
-      Result := IsInvoice and ((TypeCode = '326') or (TypeCode = '384')) and not BothInGermany(AInvoice);
+      Result := IsInvoice and ((TypeCode = '326') or (TypeCode = '384') or (TypeCode = '389')) and
+        not BothInGermany(AInvoice) and not ((TypeCode = '384') and (SupplierCountry(AInvoice) = 'SK') and
+        (PartyCountry(AInvoice.AccountingCustomerParty, nil) = 'SK'));
     pr_P0104..pr_P0111:
       Result := ExemptionCategoryWrong(AIndex, AInvoice);
     pr_CL001:
@@ -2228,10 +2236,10 @@ var
 begin
   if ADiagnostics = nil then
     Exit;
-  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, TLandrixEInvoiceString(ARow.Terms), 0, 0, 0,
-    TLandrixEInvoiceString(ARow.Message));
+  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, '', 0, 0, 0, TLandrixEInvoiceString(ARow.Message));
   D.Severity := ARow.Severity;
   D.RuleID := TLandrixEInvoiceString(ARow.ID);
+  D.Terms := TLandrixEInvoiceString(ARow.Terms);
 end;
 
 function Applies(const ASpec: TLandrixEInvoiceSpec): Boolean;
