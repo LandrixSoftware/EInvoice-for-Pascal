@@ -68,6 +68,11 @@ const
   LandrixEInvoiceXmpNsPdfaProperty = 'http://www.aiim.org/pdfa/ns/property#';
   LandrixEInvoiceXmpNsPdfaType = 'http://www.aiim.org/pdfa/ns/type#';
   LandrixEInvoiceXmpNsPdfaField = 'http://www.aiim.org/pdfa/ns/field#';
+  { The schema entry of the built-in types only (no extension schema), for
+    TLandrixEInvoiceXmpSchemaTypes.Validate.
+    DE: Der Schema-Eintrag nur der eingebauten Typen (kein
+    Erweiterungsschema), fuer TLandrixEInvoiceXmpSchemaTypes.Validate. }
+  LandrixEInvoiceXmpPredefinedEntry = -2;
 
 type
   { Valid: the parser of veraPDF accepts the packet as read here; invalid:
@@ -164,57 +169,117 @@ type
   { Yes, no, or not decided. DE: Ja, nein oder nicht entschieden. }
   TLandrixEInvoiceXmpTruth = (xmt_Yes, xmt_No, xmt_Unknown);
 
-  { The value type names a packet knows for the PDF/A extension schema rules
-    6.6.2.3.3-8 and -17, as veraPDF registers them: per schema namespace
+  { A value type an extension schema defines: its simplified name, the
+    namespace of its fields and the fields with their value types.
+    DE: Ein Werttyp, den ein Erweiterungsschema definiert: sein
+    vereinfachter Name, der Namensraum seiner Felder und die Felder mit
+    ihren Werttypen. }
+  TLandrixEInvoiceXmpCustomType = record
+    Key: TLandrixEInvoiceString;
+    Ns: TLandrixEInvoiceString;
+    FieldNames: array of TLandrixEInvoiceString;
+    FieldTypes: array of TLandrixEInvoiceString;
+    FieldCount: Integer;
+  end;
+
+  { The value types and properties a packet defines through its PDF/A
+    extension schemas, and the check of a value against a type, as veraPDF
+    reads them (ISO 19005-3, 6.6.2.3).
+    Types (6.6.2.3.3-8, -17, 6.6.2.3.1-2): per schema namespace
     (pdfaSchema:namespaceURI) the built-in types and the types the schema
     defines; a schema counts if it has a namespace URI and an array as
-    pdfaSchema:property, and of several with one URI the last one counts.
-    A field that is present but a structure or an array counts with the
-    value '' (veraPDF reads it so). A type is registered under its name in
+    pdfaSchema:property, and of several with one URI the last one counts. A
+    field that is present but a structure or an array counts with the value
+    '' (veraPDF reads it so). A type is registered under its name in
     simplified form (lower case, "open/closed choice of" removed, "bag",
-    "seq" and "alt" alone read as text); a type with fields only if it has a
-    namespace URI. A schema without such an entry knows only the 14 basic
-    types. A further packet (not the catalog's) starts each schema from the
-    entry of the main packet with the same URI, else from all built-in
-    types. Where the reading is not certain (characters beyond ASCII or line
-    ends in a name, a limit), the answer is unknown. Lower case is that of
-    Java in an English locale.
-    DE: Die Werttyp-Namen, die ein Paket fuer die Regeln 6.6.2.3.3-8 und -17
-    der PDF/A-Erweiterungsschemas kennt, wie veraPDF sie registriert: je
-    Schema-Namensraum (pdfaSchema:namespaceURI) die eingebauten Typen und die,
-    die das Schema definiert; ein Schema zaehlt, wenn es eine Namensraum-URI
-    und ein Array als pdfaSchema:property hat, von mehreren mit einer URI das
-    letzte. Ein vorhandenes Feld, das eine Struktur oder ein Array ist, zaehlt
-    mit dem Wert '' (so liest veraPDF es). Ein Typ wird unter seinem
-    vereinfachten Namen registriert (Kleinbuchstaben, "open/closed choice of"
-    entfernt, "bag", "seq" und "alt" allein als Text gelesen); ein Typ mit
-    Feldern nur, wenn er eine Namensraum-URI hat. Ein Schema ohne solchen
-    Eintrag kennt nur die 14 Grundtypen. Ein weiteres Paket (nicht das des
-    Katalogs) beginnt jedes Schema mit dem Eintrag des Hauptpakets fuer
-    dieselbe URI, sonst mit allen eingebauten Typen. Wo die Lesart nicht
-    sicher ist (Zeichen jenseits von ASCII oder Zeilenenden in einem Namen,
-    eine Grenze), ist die Antwort unbekannt. Kleinbuchstaben wie bei Java in
-    englischer Locale. }
+    "seq" and "alt" alone read as text), a later one with the same name
+    replacing it; a type with fields only if it has a namespace URI, its
+    fields in that namespace. A schema without such an entry knows only the
+    14 basic types. A further packet (not the catalog's) starts each schema
+    from the entry of the main packet with the same URI, else from all
+    built-in types.
+    Properties (6.6.2.3.1): a property of a counting schema is defined under
+    the schema's namespace URI and its pdfaProperty:name if its value type is
+    known to the schema; of several with one name the first counts.
+    Values: simple types by their lexical form (Boolean True or False,
+    Integer and Real with optional sign, Date as the XMP parser reads ISO
+    8601, MIMEType type/subtype, GPSCoordinate; Text, URI and the other text
+    types any simple value), Lang Alt as an rdf:Alt that is empty or has an
+    item with xml:lang, bag/seq/alt X as that array form with every item an
+    X, a structured type as a structure whose fields are all fields of the
+    type with valid values (missing fields allowed). Choice vocabularies and
+    value ranges are not checked.
+    Where the reading is not certain (characters beyond ASCII or line ends in
+    a type name, XPath, a type defined in two places, a limit), the answer
+    is unknown. Lower case is that of Java in an English locale.
+    DE: Die Werttypen und Eigenschaften, die ein Paket mit seinen
+    PDF/A-Erweiterungsschemas definiert, und die Pruefung eines Werts gegen
+    einen Typ, wie veraPDF sie liest (ISO 19005-3, 6.6.2.3).
+    Typen (6.6.2.3.3-8, -17, 6.6.2.3.1-2): je Schema-Namensraum
+    (pdfaSchema:namespaceURI) die eingebauten Typen und die, die das Schema
+    definiert; ein Schema zaehlt, wenn es eine Namensraum-URI und ein Array
+    als pdfaSchema:property hat, von mehreren mit einer URI das letzte. Ein
+    vorhandenes Feld, das eine Struktur oder ein Array ist, zaehlt mit dem
+    Wert '' (so liest veraPDF es). Ein Typ wird unter seinem vereinfachten
+    Namen registriert (Kleinbuchstaben, "open/closed choice of" entfernt,
+    "bag", "seq" und "alt" allein als Text gelesen), ein spaeterer mit
+    demselben Namen ersetzt ihn; ein Typ mit Feldern nur, wenn er eine
+    Namensraum-URI hat, seine Felder in diesem Namensraum. Ein Schema ohne
+    solchen Eintrag kennt nur die 14 Grundtypen. Ein weiteres Paket (nicht
+    das des Katalogs) beginnt jedes Schema mit dem Eintrag des Hauptpakets
+    fuer dieselbe URI, sonst mit allen eingebauten Typen.
+    Eigenschaften (6.6.2.3.1): eine Eigenschaft eines zaehlenden Schemas ist
+    unter der Namensraum-URI des Schemas und ihrem pdfaProperty:name
+    definiert, wenn ihr Werttyp dem Schema bekannt ist; von mehreren mit
+    einem Namen zaehlt die erste.
+    Werte: einfache Typen nach ihrer Schreibweise (Boolean True oder False,
+    Integer und Real mit optionalem Vorzeichen, Date wie der XMP-Parser ISO
+    8601 liest, MIMEType type/subtype, GPSCoordinate; Text, URI und die
+    anderen Text-Typen jeder einfache Wert), Lang Alt als rdf:Alt, das leer
+    ist oder ein Element mit xml:lang hat, bag/seq/alt X als diese
+    Array-Form mit jedem Element ein X, ein strukturierter Typ als Struktur,
+    deren Felder alle Felder des Typs mit gueltigen Werten sind (fehlende
+    Felder erlaubt). Auswahl-Vokabulare und Wertebereiche werden nicht
+    geprueft.
+    Wo die Lesart nicht sicher ist (Zeichen jenseits von ASCII oder
+    Zeilenenden in einem Typnamen, XPath, ein an zwei Stellen definierter
+    Typ, eine Grenze), ist die Antwort unbekannt. Kleinbuchstaben wie bei
+    Java in englischer Locale. }
   TLandrixEInvoiceXmpSchemaTypes = class(TObject)
   private
     FUris: array of TLandrixEInvoiceString;
-    FKeys: array of array of TLandrixEInvoiceString;
-    FKeyCounts: array of Integer;
+    FTypes: array of array of TLandrixEInvoiceXmpCustomType;
+    FTypeCounts: array of Integer;
     { the entry's own types are not certain }
     FUncertain: array of Boolean;
+    { the entry started from the main packet's entry }
+    FSeeded: array of Boolean;
     FCount: Integer;
     FOverflow: Boolean;
+    FPropUris: array of TLandrixEInvoiceString;
+    FPropNames: array of TLandrixEInvoiceString;
+    FPropTypes: array of TLandrixEInvoiceString;
+    FPropEntries: array of Integer;
+    FPropUncertain: array of Boolean;
+    FPropCount: Integer;
     function IndexOf(const AUri: TLandrixEInvoiceString): Integer;
-    procedure AddKey(AEntry: Integer; const AKey: TLandrixEInvoiceString);
+    function TypeIndex(AEntry: Integer; const AKey: TLandrixEInvoiceString): Integer;
+    procedure PutType(AEntry: Integer; const AType: TLandrixEInvoiceXmpCustomType);
     procedure AddTypes(AEntry: Integer; ADefinition: TLandrixEInvoiceXmpNode);
+    procedure AddProperties(AEntry: Integer; ADefinition: TLandrixEInvoiceXmpNode);
+    function ValidateKey(ANode: TLandrixEInvoiceXmpNode; const AKey: TLandrixEInvoiceString; AEntry,
+      ADepth: Integer): TLandrixEInvoiceXmpTruth;
+    function ValidateFields(ANode: TLandrixEInvoiceXmpNode; const AKey: TLandrixEInvoiceString; AEntry,
+      ADepth: Integer): TLandrixEInvoiceXmpTruth;
   public
-    { Registers the types of APacket's pdfaExtension:schemas. AMain is the
-      registry of the catalog's packet for a further packet (nil if the
-      catalog has none); AFurther tells that APacket is a further packet.
-      DE: Registriert die Typen von pdfaExtension:schemas in APacket. AMain
-      ist fuer ein weiteres Paket die Registrierung des Katalog-Pakets (nil,
-      wenn der Katalog keines hat); AFurther sagt, dass APacket ein weiteres
-      Paket ist. }
+    { Registers the types and properties of APacket's pdfaExtension:schemas.
+      AMain is the registry of the catalog's packet for a further packet
+      (nil if the catalog has none); AFurther tells that APacket is a
+      further packet.
+      DE: Registriert die Typen und Eigenschaften von pdfaExtension:schemas
+      in APacket. AMain ist fuer ein weiteres Paket die Registrierung des
+      Katalog-Pakets (nil, wenn der Katalog keines hat); AFurther sagt, dass
+      APacket ein weiteres Paket ist. }
     procedure Build(APacket: TLandrixEInvoiceXmpPacket; AMain: TLandrixEInvoiceXmpSchemaTypes; AFurther: Boolean);
     { The entry of the schema with the namespace URI ASchemaUri (AHasUri
       False: the schema has none), -1 if there is none.
@@ -225,7 +290,30 @@ type
       DE: Ob AType einem Schema mit dem Eintrag AEntry (aus Entry) bekannt
       ist. }
     function IsKnown(AEntry: Integer; const AType: TLandrixEInvoiceString): TLandrixEInvoiceXmpTruth;
+    { Whether the packet defines the property ANs/ALocal; if so, its value
+      type and the entry of its schema.
+      DE: Ob das Paket die Eigenschaft ANs/ALocal definiert; wenn ja, ihr
+      Werttyp und der Eintrag ihres Schemas. }
+    function Defines(const ANs, ALocal: TLandrixEInvoiceString; out AType: TLandrixEInvoiceString;
+      out AEntry: Integer): TLandrixEInvoiceXmpTruth;
+    { Whether ANode is a valid value of AType in the schema entry AEntry
+      (LandrixEInvoiceXmpPredefinedEntry: the built-in types only).
+      DE: Ob ANode ein gueltiger Wert von AType im Schema-Eintrag AEntry ist
+      (LandrixEInvoiceXmpPredefinedEntry: nur die eingebauten Typen). }
+    function Validate(ANode: TLandrixEInvoiceXmpNode; const AType: TLandrixEInvoiceString;
+      AEntry: Integer): TLandrixEInvoiceXmpTruth;
   end;
+
+{ Whether ANs/ALocal is a property predefined for PDF/A-2 and -3 (the
+  schemas of the XMP Specification 2005, chapter 4, and pdfaid); if so its
+  value type and whether veraPDF reads it less strictly than the
+  specification (ALax: a value failing the type is then not decided).
+  DE: Ob ANs/ALocal eine fuer PDF/A-2 und -3 vordefinierte Eigenschaft ist
+  (die Schemas der XMP Specification 2005, Kapitel 4, und pdfaid); wenn ja,
+  ihr Werttyp und ob veraPDF sie lockerer liest als die Spezifikation
+  (ALax: ein Wert, der den Typ verfehlt, ist dann nicht entschieden). }
+function LandrixEInvoiceXmpPredefined(const ANs, ALocal: TLandrixEInvoiceString; out AType: TLandrixEInvoiceString;
+  out ALax: Boolean): Boolean;
 
 implementation
 
@@ -1321,12 +1409,32 @@ end;
 
 { TLandrixEInvoiceXmpSchemaTypes }
 
+type
+  TXmpPropDef = record
+    N: Integer;
+    Name: string;
+    VType: string;
+    Lax: Boolean;
+  end;
+
+  TXmpFieldDef = record
+    T: string;
+    N: Integer;
+    Name: string;
+    VType: string;
+    Lax: Boolean;
+  end;
+
 const
-  { most schema entries and types per entry; beyond, answers are unknown }
+  { most schema entries, types per entry, defined properties; beyond,
+    answers are unknown }
   MaxSchemaEntries = 64;
   MaxSchemaKeys = 512;
+  MaxSchemaProps = 4096;
   { longest type name read; longer ones are not decided }
   MaxTypeName = 1024;
+  { deepest nesting of value types followed }
+  MaxTypeDepth = 64;
   { the types every schema knows (veraPDF's basic validators) }
   BasicTypes: array[0..13] of string = ('agentname', 'boolean', 'date', 'integer', 'lang alt', 'mimetype',
     'propername', 'rational', 'real', 'renditionclass', 'text', 'uri', 'url', 'xpath');
@@ -1335,6 +1443,407 @@ const
     'dimensions', 'flash', 'font', 'gpscoordinate', 'job', 'locale', 'marker', 'media', 'oecf/sfr', 'projectlink',
     'resamplestretch', 'resourceevent', 'resourceref', 'thumbnail', 'time', 'timecode', 'timescalestretch',
     'version');
+  { the namespaces of the predefined properties (XMP Specification 2005, chapter 4, and pdfaid) }
+  XmpPropNs: array[0..13] of string = (
+    'http://purl.org/dc/elements/1.1/',
+    'http://ns.adobe.com/xap/1.0/',
+    'http://ns.adobe.com/xap/1.0/rights/',
+    'http://ns.adobe.com/xap/1.0/mm/',
+    'http://ns.adobe.com/xap/1.0/bj/',
+    'http://ns.adobe.com/xap/1.0/t/pg/',
+    'http://ns.adobe.com/xmp/1.0/DynamicMedia/',
+    'http://ns.adobe.com/pdf/1.3/',
+    'http://ns.adobe.com/photoshop/1.0/',
+    'http://ns.adobe.com/camera-raw-settings/1.0/',
+    'http://ns.adobe.com/tiff/1.0/',
+    'http://ns.adobe.com/exif/1.0/',
+    'http://ns.adobe.com/exif/1.0/aux/',
+    'http://www.aiim.org/pdfa/ns/id/');
+  { the predefined properties: namespace index, name, value type; Lax: veraPDF reads it less strictly }
+  XmpProps: array[0..276] of TXmpPropDef = (
+    (N: 0; Name: 'contributor'; VType: 'bag ProperName'; Lax: False),
+    (N: 0; Name: 'coverage'; VType: 'Text'; Lax: False),
+    (N: 0; Name: 'creator'; VType: 'seq ProperName'; Lax: False),
+    (N: 0; Name: 'date'; VType: 'seq Date'; Lax: False),
+    (N: 0; Name: 'description'; VType: 'Lang Alt'; Lax: False),
+    (N: 0; Name: 'format'; VType: 'MIMEType'; Lax: False),
+    (N: 0; Name: 'identifier'; VType: 'Text'; Lax: False),
+    (N: 0; Name: 'language'; VType: 'bag Locale'; Lax: False),
+    (N: 0; Name: 'publisher'; VType: 'bag ProperName'; Lax: False),
+    (N: 0; Name: 'relation'; VType: 'bag Text'; Lax: False),
+    (N: 0; Name: 'rights'; VType: 'Lang Alt'; Lax: False),
+    (N: 0; Name: 'source'; VType: 'Text'; Lax: False),
+    (N: 0; Name: 'subject'; VType: 'bag Text'; Lax: False),
+    (N: 0; Name: 'title'; VType: 'Lang Alt'; Lax: False),
+    (N: 0; Name: 'type'; VType: 'bag open Choice'; Lax: False),
+    (N: 1; Name: 'Advisory'; VType: 'bag XPath'; Lax: False),
+    (N: 1; Name: 'BaseURL'; VType: 'URL'; Lax: False),
+    (N: 1; Name: 'CreateDate'; VType: 'Date'; Lax: False),
+    (N: 1; Name: 'CreatorTool'; VType: 'AgentName'; Lax: False),
+    (N: 1; Name: 'Identifier'; VType: 'bag Text'; Lax: False),
+    (N: 1; Name: 'Label'; VType: 'Text'; Lax: False),
+    (N: 1; Name: 'MetadataDate'; VType: 'Date'; Lax: False),
+    (N: 1; Name: 'ModifyDate'; VType: 'Date'; Lax: False),
+    (N: 1; Name: 'Nickname'; VType: 'Text'; Lax: False),
+    (N: 1; Name: 'Rating'; VType: 'Closed Choice of Integer'; Lax: True),
+    (N: 1; Name: 'Thumbnails'; VType: 'alt Thumbnail'; Lax: False),
+    (N: 2; Name: 'Certificate'; VType: 'URL'; Lax: False),
+    (N: 2; Name: 'Marked'; VType: 'Boolean'; Lax: False),
+    (N: 2; Name: 'Owner'; VType: 'bag ProperName'; Lax: False),
+    (N: 2; Name: 'UsageTerms'; VType: 'Lang Alt'; Lax: False),
+    (N: 2; Name: 'WebStatement'; VType: 'URL'; Lax: False),
+    (N: 3; Name: 'DerivedFrom'; VType: 'ResourceRef'; Lax: False),
+    (N: 3; Name: 'DocumentID'; VType: 'URI'; Lax: False),
+    (N: 3; Name: 'History'; VType: 'seq ResourceEvent'; Lax: False),
+    (N: 3; Name: 'InstanceID'; VType: 'URI'; Lax: False),
+    (N: 3; Name: 'ManagedFrom'; VType: 'ResourceRef'; Lax: False),
+    (N: 3; Name: 'Manager'; VType: 'AgentName'; Lax: False),
+    (N: 3; Name: 'ManageTo'; VType: 'URI'; Lax: False),
+    (N: 3; Name: 'ManageUI'; VType: 'URI'; Lax: False),
+    (N: 3; Name: 'ManagerVariant'; VType: 'Text'; Lax: False),
+    (N: 3; Name: 'RenditionClass'; VType: 'RenditionClass'; Lax: False),
+    (N: 3; Name: 'RenditionParams'; VType: 'Text'; Lax: False),
+    (N: 3; Name: 'VersionID'; VType: 'Text'; Lax: False),
+    (N: 3; Name: 'Versions'; VType: 'seq Version'; Lax: False),
+    (N: 3; Name: 'LastURL'; VType: 'URL'; Lax: False),
+    (N: 3; Name: 'RenditionOf'; VType: 'ResourceRef'; Lax: False),
+    (N: 3; Name: 'SaveID'; VType: 'Integer'; Lax: False),
+    (N: 4; Name: 'JobRef'; VType: 'bag Job'; Lax: False),
+    (N: 5; Name: 'MaxPageSize'; VType: 'Dimensions'; Lax: False),
+    (N: 5; Name: 'NPages'; VType: 'Integer'; Lax: False),
+    (N: 5; Name: 'Fonts'; VType: 'Bag Font'; Lax: False),
+    (N: 5; Name: 'Colorants'; VType: 'Seq Colorant'; Lax: False),
+    (N: 5; Name: 'PlateNames'; VType: 'Seq Text'; Lax: False),
+    (N: 6; Name: 'projectRef'; VType: 'ProjectLink'; Lax: False),
+    (N: 6; Name: 'videoFrameRate'; VType: 'open Choice of Text'; Lax: False),
+    (N: 6; Name: 'videoFrameSize'; VType: 'Dimensions'; Lax: False),
+    (N: 6; Name: 'videoPixelAspectRatio'; VType: 'Rational'; Lax: False),
+    (N: 6; Name: 'videoPixelDepth'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'videoColorSpace'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'videoAlphaMode'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'videoAlphaPremultipleColor'; VType: 'Colorant'; Lax: False),
+    (N: 6; Name: 'videoAlphaUnityIsTransparent'; VType: 'Boolean'; Lax: False),
+    (N: 6; Name: 'videoCompressor'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'videoFieldOrder'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'pullDown'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'audioSampleRate'; VType: 'Integer'; Lax: False),
+    (N: 6; Name: 'audioSampleType'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'audioChannelType'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'audioCompressor'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'speakerPlacement'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'fileDataRate'; VType: 'Rational'; Lax: False),
+    (N: 6; Name: 'tapeName'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'altTapeName'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'startTimecode'; VType: 'Timecode'; Lax: False),
+    (N: 6; Name: 'altTimecode'; VType: 'Timecode'; Lax: False),
+    (N: 6; Name: 'duration'; VType: 'Time'; Lax: False),
+    (N: 6; Name: 'scene'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'shotName'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'shotDate'; VType: 'Date'; Lax: False),
+    (N: 6; Name: 'shotLocation'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'logComment'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'markers'; VType: 'seq Marker'; Lax: False),
+    (N: 6; Name: 'contributedMedia'; VType: 'bag Media'; Lax: False),
+    (N: 6; Name: 'absPeakAudioFilePath'; VType: 'URI'; Lax: False),
+    (N: 6; Name: 'relativePeakAudioFilePath'; VType: 'URI'; Lax: False),
+    (N: 6; Name: 'videoModDate'; VType: 'Date'; Lax: False),
+    (N: 6; Name: 'audioModDate'; VType: 'Date'; Lax: False),
+    (N: 6; Name: 'metadataModDate'; VType: 'Date'; Lax: False),
+    (N: 6; Name: 'artist'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'album'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'trackNumber'; VType: 'Integer'; Lax: False),
+    (N: 6; Name: 'genre'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'copyright'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'releaseDate'; VType: 'Date'; Lax: False),
+    (N: 6; Name: 'composer'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'engineer'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'tempo'; VType: 'Real'; Lax: False),
+    (N: 6; Name: 'instrument'; VType: 'Text'; Lax: False),
+    (N: 6; Name: 'introTime'; VType: 'Time'; Lax: False),
+    (N: 6; Name: 'outCue'; VType: 'Time'; Lax: False),
+    (N: 6; Name: 'relativeTimestamp'; VType: 'Time'; Lax: False),
+    (N: 6; Name: 'loop'; VType: 'Boolean'; Lax: False),
+    (N: 6; Name: 'numberOfBeats'; VType: 'Real'; Lax: False),
+    (N: 6; Name: 'key'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'stretchMode'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'timeScaleParams'; VType: 'timeScaleStretch'; Lax: False),
+    (N: 6; Name: 'resampleParams'; VType: 'resampleStretch'; Lax: False),
+    (N: 6; Name: 'beatSpliceParams'; VType: 'beatSpliceStretch'; Lax: False),
+    (N: 6; Name: 'timeSignature'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 6; Name: 'scaleType'; VType: 'closed Choice of Text'; Lax: False),
+    (N: 7; Name: 'Keywords'; VType: 'Text'; Lax: False),
+    (N: 7; Name: 'PDFVersion'; VType: 'Text'; Lax: False),
+    (N: 7; Name: 'Producer'; VType: 'AgentName'; Lax: False),
+    (N: 8; Name: 'AuthorsPosition'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'CaptionWriter'; VType: 'ProperName'; Lax: False),
+    (N: 8; Name: 'Category'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'City'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'Country'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'Credit'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'DateCreated'; VType: 'Date'; Lax: False),
+    (N: 8; Name: 'Headline'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'Instructions'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'Source'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'State'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'SupplementalCategories'; VType: 'bag Text'; Lax: False),
+    (N: 8; Name: 'TransmissionReference'; VType: 'Text'; Lax: False),
+    (N: 8; Name: 'Urgency'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'AutoBrightness'; VType: 'Boolean'; Lax: False),
+    (N: 9; Name: 'AutoContrast'; VType: 'Boolean'; Lax: False),
+    (N: 9; Name: 'AutoExposure'; VType: 'Boolean'; Lax: False),
+    (N: 9; Name: 'AutoShadows'; VType: 'Boolean'; Lax: False),
+    (N: 9; Name: 'BlueHue'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'BlueSaturation'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Brightness'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'CameraProfile'; VType: 'Text'; Lax: False),
+    (N: 9; Name: 'ChromaticAberrationB'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'ChromaticAberrationR'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'ColorNoiseReduction'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Contrast'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'CropTop'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'CropLeft'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'CropBottom'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'CropRight'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'CropAngle'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'CropWidth'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'CropHeight'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'CropUnits'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Exposure'; VType: 'Real'; Lax: False),
+    (N: 9; Name: 'GreenHue'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'GreenSaturation'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'HasCrop'; VType: 'Boolean'; Lax: False),
+    (N: 9; Name: 'HasSettings'; VType: 'Boolean'; Lax: False),
+    (N: 9; Name: 'LuminanceSmoothing'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'RawFileName'; VType: 'Text'; Lax: False),
+    (N: 9; Name: 'RedHue'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'RedSaturation'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Saturation'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Shadows'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'ShadowTint'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Sharpness'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Temperature'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'Tint'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'ToneCurve'; VType: 'Seq Text'; Lax: False),
+    (N: 9; Name: 'ToneCurveName'; VType: 'Choice Text'; Lax: False),
+    (N: 9; Name: 'Version'; VType: 'Text'; Lax: False),
+    (N: 9; Name: 'VignetteAmount'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'VignetteMidpoint'; VType: 'Integer'; Lax: False),
+    (N: 9; Name: 'WhiteBalance'; VType: 'Closed Choice Text'; Lax: False),
+    (N: 10; Name: 'ImageWidth'; VType: 'Integer'; Lax: False),
+    (N: 10; Name: 'ImageLength'; VType: 'Integer'; Lax: False),
+    (N: 10; Name: 'BitsPerSample'; VType: 'seq Integer'; Lax: False),
+    (N: 10; Name: 'Compression'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 10; Name: 'PhotometricInterpretation'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 10; Name: 'Orientation'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 10; Name: 'SamplesPerPixel'; VType: 'Integer'; Lax: False),
+    (N: 10; Name: 'PlanarConfiguration'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 10; Name: 'YCbCrSubSampling'; VType: 'Closed Choice of seq Integer'; Lax: False),
+    (N: 10; Name: 'YCbCrPositioning'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 10; Name: 'XResolution'; VType: 'Rational'; Lax: False),
+    (N: 10; Name: 'YResolution'; VType: 'Rational'; Lax: False),
+    (N: 10; Name: 'ResolutionUnit'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 10; Name: 'TransferFunction'; VType: 'seq Integer'; Lax: False),
+    (N: 10; Name: 'WhitePoint'; VType: 'seq Rational'; Lax: False),
+    (N: 10; Name: 'PrimaryChromaticities'; VType: 'seq Rational'; Lax: False),
+    (N: 10; Name: 'YCbCrCoefficients'; VType: 'seq Rational'; Lax: False),
+    (N: 10; Name: 'ReferenceBlackWhite'; VType: 'seq Rational'; Lax: False),
+    (N: 10; Name: 'DateTime'; VType: 'Date'; Lax: False),
+    (N: 10; Name: 'ImageDescription'; VType: 'Lang Alt'; Lax: False),
+    (N: 10; Name: 'Make'; VType: 'ProperName'; Lax: False),
+    (N: 10; Name: 'Model'; VType: 'ProperName'; Lax: False),
+    (N: 10; Name: 'Software'; VType: 'AgentName'; Lax: False),
+    (N: 10; Name: 'Artist'; VType: 'ProperName'; Lax: False),
+    (N: 10; Name: 'Copyright'; VType: 'Lang Alt'; Lax: False),
+    (N: 11; Name: 'ExifVersion'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'FlashpixVersion'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'ColorSpace'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'ComponentsConfiguration'; VType: 'Closed Choice of seq Integer'; Lax: False),
+    (N: 11; Name: 'CompressedBitsPerPixel'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'PixelXDimension'; VType: 'Integer'; Lax: False),
+    (N: 11; Name: 'PixelYDimension'; VType: 'Integer'; Lax: False),
+    (N: 11; Name: 'UserComment'; VType: 'Lang Alt'; Lax: False),
+    (N: 11; Name: 'RelatedSoundFile'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'DateTimeOriginal'; VType: 'Date'; Lax: False),
+    (N: 11; Name: 'DateTimeDigitized'; VType: 'Date'; Lax: False),
+    (N: 11; Name: 'ExposureTime'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'FNumber'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'ExposureProgram'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'SpectralSensitivity'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'ISOSpeedRatings'; VType: 'seq Integer'; Lax: False),
+    (N: 11; Name: 'OECF'; VType: 'OECF/SFR'; Lax: False),
+    (N: 11; Name: 'ShutterSpeedValue'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'ApertureValue'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'BrightnessValue'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'ExposureBiasValue'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'MaxApertureValue'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'SubjectDistance'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'MeteringMode'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'LightSource'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'Flash'; VType: 'Flash'; Lax: False),
+    (N: 11; Name: 'FocalLength'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'SubjectArea'; VType: 'seq Integer'; Lax: False),
+    (N: 11; Name: 'FlashEnergy'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'SpatialFrequencyResponse'; VType: 'OECF/SFR'; Lax: False),
+    (N: 11; Name: 'FocalPlaneXResolution'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'FocalPlaneYResolution'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'FocalPlaneResolutionUnit'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'SubjectLocation'; VType: 'seq Integer'; Lax: False),
+    (N: 11; Name: 'ExposureIndex'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'SensingMethod'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'FileSource'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'SceneType'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'CFAPattern'; VType: 'CFAPattern'; Lax: False),
+    (N: 11; Name: 'CustomRendered'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'ExposureMode'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'WhiteBalance'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'DigitalZoomRatio'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'FocalLengthIn35mmFilm'; VType: 'Integer'; Lax: False),
+    (N: 11; Name: 'SceneCaptureType'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'GainControl'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'Contrast'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'Saturation'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'Sharpness'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'DeviceSettingDescription'; VType: 'DeviceSettings'; Lax: False),
+    (N: 11; Name: 'SubjectDistanceRange'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'ImageUniqueID'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'GPSVersionID'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'GPSLatitude'; VType: 'GPSCoordinate'; Lax: False),
+    (N: 11; Name: 'GPSLongitude'; VType: 'GPSCoordinate'; Lax: False),
+    (N: 11; Name: 'GPSAltitudeRef'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 11; Name: 'GPSAltitude'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'GPSTimeStamp'; VType: 'Date'; Lax: False),
+    (N: 11; Name: 'GPSSatellites'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'GPSStatus'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'GPSMeasureMode'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'GPSDOP'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'GPSSpeedRef'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'GPSSpeed'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'GPSTrackRef'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'GPSTrack'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'GPSImgDirectionRef'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'GPSImgDirection'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'GPSMapDatum'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'GPSDestLatitude'; VType: 'GPSCoordinate'; Lax: False),
+    (N: 11; Name: 'GPSDestLongitude'; VType: 'GPSCoordinate'; Lax: False),
+    (N: 11; Name: 'GPSDestBearingRef'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'GPSDestBearing'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'GPSDestDistanceRef'; VType: 'Closed Choice of Text'; Lax: False),
+    (N: 11; Name: 'GPSDestDistance'; VType: 'Rational'; Lax: False),
+    (N: 11; Name: 'GPSProcessingMethod'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'GPSAreaInformation'; VType: 'Text'; Lax: False),
+    (N: 12; Name: 'Lens'; VType: 'Text'; Lax: False),
+    (N: 12; Name: 'SerialNumber'; VType: 'Text'; Lax: False),
+    (N: 11; Name: 'GPSDifferential'; VType: 'Closed Choice of Integer'; Lax: False),
+    (N: 13; Name: 'part'; VType: 'Integer'; Lax: False),
+    (N: 13; Name: 'amd'; VType: 'Text'; Lax: False),
+    (N: 13; Name: 'conformance'; VType: 'Text'; Lax: False),
+    (N: 13; Name: 'corr'; VType: 'Text'; Lax: False));
+  { the field namespaces of the structured value types (4.3) }
+  XmpFieldNs: array[0..9] of string = (
+    'http://ns.adobe.com/xap/1.0/g/',
+    'http://ns.adobe.com/xap/1.0/sType/Dimensions#',
+    'http://ns.adobe.com/xap/1.0/sType/Font#',
+    'http://ns.adobe.com/xap/1.0/g/img/',
+    'http://ns.adobe.com/xap/1.0/sType/ResourceEvent#',
+    'http://ns.adobe.com/xap/1.0/sType/ResourceRef#',
+    'http://ns.adobe.com/xap/1.0/sType/Version#',
+    'http://ns.adobe.com/xap/1.0/sType/Job#',
+    'http://ns.adobe.com/xmp/1.0/DynamicMedia/',
+    'http://ns.adobe.com/exif/1.0/');
+  { the fields of the structured value types: type (simplified name), field namespace index, field, value type;
+    Lax: veraPDF reads it less strictly }
+  XmpFields: array[0..90] of TXmpFieldDef = (
+    (T: 'colorant'; N: 0; Name: 'swatchName'; VType: 'Text'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'mode'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'type'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'cyan'; VType: 'Real'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'magenta'; VType: 'Real'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'yellow'; VType: 'Real'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'black'; VType: 'Real'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'red'; VType: 'Integer'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'green'; VType: 'Integer'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'blue'; VType: 'Integer'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'L'; VType: 'Real'; Lax: False),
+    (T: 'colorant'; N: 0; Name: 'A'; VType: 'Integer'; Lax: True),
+    (T: 'colorant'; N: 0; Name: 'B'; VType: 'Integer'; Lax: True),
+    (T: 'dimensions'; N: 1; Name: 'w'; VType: 'Real'; Lax: False),
+    (T: 'dimensions'; N: 1; Name: 'h'; VType: 'Real'; Lax: False),
+    (T: 'dimensions'; N: 1; Name: 'unit'; VType: 'Open Choice of Text'; Lax: False),
+    (T: 'font'; N: 2; Name: 'fontName'; VType: 'Text'; Lax: False),
+    (T: 'font'; N: 2; Name: 'fontFamily'; VType: 'Text'; Lax: False),
+    (T: 'font'; N: 2; Name: 'fontFace'; VType: 'Text'; Lax: False),
+    (T: 'font'; N: 2; Name: 'fontType'; VType: 'Open Choice of Text'; Lax: False),
+    (T: 'font'; N: 2; Name: 'versionString'; VType: 'Text'; Lax: False),
+    (T: 'font'; N: 2; Name: 'composite'; VType: 'Boolean'; Lax: False),
+    (T: 'font'; N: 2; Name: 'fontFileName'; VType: 'Text'; Lax: False),
+    (T: 'font'; N: 2; Name: 'childFontFiles'; VType: 'Seq Text'; Lax: False),
+    (T: 'thumbnail'; N: 3; Name: 'height'; VType: 'Integer'; Lax: False),
+    (T: 'thumbnail'; N: 3; Name: 'width'; VType: 'Integer'; Lax: False),
+    (T: 'thumbnail'; N: 3; Name: 'format'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'thumbnail'; N: 3; Name: 'image'; VType: 'Text'; Lax: False),
+    (T: 'resourceevent'; N: 4; Name: 'action'; VType: 'Open Choice of Text'; Lax: False),
+    (T: 'resourceevent'; N: 4; Name: 'instanceID'; VType: 'URI'; Lax: False),
+    (T: 'resourceevent'; N: 4; Name: 'parameters'; VType: 'Text'; Lax: False),
+    (T: 'resourceevent'; N: 4; Name: 'softwareAgent'; VType: 'AgentName'; Lax: False),
+    (T: 'resourceevent'; N: 4; Name: 'when'; VType: 'Date'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'instanceID'; VType: 'URI'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'documentID'; VType: 'URI'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'versionID'; VType: 'Text'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'renditionClass'; VType: 'RenditionClass'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'renditionParams'; VType: 'Text'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'manager'; VType: 'AgentName'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'managerVariant'; VType: 'Text'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'manageTo'; VType: 'URI'; Lax: False),
+    (T: 'resourceref'; N: 5; Name: 'manageUI'; VType: 'URI'; Lax: False),
+    (T: 'version'; N: 6; Name: 'comments'; VType: 'Text'; Lax: False),
+    (T: 'version'; N: 6; Name: 'event'; VType: 'ResourceEvent'; Lax: False),
+    (T: 'version'; N: 6; Name: 'modifyDate'; VType: 'Date'; Lax: False),
+    (T: 'version'; N: 6; Name: 'modifier'; VType: 'ProperName'; Lax: False),
+    (T: 'version'; N: 6; Name: 'version'; VType: 'Text'; Lax: False),
+    (T: 'job'; N: 7; Name: 'name'; VType: 'Text'; Lax: False),
+    (T: 'job'; N: 7; Name: 'id'; VType: 'Text'; Lax: False),
+    (T: 'job'; N: 7; Name: 'url'; VType: 'URL'; Lax: False),
+    (T: 'beatsplicestretch'; N: 8; Name: 'useFileBeatsMarker'; VType: 'Boolean'; Lax: False),
+    (T: 'beatsplicestretch'; N: 8; Name: 'riseInDecibel'; VType: 'Real'; Lax: False),
+    (T: 'beatsplicestretch'; N: 8; Name: 'riseInTimeDuration'; VType: 'Time'; Lax: False),
+    (T: 'marker'; N: 8; Name: 'startTime'; VType: 'Time'; Lax: True),
+    (T: 'marker'; N: 8; Name: 'duration'; VType: 'Time'; Lax: True),
+    (T: 'marker'; N: 8; Name: 'comment'; VType: 'Text'; Lax: False),
+    (T: 'marker'; N: 8; Name: 'name'; VType: 'Text'; Lax: False),
+    (T: 'marker'; N: 8; Name: 'location'; VType: 'URI'; Lax: False),
+    (T: 'marker'; N: 8; Name: 'target'; VType: 'Text'; Lax: False),
+    (T: 'marker'; N: 8; Name: 'type'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'media'; N: 8; Name: 'path'; VType: 'URI'; Lax: False),
+    (T: 'media'; N: 8; Name: 'track'; VType: 'Text'; Lax: False),
+    (T: 'media'; N: 8; Name: 'startTime'; VType: 'Time'; Lax: False),
+    (T: 'media'; N: 8; Name: 'duration'; VType: 'Time'; Lax: False),
+    (T: 'media'; N: 8; Name: 'managed'; VType: 'Boolean'; Lax: False),
+    (T: 'media'; N: 8; Name: 'webStatement'; VType: 'URI'; Lax: False),
+    (T: 'projectlink'; N: 8; Name: 'type'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'projectlink'; N: 8; Name: 'path'; VType: 'URI'; Lax: False),
+    (T: 'resamplestretch'; N: 8; Name: 'quality'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'time'; N: 8; Name: 'value'; VType: 'Integer'; Lax: False),
+    (T: 'time'; N: 8; Name: 'scale'; VType: 'Rational'; Lax: False),
+    (T: 'timecode'; N: 8; Name: 'timeValue'; VType: 'Text'; Lax: False),
+    (T: 'timecode'; N: 8; Name: 'timeFormat'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'timescalestretch'; N: 8; Name: 'quality'; VType: 'Closed Choice of Text'; Lax: False),
+    (T: 'timescalestretch'; N: 8; Name: 'frameSize'; VType: 'Real'; Lax: False),
+    (T: 'timescalestretch'; N: 8; Name: 'frameOverlappingPercentage'; VType: 'Real'; Lax: False),
+    (T: 'flash'; N: 9; Name: 'Fired'; VType: 'Boolean'; Lax: False),
+    (T: 'flash'; N: 9; Name: 'Return'; VType: 'Closed Choice'; Lax: False),
+    (T: 'flash'; N: 9; Name: 'Mode'; VType: 'Closed Choice'; Lax: False),
+    (T: 'flash'; N: 9; Name: 'Function'; VType: 'Boolean'; Lax: False),
+    (T: 'flash'; N: 9; Name: 'RedEyeMode'; VType: 'Boolean'; Lax: False),
+    (T: 'oecf/sfr'; N: 9; Name: 'Columns'; VType: 'Integer'; Lax: False),
+    (T: 'oecf/sfr'; N: 9; Name: 'Rows'; VType: 'Integer'; Lax: False),
+    (T: 'oecf/sfr'; N: 9; Name: 'Names'; VType: 'Seq Text'; Lax: False),
+    (T: 'oecf/sfr'; N: 9; Name: 'Values'; VType: 'Seq Rational'; Lax: False),
+    (T: 'cfapattern'; N: 9; Name: 'Columns'; VType: 'Integer'; Lax: False),
+    (T: 'cfapattern'; N: 9; Name: 'Rows'; VType: 'Integer'; Lax: False),
+    (T: 'cfapattern'; N: 9; Name: 'Values'; VType: 'Seq Integer'; Lax: False),
+    (T: 'devicesettings'; N: 9; Name: 'Columns'; VType: 'Integer'; Lax: False),
+    (T: 'devicesettings'; N: 9; Name: 'Rows'; VType: 'Integer'; Lax: False),
+    (T: 'devicesettings'; N: 9; Name: 'Settings'; VType: 'Seq Text'; Lax: False));
 
 function EndsWithStr(const S, ATail: TLandrixEInvoiceString): Boolean;
 begin
@@ -1421,6 +1930,12 @@ begin
   Result := True;
 end;
 
+{ An array form prefix of a simplified type name. }
+function ArrayPrefix(const AKey: TLandrixEInvoiceString): Boolean;
+begin
+  Result := (Copy(AKey, 1, 4) = 'bag ') or (Copy(AKey, 1, 4) = 'alt ') or (Copy(AKey, 1, 4) = 'seq ');
+end;
+
 function InList(const AKey: TLandrixEInvoiceString; const AList: array of string): Boolean;
 var
   I: Integer;
@@ -1444,6 +1959,228 @@ begin
     AValue := ANode.Value;
 end;
 
+function IsDigit(C: WideChar): Boolean;
+begin
+  Result := (C >= '0') and (C <= '9');
+end;
+
+{ The end of a run of ASCII digits from APos (APos if none). }
+function DigitsEnd(const S: TLandrixEInvoiceString; APos: Integer): Integer;
+begin
+  Result := APos;
+  while (Result <= Length(S)) and IsDigit(S[Result]) do
+    Inc(Result);
+end;
+
+{ Integer: an optional sign and one or more digits. }
+function XmpIntegerOk(const S: TLandrixEInvoiceString): Boolean;
+var
+  P: Integer;
+begin
+  P := 1;
+  if (P <= Length(S)) and ((S[P] = '+') or (S[P] = '-')) then
+    Inc(P);
+  Result := (DigitsEnd(S, P) > P) and (DigitsEnd(S, P) = Length(S) + 1);
+end;
+
+{ Real: an optional sign, at least one digit and at most one decimal point. }
+function XmpRealOk(const S: TLandrixEInvoiceString): Boolean;
+var
+  P, Q, Digits: Integer;
+begin
+  P := 1;
+  if (P <= Length(S)) and ((S[P] = '+') or (S[P] = '-')) then
+    Inc(P);
+  Q := DigitsEnd(S, P);
+  Digits := Q - P;
+  if (Q <= Length(S)) and (S[Q] = '.') then
+  begin
+    P := Q + 1;
+    Q := DigitsEnd(S, P);
+    Inc(Digits, Q - P);
+  end;
+  Result := (Digits > 0) and (Q = Length(S) + 1);
+end;
+
+function MimeChar(C: WideChar): Boolean;
+begin
+  Result := ((C >= 'a') and (C <= 'z')) or ((C >= 'A') and (C <= 'Z')) or IsDigit(C) or (C = '_') or (C = '-') or
+    (C = '+') or (C = '.');
+end;
+
+{ MIMEType: two non-empty tokens of letters, digits, _ - + . separated by
+  one slash. }
+function XmpMimeOk(const S: TLandrixEInvoiceString): Boolean;
+var
+  I, Slash: Integer;
+begin
+  Result := False;
+  Slash := 0;
+  for I := 1 to Length(S) do
+    if S[I] = '/' then
+    begin
+      if Slash > 0 then
+        Exit;
+      Slash := I;
+    end
+    else if not MimeChar(S[I]) then
+      Exit;
+  Result := (Slash > 1) and (Slash < Length(S));
+end;
+
+{ GPSCoordinate: DDD,MM,SSk or DDD,MM.mmk (1-3, 1-2 and 1-2 digits, any
+  number of fraction digits, k one of N S E W). }
+function XmpGpsOk(const S: TLandrixEInvoiceString): Boolean;
+var
+  P, Q: Integer;
+begin
+  Result := False;
+  Q := DigitsEnd(S, 1);
+  if (Q < 2) or (Q > 4) or (Q > Length(S)) or (S[Q] <> ',') then
+    Exit;
+  P := Q + 1;
+  Q := DigitsEnd(S, P);
+  if (Q = P) or (Q - P > 2) or (Q > Length(S)) then
+    Exit;
+  P := Q + 1;
+  if S[Q] = ',' then
+  begin
+    Q := DigitsEnd(S, P);
+    if (Q = P) or (Q - P > 2) then
+      Exit;
+  end
+  else if S[Q] = '.' then
+  begin
+    Q := DigitsEnd(S, P);
+    if Q = P then
+      Exit;
+  end
+  else
+    Exit;
+  Result := (Q = Length(S)) and ((S[Q] = 'N') or (S[Q] = 'S') or (S[Q] = 'E') or (S[Q] = 'W'));
+end;
+
+{ Date as the XMP parser of veraPDF reads ISO 8601: empty passes; a year
+  (optional minus), then -month, -day, then only after a day Thh, :mm, :ss,
+  .fraction, then Z or +/-hh[:mm]; a separator needs digits, nothing may
+  follow (a T only after a full date). A value that is complete up to its
+  end but has very long digit runs (Java ints), and a time zone right after
+  a date, are not decided. }
+function XmpDateOk(const S: TLandrixEInvoiceString): TLandrixEInvoiceXmpTruth;
+var
+  P, Part: Integer;
+  Long: Boolean;
+
+  function Digits: Boolean;
+  var
+    Q: Integer;
+  begin
+    Q := DigitsEnd(S, P);
+    Result := Q > P;
+    if Q - P > 9 then
+      Long := True;
+    P := Q;
+  end;
+
+  function AtEnd: Boolean;
+  begin
+    Result := P > Length(S);
+  end;
+
+begin
+  Result := xmt_Yes;
+  if S = '' then
+    Exit;
+  Result := xmt_No;
+  Part := 0;
+  Long := False;
+  P := 1;
+  if S[P] = '-' then
+    Inc(P);
+  if not Digits then
+    Exit;
+  { year, month, day }
+  while (Part < 2) and not AtEnd and (S[P] = '-') do
+  begin
+    Inc(P);
+    if not Digits then
+      Exit;
+    Inc(Part);
+  end;
+  if not AtEnd and (Part = 2) and (S[P] = 'T') then
+  begin
+    Inc(P);
+    if not Digits then
+      Exit;
+    if not AtEnd and (S[P] = ':') then
+    begin
+      Inc(P);
+      if not Digits then
+        Exit;
+      if not AtEnd and (S[P] = ':') then
+      begin
+        Inc(P);
+        if not Digits then
+          Exit;
+        if not AtEnd and (S[P] = '.') then
+        begin
+          Inc(P);
+          if not Digits then
+            Exit;
+        end;
+      end;
+    end;
+    if not AtEnd and (S[P] = 'Z') then
+      Inc(P)
+    else if not AtEnd and ((S[P] = '+') or (S[P] = '-')) then
+    begin
+      Inc(P);
+      if not Digits then
+        Exit;
+      if not AtEnd and (S[P] = ':') then
+      begin
+        Inc(P);
+        if not Digits then
+          Exit;
+      end;
+    end;
+  end
+  else if not AtEnd and ((S[P] = 'Z') or (S[P] = '+') or (S[P] = '-')) then
+  begin
+    Result := xmt_Unknown;
+    Exit;
+  end;
+  if not AtEnd then
+  begin
+    if Long then
+      Result := xmt_Unknown;
+    Exit;
+  end;
+  if Long then
+    Result := xmt_Unknown
+  else
+    Result := xmt_Yes;
+end;
+
+function LandrixEInvoiceXmpPredefined(const ANs, ALocal: TLandrixEInvoiceString; out AType: TLandrixEInvoiceString;
+  out ALax: Boolean): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  AType := '';
+  ALax := False;
+  for I := 0 to High(XmpProps) do
+    if (ALocal = TLandrixEInvoiceString(XmpProps[I].Name)) and
+      (ANs = TLandrixEInvoiceString(XmpPropNs[XmpProps[I].N])) then
+    begin
+      AType := TLandrixEInvoiceString(XmpProps[I].VType);
+      ALax := XmpProps[I].Lax;
+      Result := True;
+      Exit;
+    end;
+end;
+
 function TLandrixEInvoiceXmpSchemaTypes.IndexOf(const AUri: TLandrixEInvoiceString): Integer;
 var
   I: Integer;
@@ -1457,27 +2194,51 @@ begin
     end;
 end;
 
-procedure TLandrixEInvoiceXmpSchemaTypes.AddKey(AEntry: Integer; const AKey: TLandrixEInvoiceString);
+function TLandrixEInvoiceXmpSchemaTypes.TypeIndex(AEntry: Integer; const AKey: TLandrixEInvoiceString): Integer;
+var
+  I: Integer;
 begin
-  if FKeyCounts[AEntry] >= MaxSchemaKeys then
+  Result := -1;
+  for I := 0 to FTypeCounts[AEntry] - 1 do
+    if FTypes[AEntry][I].Key = AKey then
+    begin
+      Result := I;
+      Exit;
+    end;
+end;
+
+{ Registers a type; one with the same name is replaced. }
+procedure TLandrixEInvoiceXmpSchemaTypes.PutType(AEntry: Integer; const AType: TLandrixEInvoiceXmpCustomType);
+var
+  I: Integer;
+begin
+  I := TypeIndex(AEntry, AType.Key);
+  if I < 0 then
   begin
-    FOverflow := True;
-    Exit;
+    if FTypeCounts[AEntry] >= MaxSchemaKeys then
+    begin
+      FOverflow := True;
+      Exit;
+    end;
+    if FTypeCounts[AEntry] = Integer(Length(FTypes[AEntry])) then
+      SetLength(FTypes[AEntry], 8 + 2 * FTypeCounts[AEntry]);
+    I := FTypeCounts[AEntry];
+    Inc(FTypeCounts[AEntry]);
   end;
-  if FKeyCounts[AEntry] = Integer(Length(FKeys[AEntry])) then
-    SetLength(FKeys[AEntry], 8 + 2 * FKeyCounts[AEntry]);
-  FKeys[AEntry][FKeyCounts[AEntry]] := AKey;
-  Inc(FKeyCounts[AEntry]);
+  FTypes[AEntry][I] := AType;
 end;
 
 { The types of an array pdfaSchema:valueType (other forms define none): a
-  type name; with fields (in an array pdfaType:field, each with a name and
-  a value type) only if the type has a namespace URI. }
+  type name; fields (in an array pdfaType:field, each with a name and a
+  value type, a later one with the same name replacing it) only if the type
+  has a namespace URI. }
 procedure TLandrixEInvoiceXmpSchemaTypes.AddTypes(AEntry: Integer; ADefinition: TLandrixEInvoiceXmpNode);
 var
   VT, T, FL, F: TLandrixEInvoiceXmpNode;
-  I, J, Fields: Integer;
-  Name, Key, Dummy: TLandrixEInvoiceString;
+  I, J, K: Integer;
+  Name, FName, FType: TLandrixEInvoiceString;
+  Def: TLandrixEInvoiceXmpCustomType;
+  HasNs, Found: Boolean;
 begin
   VT := ADefinition.FindChild(LandrixEInvoiceXmpNsPdfaSchema, 'valueType');
   if (VT = nil) or (VT.Kind <> xmk_Array) then
@@ -1487,22 +2248,98 @@ begin
     T := VT.Child(I);
     if not FieldValue(T.FindChild(LandrixEInvoiceXmpNsPdfaType, 'type'), Name) then
       Continue;
+    Def.Key := '';
+    Def.FieldNames := nil;
+    Def.FieldTypes := nil;
+    Def.FieldCount := 0;
+    HasNs := FieldValue(T.FindChild(LandrixEInvoiceXmpNsPdfaType, 'namespaceURI'), Def.Ns);
     FL := T.FindChild(LandrixEInvoiceXmpNsPdfaType, 'field');
-    Fields := 0;
     if (FL <> nil) and (FL.Kind = xmk_Array) then
       for J := 0 to FL.ChildCount - 1 do
       begin
         F := FL.Child(J);
-        if FieldValue(F.FindChild(LandrixEInvoiceXmpNsPdfaField, 'name'), Dummy) and
-          FieldValue(F.FindChild(LandrixEInvoiceXmpNsPdfaField, 'valueType'), Dummy) then
-          Inc(Fields);
+        if not FieldValue(F.FindChild(LandrixEInvoiceXmpNsPdfaField, 'name'), FName) or
+          not FieldValue(F.FindChild(LandrixEInvoiceXmpNsPdfaField, 'valueType'), FType) then
+          Continue;
+        Found := False;
+        for K := 0 to Def.FieldCount - 1 do
+          if Def.FieldNames[K] = FName then
+          begin
+            Def.FieldTypes[K] := FType;
+            Found := True;
+          end;
+        if not Found then
+        begin
+          if Def.FieldCount >= MaxSchemaKeys then
+          begin
+            FOverflow := True;
+            Exit;
+          end;
+          if Def.FieldCount = Integer(Length(Def.FieldNames)) then
+          begin
+            SetLength(Def.FieldNames, 8 + 2 * Def.FieldCount);
+            SetLength(Def.FieldTypes, Length(Def.FieldNames));
+          end;
+          Def.FieldNames[Def.FieldCount] := FName;
+          Def.FieldTypes[Def.FieldCount] := FType;
+          Inc(Def.FieldCount);
+        end;
       end;
-    if (Fields > 0) and not FieldValue(T.FindChild(LandrixEInvoiceXmpNsPdfaType, 'namespaceURI'), Dummy) then
+    if (Def.FieldCount > 0) and not HasNs then
       Continue;
-    if SimplifyType(Name, Key) then
-      AddKey(AEntry, Key)
+    if SimplifyType(Name, Def.Key) then
+      PutType(AEntry, Def)
     else
       FUncertain[AEntry] := True;
+  end;
+end;
+
+{ The properties of the schema: name and value type present, the type
+  known to the schema; the first with one name counts. A property whose
+  type is not decided makes its name not decided. }
+procedure TLandrixEInvoiceXmpSchemaTypes.AddProperties(AEntry: Integer; ADefinition: TLandrixEInvoiceXmpNode);
+var
+  L, P: TLandrixEInvoiceXmpNode;
+  I, J: Integer;
+  Name, VType: TLandrixEInvoiceString;
+  Known: TLandrixEInvoiceXmpTruth;
+  Found: Boolean;
+begin
+  L := ADefinition.FindChild(LandrixEInvoiceXmpNsPdfaSchema, 'property');
+  for I := 0 to L.ChildCount - 1 do
+  begin
+    P := L.Child(I);
+    if not FieldValue(P.FindChild(LandrixEInvoiceXmpNsPdfaProperty, 'name'), Name) or
+      not FieldValue(P.FindChild(LandrixEInvoiceXmpNsPdfaProperty, 'valueType'), VType) then
+      Continue;
+    Known := IsKnown(AEntry, VType);
+    if Known = xmt_No then
+      Continue;
+    Found := False;
+    for J := 0 to FPropCount - 1 do
+      if (FPropNames[J] = Name) and (FPropUris[J] = FUris[AEntry]) then
+        Found := True;
+    if Found then
+      Continue;
+    if FPropCount >= MaxSchemaProps then
+    begin
+      FOverflow := True;
+      Exit;
+    end;
+    if FPropCount = Integer(Length(FPropUris)) then
+    begin
+      SetLength(FPropUris, 16 + 2 * FPropCount);
+      SetLength(FPropNames, Length(FPropUris));
+      SetLength(FPropTypes, Length(FPropUris));
+      SetLength(FPropEntries, Length(FPropUris));
+      SetLength(FPropUncertain, Length(FPropUris));
+    end;
+    FPropUris[FPropCount] := FUris[AEntry];
+    FPropNames[FPropCount] := Name;
+    FPropTypes[FPropCount] := VType;
+    FPropEntries[FPropCount] := AEntry;
+    FPropUncertain[FPropCount] := Known = xmt_Unknown;
+    Inc(FPropCount);
   end;
 end;
 
@@ -1512,21 +2349,35 @@ var
   C, D, P: TLandrixEInvoiceXmpNode;
   I, J, E, M: Integer;
   Uri: TLandrixEInvoiceString;
+  EntryOf, LastOf: array of Integer;
 begin
+  EntryOf := nil;
+  LastOf := nil;
   { drop what an earlier packet left }
   FUris := nil;
-  FKeys := nil;
-  FKeyCounts := nil;
+  FTypes := nil;
+  FTypeCounts := nil;
   FUncertain := nil;
+  FSeeded := nil;
   FCount := 0;
+  FPropUris := nil;
+  FPropNames := nil;
+  FPropTypes := nil;
+  FPropEntries := nil;
+  FPropUncertain := nil;
+  FPropCount := 0;
   FOverflow := AFurther and (AMain <> nil) and AMain.FOverflow;
   if FOverflow or (APacket.State <> xms_Valid) then
     Exit;
   C := APacket.Find(LandrixEInvoiceXmpNsPdfaExtension, 'schemas');
   if (C = nil) or (C.Kind <> xmk_Array) then
     Exit;
+  { the qualifying schema items; of several with one URI the last counts }
+  SetLength(EntryOf, C.ChildCount);
+  SetLength(LastOf, MaxSchemaEntries);
   for I := 0 to C.ChildCount - 1 do
   begin
+    EntryOf[I] := -1;
     D := C.Child(I);
     P := D.FindChild(LandrixEInvoiceXmpNsPdfaSchema, 'property');
     if not FieldValue(D.FindChild(LandrixEInvoiceXmpNsPdfaSchema, 'namespaceURI'), Uri) or (P = nil) or
@@ -1543,30 +2394,45 @@ begin
       if FCount = Integer(Length(FUris)) then
       begin
         SetLength(FUris, 4 + 2 * FCount);
-        SetLength(FKeys, Length(FUris));
-        SetLength(FKeyCounts, Length(FUris));
+        SetLength(FTypes, Length(FUris));
+        SetLength(FTypeCounts, Length(FUris));
         SetLength(FUncertain, Length(FUris));
+        SetLength(FSeeded, Length(FUris));
       end;
       E := FCount;
       Inc(FCount);
       FUris[E] := Uri;
+      FTypeCounts[E] := 0;
+      FUncertain[E] := False;
+      FSeeded[E] := False;
     end;
-    { the last schema with this URI replaces the entry; in a further packet
-      it starts from the main packet's entry for the URI }
-    FKeyCounts[E] := 0;
-    FUncertain[E] := False;
+    EntryOf[I] := E;
+    LastOf[E] := I;
+  end;
+  { per entry: in a further packet the main packet's entry for the URI
+    first, then the types of the counting item }
+  for I := 0 to C.ChildCount - 1 do
+  begin
+    E := EntryOf[I];
+    if (E < 0) or (LastOf[E] <> I) then
+      Continue;
     if AFurther and (AMain <> nil) then
     begin
-      M := AMain.IndexOf(Uri);
+      M := AMain.IndexOf(FUris[E]);
       if M >= 0 then
       begin
+        FSeeded[E] := True;
         FUncertain[E] := AMain.FUncertain[M];
-        for J := 0 to AMain.FKeyCounts[M] - 1 do
-          AddKey(E, AMain.FKeys[M][J]);
+        for J := 0 to AMain.FTypeCounts[M] - 1 do
+          PutType(E, AMain.FTypes[M][J]);
       end;
     end;
-    AddTypes(E, D);
+    AddTypes(E, C.Child(I));
   end;
+  { then the properties, which need the types }
+  for I := 0 to C.ChildCount - 1 do
+    if (EntryOf[I] >= 0) and (LastOf[EntryOf[I]] = I) then
+      AddProperties(EntryOf[I], C.Child(I));
 end;
 
 function TLandrixEInvoiceXmpSchemaTypes.Entry(const ASchemaUri: TLandrixEInvoiceString; AHasUri: Boolean): Integer;
@@ -1580,12 +2446,12 @@ function TLandrixEInvoiceXmpSchemaTypes.IsKnown(AEntry: Integer;
   const AType: TLandrixEInvoiceString): TLandrixEInvoiceXmpTruth;
 var
   Key: TLandrixEInvoiceString;
-  I: Integer;
 begin
   Result := xmt_Unknown;
   if not SimplifyType(AType, Key) then
     Exit;
-  while (Copy(Key, 1, 4) = 'bag ') or (Copy(Key, 1, 4) = 'alt ') or (Copy(Key, 1, 4) = 'seq ') do
+  { unlike ValidateKey, veraPDF does not simplify the item type again here }
+  while ArrayPrefix(Key) do
     Key := Copy(Key, 5, MaxInt);
   if InList(Key, BasicTypes) then
   begin
@@ -1594,26 +2460,293 @@ begin
   end;
   if FOverflow then
     Exit;
+  if AEntry = LandrixEInvoiceXmpPredefinedEntry then
+  begin
+    if InList(Key, PredefinedTypes) then
+      Result := xmt_Yes
+    else
+      Result := xmt_No;
+    Exit;
+  end;
   if (AEntry < 0) or (AEntry >= FCount) then
   begin
     Result := xmt_No;
     Exit;
   end;
-  if InList(Key, PredefinedTypes) then
+  if InList(Key, PredefinedTypes) or (TypeIndex(AEntry, Key) >= 0) then
+    Result := xmt_Yes
+  else if FUncertain[AEntry] then
+    Result := xmt_Unknown
+  else
+    Result := xmt_No;
+end;
+
+function TLandrixEInvoiceXmpSchemaTypes.Defines(const ANs, ALocal: TLandrixEInvoiceString;
+  out AType: TLandrixEInvoiceString; out AEntry: Integer): TLandrixEInvoiceXmpTruth;
+var
+  I: Integer;
+begin
+  AType := '';
+  AEntry := -1;
+  Result := xmt_No;
+  for I := 0 to FPropCount - 1 do
+    if (FPropNames[I] = ALocal) and (FPropUris[I] = ANs) then
+    begin
+      AType := FPropTypes[I];
+      AEntry := FPropEntries[I];
+      if FPropUncertain[I] then
+        Result := xmt_Unknown
+      else
+        Result := xmt_Yes;
+      Exit;
+    end;
+  if FOverflow then
+    Result := xmt_Unknown;
+end;
+
+{ Combines the answers for the parts of one value: one no is no. }
+function Both(A, B: TLandrixEInvoiceXmpTruth): TLandrixEInvoiceXmpTruth;
+begin
+  if (A = xmt_No) or (B = xmt_No) then
+    Result := xmt_No
+  else if (A = xmt_Unknown) or (B = xmt_Unknown) then
+    Result := xmt_Unknown
+  else
+    Result := xmt_Yes;
+end;
+
+function HasLangItem(ANode: TLandrixEInvoiceXmpNode): Boolean;
+var
+  I, J: Integer;
+begin
+  Result := False;
+  for I := 0 to ANode.ChildCount - 1 do
+    for J := 0 to ANode.Child(I).QualifierCount - 1 do
+      if (ANode.Child(I).Qualifier(J).Ns = LandrixEInvoiceXmpNsXml) and
+        (ANode.Child(I).Qualifier(J).Local = 'lang') then
+      begin
+        Result := True;
+        Exit;
+      end;
+end;
+
+{ A structure of the type AKey: every field a field of the type (the
+  built-in types of XmpFields or a type of the entry) with a valid value. }
+function TLandrixEInvoiceXmpSchemaTypes.ValidateFields(ANode: TLandrixEInvoiceXmpNode;
+  const AKey: TLandrixEInvoiceString; AEntry, ADepth: Integer): TLandrixEInvoiceXmpTruth;
+var
+  I, J, T: Integer;
+  F: TLandrixEInvoiceXmpNode;
+  FKey: TLandrixEInvoiceString;
+  Found: Boolean;
+  R: TLandrixEInvoiceXmpTruth;
+begin
+  if ANode.Kind <> xmk_Struct then
+  begin
+    Result := xmt_No;
+    Exit;
+  end;
+  Result := xmt_Yes;
+  T := -1;
+  if AEntry >= 0 then
+    T := TypeIndex(AEntry, AKey);
+  for I := 0 to ANode.ChildCount - 1 do
+  begin
+    F := ANode.Child(I);
+    Found := False;
+    R := xmt_Unknown;
+    if T >= 0 then
+    begin
+      for J := 0 to FTypes[AEntry][T].FieldCount - 1 do
+        if (F.Local = FTypes[AEntry][T].FieldNames[J]) and (F.Ns = FTypes[AEntry][T].Ns) then
+        begin
+          Found := True;
+          if SimplifyType(FTypes[AEntry][T].FieldTypes[J], FKey) then
+            R := ValidateKey(F, FKey, AEntry, ADepth + 1);
+          Break;
+        end;
+    end
+    else
+      for J := 0 to High(XmpFields) do
+        if (AKey = TLandrixEInvoiceString(XmpFields[J].T)) and (F.Local = TLandrixEInvoiceString(XmpFields[J].Name)) and
+          (F.Ns = TLandrixEInvoiceString(XmpFieldNs[XmpFields[J].N])) then
+        begin
+          Found := True;
+          if SimplifyType(TLandrixEInvoiceString(XmpFields[J].VType), FKey) then
+            R := ValidateKey(F, FKey, AEntry, ADepth + 1);
+          if XmpFields[J].Lax and (R = xmt_No) then
+            R := xmt_Unknown;
+          Break;
+        end;
+    if not Found then
+      R := xmt_No;
+    Result := Both(Result, R);
+    if Result = xmt_No then
+      Exit;
+  end;
+end;
+
+function TLandrixEInvoiceXmpSchemaTypes.ValidateKey(ANode: TLandrixEInvoiceXmpNode;
+  const AKey: TLandrixEInvoiceString; AEntry, ADepth: Integer): TLandrixEInvoiceXmpTruth;
+var
+  I, T: Integer;
+  Rest: TLandrixEInvoiceString;
+  Simple, Builtin: Boolean;
+begin
+  Result := xmt_Unknown;
+  if ADepth > MaxTypeDepth then
+    Exit;
+  Simple := ANode.Kind = xmk_Simple;
+  { a type an extension schema defines under a built-in name (or Lang
+    Alt, an array form, Any) is not decided }
+  T := -1;
+  if AEntry >= 0 then
+    T := TypeIndex(AEntry, AKey);
+  Builtin := InList(AKey, BasicTypes) or InList(AKey, PredefinedTypes) or ArrayPrefix(AKey) or (AKey = 'any');
+  if (T >= 0) and Builtin then
+    Exit;
+  { veraPDF accepts any value for the type Any }
+  if AKey = 'any' then
   begin
     Result := xmt_Yes;
     Exit;
   end;
-  for I := 0 to FKeyCounts[AEntry] - 1 do
-    if FKeys[AEntry][I] = Key then
+  if AKey = 'lang alt' then
+  begin
+    if (ANode.Kind = xmk_Array) and (ANode.ArrayForm = xma_Alt) and ((ANode.ChildCount = 0) or HasLangItem(ANode)) then
+      Result := xmt_Yes
+    else
+      Result := xmt_No;
+    Exit;
+  end;
+  if ArrayPrefix(AKey) then
+  begin
+    { the item type is simplified again }
+    if not SimplifyType(Copy(AKey, 5, MaxInt), Rest) then
+      Exit;
+    if (ANode.Kind <> xmk_Array) or ((Copy(AKey, 1, 4) = 'bag ') and (ANode.ArrayForm <> xma_Bag)) or
+      ((Copy(AKey, 1, 4) = 'seq ') and (ANode.ArrayForm <> xma_Seq)) or
+      ((Copy(AKey, 1, 4) = 'alt ') and (ANode.ArrayForm <> xma_Alt)) then
     begin
-      Result := xmt_Yes;
+      Result := xmt_No;
       Exit;
     end;
-  if FUncertain[AEntry] then
+    Result := xmt_Yes;
+    for I := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := Both(Result, ValidateKey(ANode.Child(I), Rest, AEntry, ADepth + 1));
+      if Result = xmt_No then
+        Exit;
+    end;
+    Exit;
+  end;
+  if InList(AKey, BasicTypes) then
+  begin
+    if not Simple then
+      Result := xmt_No
+    else if AKey = 'boolean' then
+    begin
+      if (ANode.Value = 'True') or (ANode.Value = 'False') then
+        Result := xmt_Yes
+      else
+        Result := xmt_No;
+    end
+    else if AKey = 'integer' then
+    begin
+      if XmpIntegerOk(ANode.Value) then
+        Result := xmt_Yes
+      else
+        Result := xmt_No;
+    end
+    else if AKey = 'real' then
+    begin
+      if XmpRealOk(ANode.Value) then
+        Result := xmt_Yes
+      else
+        Result := xmt_No;
+    end
+    else if AKey = 'mimetype' then
+    begin
+      if XmpMimeOk(ANode.Value) then
+        Result := xmt_Yes
+      else
+        Result := xmt_No;
+    end
+    else if AKey = 'date' then
+      Result := XmpDateOk(ANode.Value)
+    else if AKey = 'xpath' then
+      { veraPDF compiles it as an XPath expression }
+      Result := xmt_Unknown
+    else
+      Result := xmt_Yes;
+    Exit;
+  end;
+  if (AEntry = -1) or FOverflow then
+  begin
+    { the basic types only, or not certain }
+    if FOverflow then
+      Result := xmt_Unknown
+    else
+      Result := xmt_No;
+    Exit;
+  end;
+  if InList(AKey, PredefinedTypes) then
+  begin
+    if AKey = 'locale' then
+    begin
+      if Simple then
+        Result := xmt_Yes
+      else
+        Result := xmt_No;
+    end
+    else if AKey = 'gpscoordinate' then
+    begin
+      if Simple and XmpGpsOk(ANode.Value) then
+        Result := xmt_Yes
+      else
+        Result := xmt_No;
+    end
+    else
+      { the fields resolve their types in the same schema entry }
+      Result := ValidateFields(ANode, AKey, AEntry, ADepth);
+    Exit;
+  end;
+  if T >= 0 then
+  begin
+    { a further packet's types copied from the main packet resolve nested
+      types in the main packet's entry }
+    if (ADepth > 0) and FSeeded[AEntry] then
+      Exit;
+    if FTypes[AEntry][T].FieldCount = 0 then
+    begin
+      if Simple then
+        Result := xmt_Yes
+      else
+        Result := xmt_No;
+    end
+    else
+      Result := ValidateFields(ANode, AKey, AEntry, ADepth);
+    Exit;
+  end;
+  if (AEntry >= 0) and FUncertain[AEntry] then
     Result := xmt_Unknown
   else
     Result := xmt_No;
+end;
+
+function TLandrixEInvoiceXmpSchemaTypes.Validate(ANode: TLandrixEInvoiceXmpNode; const AType: TLandrixEInvoiceString;
+  AEntry: Integer): TLandrixEInvoiceXmpTruth;
+var
+  Key: TLandrixEInvoiceString;
+begin
+  Result := xmt_Unknown;
+  if (ANode = nil) or not SimplifyType(AType, Key) then
+    Exit;
+  Result := ValidateKey(ANode, Key, AEntry, 0);
+  { a type name not read with certainty may have replaced a built-in type
+    (either way) }
+  if (Result <> xmt_Unknown) and (FOverflow or ((AEntry >= 0) and (AEntry < FCount) and FUncertain[AEntry])) then
+    Result := xmt_Unknown;
 end;
 
 end.

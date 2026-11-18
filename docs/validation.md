@@ -166,7 +166,7 @@ end.
 - `Res.Status[Part]` per part: `evp_Read` (reading through the facade), `evp_KoSIT`,
   `evp_ModelCheck` (the library's own rules), `evp_PdfEmbedding` and `evp_PdfMetadata` (PDF
   levels 2 and 3), `evp_PdfA` (PDF/A-3b, level 1: so far the rules of clauses 6.1 (file structure), 6.3 to 6.5
-  (annotations, forms, actions), 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 and 6.6.4 (XMP packets, extension schemas, PDF/A
+  (annotations, forms, actions), 6.6 (XMP metadata: packets, properties, extension schemas, PDF/A
   identification) and 6.8 to 6.11 (embedded
   files, optional content, presentations, requirements);
   `evr_Failed` on a violation, otherwise `evr_Incomplete`, as not every PDF/A rule is implemented;

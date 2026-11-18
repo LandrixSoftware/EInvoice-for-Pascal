@@ -13,8 +13,8 @@
 }
 
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.3 (annotations), 6.4
-  (interactive forms), 6.5 (actions), 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 and
-  6.6.4 (XMP packets, extension schemas, PDF/A identification), 6.8
+  (interactive forms), 6.5 (actions), 6.6 (XMP metadata: packets,
+  properties, extension schemas, PDF/A identification), 6.8
   (embedded files), 6.9 (optional content), 6.10 (alternate presentations)
   and 6.11 (requirements) of ISO 19005-3, checked on the raw syntax facts of LandrixEInvoicePdfSyntax and the objects of the document.
   The rules carry the numbers of the veraPDF validation profile
@@ -32,8 +32,8 @@
   items and their /Next chains, the AcroForm /Fields with kids that have /T.
 
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
-  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6.2.1,
-  6.6.2.3.2, 6.6.2.3.3 und 6.6.4 (XMP-Pakete, Erweiterungsschemas,
+  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
+  (XMP-Metadaten: Pakete, Eigenschaften, Erweiterungsschemas,
   PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10
   (alternative Darstellungen) und 6.11 (Anforderungen) der ISO 19005-3, geprueft auf den
   rohen Syntax-Tatsachen von
@@ -65,17 +65,16 @@ unit LandrixEInvoicePdfARules;
 interface
 
 uses
+  LandrixEInvoiceTypes,
   LandrixEInvoicePdfObjects,
   LandrixEInvoicePdfSyntax,
   LandrixEInvoicePdfXmp;
 
 type
   { The rules of clauses 6.1, 6.3 to 6.6 and 6.8 to 6.11 in the veraPDF
-    profile PDF/A-3B, named after clause and test number (of 6.6 so far
-    6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 and 6.6.4).
+    profile PDF/A-3B, named after clause and test number.
     DE: Die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis 6.11 im
-    veraPDF-Profil PDF/A-3B, benannt nach Abschnitt und Testnummer (von 6.6
-    bisher 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 und 6.6.4). }
+    veraPDF-Profil PDF/A-3B, benannt nach Abschnitt und Testnummer. }
   TLandrixEInvoicePdfARule = (
     par_6_1_2_1, par_6_1_2_2, par_6_1_3_1, par_6_1_3_2, par_6_1_3_3, par_6_1_4_2, par_6_1_6_1, par_6_1_6_2,
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
@@ -85,7 +84,7 @@ type
     par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
     par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2,
     par_6_6_2_1_1, par_6_6_2_1_2, par_6_6_2_1_3, par_6_6_2_1_4, par_6_6_2_1_5,
-    par_6_6_2_3_2_1, par_6_6_2_3_3_1, par_6_6_2_3_3_2, par_6_6_2_3_3_3, par_6_6_2_3_3_4, par_6_6_2_3_3_5,
+    par_6_6_2_3_1_1, par_6_6_2_3_1_2, par_6_6_2_3_2_1, par_6_6_2_3_3_1, par_6_6_2_3_3_2, par_6_6_2_3_3_3, par_6_6_2_3_3_4, par_6_6_2_3_3_5,
     par_6_6_2_3_3_6, par_6_6_2_3_3_7, par_6_6_2_3_3_8, par_6_6_2_3_3_9, par_6_6_2_3_3_10, par_6_6_2_3_3_11,
     par_6_6_2_3_3_12, par_6_6_2_3_3_13, par_6_6_2_3_3_14, par_6_6_2_3_3_15, par_6_6_2_3_3_16, par_6_6_2_3_3_17,
     par_6_6_2_3_3_18,
@@ -167,6 +166,14 @@ type
     FMetaSeen: array of Boolean;
     FMetaNums: array of Integer;
     FMetaCount: Integer;
+    { the XMP properties judged for 6.6.2.3.1 (namespace, prefix and name;
+      veraPDF judges one of these once) with their answers }
+    FPropIds: array of TLandrixEInvoiceString;
+    FPropDefined: array of TLandrixEInvoiceXmpTruth;
+    FPropValid: array of TLandrixEInvoiceXmpTruth;
+    FPropNums: array of Integer;
+    FPropNames: array of string;
+    FPropCount: Integer;
     procedure Reset;
     procedure Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource;
       APos: Integer; const ADetail: string);
@@ -215,6 +222,9 @@ type
     procedure JudgePacket(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
     procedure JudgeIdentification(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
     procedure MarkExtension;
+    procedure JudgeProperties(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer;
+      ATypes, AMainTypes: TLandrixEInvoiceXmpSchemaTypes);
+    procedure ReportProperties;
     procedure JudgeExtension(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer; ATypes: TLandrixEInvoiceXmpSchemaTypes);
     procedure CheckMetadata;
   public
@@ -253,8 +263,7 @@ uses
   SysUtils,
   Classes,
   Contnrs,
-  LandrixXmlBase,
-  LandrixEInvoiceTypes;
+  LandrixXmlBase;
 
 type
   TOcNames = array of TLandrixEInvoiceString;
@@ -331,6 +340,9 @@ const
     (Number: '6.6.2.1-3'; Coverage: prc_Full; Text: 'The xpacket header of an XMP packet has no encoding attribute'),
     (Number: '6.6.2.1-4'; Coverage: prc_Partial; Text: 'An XMP packet is well-formed XML and RDF'),
     (Number: '6.6.2.1-5'; Coverage: prc_Full; Text: 'An XMP packet is encoded as UTF-8'),
+    (Number: '6.6.2.3.1-1'; Coverage: prc_Full;
+      Text: 'Every XMP property is predefined or defined by an extension schema of its packet or the main packet'),
+    (Number: '6.6.2.3.1-2'; Coverage: prc_Full; Text: 'Every XMP property has a value of its defined value type'),
     (Number: '6.6.2.3.2-1'; Coverage: prc_Full;
       Text: 'Extension schema structures hold only the fields of their PDF/A value type'),
     (Number: '6.6.2.3.3-1'; Coverage: prc_Full;
@@ -738,6 +750,12 @@ begin
   FMetaSeen := nil;
   FMetaNums := nil;
   FMetaCount := 0;
+  FPropIds := nil;
+  FPropDefined := nil;
+  FPropValid := nil;
+  FPropNums := nil;
+  FPropNames := nil;
+  FPropCount := 0;
   FLive := nil;
   FLiveCount := 0;
   FLiveByNum := nil;
@@ -2474,8 +2492,169 @@ procedure TLandrixEInvoicePdfARuleCheck.MarkExtension;
 var
   R: TLandrixEInvoicePdfARule;
 begin
-  for R := par_6_6_2_3_2_1 to par_6_6_2_3_3_18 do
+  for R := par_6_6_2_3_1_1 to par_6_6_2_3_3_18 do
     FIncomplete[R] := True;
+end;
+
+const
+  { most XMP properties judged for 6.6.2.3.1 }
+  MaxXmpProperties = 4096;
+
+{ 6.6.2.3.1 on one packet: every top-level property except
+  pdfaExtension:schemas. -1: predefined (XMP 2005 chapter 4, pdfaid) or
+  defined by an extension schema of this packet or of the main packet
+  (AMainTypes, for a further packet). -2: its value fits the type of the
+  first definition in the order this packet, main packet, predefined; a
+  property defined nowhere fails both. veraPDF judges a property (namespace,
+  written prefix, name) once over all packets; which occurrence is not
+  established, so the answers of all occurrences are kept and only an
+  agreeing one counts (ReportProperties).
+  DE: 6.6.2.3.1 an einem Paket: jede Eigenschaft der obersten Ebene ausser
+  pdfaExtension:schemas. -1: vordefiniert (XMP 2005 Kapitel 4, pdfaid) oder
+  von einem Erweiterungsschema dieses Pakets oder des Hauptpakets definiert
+  (AMainTypes, fuer ein weiteres Paket). -2: ihr Wert passt zum Typ der
+  ersten Definition in der Reihenfolge dieses Paket, Hauptpaket,
+  vordefiniert; eine nirgends definierte Eigenschaft verletzt beide.
+  veraPDF beurteilt eine Eigenschaft (Namensraum, geschriebenes Praefix,
+  Name) einmal ueber alle Pakete; welches Vorkommen, ist nicht belegt,
+  daher zaehlt nur eine Antwort, in der alle Vorkommen uebereinstimmen
+  (ReportProperties). }
+procedure TLandrixEInvoicePdfARuleCheck.JudgeProperties(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer;
+  ATypes, AMainTypes: TLandrixEInvoiceXmpSchemaTypes);
+var
+  I, J, E, E2: Integer;
+  P: TLandrixEInvoiceXmpNode;
+  T, T2, Id: TLandrixEInvoiceString;
+  Lax: Boolean;
+  Defined, Valid, Here, Main: TLandrixEInvoiceXmpTruth;
+begin
+  case APacket.State of
+    xms_Unknown:
+      begin
+        FIncomplete[par_6_6_2_3_1_1] := True;
+        FIncomplete[par_6_6_2_3_1_2] := True;
+        Exit;
+      end;
+    xms_Invalid:
+      Exit;
+  else
+    ;
+  end;
+  for I := 0 to APacket.PropertyCount - 1 do
+  begin
+    P := APacket.Prop(I);
+    if (P.Ns = LandrixEInvoiceXmpNsPdfaExtension) and (P.Local = 'schemas') then
+      Continue;
+    { this packet, then the main packet, then the predefined properties }
+    Here := ATypes.Defines(P.Ns, P.Local, T, E);
+    Main := xmt_No;
+    if AMainTypes <> nil then
+      Main := AMainTypes.Defines(P.Ns, P.Local, T2, E2);
+    if Here = xmt_Yes then
+      Valid := ATypes.Validate(P, T, E)
+    else if Here = xmt_Unknown then
+      Valid := xmt_Unknown
+    else
+    begin
+      T := T2;
+      E := E2;
+      if Main = xmt_Yes then
+        Valid := AMainTypes.Validate(P, T, E)
+      else if Main = xmt_Unknown then
+        Valid := xmt_Unknown
+      else if LandrixEInvoiceXmpPredefined(P.Ns, P.Local, T, Lax) then
+      begin
+        Valid := ATypes.Validate(P, T, LandrixEInvoiceXmpPredefinedEntry);
+        if Lax and (Valid = xmt_No) then
+          Valid := xmt_Unknown;
+      end
+      else
+        Valid := xmt_No;
+    end;
+    if (Here = xmt_Yes) or (Main = xmt_Yes) or LandrixEInvoiceXmpPredefined(P.Ns, P.Local, T, Lax) then
+      Defined := xmt_Yes
+    else if (Here = xmt_Unknown) or (Main = xmt_Unknown) then
+      Defined := xmt_Unknown
+    else
+      Defined := xmt_No;
+    { one answer per property over all packets }
+    Id := P.Ns + #1 + P.Prefix + #1 + P.Local;
+    J := 0;
+    while (J < FPropCount) and (FPropIds[J] <> Id) do
+      Inc(J);
+    if J < FPropCount then
+    begin
+      if FPropDefined[J] <> Defined then
+        FPropDefined[J] := xmt_Unknown;
+      if FPropValid[J] <> Valid then
+        FPropValid[J] := xmt_Unknown;
+      Continue;
+    end;
+    if FPropCount >= MaxXmpProperties then
+    begin
+      FIncomplete[par_6_6_2_3_1_1] := True;
+      FIncomplete[par_6_6_2_3_1_2] := True;
+      Exit;
+    end;
+    if FPropCount = Integer(Length(FPropIds)) then
+    begin
+      SetLength(FPropIds, 16 + 2 * FPropCount);
+      SetLength(FPropDefined, Length(FPropIds));
+      SetLength(FPropValid, Length(FPropIds));
+      SetLength(FPropNums, Length(FPropIds));
+      SetLength(FPropNames, Length(FPropIds));
+    end;
+    FPropIds[FPropCount] := Id;
+    FPropDefined[FPropCount] := Defined;
+    FPropValid[FPropCount] := Valid;
+    FPropNums[FPropCount] := ANum;
+    FPropNames[FPropCount] := WideAscii(P.Lexical);
+    Inc(FPropCount);
+  end;
+end;
+
+{ 6.6.2.3.1: the answers of all packets. DE: 6.6.2.3.1: die Antworten
+  aller Pakete. }
+procedure TLandrixEInvoicePdfARuleCheck.ReportProperties;
+var
+  I: Integer;
+  Where: string;
+  Partial: Boolean;
+begin
+  { a packet that was not judged (not decided, a limit, a walk cut short,
+    syntax not read completely) may hold an occurrence of a property that
+    veraPDF judges instead }
+  Partial := FIncomplete[par_6_6_2_3_1_1] or FIncomplete[par_6_6_2_3_1_2] or FWalkBroken or
+    not FFacts.Complete;
+  for I := 0 to FPropCount - 1 do
+  begin
+    if Partial then
+    begin
+      if FPropDefined[I] = xmt_No then
+        FPropDefined[I] := xmt_Unknown;
+      if FPropValid[I] = xmt_No then
+        FPropValid[I] := xmt_Unknown;
+    end;
+    Where := 'object ' + IntToStr(FPropNums[I]) + ': ' + FPropNames[I];
+    case FPropDefined[I] of
+      xmt_No:
+        Fail(par_6_6_2_3_1_1, FPropNums[I], FDoc.XrefEntry(FPropNums[I]).Gen, pss_File, -1,
+          Where + ' is neither predefined nor defined by an extension schema');
+      xmt_Unknown:
+        FIncomplete[par_6_6_2_3_1_1] := True;
+    else
+      ;
+    end;
+    case FPropValid[I] of
+      xmt_No:
+        Fail(par_6_6_2_3_1_2, FPropNums[I], FDoc.XrefEntry(FPropNums[I]).Gen, pss_File, -1,
+          Where + ' has no value of its defined type');
+      xmt_Unknown:
+        FIncomplete[par_6_6_2_3_1_2] := True;
+    else
+      ;
+    end;
+  end;
 end;
 
 { A required field of an extension schema structure: present, a simple
@@ -2745,6 +2924,7 @@ begin
         JudgeIdentification(Packet, MainNum);
       MainTypes.Build(Packet, nil, False);
       JudgeExtension(Packet, MainNum, MainTypes);
+      JudgeProperties(Packet, MainNum, MainTypes, nil);
       MainOk := Packet.State = xms_Valid;
     end;
     for I := 0 to FMetaCount - 1 do
@@ -2772,7 +2952,12 @@ begin
       else
         Types.Build(Packet, nil, True);
       JudgeExtension(Packet, FMetaNums[I], Types);
+      if HasMain then
+        JudgeProperties(Packet, FMetaNums[I], Types, MainTypes)
+      else
+        JudgeProperties(Packet, FMetaNums[I], Types, nil);
     end;
+    ReportProperties;
   finally
     Types.Free;
     MainTypes.Free;

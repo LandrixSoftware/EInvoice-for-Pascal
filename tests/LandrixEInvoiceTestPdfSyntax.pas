@@ -30,7 +30,8 @@
   embedded files, optional content, alternate presentations and requirements
   (6.8 to 6.11). PdfA.Metadata: the XMP packets (6.6.2.1, 6.6.4); PdfA.XmpReader:
   the XMP reader's valid, rejected and undecided forms; PdfA.Extension: the
-  extension schemas (6.6.2.3.2, 6.6.2.3.3). Accepted
+  extension schemas (6.6.2.3.2, 6.6.2.3.3); PdfA.Properties: the XMP
+  properties and their value types (6.6.2.3.1). Accepted
   differences are listed in
   tests/data/pdfa-exceptions.txt (path, rule, reason). }
 
@@ -47,6 +48,7 @@ implementation
 uses
   SysUtils,
   Classes,
+  LandrixEInvoiceTypes,
   LandrixEInvoicePdfObjects,
   LandrixEInvoicePdfSyntax,
   LandrixEInvoicePdfARules,
@@ -1323,7 +1325,8 @@ begin
     try
       Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
       Rules.Check(Doc, Facts);
-      CheckEqualsStr('6.6.2.1-2 6.6.2.1-3 6.6.2.1-4 6.6.2.1-5 6.6.4-3 6.6.4-4', FailedRules(Rules), 'failed rules');
+      CheckEqualsStr('6.6.2.1-2 6.6.2.1-3 6.6.2.1-4 6.6.2.1-5 6.6.2.3.1-2 6.6.4-3 6.6.4-4', FailedRules(Rules),
+        'failed rules');
       CheckEquals(20, Rules.RuleResult(par_6_6_2_1_2).ObjNum, 'header of the main packet');
       CheckEquals(21, Rules.RuleResult(par_6_6_2_1_4).ObjNum, 'duplicate property in the further packet');
       Check(Rules.RuleResult(par_6_6_4_2).Outcome = pro_Passed, '6.6.4-2 passed (+03)');
@@ -1487,6 +1490,107 @@ begin
   end;
 end;
 
+procedure TestPdfAProperties;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+begin
+  { xmp:CreateDate no date (-2); xmp:Rating .5 (veraPDF reads Real: not
+    decided); foo:undefined defined nowhere (-1, -2); urn:my defines size
+    (Dimensions, here with a foreign field: -2), pt (MyType, valid) and n
+    (Integer, valid) }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF, Pages,
+    MetaObj(20, XmpHead + XmpPdfA3B +
+      ExtDesc(ExtSchema('urn:my', ExtProp('size', 'Dimensions') + ExtProp('pt', 'MyType') + ExtProp('n', 'Integer'),
+      ExtMyType)) +
+      '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:foo="urn:foo" ' +
+      'xmp:CreateDate="yesterday" xmp:Rating=".5" foo:undefined="x"/>' + LF +
+      '<rdf:Description rdf:about="" xmlns:my="urn:my" xmlns:t="urn:my#t" ' +
+      'xmlns:stDim="http://ns.adobe.com/xap/1.0/sType/Dimensions#"><my:size rdf:parseType="Resource">' +
+      '<stDim:w>1</stDim:w><stDim:depth>2</stDim:depth></my:size><my:pt rdf:parseType="Resource"><t:f><rdf:Bag>' +
+      '<rdf:li>a</rdf:li></rdf:Bag></t:f></my:pt><my:n>7</my:n></rdf:Description>' + LF + XmpTail)], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.6.2.3.1-1 6.6.2.3.1-2', FailedRules(Rules), 'failed rules');
+      CheckEquals(1, Rules.RuleResult(par_6_6_2_3_1_1).Failures, 'only foo:undefined is undefined: ' +
+        Rules.RuleResult(par_6_6_2_3_1_1).Detail);
+      CheckEquals(3, Rules.RuleResult(par_6_6_2_3_1_2).Failures, 'CreateDate, foo:undefined and my:size');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+
+  { the same property in two packets with different answers: veraPDF judges
+    it once, which occurrence is not established }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Metadata 21 0 R >>' + LF + 'endobj' + LF,
+    MetaObj(20, XmpHead + XmpPdfA3B + '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" ' +
+      'xmp:CreateDate="2020-01-01"/>' + LF + XmpTail),
+    MetaObj(21, XmpHead + '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" ' +
+      'xmp:CreateDate="never"/>' + LF + XmpTail)], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('', FailedRules(Rules), 'failed rules');
+      Check(Rules.RuleResult(par_6_6_2_3_1_2).Outcome = pro_Incomplete, '6.6.2.3.1-2 incomplete');
+      Check(Rules.RuleResult(par_6_6_2_3_1_1).Outcome = pro_Passed, '6.6.2.3.1-1 passed');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+
+  { a wrong date in one page packet, while another page packet is not
+    decided (rdf:RDF without attributes) and may hold the occurrence
+    veraPDF judges: not decided }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Metadata 21 0 R >>' + LF + 'endobj' + LF,
+    '4 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Metadata 22 0 R >>' + LF + 'endobj' + LF,
+    MetaObj(20, XmpHead + XmpPdfA3B + XmpTail),
+    MetaObj(21, XmpHead + '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" ' +
+      'xmp:CreateDate="never"/>' + LF + XmpTail),
+    MetaObj(22, '<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:RDF><rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmp:CreateDate="2020"/>' +
+      '</rdf:RDF></x:xmpmeta>')], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      Check(Rules.RuleResult(par_6_6_2_3_1_2).Outcome = pro_Incomplete, '6.6.2.3.1-2 incomplete: ' +
+        Rules.RuleResult(par_6_6_2_3_1_2).Detail);
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
 { The state of an XMP packet read from AText. }
 function XmpState(APacket: TLandrixEInvoiceXmpPacket; const AText: AnsiString): TLandrixEInvoiceXmpState;
 var
@@ -1522,6 +1626,16 @@ begin
   Result := AnsiChar(254) + AnsiChar(255);
   for I := 1 to Length(AText) do
     Result := Result + AnsiChar(0) + AText[I];
+end;
+
+{ Whether the property q:v (urn:q) written as AElement is a value of AType
+  among the built-in types. }
+function XmpValue(APacket: TLandrixEInvoiceXmpPacket; ATypes: TLandrixEInvoiceXmpSchemaTypes;
+  const AElement: AnsiString; const AType: TLandrixEInvoiceString): TLandrixEInvoiceXmpTruth;
+begin
+  Result := xmt_Unknown;
+  if XmpState(APacket, XmpDesc(AElement)) = xms_Valid then
+    Result := ATypes.Validate(APacket.Find('urn:q', 'v'), AType, LandrixEInvoiceXmpPredefinedEntry);
 end;
 
 procedure TestPdfAXmpReader;
@@ -1566,6 +1680,58 @@ begin
     Check(T.IsKnown(T.Entry('urn:a', True), 'W') = xmt_No, 'W not registered');
     Check(T.IsKnown(T.Entry('urn:a', True), 'V') = xmt_Yes, 'V registered as text');
     Check(T.IsKnown(T.Entry('urn:b', True), 'Nope') = xmt_No, 'no types from a text');
+    { values as veraPDF checks them }
+    Check(XmpValue(P, T, '<q:v></q:v>', 'Date') = xmt_Yes, 'empty date');
+    Check(XmpValue(P, T, '<q:v>2020-01-02T10:11:12.5+01:00</q:v>', 'Date') = xmt_Yes, 'full date');
+    Check(XmpValue(P, T, '<q:v>1-99-99T1+0130</q:v>', 'Date') = xmt_Yes, 'loose date');
+    Check(XmpValue(P, T, '<q:v>2020-01-02t10</q:v>', 'Date') = xmt_No, 'lower-case t');
+    Check(XmpValue(P, T, '<q:v>2020-01-</q:v>', 'Date') = xmt_No, 'separator without digits');
+    Check(XmpValue(P, T, '<q:v>2020-01-02T10:11:12Zx</q:v>', 'Date') = xmt_No, 'trailing characters');
+    Check(XmpValue(P, T, '<q:v>+007</q:v>', 'Integer') = xmt_Yes, 'integer with sign');
+    Check(XmpValue(P, T, '<q:v>1.5</q:v>', 'Integer') = xmt_No, 'no integer');
+    Check(XmpValue(P, T, '<q:v>.5</q:v>', 'Real') = xmt_Yes, 'real .5');
+    Check(XmpValue(P, T, '<q:v>1.</q:v>', 'Real') = xmt_Yes, 'real 1.');
+    Check(XmpValue(P, T, '<q:v>1e5</q:v>', 'Real') = xmt_No, 'no exponent');
+    Check(XmpValue(P, T, '<q:v>true</q:v>', 'Boolean') = xmt_No, 'boolean true');
+    Check(XmpValue(P, T, '<q:v>application/pdf</q:v>', 'MIMEType') = xmt_Yes, 'MIME type');
+    Check(XmpValue(P, T, '<q:v>text/plain; charset=x</q:v>', 'MIMEType') = xmt_No, 'MIME type with parameter');
+    Check(XmpValue(P, T, '<q:v>52,30.5N</q:v>', 'GPSCoordinate') = xmt_Yes, 'GPS coordinate');
+    Check(XmpValue(P, T, '<q:v>52,30N</q:v>', 'GPSCoordinate') = xmt_No, 'GPS coordinate without seconds');
+    Check(XmpValue(P, T, '<q:v>/a</q:v>', 'XPath') = xmt_Unknown, 'XPath not decided');
+    Check(XmpValue(P, T, '<q:v><rdf:Alt><rdf:li xml:lang="de">a</rdf:li><rdf:li>b</rdf:li></rdf:Alt></q:v>',
+      'Lang Alt') = xmt_Yes, 'Lang Alt with one language');
+    Check(XmpValue(P, T, '<q:v><rdf:Alt><rdf:li>b</rdf:li></rdf:Alt></q:v>', 'Lang Alt') = xmt_No,
+      'Lang Alt without language');
+    Check(XmpValue(P, T, '<q:v><rdf:Seq><rdf:li>1</rdf:li><rdf:li>x</rdf:li></rdf:Seq></q:v>', 'seq Integer') =
+      xmt_No, 'seq Integer with text');
+    Check(XmpValue(P, T, '<q:v><rdf:Seq/></q:v>', 'bag Text') = xmt_No, 'a Seq is no bag');
+    Check(XmpValue(P, T, '<q:v rdf:parseType="Resource" xmlns:stDim="http://ns.adobe.com/xap/1.0/sType/Dimensions#">' +
+      '<stDim:w>1.5</stDim:w></q:v>', 'Dimensions') = xmt_Yes, 'Dimensions with one field');
+    Check(XmpValue(P, T, '<q:v rdf:parseType="Resource" xmlns:stDim="http://ns.adobe.com/xap/1.0/sType/Dimensions#">' +
+      '<stDim:w>wide</stDim:w></q:v>', 'Dimensions') = xmt_No, 'Dimensions with a text width');
+    Check(XmpValue(P, T, '<q:v>x</q:v>', 'Dimensions') = xmt_No, 'Dimensions as text');
+    Check(XmpValue(P, T, '<q:v>2026T</q:v>', 'Date') = xmt_No, 'T after a year');
+    Check(XmpValue(P, T, '<q:v>99999999999-01-02T10:00</q:v>', 'Date') = xmt_Unknown, 'long year with a time');
+    Check(XmpValue(P, T, '<q:v>0000002026-01-01T12</q:v>', 'Date') = xmt_Unknown, 'long year, full date and T');
+    Check(XmpValue(P, T, '<q:v rdf:parseType="Resource" xmlns:exif="http://ns.adobe.com/exif/1.0/">' +
+      '<exif:Mode>auto</exif:Mode></q:v>', 'Flash') = xmt_Yes, 'Flash Mode is a closed choice of text');
+    Check(XmpValue(P, T, '<q:v rdf:parseType="Resource" xmlns:xapG="http://ns.adobe.com/xap/1.0/g/">' +
+      '<xapG:A>1.5</xapG:A></q:v>', 'Colorant') = xmt_Unknown, 'Colorant A 1.5: veraPDF reads Real');
+    { types of an extension schema: a field of type Any takes any value, an
+      array item type is simplified again, a type named Lang Alt is not
+      decided }
+    Check(XmpState(P, XmpOf(ExtDesc(ExtSchema('urn:c', ExtProp('w', 'Wrapper'), '<pdfaSchema:valueType><rdf:Seq>' +
+      '<rdf:li rdf:parseType="Resource"><pdfaType:type>Wrapper</pdfaType:type><pdfaType:namespaceURI>urn:c#w' +
+      '</pdfaType:namespaceURI><pdfaType:field><rdf:Seq><rdf:li rdf:parseType="Resource"><pdfaField:name>x' +
+      '</pdfaField:name><pdfaField:valueType>Any</pdfaField:valueType></rdf:li><rdf:li rdf:parseType="Resource">' +
+      '<pdfaField:name>y</pdfaField:name><pdfaField:valueType>Bag  Text</pdfaField:valueType></rdf:li></rdf:Seq>' +
+      '</pdfaType:field></rdf:li><rdf:li rdf:parseType="Resource"><pdfaType:type>Lang Alt</pdfaType:type></rdf:li>' +
+      '</rdf:Seq></pdfaSchema:valueType>')) + '<rdf:Description rdf:about="" xmlns:c="urn:c" xmlns:w="urn:c#w">' +
+      '<c:w rdf:parseType="Resource"><w:x rdf:parseType="Resource"><w:z>1</w:z></w:x><w:y><rdf:Bag><rdf:li>ok' +
+      '</rdf:li></rdf:Bag></w:y></c:w><c:l>hello</c:l></rdf:Description>')) = xms_Valid, 'custom types: ' + P.Reason);
+    T.Build(P, nil, False);
+    Check(T.Validate(P.Find('urn:c', 'w'), 'Wrapper', T.Entry('urn:c', True)) = xmt_Yes, 'Any and Bag  Text');
+    Check(T.Validate(P.Find('urn:c', 'l'), 'Lang Alt', T.Entry('urn:c', True)) = xmt_Unknown, 'own Lang Alt');
     { a qualified value: rdf:value is the value, the other field a qualifier }
     Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value>hi</rdf:value><q:qual>two</q:qual>' +
       '</q:prop>')) = xms_Valid, 'qualified value: ' + P.Reason);
@@ -1771,6 +1937,7 @@ begin
   RegisterTest('PdfA.Metadata', TestPdfAMetadata);
   RegisterTest('PdfA.XmpReader', TestPdfAXmpReader);
   RegisterTest('PdfA.Extension', TestPdfAExtension);
+  RegisterTest('PdfA.Properties', TestPdfAProperties);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

@@ -24,7 +24,7 @@
   marked Predicted). Without a configuration an XML document gets no
   verdict (Incomplete), a PDF only a rejection by levels 2 and 3; reading
   and the rule check still run. PDF/A (level 1, so far the rules of clauses
-  6.1, 6.3 to 6.5, 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3, 6.6.4 and 6.8 to 6.11) is
+  6.1, 6.3 to 6.6 and 6.8 to 6.11) is
   reported with its findings and status but does not count for the
   verdict. One flat list of findings, a status per part.
 
@@ -41,7 +41,7 @@
   als Predicted markiert). Ohne Konfiguration bekommt ein XML-Dokument
   kein Urteil (Incomplete), ein PDF nur eine Ablehnung durch die Ebenen 2
   und 3; Lesen und Regelpruefung laufen trotzdem. PDF/A (Ebene 1, bisher
-  die Regeln der Abschnitte 6.1, 6.3 bis 6.5, 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3, 6.6.4 und 6.8 bis
+  die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis
   6.11) wird mit Befunden und Status gemeldet,
   zaehlt aber nicht fuer das Urteil. Eine flache Befundliste, ein Status je
   Teil. }

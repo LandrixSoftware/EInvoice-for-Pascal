@@ -71,6 +71,17 @@ Supported invoice standards are documented per release.
   its own all built-in types. Where veraPDF's reading is not established (characters beyond ASCII or line ends in a
   type name, limits) the rule stays incomplete. Test `PdfA.Extension`; `PdfA.VeraPdf` still agrees with veraPDF on
   all 1,600 PDFs, all corpus failures of these rules found.
+- PDF/A level 1, stage C, last part: rule 6.6.2.3.1 (every XMP property predefined or defined by an extension
+  schema; its value of the defined type), with the predefined schemas and value types built from the XMP
+  Specification (2005), chapter 4, and PDF Association TechNote 0010 (A020): 277 properties in 14 namespaces (with
+  pdfaid) and 20 structured types. Read as veraPDF reads them: top-level properties of every packet; the definition
+  of this packet, then of the main packet, then the predefined one; simple types by their lexical form (Boolean,
+  Integer, Real, Date, MIMEType, GPSCoordinate; the text types any simple value), Lang Alt, bag/seq/alt arrays item
+  by item, structures field by field (missing fields allowed); choice vocabularies and ranges unchecked. Where
+  veraPDF reads less strictly than the specification (xmp:Rating and the Colorant fields A and B as Real, XPath, the
+  time fields of Marker) or a property occurs in several packets with different answers, the rule stays incomplete
+  rather than failed. With this stage all 33 rules of clause 6.6 are checked. Test `PdfA.Properties`; `PdfA.VeraPdf`
+  still agrees with veraPDF on all 1,600 PDFs, all 305 corpus failures of 6.6.2.3.1 found.
 
 ### Changed
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
