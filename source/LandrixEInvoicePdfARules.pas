@@ -13,11 +13,10 @@
 }
 
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.3 (annotations), 6.4
-  (interactive forms), 6.5 (actions), 6.6.2.1 and 6.6.4 (XMP packets, PDF/A
-  identification), 6.8 (embedded files), 6.9 (optional content), 6.10
-  (alternate presentations) and 6.11 (requirements) of ISO 19005-3, checked
-  on the raw
-  syntax facts of LandrixEInvoicePdfSyntax and the objects of the document.
+  (interactive forms), 6.5 (actions), 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 and
+  6.6.4 (XMP packets, extension schemas, PDF/A identification), 6.8
+  (embedded files), 6.9 (optional content), 6.10 (alternate presentations)
+  and 6.11 (requirements) of ISO 19005-3, checked on the raw syntax facts of LandrixEInvoicePdfSyntax and the objects of the document.
   The rules carry the numbers of the veraPDF validation profile
   ("6.1.2-1": clause and test number; the finding ID is "PDFA-6.1.2-1"), so
   that results compare with veraPDF rule by rule. A registry states for every
@@ -33,9 +32,10 @@
   items and their /Next chains, the AcroForm /Fields with kids that have /T.
 
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
-  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6.2.1 und
-  6.6.4 (XMP-Pakete, PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10 (alternative
-  Darstellungen) und 6.11 (Anforderungen) der ISO 19005-3, geprueft auf den
+  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6.2.1,
+  6.6.2.3.2, 6.6.2.3.3 und 6.6.4 (XMP-Pakete, Erweiterungsschemas,
+  PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10
+  (alternative Darstellungen) und 6.11 (Anforderungen) der ISO 19005-3, geprueft auf den
   rohen Syntax-Tatsachen von
   LandrixEInvoicePdfSyntax und den Objekten des Dokuments. Die Regeln tragen die Nummern des
   veraPDF-Pruefprofils ("6.1.2-1": Abschnitt und Testnummer; die Befund-ID ist
@@ -72,10 +72,10 @@ uses
 type
   { The rules of clauses 6.1, 6.3 to 6.6 and 6.8 to 6.11 in the veraPDF
     profile PDF/A-3B, named after clause and test number (of 6.6 so far
-    6.6.2.1 and 6.6.4).
+    6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 and 6.6.4).
     DE: Die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis 6.11 im
     veraPDF-Profil PDF/A-3B, benannt nach Abschnitt und Testnummer (von 6.6
-    bisher 6.6.2.1 und 6.6.4). }
+    bisher 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 und 6.6.4). }
   TLandrixEInvoicePdfARule = (
     par_6_1_2_1, par_6_1_2_2, par_6_1_3_1, par_6_1_3_2, par_6_1_3_3, par_6_1_4_2, par_6_1_6_1, par_6_1_6_2,
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
@@ -85,6 +85,10 @@ type
     par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
     par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2,
     par_6_6_2_1_1, par_6_6_2_1_2, par_6_6_2_1_3, par_6_6_2_1_4, par_6_6_2_1_5,
+    par_6_6_2_3_2_1, par_6_6_2_3_3_1, par_6_6_2_3_3_2, par_6_6_2_3_3_3, par_6_6_2_3_3_4, par_6_6_2_3_3_5,
+    par_6_6_2_3_3_6, par_6_6_2_3_3_7, par_6_6_2_3_3_8, par_6_6_2_3_3_9, par_6_6_2_3_3_10, par_6_6_2_3_3_11,
+    par_6_6_2_3_3_12, par_6_6_2_3_3_13, par_6_6_2_3_3_14, par_6_6_2_3_3_15, par_6_6_2_3_3_16, par_6_6_2_3_3_17,
+    par_6_6_2_3_3_18,
     par_6_6_4_1, par_6_6_4_2, par_6_6_4_3, par_6_6_4_4, par_6_6_4_5, par_6_6_4_6, par_6_6_4_7,
     par_6_8_1, par_6_8_2, par_6_8_3, par_6_8_4, par_6_9_1, par_6_9_2, par_6_9_3, par_6_9_4,
     par_6_10_1, par_6_10_2, par_6_11_1);
@@ -210,6 +214,8 @@ type
     procedure MarkMetadata;
     procedure JudgePacket(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
     procedure JudgeIdentification(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
+    procedure MarkExtension;
+    procedure JudgeExtension(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer; ATypes: TLandrixEInvoiceXmpSchemaTypes);
     procedure CheckMetadata;
   public
     constructor Create;
@@ -325,6 +331,41 @@ const
     (Number: '6.6.2.1-3'; Coverage: prc_Full; Text: 'The xpacket header of an XMP packet has no encoding attribute'),
     (Number: '6.6.2.1-4'; Coverage: prc_Partial; Text: 'An XMP packet is well-formed XML and RDF'),
     (Number: '6.6.2.1-5'; Coverage: prc_Full; Text: 'An XMP packet is encoded as UTF-8'),
+    (Number: '6.6.2.3.2-1'; Coverage: prc_Full;
+      Text: 'Extension schema structures hold only the fields of their PDF/A value type'),
+    (Number: '6.6.2.3.3-1'; Coverage: prc_Full;
+      Text: 'pdfaExtension:schemas is a Bag with the prefix pdfaExtension'),
+    (Number: '6.6.2.3.3-2'; Coverage: prc_Full;
+      Text: 'pdfaSchema:schema is present, a text with the prefix pdfaSchema'),
+    (Number: '6.6.2.3.3-3'; Coverage: prc_Full;
+      Text: 'pdfaSchema:namespaceURI is present, a URI with the prefix pdfaSchema'),
+    (Number: '6.6.2.3.3-4'; Coverage: prc_Full;
+      Text: 'pdfaSchema:prefix is present, a text with the prefix pdfaSchema'),
+    (Number: '6.6.2.3.3-5'; Coverage: prc_Full;
+      Text: 'pdfaSchema:property is absent or an ordered array (Seq or Alt), unprefixed or with the prefix pdfaSchema'),
+    (Number: '6.6.2.3.3-6'; Coverage: prc_Full;
+      Text: 'pdfaSchema:valueType is absent or an ordered array (Seq or Alt), unprefixed or with the prefix pdfaSchema'),
+    (Number: '6.6.2.3.3-7'; Coverage: prc_Full;
+      Text: 'pdfaProperty:name is present, a text with the prefix pdfaProperty'),
+    (Number: '6.6.2.3.3-8'; Coverage: prc_Full;
+      Text: 'pdfaProperty:valueType is present, a known type with the prefix pdfaProperty'),
+    (Number: '6.6.2.3.3-9'; Coverage: prc_Full;
+      Text: 'pdfaProperty:category is external or internal with the prefix pdfaProperty'),
+    (Number: '6.6.2.3.3-10'; Coverage: prc_Full;
+      Text: 'pdfaProperty:description is present, a text with the prefix pdfaProperty'),
+    (Number: '6.6.2.3.3-11'; Coverage: prc_Full; Text: 'pdfaType:type is present, a text with the prefix pdfaType'),
+    (Number: '6.6.2.3.3-12'; Coverage: prc_Full;
+      Text: 'pdfaType:namespaceURI is present, a URI with the prefix pdfaType'),
+    (Number: '6.6.2.3.3-13'; Coverage: prc_Full; Text: 'pdfaType:prefix is present, a text with the prefix pdfaType'),
+    (Number: '6.6.2.3.3-14'; Coverage: prc_Full;
+      Text: 'pdfaType:description is present, a text with the prefix pdfaType'),
+    (Number: '6.6.2.3.3-15'; Coverage: prc_Full;
+      Text: 'pdfaType:field is absent or an ordered array (Seq or Alt), unprefixed or with the prefix pdfaType'),
+    (Number: '6.6.2.3.3-16'; Coverage: prc_Full; Text: 'pdfaField:name is present, a text with the prefix pdfaField'),
+    (Number: '6.6.2.3.3-17'; Coverage: prc_Full;
+      Text: 'pdfaField:valueType is present, a known type with the prefix pdfaField'),
+    (Number: '6.6.2.3.3-18'; Coverage: prc_Full;
+      Text: 'pdfaField:description is present, a text with the prefix pdfaField'),
     (Number: '6.6.4-1'; Coverage: prc_Full; Text: 'The metadata have a PDF/A identification (pdfaid)'),
     (Number: '6.6.4-2'; Coverage: prc_Full; Text: 'pdfaid:part is 3'),
     (Number: '6.6.4-3'; Coverage: prc_Full; Text: 'pdfaid:conformance is A, B or U'),
@@ -2426,28 +2467,236 @@ begin
   end;
 end;
 
-{ 6.6.2.1 and 6.6.4 as veraPDF reads them: the catalog's metadata stream is
-  the main packet (6.6.2.1-1, and the only one 6.6.4 judges); every stream a
-  further dictionary names by /Metadata is a packet for 6.6.2.1-2 to -5.
-  veraPDF reads such a packet together with the main one: when the main
-  packet is not valid or not a proper metadata stream, the further packets
-  are not judged. A stream that is both the main and a further packet is
+{ The extension schema rules cannot be decided for a packet.
+  DE: Die Regeln der Erweiterungsschemas sind fuer ein Paket nicht
+  entscheidbar. }
+procedure TLandrixEInvoicePdfARuleCheck.MarkExtension;
+var
+  R: TLandrixEInvoicePdfARule;
+begin
+  for R := par_6_6_2_3_2_1 to par_6_6_2_3_3_18 do
+    FIncomplete[R] := True;
+end;
+
+{ A required field of an extension schema structure: present, a simple
+  value (veraPDF's Text and URI types take any simple value) and written with
+  APrefix. }
+function XmpTextOk(AField: TLandrixEInvoiceXmpNode; const APrefix: TLandrixEInvoiceString): Boolean;
+begin
+  Result := (AField <> nil) and (AField.Kind = xmk_Simple) and (AField.Prefix = APrefix);
+end;
+
+{ An optional Seq field: absent, or an ordered array (Seq or Alt) written
+  without a prefix or with APrefix. }
+function XmpSeqOk(AField: TLandrixEInvoiceXmpNode; const APrefix: TLandrixEInvoiceString): Boolean;
+begin
+  Result := (AField = nil) or ((AField.Kind = xmk_Array) and (AField.ArrayForm in [xma_Seq, xma_Alt]) and
+    ((AField.Prefix = '') or (AField.Prefix = APrefix)));
+end;
+
+{ 6.6.2.3.2-1: a field of another namespace or a name not in ANames. }
+function XmpUndefinedField(AItem: TLandrixEInvoiceXmpNode; const ANs: TLandrixEInvoiceString;
+  const ANames: array of string): Boolean;
+var
+  I, J: Integer;
+  Found: Boolean;
+begin
+  Result := False;
+  for I := 0 to AItem.ChildCount - 1 do
+  begin
+    Found := False;
+    if AItem.Child(I).Ns = ANs then
+      for J := 0 to Integer(High(ANames)) do
+        if AItem.Child(I).Local = TLandrixEInvoiceString(ANames[J]) then
+          Found := True;
+    if not Found then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+{ 6.6.2.3.2 and 6.6.2.3.3 on one valid packet, as veraPDF builds its
+  objects: the top-level pdfaExtension:schemas is the container (whatever its
+  form); if it is an array, each item is a schema, each item of an array
+  pdfaSchema:property a property, of an array pdfaSchema:valueType a value
+  type, of an array pdfaType:field a field (items need not be structures).
+  Fields are found by namespace and local name; the prefix tested is the one
+  written. A property's or field's value type must be known to the schema's
+  namespace (ATypes).
+  DE: 6.6.2.3.2 und 6.6.2.3.3 an einem gueltigen Paket, wie veraPDF seine
+  Objekte bildet: das pdfaExtension:schemas der obersten Ebene ist der
+  Container (gleich welcher Form); ist es ein Array, ist jedes Element ein
+  Schema, jedes Element eines Arrays pdfaSchema:property eine Eigenschaft,
+  eines Arrays pdfaSchema:valueType ein Werttyp, eines Arrays pdfaType:field
+  ein Feld (Elemente muessen keine Strukturen sein). Felder werden nach
+  Namensraum und lokalem Namen gefunden; geprueft wird das geschriebene
+  Praefix. Der Werttyp einer Eigenschaft oder eines Felds muss dem
+  Namensraum des Schemas bekannt sein (ATypes). }
+procedure TLandrixEInvoicePdfARuleCheck.JudgeExtension(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer;
+  ATypes: TLandrixEInvoiceXmpSchemaTypes);
+const
+  NsS = LandrixEInvoiceXmpNsPdfaSchema;
+  NsP = LandrixEInvoiceXmpNsPdfaProperty;
+  NsT = LandrixEInvoiceXmpNsPdfaType;
+  NsF = LandrixEInvoiceXmpNsPdfaField;
+var
+  Gen: Integer;
+  Where: string;
+  C, D, L, P, T, F, V: TLandrixEInvoiceXmpNode;
+  I, J, K, Entry: Integer;
+
+  procedure Bad(ARule: TLandrixEInvoicePdfARule; const AText: string);
+  begin
+    Fail(ARule, ANum, Gen, pss_File, -1, Where + AText);
+  end;
+
+  procedure Known(ARule: TLandrixEInvoicePdfARule; AField: TLandrixEInvoiceXmpNode;
+    const APrefix: TLandrixEInvoiceString; const AName: string);
+  begin
+    if not XmpTextOk(AField, APrefix) then
+      Bad(ARule, AName + ' missing, not a text or with another prefix')
+    else
+      case ATypes.IsKnown(Entry, AField.Value) of
+        xmt_No:
+          Bad(ARule, AName + ' ' + WideAscii(AField.Value) + ' is no known type');
+        xmt_Unknown:
+          FIncomplete[ARule] := True;
+      else
+        ;
+      end;
+  end;
+
+begin
+  Gen := FDoc.XrefEntry(ANum).Gen;
+  case APacket.State of
+    xms_Unknown:
+      begin
+        MarkExtension;
+        Exit;
+      end;
+    xms_Invalid:
+      Exit;
+  else
+    ;
+  end;
+  C := APacket.Find(LandrixEInvoiceXmpNsPdfaExtension, 'schemas');
+  if C = nil then
+    Exit;
+  Where := 'object ' + IntToStr(ANum) + ': pdfaExtension:schemas';
+  if (C.Kind <> xmk_Array) or (C.ArrayForm <> xma_Bag) or (C.Prefix <> 'pdfaExtension') then
+    Bad(par_6_6_2_3_3_1, ' not a Bag or with another prefix');
+  if C.Kind <> xmk_Array then
+    Exit;
+  for I := 0 to C.ChildCount - 1 do
+  begin
+    D := C.Child(I);
+    Where := 'object ' + IntToStr(ANum) + ': pdfaExtension:schemas item ' + IntToStr(I + 1) + ': ';
+    { the schema's entry by its namespace URI; veraPDF reads a structure or
+      an array there as '' }
+    V := D.FindChild(NsS, 'namespaceURI');
+    if (V <> nil) and (V.Kind = xmk_Simple) then
+      Entry := ATypes.Entry(V.Value, True)
+    else
+      Entry := ATypes.Entry('', V <> nil);
+    if XmpUndefinedField(D, NsS, ['schema', 'namespaceURI', 'prefix', 'property', 'valueType']) then
+      Bad(par_6_6_2_3_2_1, 'a field outside the PDF/A Schema value type');
+    if not XmpTextOk(D.FindChild(NsS, 'schema'), 'pdfaSchema') then
+      Bad(par_6_6_2_3_3_2, 'pdfaSchema:schema missing, not a text or with another prefix');
+    if not XmpTextOk(D.FindChild(NsS, 'namespaceURI'), 'pdfaSchema') then
+      Bad(par_6_6_2_3_3_3, 'pdfaSchema:namespaceURI missing, not a URI or with another prefix');
+    if not XmpTextOk(D.FindChild(NsS, 'prefix'), 'pdfaSchema') then
+      Bad(par_6_6_2_3_3_4, 'pdfaSchema:prefix missing, not a text or with another prefix');
+    L := D.FindChild(NsS, 'property');
+    if not XmpSeqOk(L, 'pdfaSchema') then
+      Bad(par_6_6_2_3_3_5, 'pdfaSchema:property not an ordered array (Seq or Alt) or with another prefix');
+    if (L <> nil) and (L.Kind = xmk_Array) then
+      for J := 0 to L.ChildCount - 1 do
+      begin
+        P := L.Child(J);
+        Where := 'object ' + IntToStr(ANum) + ': pdfaExtension:schemas item ' + IntToStr(I + 1) + ' property ' +
+          IntToStr(J + 1) + ': ';
+        if XmpUndefinedField(P, NsP, ['name', 'valueType', 'category', 'description']) then
+          Bad(par_6_6_2_3_2_1, 'a field outside the PDF/A Property value type');
+        if not XmpTextOk(P.FindChild(NsP, 'name'), 'pdfaProperty') then
+          Bad(par_6_6_2_3_3_7, 'pdfaProperty:name missing, not a text or with another prefix');
+        Known(par_6_6_2_3_3_8, P.FindChild(NsP, 'valueType'), 'pdfaProperty', 'pdfaProperty:valueType');
+        F := P.FindChild(NsP, 'category');
+        if not XmpTextOk(F, 'pdfaProperty') or ((F.Value <> 'external') and (F.Value <> 'internal')) then
+          Bad(par_6_6_2_3_3_9, 'pdfaProperty:category missing, not external or internal or with another prefix');
+        if not XmpTextOk(P.FindChild(NsP, 'description'), 'pdfaProperty') then
+          Bad(par_6_6_2_3_3_10, 'pdfaProperty:description missing, not a text or with another prefix');
+      end;
+    Where := 'object ' + IntToStr(ANum) + ': pdfaExtension:schemas item ' + IntToStr(I + 1) + ': ';
+    L := D.FindChild(NsS, 'valueType');
+    if not XmpSeqOk(L, 'pdfaSchema') then
+      Bad(par_6_6_2_3_3_6, 'pdfaSchema:valueType not an ordered array (Seq or Alt) or with another prefix');
+    if (L <> nil) and (L.Kind = xmk_Array) then
+      for J := 0 to L.ChildCount - 1 do
+      begin
+        T := L.Child(J);
+        Where := 'object ' + IntToStr(ANum) + ': pdfaExtension:schemas item ' + IntToStr(I + 1) + ' value type ' +
+          IntToStr(J + 1) + ': ';
+        if XmpUndefinedField(T, NsT, ['type', 'namespaceURI', 'prefix', 'description', 'field']) then
+          Bad(par_6_6_2_3_2_1, 'a field outside the PDF/A ValueType value type');
+        if not XmpTextOk(T.FindChild(NsT, 'type'), 'pdfaType') then
+          Bad(par_6_6_2_3_3_11, 'pdfaType:type missing, not a text or with another prefix');
+        if not XmpTextOk(T.FindChild(NsT, 'namespaceURI'), 'pdfaType') then
+          Bad(par_6_6_2_3_3_12, 'pdfaType:namespaceURI missing, not a URI or with another prefix');
+        if not XmpTextOk(T.FindChild(NsT, 'prefix'), 'pdfaType') then
+          Bad(par_6_6_2_3_3_13, 'pdfaType:prefix missing, not a text or with another prefix');
+        if not XmpTextOk(T.FindChild(NsT, 'description'), 'pdfaType') then
+          Bad(par_6_6_2_3_3_14, 'pdfaType:description missing, not a text or with another prefix');
+        V := T.FindChild(NsT, 'field');
+        if not XmpSeqOk(V, 'pdfaType') then
+          Bad(par_6_6_2_3_3_15, 'pdfaType:field not an ordered array (Seq or Alt) or with another prefix');
+        if (V <> nil) and (V.Kind = xmk_Array) then
+          for K := 0 to V.ChildCount - 1 do
+          begin
+            F := V.Child(K);
+            Where := 'object ' + IntToStr(ANum) + ': pdfaExtension:schemas item ' + IntToStr(I + 1) +
+              ' value type ' + IntToStr(J + 1) + ' field ' + IntToStr(K + 1) + ': ';
+            if XmpUndefinedField(F, NsF, ['name', 'valueType', 'description']) then
+              Bad(par_6_6_2_3_2_1, 'a field outside the PDF/A Field value type');
+            if not XmpTextOk(F.FindChild(NsF, 'name'), 'pdfaField') then
+              Bad(par_6_6_2_3_3_16, 'pdfaField:name missing, not a text or with another prefix');
+            Known(par_6_6_2_3_3_17, F.FindChild(NsF, 'valueType'), 'pdfaField', 'pdfaField:valueType');
+            if not XmpTextOk(F.FindChild(NsF, 'description'), 'pdfaField') then
+              Bad(par_6_6_2_3_3_18, 'pdfaField:description missing, not a text or with another prefix');
+          end;
+      end;
+  end;
+end;
+
+{ 6.6.2.1, 6.6.2.3 and 6.6.4 as veraPDF reads them: the catalog's metadata
+  stream is the main packet (6.6.2.1-1, and the only one 6.6.4 judges);
+  every stream a further dictionary names by /Metadata is a packet for
+  6.6.2.1-2 to -5 and 6.6.2.3. veraPDF reads such a packet together with the
+  catalog's stream: when that is not valid, the further packets are not
+  judged. When the catalog's stream is not a proper metadata stream, veraPDF
+  still reads it for the further packets; this check then leaves their
+  rules incomplete. A stream that is both the main and a further packet is
   judged once and 6.6.4 left incomplete (veraPDF then skips it).
-  DE: 6.6.2.1 und 6.6.4, wie veraPDF sie liest: der Metadaten-Stream des
-  Katalogs ist das Hauptpaket (6.6.2.1-1 und das einzige, das 6.6.4
-  beurteilt); jeder Stream, den ein weiteres Dictionary mit /Metadata nennt,
-  ist ein Paket fuer 6.6.2.1-2 bis -5. veraPDF liest ein solches Paket
-  zusammen mit dem Hauptpaket: ist das Hauptpaket nicht gueltig oder kein
-  richtiger Metadaten-Stream, werden die weiteren Pakete nicht beurteilt.
+  DE: 6.6.2.1, 6.6.2.3 und 6.6.4, wie veraPDF sie liest: der
+  Metadaten-Stream des Katalogs ist das Hauptpaket (6.6.2.1-1 und das
+  einzige, das 6.6.4 beurteilt); jeder Stream, den ein weiteres Dictionary
+  mit /Metadata nennt, ist ein Paket fuer 6.6.2.1-2 bis -5 und 6.6.2.3.
+  veraPDF liest ein solches Paket zusammen mit dem Stream des Katalogs: ist
+  der nicht gueltig, werden die weiteren Pakete nicht beurteilt. Ist der
+  Stream des Katalogs kein richtiger Metadaten-Stream, liest veraPDF ihn fuer
+  die weiteren Pakete trotzdem; diese Pruefung laesst deren Regeln dann
+  unvollstaendig.
   Ein Stream, der Haupt- und weiteres Paket ist, wird einmal beurteilt und
   6.6.4 bleibt unvollstaendig (veraPDF ueberspringt es dann). }
 procedure TLandrixEInvoicePdfARuleCheck.CheckMetadata;
 var
   Cat, Raw, M: TLandrixEInvoicePdfObject;
   MainNum, I: Integer;
-  MainOk, Shared: Boolean;
+  MainOk, Shared, HasMain: Boolean;
   Packet: TLandrixEInvoiceXmpPacket;
   Data: TLandrixEInvoicePdfBytes;
+  MainTypes, Types: TLandrixEInvoiceXmpSchemaTypes;
 begin
   Cat := FDoc.Catalog;
   if Cat = nil then
@@ -2461,11 +2710,17 @@ begin
     FIncomplete[par_6_6_2_1_3] := True;
     FIncomplete[par_6_6_2_1_4] := True;
     FIncomplete[par_6_6_2_1_5] := True;
+    MarkExtension;
   end;
+  MainTypes := nil;
+  Types := nil;
   Packet := TLandrixEInvoiceXmpPacket.Create;
   try
+    MainTypes := TLandrixEInvoiceXmpSchemaTypes.Create;
+    Types := TLandrixEInvoiceXmpSchemaTypes.Create;
     MainNum := -1;
-    MainOk := Cat.RawGet('Metadata') = nil;
+    HasMain := Cat.RawGet('Metadata') <> nil;
+    MainOk := not HasMain;
     Raw := Cat.RawGet('Metadata');
     M := FDoc.DGet(Cat, 'Metadata');
     if not IsMetadataStream(FDoc, M) or (Raw.Kind <> pok_Ref) then
@@ -2488,6 +2743,8 @@ begin
       end
       else
         JudgeIdentification(Packet, MainNum);
+      MainTypes.Build(Packet, nil, False);
+      JudgeExtension(Packet, MainNum, MainTypes);
       MainOk := Packet.State = xms_Valid;
     end;
     for I := 0 to FMetaCount - 1 do
@@ -2500,6 +2757,7 @@ begin
         FIncomplete[par_6_6_2_1_3] := True;
         FIncomplete[par_6_6_2_1_4] := True;
         FIncomplete[par_6_6_2_1_5] := True;
+        MarkExtension;
         Break;
       end;
       if FDoc.GetStreamData(FDoc.GetObject(FMetaNums[I]), Data) then
@@ -2507,8 +2765,17 @@ begin
       else
         Packet.Parse(nil);
       JudgePacket(Packet, FMetaNums[I]);
+      { a further packet starts from the main packet's types (none without
+        a catalog stream) }
+      if HasMain then
+        Types.Build(Packet, MainTypes, True)
+      else
+        Types.Build(Packet, nil, True);
+      JudgeExtension(Packet, FMetaNums[I], Types);
     end;
   finally
+    Types.Free;
+    MainTypes.Free;
     Packet.Free;
   end;
 end;

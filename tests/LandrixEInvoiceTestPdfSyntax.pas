@@ -29,7 +29,8 @@
   actions (6.3 to 6.5) with the details of veraPDF's reading. PdfA.Files:
   embedded files, optional content, alternate presentations and requirements
   (6.8 to 6.11). PdfA.Metadata: the XMP packets (6.6.2.1, 6.6.4); PdfA.XmpReader:
-  the XMP reader's valid, rejected and undecided forms. Accepted
+  the XMP reader's valid, rejected and undecided forms; PdfA.Extension: the
+  extension schemas (6.6.2.3.2, 6.6.2.3.3). Accepted
   differences are listed in
   tests/data/pdfa-exceptions.txt (path, rule, reason). }
 
@@ -844,6 +845,40 @@ const
   XmpTail = '</rdf:RDF></x:xmpmeta>' + LF + '<?xpacket end=''w''?>';
   XmpPdfA3B = '<rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">' +
     '<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance></rdf:Description>' + LF;
+  ExtNs = 'xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" ' +
+    'xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#" ' +
+    'xmlns:pdfaType="http://www.aiim.org/pdfa/ns/type#" xmlns:pdfaField="http://www.aiim.org/pdfa/ns/field#"';
+  { a value type MyType with one field of type Bag Text }
+  ExtMyType = '<pdfaSchema:valueType><rdf:Seq><rdf:li rdf:parseType="Resource"><pdfaType:type>MyType</pdfaType:type>' +
+    '<pdfaType:namespaceURI>urn:my#t</pdfaType:namespaceURI><pdfaType:prefix>t</pdfaType:prefix>' +
+    '<pdfaType:description>d</pdfaType:description><pdfaType:field><rdf:Seq><rdf:li rdf:parseType="Resource">' +
+    '<pdfaField:name>f</pdfaField:name><pdfaField:valueType>Bag Text</pdfaField:valueType>' +
+    '<pdfaField:description>d</pdfaField:description></rdf:li></rdf:Seq></pdfaType:field></rdf:li></rdf:Seq>' +
+    '</pdfaSchema:valueType>';
+
+{ A complete extension property AName of the type AType. }
+function ExtProp(const AName, AType: AnsiString): AnsiString;
+begin
+  Result := '<rdf:li rdf:parseType="Resource"><pdfaProperty:name>' + AName + '</pdfaProperty:name>' +
+    '<pdfaProperty:valueType>' + AType + '</pdfaProperty:valueType><pdfaProperty:category>external' +
+    '</pdfaProperty:category><pdfaProperty:description>d</pdfaProperty:description></rdf:li>';
+end;
+
+{ A complete extension schema for the namespace AUri with the properties
+  AProps and the value types ATypes (a pdfaSchema:valueType or ''). }
+function ExtSchema(const AUri, AProps, ATypes: AnsiString): AnsiString;
+begin
+  Result := '<rdf:li rdf:parseType="Resource"><pdfaSchema:schema>S</pdfaSchema:schema><pdfaSchema:namespaceURI>' +
+    AUri + '</pdfaSchema:namespaceURI><pdfaSchema:prefix>p</pdfaSchema:prefix><pdfaSchema:property><rdf:Seq>' +
+    AProps + '</rdf:Seq></pdfaSchema:property>' + ATypes + '</rdf:li>';
+end;
+
+{ An rdf:Description with the extension schemas ASchemas. }
+function ExtDesc(const ASchemas: AnsiString): AnsiString;
+begin
+  Result := '<rdf:Description rdf:about="" ' + ExtNs + '><pdfaExtension:schemas><rdf:Bag>' + ASchemas +
+    '</rdf:Bag></pdfaExtension:schemas></rdf:Description>' + LF;
+end;
 
 procedure TestPdfAClean;
 var
@@ -858,7 +893,8 @@ begin
     Pages,
     '3 0 obj' + LF + '<< /Length 5 /Filter /Crypt >>' + LF + 'stream' + CR + LF + 'hello' + CR + LF + 'endstream' + LF +
     'endobj' + LF,
-    MetaObj(20, XmpHead + XmpPdfA3B + XmpTail),
+    MetaObj(20, XmpHead + XmpPdfA3B + ExtDesc(ExtSchema('urn:my', ExtProp('a', 'MyType') +
+      ExtProp('b', 'Closed Choice of Integer'), ExtMyType)) + XmpTail),
     MetaObj(21, XmpHead + '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" ' +
       'dc:format="application/pdf"/>' + LF + XmpTail),
     '22 0 obj' + LF + '<< /Metadata 21 0 R >>' + LF + 'endobj' + LF], LF, FileId, LF);
@@ -1355,6 +1391,102 @@ begin
   end;
 end;
 
+procedure TestPdfAExtension;
+var
+  Pdf: AnsiString;
+  Facts: TLandrixEInvoicePdfSyntaxFacts;
+  Doc: TLandrixEInvoicePdfDocument;
+  Rules: TLandrixEInvoicePdfARuleCheck;
+  R: TLandrixEInvoicePdfARule;
+begin
+  { every extension schema rule fails once: the container a Seq under the
+    prefix ext; schema 1 with s:schema, no prefix, a foreign field, the
+    properties in a Bag (property a: category External, no description;
+    b: name a structure; c: Dimensions, known to a schema with an entry;
+    d: an unknown type), value type MyType with a field under f:name of
+    type Nope and without description, and a value type with nothing but a
+    Bag of fields; schema 2 without namespace URI, valueType a text;
+    schema 3 complete with an empty rdf:Alt of properties }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF, Pages,
+    MetaObj(20, XmpHead + XmpPdfA3B + '<rdf:Description rdf:about="" ' + ExtNs +
+      ' xmlns:ext="http://www.aiim.org/pdfa/ns/extension/" xmlns:s="http://www.aiim.org/pdfa/ns/schema#"' +
+      ' xmlns:f="http://www.aiim.org/pdfa/ns/field#"><ext:schemas><rdf:Seq>' +
+      '<rdf:li rdf:parseType="Resource"><s:schema>S</s:schema><pdfaSchema:namespaceURI>urn:my' +
+      '</pdfaSchema:namespaceURI><pdfaSchema:extra>x</pdfaSchema:extra><pdfaSchema:property><rdf:Bag>' +
+      '<rdf:li rdf:parseType="Resource"><pdfaProperty:name>a</pdfaProperty:name><pdfaProperty:valueType>' +
+      'Closed Choice of Integer</pdfaProperty:valueType><pdfaProperty:category>External</pdfaProperty:category>' +
+      '</rdf:li>' +
+      '<rdf:li rdf:parseType="Resource"><pdfaProperty:name rdf:parseType="Resource"><pdfaProperty:x>1' +
+      '</pdfaProperty:x></pdfaProperty:name><pdfaProperty:valueType>MyType</pdfaProperty:valueType>' +
+      '<pdfaProperty:category>internal</pdfaProperty:category><pdfaProperty:description>d' +
+      '</pdfaProperty:description></rdf:li>' +
+      ExtProp('c', 'Dimensions') + ExtProp('d', 'Unknown Thing') + '</rdf:Bag></pdfaSchema:property>' +
+      '<pdfaSchema:valueType><rdf:Seq><rdf:li rdf:parseType="Resource"><pdfaType:type>MyType</pdfaType:type>' +
+      '<pdfaType:namespaceURI>urn:my#t</pdfaType:namespaceURI><pdfaType:prefix>t</pdfaType:prefix>' +
+      '<pdfaType:description>d</pdfaType:description><pdfaType:field><rdf:Seq><rdf:li rdf:parseType="Resource">' +
+      '<pdfaField:name>f</pdfaField:name><pdfaField:valueType>Bag Text</pdfaField:valueType>' +
+      '<pdfaField:description>d</pdfaField:description></rdf:li><rdf:li rdf:parseType="Resource">' +
+      '<f:name>g</f:name><pdfaField:valueType>Nope</pdfaField:valueType></rdf:li></rdf:Seq></pdfaType:field>' +
+      '</rdf:li><rdf:li rdf:parseType="Resource"><pdfaType:field><rdf:Bag/></pdfaType:field></rdf:li></rdf:Seq>' +
+      '</pdfaSchema:valueType></rdf:li>' +
+      '<rdf:li rdf:parseType="Resource"><pdfaSchema:schema>S</pdfaSchema:schema><pdfaSchema:prefix>q' +
+      '</pdfaSchema:prefix><pdfaSchema:valueType>none</pdfaSchema:valueType></rdf:li>' +
+      '<rdf:li rdf:parseType="Resource"><pdfaSchema:schema>S</pdfaSchema:schema><pdfaSchema:namespaceURI>urn:z' +
+      '</pdfaSchema:namespaceURI><pdfaSchema:prefix>z</pdfaSchema:prefix><pdfaSchema:property><rdf:Alt/>' +
+      '</pdfaSchema:property></rdf:li>' +
+      '</rdf:Seq></ext:schemas></rdf:Description>' + LF + XmpTail)], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('6.6.2.3.2-1 6.6.2.3.3-1 6.6.2.3.3-2 6.6.2.3.3-3 6.6.2.3.3-4 6.6.2.3.3-5 6.6.2.3.3-6 ' +
+        '6.6.2.3.3-7 6.6.2.3.3-8 6.6.2.3.3-9 6.6.2.3.3-10 6.6.2.3.3-11 6.6.2.3.3-12 6.6.2.3.3-13 6.6.2.3.3-14 ' +
+        '6.6.2.3.3-15 6.6.2.3.3-16 6.6.2.3.3-17 6.6.2.3.3-18', FailedRules(Rules), 'failed rules');
+      for R := par_6_6_2_3_2_1 to par_6_6_2_3_3_18 do
+        CheckEquals(1, Rules.RuleResult(R).Failures, LandrixEInvoicePdfARuleId(R) + ' fails once: ' +
+          Rules.RuleResult(R).Detail);
+      CheckEquals(20, Rules.RuleResult(par_6_6_2_3_3_8).ObjNum, 'in the main packet');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+
+  { a further packet: schema urn:my knows MyType from the main packet;
+    urn:x, which the main packet does not define, starts from all built-in
+    types (Dimensions) }
+  Pdf := BuildPdf(GoodHeader, [
+    '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF,
+    '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF,
+    '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Metadata 21 0 R >>' + LF + 'endobj' + LF,
+    MetaObj(20, XmpHead + XmpPdfA3B + ExtDesc(ExtSchema('urn:my', ExtProp('a', 'Text'), ExtMyType)) + XmpTail),
+    MetaObj(21, XmpHead + ExtDesc(ExtSchema('urn:my', ExtProp('b', 'MyType'), '') +
+      ExtSchema('urn:x', ExtProp('c', 'Dimensions'), '')) + XmpTail)], LF, FileId, LF);
+  Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
+  Rules := TLandrixEInvoicePdfARuleCheck.Create;
+  try
+    Doc := LoadWithFacts(Pdf, Facts);
+    try
+      Check(Facts.Complete, 'complete: ' + Facts.Problems.Text);
+      Rules.Check(Doc, Facts);
+      CheckEqualsStr('', FailedRules(Rules), 'failed rules');
+      Check(Rules.RuleResult(par_6_6_2_3_3_8).Outcome = pro_Passed, '6.6.2.3.3-8 passed');
+      Check(Rules.RuleResult(par_6_6_2_3_3_17).Outcome = pro_Passed, '6.6.2.3.3-17 passed');
+    finally
+      Doc.Free;
+    end;
+  finally
+    Rules.Free;
+    Facts.Free;
+  end;
+end;
+
 { The state of an XMP packet read from AText. }
 function XmpState(APacket: TLandrixEInvoiceXmpPacket; const AText: AnsiString): TLandrixEInvoiceXmpState;
 var
@@ -1396,9 +1528,44 @@ procedure TestPdfAXmpReader;
 var
   P: TLandrixEInvoiceXmpPacket;
   N: TLandrixEInvoiceXmpNode;
+  T: TLandrixEInvoiceXmpSchemaTypes;
 begin
   P := TLandrixEInvoiceXmpPacket.Create;
+  T := TLandrixEInvoiceXmpSchemaTypes.Create;
   try
+    { type names as veraPDF simplifies them, for a schema without an entry
+      (the 14 basic types) }
+    Check(XmpState(P, XmpDesc('')) = xms_Valid, 'empty description');
+    T.Build(P, nil, False);
+    Check(T.IsKnown(-1, 'Closed Choice of Text') = xmt_Yes, 'Closed Choice of Text');
+    Check(T.IsKnown(-1, 'choice of integer') = xmt_Yes, 'choice of integer');
+    Check(T.IsKnown(-1, 'Open Choice') = xmt_Yes, 'Open Choice (text)');
+    Check(T.IsKnown(-1, 'Seq Lang Alt') = xmt_Yes, 'Seq Lang Alt');
+    Check(T.IsKnown(-1, 'Bag') = xmt_Yes, 'Bag (Bag Text)');
+    Check(T.IsKnown(-1, ' URI ') = xmt_Yes, 'URI with spaces');
+    Check(T.IsKnown(-1, 'Bag  Text') = xmt_No, 'Bag with two spaces');
+    Check(T.IsKnown(-1, 'MIME Type') = xmt_No, 'MIME Type');
+    Check(T.IsKnown(-1, 'Dimensions') = xmt_No, 'Dimensions without a schema entry');
+    Check(T.IsKnown(-1, WideChar(228)) = xmt_Unknown, 'beyond ASCII');
+    { schemas as veraPDF registers them: an array as namespace URI counts as
+      ''; a type without namespace URI whose field has a structure as name
+      is not registered; a text as pdfaSchema:valueType defines nothing; a
+      text as pdfaType:field leaves the type without fields (Text) }
+    Check(XmpState(P, XmpOf(ExtDesc('<rdf:li rdf:parseType="Resource"><pdfaSchema:namespaceURI><rdf:Bag/>' +
+      '</pdfaSchema:namespaceURI><pdfaSchema:property><rdf:Seq/></pdfaSchema:property></rdf:li>' +
+      ExtSchema('urn:a', '', '<pdfaSchema:valueType><rdf:Seq><rdf:li rdf:parseType="Resource"><pdfaType:type>W' +
+      '</pdfaType:type><pdfaType:field><rdf:Seq><rdf:li rdf:parseType="Resource"><pdfaField:name><rdf:Bag/>' +
+      '</pdfaField:name><pdfaField:valueType>Text</pdfaField:valueType></rdf:li></rdf:Seq></pdfaType:field>' +
+      '</rdf:li><rdf:li rdf:parseType="Resource"><pdfaType:type>V</pdfaType:type><pdfaType:field>x' +
+      '</pdfaType:field></rdf:li></rdf:Seq></pdfaSchema:valueType>') +
+      ExtSchema('urn:b', '', '<pdfaSchema:valueType>x</pdfaSchema:valueType>')))) = xms_Valid,
+      'extension schemas: ' + P.Reason);
+    T.Build(P, nil, False);
+    Check(T.Entry('', True) >= 0, 'an entry under the empty URI');
+    Check(T.IsKnown(T.Entry('', True), 'Dimensions') = xmt_Yes, 'Dimensions under the empty URI');
+    Check(T.IsKnown(T.Entry('urn:a', True), 'W') = xmt_No, 'W not registered');
+    Check(T.IsKnown(T.Entry('urn:a', True), 'V') = xmt_Yes, 'V registered as text');
+    Check(T.IsKnown(T.Entry('urn:b', True), 'Nope') = xmt_No, 'no types from a text');
     { a qualified value: rdf:value is the value, the other field a qualifier }
     Check(XmpState(P, XmpDesc('<q:prop rdf:parseType="Resource"><rdf:value>hi</rdf:value><q:qual>two</q:qual>' +
       '</q:prop>')) = xms_Valid, 'qualified value: ' + P.Reason);
@@ -1460,6 +1627,7 @@ begin
     Check(XmpState(P, '<?xpacket a?><?xpacket b?>' + XmpDesc('')) = xms_Valid, 'two headers');
     CheckEqualsStr('b', string(P.Header), 'the last header');
   finally
+    T.Free;
     P.Free;
   end;
 end;
@@ -1602,6 +1770,7 @@ begin
   RegisterTest('PdfA.Files', TestPdfAFiles);
   RegisterTest('PdfA.Metadata', TestPdfAMetadata);
   RegisterTest('PdfA.XmpReader', TestPdfAXmpReader);
+  RegisterTest('PdfA.Extension', TestPdfAExtension);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

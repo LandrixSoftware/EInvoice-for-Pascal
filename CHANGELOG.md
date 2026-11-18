@@ -61,6 +61,16 @@ Supported invoice standards are documented per release.
   catalog's packet and every metadata stream another dictionary names) and 6.6.4 (pdfaid present, part 3,
   conformance A, B or U, the prefix pdfaid). The validator's PDF without XMP now also shows PDFA-6.6.2.1-1.
   Test `PdfA.Metadata`; `PdfA.VeraPdf` still agrees with veraPDF on all 1,600 PDFs.
+- PDF/A level 1, stage C, second part: the extension schema rules 6.6.2.3.2 and 6.6.2.3.3 (the
+  `pdfaExtension:schemas` container a Bag, every schema, property, value type and field with its required fields,
+  the prefixes as written, Seq where required, no foreign fields, category external or internal, value types known),
+  on the catalog's packet and every further one, read as veraPDF reads them: `rdf:Alt` counts as Seq, "URI" means
+  any simple value, a structure or array where a value is read counts as '', a value type is known if it is built in
+  or defined by the schema of the same namespace URI (type names simplified as veraPDF does: case, "Closed Choice
+  of", "Bag", "Seq"); a further packet takes the types of the main packet's schema with the same URI, a schema of
+  its own all built-in types. Where veraPDF's reading is not established (characters beyond ASCII or line ends in a
+  type name, limits) the rule stays incomplete. Test `PdfA.Extension`; `PdfA.VeraPdf` still agrees with veraPDF on
+  all 1,600 PDFs, all corpus failures of these rules found.
 
 ### Changed
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial

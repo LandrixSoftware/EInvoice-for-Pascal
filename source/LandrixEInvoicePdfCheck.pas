@@ -14,8 +14,8 @@
 
 { Checks of a hybrid invoice PDF (ZUGFeRD 2.5.2 / Factur-X 1.09.2), levels
   1 to 3. Level 1, PDF/A-3b: the rules of clauses 6.1 (file structure),
-  6.3 to 6.5 (annotations, forms, actions), 6.6.2.1 and 6.6.4 (XMP packets,
-  PDF/A identification) and 6.8 to 6.11 (embedded files, optional content,
+  6.3 to 6.5 (annotations, forms, actions), 6.6.2.1, 6.6.2.3.2, 6.6.2.3.3 and 6.6.4
+  (XMP packets, extension schemas, PDF/A identification) and 6.8 to 6.11 (embedded files, optional content,
   presentations, requirements) of LandrixEInvoicePdfARules on the raw syntax collected while the document
   loads; findings PDFA-<clause>-<test> (veraPDF numbering) with paths that
   start with "PDF/A ". Not every rule of PDF/A-3b is implemented, so level 1
@@ -49,8 +49,8 @@
 
   DE: Pruefungen eines hybriden Rechnungs-PDFs (ZUGFeRD 2.5.2 / Factur-X
   1.09.2), Ebenen 1 bis 3. Ebene 1, PDF/A-3b: die Regeln der Abschnitte 6.1
-  (Dateistruktur), 6.3 bis 6.5 (Annotationen, Formulare, Aktionen), 6.6.2.1
-  und 6.6.4 (XMP-Pakete, PDF/A-Kennung) und 6.8 bis 6.11 (eingebettete
+  (Dateistruktur), 6.3 bis 6.5 (Annotationen, Formulare, Aktionen), 6.6.2.1,
+  6.6.2.3.2, 6.6.2.3.3 und 6.6.4 (XMP-Pakete, Erweiterungsschemas, PDF/A-Kennung) und 6.8 bis 6.11 (eingebettete
   Dateien, optionale Inhalte, Praesentationen, Anforderungen) aus
   LandrixEInvoicePdfARules auf der rohen Syntax, die
   beim Laden gesammelt wird; Befunde PDFA-<Abschnitt>-<Test>

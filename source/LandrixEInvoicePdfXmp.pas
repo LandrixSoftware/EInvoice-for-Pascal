@@ -59,6 +59,15 @@ const
   LandrixEInvoiceXmpNsXml = 'http://www.w3.org/XML/1998/namespace';
   { The PDF/A identification schema. DE: Das PDF/A-Identifikationsschema. }
   LandrixEInvoiceXmpNsPdfaId = 'http://www.aiim.org/pdfa/ns/id/';
+  { The PDF/A extension schema container schema and the schemas of its
+    value types (ISO 19005-3, 6.6.2.3.3).
+    DE: Das Containerschema der PDF/A-Erweiterungsschemas und die Schemas
+    seiner Werttypen (ISO 19005-3, 6.6.2.3.3). }
+  LandrixEInvoiceXmpNsPdfaExtension = 'http://www.aiim.org/pdfa/ns/extension/';
+  LandrixEInvoiceXmpNsPdfaSchema = 'http://www.aiim.org/pdfa/ns/schema#';
+  LandrixEInvoiceXmpNsPdfaProperty = 'http://www.aiim.org/pdfa/ns/property#';
+  LandrixEInvoiceXmpNsPdfaType = 'http://www.aiim.org/pdfa/ns/type#';
+  LandrixEInvoiceXmpNsPdfaField = 'http://www.aiim.org/pdfa/ns/field#';
 
 type
   { Valid: the parser of veraPDF accepts the packet as read here; invalid:
@@ -107,6 +116,9 @@ type
     function Child(AIndex: Integer): TLandrixEInvoiceXmpNode;
     function QualifierCount: Integer;
     function Qualifier(AIndex: Integer): TLandrixEInvoiceXmpNode;
+    { The first field or item ANs/ALocal, nil if there is none.
+      DE: Das erste Feld oder Element ANs/ALocal, nil, wenn es keines gibt. }
+    function FindChild(const ANs, ALocal: TLandrixEInvoiceString): TLandrixEInvoiceXmpNode;
   end;
 
   { One XMP packet. After Parse: State and Reason; HasRoot if an rdf:RDF
@@ -147,6 +159,72 @@ type
       DE: Die Eigenschaft ANs/ALocal der obersten Ebene, nil, wenn sie
       fehlt. }
     function Find(const ANs, ALocal: TLandrixEInvoiceString): TLandrixEInvoiceXmpNode;
+  end;
+
+  { Yes, no, or not decided. DE: Ja, nein oder nicht entschieden. }
+  TLandrixEInvoiceXmpTruth = (xmt_Yes, xmt_No, xmt_Unknown);
+
+  { The value type names a packet knows for the PDF/A extension schema rules
+    6.6.2.3.3-8 and -17, as veraPDF registers them: per schema namespace
+    (pdfaSchema:namespaceURI) the built-in types and the types the schema
+    defines; a schema counts if it has a namespace URI and an array as
+    pdfaSchema:property, and of several with one URI the last one counts.
+    A field that is present but a structure or an array counts with the
+    value '' (veraPDF reads it so). A type is registered under its name in
+    simplified form (lower case, "open/closed choice of" removed, "bag",
+    "seq" and "alt" alone read as text); a type with fields only if it has a
+    namespace URI. A schema without such an entry knows only the 14 basic
+    types. A further packet (not the catalog's) starts each schema from the
+    entry of the main packet with the same URI, else from all built-in
+    types. Where the reading is not certain (characters beyond ASCII or line
+    ends in a name, a limit), the answer is unknown. Lower case is that of
+    Java in an English locale.
+    DE: Die Werttyp-Namen, die ein Paket fuer die Regeln 6.6.2.3.3-8 und -17
+    der PDF/A-Erweiterungsschemas kennt, wie veraPDF sie registriert: je
+    Schema-Namensraum (pdfaSchema:namespaceURI) die eingebauten Typen und die,
+    die das Schema definiert; ein Schema zaehlt, wenn es eine Namensraum-URI
+    und ein Array als pdfaSchema:property hat, von mehreren mit einer URI das
+    letzte. Ein vorhandenes Feld, das eine Struktur oder ein Array ist, zaehlt
+    mit dem Wert '' (so liest veraPDF es). Ein Typ wird unter seinem
+    vereinfachten Namen registriert (Kleinbuchstaben, "open/closed choice of"
+    entfernt, "bag", "seq" und "alt" allein als Text gelesen); ein Typ mit
+    Feldern nur, wenn er eine Namensraum-URI hat. Ein Schema ohne solchen
+    Eintrag kennt nur die 14 Grundtypen. Ein weiteres Paket (nicht das des
+    Katalogs) beginnt jedes Schema mit dem Eintrag des Hauptpakets fuer
+    dieselbe URI, sonst mit allen eingebauten Typen. Wo die Lesart nicht
+    sicher ist (Zeichen jenseits von ASCII oder Zeilenenden in einem Namen,
+    eine Grenze), ist die Antwort unbekannt. Kleinbuchstaben wie bei Java in
+    englischer Locale. }
+  TLandrixEInvoiceXmpSchemaTypes = class(TObject)
+  private
+    FUris: array of TLandrixEInvoiceString;
+    FKeys: array of array of TLandrixEInvoiceString;
+    FKeyCounts: array of Integer;
+    { the entry's own types are not certain }
+    FUncertain: array of Boolean;
+    FCount: Integer;
+    FOverflow: Boolean;
+    function IndexOf(const AUri: TLandrixEInvoiceString): Integer;
+    procedure AddKey(AEntry: Integer; const AKey: TLandrixEInvoiceString);
+    procedure AddTypes(AEntry: Integer; ADefinition: TLandrixEInvoiceXmpNode);
+  public
+    { Registers the types of APacket's pdfaExtension:schemas. AMain is the
+      registry of the catalog's packet for a further packet (nil if the
+      catalog has none); AFurther tells that APacket is a further packet.
+      DE: Registriert die Typen von pdfaExtension:schemas in APacket. AMain
+      ist fuer ein weiteres Paket die Registrierung des Katalog-Pakets (nil,
+      wenn der Katalog keines hat); AFurther sagt, dass APacket ein weiteres
+      Paket ist. }
+    procedure Build(APacket: TLandrixEInvoiceXmpPacket; AMain: TLandrixEInvoiceXmpSchemaTypes; AFurther: Boolean);
+    { The entry of the schema with the namespace URI ASchemaUri (AHasUri
+      False: the schema has none), -1 if there is none.
+      DE: Der Eintrag des Schemas mit der Namensraum-URI ASchemaUri (AHasUri
+      False: das Schema hat keine), -1, wenn es keinen gibt. }
+    function Entry(const ASchemaUri: TLandrixEInvoiceString; AHasUri: Boolean): Integer;
+    { Whether AType is known to a schema with the entry AEntry (from Entry).
+      DE: Ob AType einem Schema mit dem Eintrag AEntry (aus Entry) bekannt
+      ist. }
+    function IsKnown(AEntry: Integer; const AType: TLandrixEInvoiceString): TLandrixEInvoiceXmpTruth;
   end;
 
 implementation
@@ -383,6 +461,19 @@ end;
 function TLandrixEInvoiceXmpNode.Qualifier(AIndex: Integer): TLandrixEInvoiceXmpNode;
 begin
   Result := TLandrixEInvoiceXmpNode(FQualifiers[AIndex]);
+end;
+
+function TLandrixEInvoiceXmpNode.FindChild(const ANs, ALocal: TLandrixEInvoiceString): TLandrixEInvoiceXmpNode;
+var
+  I: Integer;
+begin
+  Result := nil;
+  for I := 0 to ChildCount - 1 do
+    if (Child(I).Ns = ANs) and (Child(I).Local = ALocal) then
+    begin
+      Result := Child(I);
+      Exit;
+    end;
 end;
 
 { TDom }
@@ -1226,6 +1317,303 @@ begin
       Result := Prop(I);
       Exit;
     end;
+end;
+
+{ TLandrixEInvoiceXmpSchemaTypes }
+
+const
+  { most schema entries and types per entry; beyond, answers are unknown }
+  MaxSchemaEntries = 64;
+  MaxSchemaKeys = 512;
+  { longest type name read; longer ones are not decided }
+  MaxTypeName = 1024;
+  { the types every schema knows (veraPDF's basic validators) }
+  BasicTypes: array[0..13] of string = ('agentname', 'boolean', 'date', 'integer', 'lang alt', 'mimetype',
+    'propername', 'rational', 'real', 'renditionclass', 'text', 'uri', 'url', 'xpath');
+  { the further types of the PDF/A-2/-3 predefined validators }
+  PredefinedTypes: array[0..21] of string = ('beatsplicestretch', 'cfapattern', 'colorant', 'devicesettings',
+    'dimensions', 'flash', 'font', 'gpscoordinate', 'job', 'locale', 'marker', 'media', 'oecf/sfr', 'projectlink',
+    'resamplestretch', 'resourceevent', 'resourceref', 'thumbnail', 'time', 'timecode', 'timescalestretch',
+    'version');
+
+function EndsWithStr(const S, ATail: TLandrixEInvoiceString): Boolean;
+begin
+  Result := (Length(S) >= Length(ATail)) and (Copy(S, Length(S) - Length(ATail) + 1, Length(ATail)) = ATail);
+end;
+
+function MatchAt(const S, AWord: TLandrixEInvoiceString; APos: Integer): Boolean;
+begin
+  Result := Copy(S, APos, Length(AWord)) = AWord;
+end;
+
+{ The length of a match of (open |closed )?(choice |choice$)(of )? at APos,
+  0 if none (the regular expression tries the group first, then without). }
+function ChoiceMatch(const S: TLandrixEInvoiceString; APos: Integer): Integer;
+const
+  Heads: array[0..2] of string = ('open ', 'closed ', '');
+var
+  H, P: Integer;
+begin
+  Result := 0;
+  for H := 0 to 2 do
+  begin
+    P := APos;
+    if not MatchAt(S, TLandrixEInvoiceString(Heads[H]), P) then
+      Continue;
+    Inc(P, Length(Heads[H]));
+    if MatchAt(S, 'choice ', P) then
+      Inc(P, 7)
+    else if MatchAt(S, 'choice', P) and (P + 6 = Length(S) + 1) then
+      Inc(P, 6)
+    else
+      Continue;
+    if MatchAt(S, 'of ', P) then
+      Inc(P, 3);
+    Result := P - APos;
+    Exit;
+  end;
+end;
+
+{ veraPDF's simplified type name: lower case, every "open/closed choice of"
+  removed, trimmed; empty is text; a name ending in bag, seq or alt (except
+  lang alt) gets " text". False where Java might read it otherwise
+  (characters beyond ASCII, line ends) or the name is very long. }
+function SimplifyType(const AType: TLandrixEInvoiceString; out AKey: TLandrixEInvoiceString): Boolean;
+var
+  I, M, A, B: Integer;
+  T: TLandrixEInvoiceString;
+begin
+  Result := False;
+  AKey := '';
+  if Length(AType) > MaxTypeName then
+    Exit;
+  for I := 1 to Length(AType) do
+    if (Word(AType[I]) > 127) or (AType[I] = #10) or (AType[I] = #13) then
+      Exit;
+  T := AType;
+  for I := 1 to Length(T) do
+    if (T[I] >= 'A') and (T[I] <= 'Z') then
+      T[I] := WideChar(Word(T[I]) + 32);
+  I := 1;
+  while I <= Length(T) do
+  begin
+    M := ChoiceMatch(T, I);
+    if M > 0 then
+      Inc(I, M)
+    else
+    begin
+      AKey := AKey + T[I];
+      Inc(I);
+    end;
+  end;
+  A := 1;
+  B := Length(AKey);
+  while (A <= B) and (Word(AKey[A]) <= 32) do
+    Inc(A);
+  while (B >= A) and (Word(AKey[B]) <= 32) do
+    Dec(B);
+  AKey := Copy(AKey, A, B - A + 1);
+  if AKey = '' then
+    AKey := 'text'
+  else if not EndsWithStr(AKey, 'lang alt') and (EndsWithStr(AKey, 'bag') or EndsWithStr(AKey, 'alt') or
+    EndsWithStr(AKey, 'seq')) then
+    AKey := AKey + ' text';
+  Result := True;
+end;
+
+function InList(const AKey: TLandrixEInvoiceString; const AList: array of string): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to Integer(High(AList)) do
+    if AKey = TLandrixEInvoiceString(AList[I]) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ A field's value as veraPDF reads it: False if absent; a structure or an
+  array has the value ''. }
+function FieldValue(ANode: TLandrixEInvoiceXmpNode; out AValue: TLandrixEInvoiceString): Boolean;
+begin
+  Result := ANode <> nil;
+  AValue := '';
+  if Result and (ANode.Kind = xmk_Simple) then
+    AValue := ANode.Value;
+end;
+
+function TLandrixEInvoiceXmpSchemaTypes.IndexOf(const AUri: TLandrixEInvoiceString): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to FCount - 1 do
+    if FUris[I] = AUri then
+    begin
+      Result := I;
+      Exit;
+    end;
+end;
+
+procedure TLandrixEInvoiceXmpSchemaTypes.AddKey(AEntry: Integer; const AKey: TLandrixEInvoiceString);
+begin
+  if FKeyCounts[AEntry] >= MaxSchemaKeys then
+  begin
+    FOverflow := True;
+    Exit;
+  end;
+  if FKeyCounts[AEntry] = Integer(Length(FKeys[AEntry])) then
+    SetLength(FKeys[AEntry], 8 + 2 * FKeyCounts[AEntry]);
+  FKeys[AEntry][FKeyCounts[AEntry]] := AKey;
+  Inc(FKeyCounts[AEntry]);
+end;
+
+{ The types of an array pdfaSchema:valueType (other forms define none): a
+  type name; with fields (in an array pdfaType:field, each with a name and
+  a value type) only if the type has a namespace URI. }
+procedure TLandrixEInvoiceXmpSchemaTypes.AddTypes(AEntry: Integer; ADefinition: TLandrixEInvoiceXmpNode);
+var
+  VT, T, FL, F: TLandrixEInvoiceXmpNode;
+  I, J, Fields: Integer;
+  Name, Key, Dummy: TLandrixEInvoiceString;
+begin
+  VT := ADefinition.FindChild(LandrixEInvoiceXmpNsPdfaSchema, 'valueType');
+  if (VT = nil) or (VT.Kind <> xmk_Array) then
+    Exit;
+  for I := 0 to VT.ChildCount - 1 do
+  begin
+    T := VT.Child(I);
+    if not FieldValue(T.FindChild(LandrixEInvoiceXmpNsPdfaType, 'type'), Name) then
+      Continue;
+    FL := T.FindChild(LandrixEInvoiceXmpNsPdfaType, 'field');
+    Fields := 0;
+    if (FL <> nil) and (FL.Kind = xmk_Array) then
+      for J := 0 to FL.ChildCount - 1 do
+      begin
+        F := FL.Child(J);
+        if FieldValue(F.FindChild(LandrixEInvoiceXmpNsPdfaField, 'name'), Dummy) and
+          FieldValue(F.FindChild(LandrixEInvoiceXmpNsPdfaField, 'valueType'), Dummy) then
+          Inc(Fields);
+      end;
+    if (Fields > 0) and not FieldValue(T.FindChild(LandrixEInvoiceXmpNsPdfaType, 'namespaceURI'), Dummy) then
+      Continue;
+    if SimplifyType(Name, Key) then
+      AddKey(AEntry, Key)
+    else
+      FUncertain[AEntry] := True;
+  end;
+end;
+
+procedure TLandrixEInvoiceXmpSchemaTypes.Build(APacket: TLandrixEInvoiceXmpPacket;
+  AMain: TLandrixEInvoiceXmpSchemaTypes; AFurther: Boolean);
+var
+  C, D, P: TLandrixEInvoiceXmpNode;
+  I, J, E, M: Integer;
+  Uri: TLandrixEInvoiceString;
+begin
+  { drop what an earlier packet left }
+  FUris := nil;
+  FKeys := nil;
+  FKeyCounts := nil;
+  FUncertain := nil;
+  FCount := 0;
+  FOverflow := AFurther and (AMain <> nil) and AMain.FOverflow;
+  if FOverflow or (APacket.State <> xms_Valid) then
+    Exit;
+  C := APacket.Find(LandrixEInvoiceXmpNsPdfaExtension, 'schemas');
+  if (C = nil) or (C.Kind <> xmk_Array) then
+    Exit;
+  for I := 0 to C.ChildCount - 1 do
+  begin
+    D := C.Child(I);
+    P := D.FindChild(LandrixEInvoiceXmpNsPdfaSchema, 'property');
+    if not FieldValue(D.FindChild(LandrixEInvoiceXmpNsPdfaSchema, 'namespaceURI'), Uri) or (P = nil) or
+      (P.Kind <> xmk_Array) then
+      Continue;
+    E := IndexOf(Uri);
+    if E < 0 then
+    begin
+      if FCount >= MaxSchemaEntries then
+      begin
+        FOverflow := True;
+        Exit;
+      end;
+      if FCount = Integer(Length(FUris)) then
+      begin
+        SetLength(FUris, 4 + 2 * FCount);
+        SetLength(FKeys, Length(FUris));
+        SetLength(FKeyCounts, Length(FUris));
+        SetLength(FUncertain, Length(FUris));
+      end;
+      E := FCount;
+      Inc(FCount);
+      FUris[E] := Uri;
+    end;
+    { the last schema with this URI replaces the entry; in a further packet
+      it starts from the main packet's entry for the URI }
+    FKeyCounts[E] := 0;
+    FUncertain[E] := False;
+    if AFurther and (AMain <> nil) then
+    begin
+      M := AMain.IndexOf(Uri);
+      if M >= 0 then
+      begin
+        FUncertain[E] := AMain.FUncertain[M];
+        for J := 0 to AMain.FKeyCounts[M] - 1 do
+          AddKey(E, AMain.FKeys[M][J]);
+      end;
+    end;
+    AddTypes(E, D);
+  end;
+end;
+
+function TLandrixEInvoiceXmpSchemaTypes.Entry(const ASchemaUri: TLandrixEInvoiceString; AHasUri: Boolean): Integer;
+begin
+  Result := -1;
+  if AHasUri then
+    Result := IndexOf(ASchemaUri);
+end;
+
+function TLandrixEInvoiceXmpSchemaTypes.IsKnown(AEntry: Integer;
+  const AType: TLandrixEInvoiceString): TLandrixEInvoiceXmpTruth;
+var
+  Key: TLandrixEInvoiceString;
+  I: Integer;
+begin
+  Result := xmt_Unknown;
+  if not SimplifyType(AType, Key) then
+    Exit;
+  while (Copy(Key, 1, 4) = 'bag ') or (Copy(Key, 1, 4) = 'alt ') or (Copy(Key, 1, 4) = 'seq ') do
+    Key := Copy(Key, 5, MaxInt);
+  if InList(Key, BasicTypes) then
+  begin
+    Result := xmt_Yes;
+    Exit;
+  end;
+  if FOverflow then
+    Exit;
+  if (AEntry < 0) or (AEntry >= FCount) then
+  begin
+    Result := xmt_No;
+    Exit;
+  end;
+  if InList(Key, PredefinedTypes) then
+  begin
+    Result := xmt_Yes;
+    Exit;
+  end;
+  for I := 0 to FKeyCounts[AEntry] - 1 do
+    if FKeys[AEntry][I] = Key then
+    begin
+      Result := xmt_Yes;
+      Exit;
+    end;
+  if FUncertain[AEntry] then
+    Result := xmt_Unknown
+  else
+    Result := xmt_No;
 end;
 
 end.
