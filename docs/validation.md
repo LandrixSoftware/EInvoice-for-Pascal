@@ -186,12 +186,20 @@ end.
   identification) and 6.8 to 6.11 (embedded
   files, optional content, presentations, requirements);
   `evr_Failed` on a violation, otherwise `evr_Incomplete`, as not every PDF/A rule is implemented;
-  it does not count for the verdict).
+  it does not count for the verdict), `evp_Advisory` (the library's own hints, see below).
+- Advisory checks (`Options.Advisory`, a set of families; default `LandrixEInvoiceAdvisoryTechnical`,
+  `[]` turns them off): hints on the invoice as read that no standard demands, rules LX-... (so far
+  LX-ID-01 to LX-ID-05, invisible and deceptive characters, see [Rules of this library](rules.md)).
+  They are infos or warnings, never errors, never count for the verdict and are counted apart
+  (`advisory` in the XML report). `evp_Advisory` is `evr_Passed` when they ran, `evr_Incomplete`
+  when they stopped (with a warning), never `evr_Failed`. Legal and context-dependent families
+  (German tax law, recipients) will only run on request.
 - `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part`, and for
   the rule check `Terms`, `Expected`, `Found` and `Calculation` (see [Checking](checking.md);
   `Location` is then the model path, often empty). Findings of
-  the library's own rules are marked `Predicted`: they predict what KoSIT reports and never change
-  the verdict. PDF findings have the identifiers BR-HYBRID-... (ZUGFeRD), LX-PDF-...
+  the library's own rule check (`evp_ModelCheck`) are marked `Predicted`: they predict what KoSIT
+  reports and never change the verdict. Hints (`evp_Advisory`) are not predictions; they carry the
+  model path in `Location`, `Terms` and the masked value in `Found`. PDF findings have the identifiers BR-HYBRID-... (ZUGFeRD), LX-PDF-...
   (own checks, see [Rules of this library](rules.md)) and PDFA-<clause>-<test> (PDF/A, numbered as in veraPDF, e.g. PDFA-6.1.7.1-1).
 - Peppol BIS: the configuration has no `acceptMatch`, so every failed assert rejects, a warning
   too. This is how the KoSIT validator decides; its HTML report shows the assessment of its

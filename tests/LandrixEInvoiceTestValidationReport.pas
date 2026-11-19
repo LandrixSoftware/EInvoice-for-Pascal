@@ -90,7 +90,7 @@ const
   { the tokens of the format, written down independently of the writer }
   VerdictTokens: array[TLandrixEInvoiceVerdict] of string = ('accepted', 'rejected', 'incomplete');
   PartTokens: array[TLandrixEInvoiceValidationPart] of string = ('read', 'kosit', 'modelCheck', 'pdfEmbedding',
-    'pdfMetadata', 'pdfA');
+    'pdfMetadata', 'pdfA', 'advisory');
   StatusTokens: array[TLandrixEInvoicePartStatus] of string = ('notRun', 'passed', 'failed', 'incomplete');
   SeverityTokens: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
   StepTokens: array[TLandrixEInvoiceFindingStep] of string = ('', 'wellformedness', 'xmlSchema', 'schematron');
@@ -175,7 +175,7 @@ end;
 procedure CheckFindings(N: TLandrixXmlNode; AResult: TLandrixEInvoiceDocumentValidation; const AName: string);
 var
   F: TLandrixXmlNode;
-  I, Predicted: Integer;
+  I, Predicted, Advisory: Integer;
   Counts: array[TLandrixEInvoiceDiagnosticSeverity] of Integer;
   S: TLandrixEInvoiceDiagnosticSeverity;
   Finding: TLandrixEInvoiceFinding;
@@ -186,6 +186,7 @@ begin
   for S := Low(TLandrixEInvoiceDiagnosticSeverity) to High(TLandrixEInvoiceDiagnosticSeverity) do
     Counts[S] := 0;
   Predicted := 0;
+  Advisory := 0;
   F := N.FirstChildElement;
   I := 0;
   while F <> nil do
@@ -196,8 +197,11 @@ begin
       Finding := AResult[I];
       if Finding.Predicted then
         Inc(Predicted)
+      else if Finding.Part = evp_Advisory then
+        Inc(Advisory)
       else
         Inc(Counts[Finding.Severity]);
+      Check((Finding.Part <> evp_Advisory) or (Finding.Severity <> eds_Error), What + ' hint not an error');
       Sanitized := Attr(F, 'sanitized') = 'true';
       CheckEqualsStr(PartTokens[Finding.Part], Attr(F, 'part'), What + ' part');
       CheckEqualsStr(SeverityTokens[Finding.Severity], Attr(F, 'severity'), What + ' severity');
@@ -230,6 +234,7 @@ begin
   CheckEqualsStr(IntToStr(Counts[eds_Warning]), Attr(N, 'warnings'), AName + ': warnings');
   CheckEqualsStr(IntToStr(Counts[eds_Info]), Attr(N, 'infos'), AName + ': infos');
   CheckEqualsStr(IntToStr(Predicted), Attr(N, 'predicted'), AName + ': predicted');
+  CheckEqualsStr(IntToStr(Advisory), Attr(N, 'advisory'), AName + ': advisory');
 end;
 
 function HtmlUtf8(AResult: TLandrixEInvoiceDocumentValidation; const ADocumentName: TLandrixEInvoiceString;
@@ -333,7 +338,7 @@ begin
             CheckEqualsStr(StatusClassTokens[AResult.Status[P]], Attr(Cell, 'class'),
               What + ': status ' + IntToStr(Ord(P)));
         end;
-        Check(NthChild(Body, 'tr', 6) = nil, What + ': six parts');
+        Check(NthChild(Body, 'tr', 7) = nil, What + ': seven parts');
       end;
     end;
     Check((FindElement(Root, 'h2', '') <> nil), What + ': sections');
@@ -355,6 +360,7 @@ begin
           Break;
         Finding := AResult[I];
         Check(Finding.Predicted = (Attr(Row, 'class') = 'predicted'), What + ': predicted ' + IntToStr(I));
+        Check((Finding.Part = evp_Advisory) = (Attr(Row, 'class') = 'advisory'), What + ': advisory ' + IntToStr(I));
         CheckEqualsStr(SeverityClassTokens[Finding.Severity], Attr(NthChild(Row, 'td', 1), 'class'),
           What + ': severity ' + IntToStr(I));
         if not Sanitized then

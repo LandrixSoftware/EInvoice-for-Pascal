@@ -257,9 +257,9 @@ const
   VerdictEN: array[TLandrixEInvoiceVerdict] of string = ('ACCEPTED', 'REJECTED', 'INCOMPLETE');
   VerdictDE: array[TLandrixEInvoiceVerdict] of string = ('ANGENOMMEN', 'ABGELEHNT', 'UNVOLLST#ANDIG');
   PartEN: array[TLandrixEInvoiceValidationPart] of string = (
-    'read', 'KoSIT', 'model check', 'PDF embedding', 'PDF metadata', 'PDF/A');
+    'read', 'KoSIT', 'model check', 'PDF embedding', 'PDF metadata', 'PDF/A', 'advisory');
   PartDE: array[TLandrixEInvoiceValidationPart] of string = (
-    'Lesen', 'KoSIT', 'Modellpr#ufung', 'PDF-Einbettung', 'PDF-Metadaten', 'PDF/A');
+    'Lesen', 'KoSIT', 'Modellpr#ufung', 'PDF-Einbettung', 'PDF-Metadaten', 'PDF/A', 'Hinweispr#ufungen');
   StatusEN: array[TLandrixEInvoicePartStatus] of string = ('not run', 'passed', 'failed', 'incomplete');
   StatusDE: array[TLandrixEInvoicePartStatus] of string = (
     'nicht gelaufen', 'bestanden', 'nicht bestanden', 'unvollst#andig');
@@ -924,9 +924,11 @@ begin
         S := S + ' (' + UI(F.Location) + ')';
       if F.Terms <> '' then
         S := S + ' (' + UI(F.Terms) + ')';
-      if (F.Expected <> '') or (F.Found <> '') then
+      if F.Expected <> '' then
         S := S + ' ' + T('expected', 'erwartet') + ' ' + UI(F.Expected) + ', ' + T('found', 'gefunden') + ' ' +
-          UI(F.Found);
+          UI(F.Found)
+      else if F.Found <> '' then
+        S := S + ' ' + T('found', 'gefunden') + ' ' + UI(F.Found);
       if F.Calculation <> '' then
         S := S + ' [' + UI(F.Calculation) + ']';
       Lines.Add(S);

@@ -15,13 +15,13 @@ identifiers, all starting with `LX-`. This page lists every one of them.
 - A rule whose condition becomes broader gets a new number.
 - The prefix says nothing about the verdict: where a finding appears decides that (see
   [Validating](validation.md)). LX-PDF errors count for the verdict of a hybrid PDF, LX-CC rules run
-  only when asked for.
+  only when asked for, LX-ID hints never count.
 - `python tools/check-forbidden.py` (without arguments) fails when an identifier of the source is
   missing here or in the German list, when a list names an identifier the source does not have
   (unless it is marked retired), or when an identifier appears twice in a list.
 
-Families: `LX-CC` (checks of XRechnung-for-Delphi), `LX-PDF` (hybrid PDF). Reserved for planned
-checks: `LX-ID` (identifiers, check digits, deceptive characters), `LX-PL` (plausibility of dates
+Families: `LX-CC` (checks of XRechnung-for-Delphi), `LX-PDF` (hybrid PDF), `LX-ID` (identifiers
+and characters; check digits planned). Reserved for planned checks: `LX-PL` (plausibility of dates
 and payment), `LX-AR` (arithmetic where no official rule exists), `LX-AT` (attachments), `LX-DE`
 (German tax law).
 
@@ -75,3 +75,25 @@ error rejects the PDF anyway.
 | LX-PDF-10 | error | the embedded invoice is UBL, not a CII invoice of a ZUGFeRD profile | 0.9.0-beta.1 |
 | LX-PDF-11 | error | the XMP metadata is missing, cannot be decoded, is not well-formed or has no `rdf:RDF` with `rdf:Description` | 0.9.0-beta.1 |
 | LX-PDF-12 | warning | the PDF/A check stopped before it was complete | unreleased |
+
+## LX-ID: identifiers and characters (advisory)
+
+Hints of the advisory checks (family `eaf_Identifiers`, on by default). They appear in the part
+`advisory` of a validation, which never counts for the verdict, and are at most warnings. The
+finding names the model path, the first character as `U+XXXX` with its position (counted in characters) and how many there
+are; `found` shows the value with the characters masked as `<U+XXXX>`. The value is never changed.
+
+Identifier fields are identifiers, codes, references, postal codes, telephone numbers, e-mail
+addresses and file names; text fields are names and free texts (also the remittance information,
+BT-83). ASCII identifiers: VAT identifiers (BT-31, BT-48, BT-63), country and currency codes, the
+GTIN (BT-157 with scheme 0160), the SEPA creditor identifier (BT-90), the payment service provider
+(BT-86), the mandate reference (BT-89) of a SEPA direct debit (59) and the account (BT-84, BT-91) of
+a SEPA payment (58, 59) or one that starts like an IBAN.
+
+| Identifier | Severity | Finding | Since |
+|---|---|---|---|
+| LX-ID-01 | warning | a bidirectional control character (U+061C, U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) in an identifier field | unreleased |
+| LX-ID-02 | warning | an invisible character (e.g. U+200B to U+200D, U+2060, U+FEFF, U+00AD, variation selectors, tag characters) or a space other than U+0020 (e.g. U+00A0, U+2000 to U+200A, U+3000) in an identifier field | unreleased |
+| LX-ID-03 | warning | a C1 control character (U+0080 to U+009F) in any text field, usually a wrong character encoding | unreleased |
+| LX-ID-04 | info | a bidirectional control or invisible character in a name or free text, where it can be legitimate | unreleased |
+| LX-ID-05 | warning | another character outside ASCII in an ASCII identifier, e.g. a Cyrillic letter that looks like a Latin one | unreleased |

@@ -15,15 +15,15 @@ eigene Kennungen, die alle mit `LX-` beginnen. Diese Seite führt jede davon auf
 - Eine Regel, deren Bedingung weiter wird, bekommt eine neue Nummer.
 - Das Präfix sagt nichts über das Urteil: Das entscheidet, wo ein Befund erscheint (siehe
   [Validieren](validation.md)). LX-PDF-Fehler zählen für das Urteil über ein Hybrid-PDF,
-  LX-CC-Regeln laufen nur auf Anfrage.
+  LX-CC-Regeln laufen nur auf Anfrage, LX-ID-Hinweise zählen nie.
 - `python tools/check-forbidden.py` (ohne Argumente) schlägt an, wenn eine Kennung aus dem
   Quelltext hier oder in der englischen Liste fehlt, wenn eine Liste eine Kennung nennt, die der
   Quelltext nicht hat (außer sie ist als aufgegeben markiert), oder wenn eine Kennung in einer
   Liste zweimal steht.
 
-Familien: `LX-CC` (Prüfungen von XRechnung-for-Delphi), `LX-PDF` (Hybrid-PDF). Reserviert für
-geplante Prüfungen: `LX-ID` (Kennungen, Prüfziffern, täuschende Zeichen), `LX-PL` (Plausibilität
-von Daten und Zahlung), `LX-AR` (Rechnen, wo es keine offizielle Regel gibt), `LX-AT` (Anhänge),
+Familien: `LX-CC` (Prüfungen von XRechnung-for-Delphi), `LX-PDF` (Hybrid-PDF), `LX-ID` (Kennungen
+und Zeichen; Prüfziffern geplant). Reserviert für geplante Prüfungen: `LX-PL` (Plausibilität von
+Daten und Zahlung), `LX-AR` (Rechnen, wo es keine offizielle Regel gibt), `LX-AT` (Anhänge),
 `LX-DE` (deutsches Steuerrecht).
 
 ## LX-CC: Prüfungen von XRechnung-for-Delphi
@@ -77,3 +77,25 @@ gemeldet werden) und damit das Urteil, sofern nicht ein Fehler das PDF ohnehin a
 | LX-PDF-10 | Fehler | die eingebettete Rechnung ist UBL, keine CII-Rechnung eines ZUGFeRD-Profils | 0.9.0-beta.1 |
 | LX-PDF-11 | Fehler | die XMP-Metadaten fehlen, lassen sich nicht dekodieren, sind nicht wohlgeformt oder haben kein `rdf:RDF` mit `rdf:Description` | 0.9.0-beta.1 |
 | LX-PDF-12 | Warnung | die PDF/A-Prüfung brach ab, bevor sie vollständig war | unveröffentlicht |
+
+## LX-ID: Kennungen und Zeichen (Hinweise)
+
+Hinweise der Hinweisprüfungen (Familie `eaf_Identifiers`, standardmäßig an). Sie erscheinen im
+Teil `advisory` einer Validierung, der nie für das Urteil zählt, und sind höchstens Warnungen. Der
+Befund nennt den Modellpfad, das erste Zeichen als `U+XXXX` mit seiner Position (in Zeichen) und wie viele es
+sind; `found` zeigt den Wert mit den Zeichen maskiert als `<U+XXXX>`. Der Wert wird nie geändert.
+
+Kennungsfelder sind Kennungen, Codes, Verweise, Postleitzahlen, Telefonnummern, E-Mail-Adressen und
+Dateinamen; Textfelder sind Namen und Freitexte (auch der Verwendungszweck, BT-83). ASCII-Kennungen:
+Umsatzsteuer-Identifikationsnummern (BT-31, BT-48, BT-63), Länder- und Währungscodes, die GTIN
+(BT-157 mit Schema 0160), die Gläubiger-Identifikationsnummer (BT-90), der Zahlungsdienstleister
+(BT-86), die Mandatsreferenz (BT-89) einer SEPA-Lastschrift (59) und das Konto (BT-84, BT-91) einer
+SEPA-Zahlung (58, 59) oder eines, das wie eine IBAN beginnt.
+
+| Kennung | Schweregrad | Befund | Seit |
+|---|---|---|---|
+| LX-ID-01 | Warnung | ein bidirektionales Steuerzeichen (U+061C, U+200E, U+200F, U+202A bis U+202E, U+2066 bis U+2069) in einem Kennungsfeld | unveröffentlicht |
+| LX-ID-02 | Warnung | ein unsichtbares Zeichen (z. B. U+200B bis U+200D, U+2060, U+FEFF, U+00AD, Variantenselektoren, Tag-Zeichen) oder ein Leerzeichen außer U+0020 (z. B. U+00A0, U+2000 bis U+200A, U+3000) in einem Kennungsfeld | unveröffentlicht |
+| LX-ID-03 | Warnung | ein C1-Steuerzeichen (U+0080 bis U+009F) in einem beliebigen Textfeld, meist eine falsche Zeichenkodierung | unveröffentlicht |
+| LX-ID-04 | Hinweis | ein bidirektionales Steuerzeichen oder unsichtbares Zeichen in einem Namen oder Freitext, wo es berechtigt sein kann | unveröffentlicht |
+| LX-ID-05 | Warnung | ein anderes Zeichen außerhalb von ASCII in einer ASCII-Kennung, z. B. ein kyrillischer Buchstabe, der wie ein lateinischer aussieht | unveröffentlicht |

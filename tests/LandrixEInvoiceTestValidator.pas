@@ -67,6 +67,7 @@ uses
   LandrixEInvoiceValidationHtml,
   LandrixEInvoiceReportHtml,
   LandrixEInvoicePdfCheck,
+  LandrixEInvoiceAdvisory,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestCheck,
   LandrixEInvoiceTestPdf,
@@ -675,7 +676,8 @@ end;
 { the findings as "part:rule:severity[:predicted]", separated by spaces }
 function Findings(R: TLandrixEInvoiceDocumentValidation): string;
 const
-  PartText: array[TLandrixEInvoiceValidationPart] of string = ('read', 'kosit', 'model', 'pdf', 'xmp', 'pdfa');
+  PartText: array[TLandrixEInvoiceValidationPart] of string = ('read', 'kosit', 'model', 'pdf', 'xmp', 'pdfa',
+    'hint');
   SeverityText: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
 var
   I: Integer;
@@ -1749,7 +1751,7 @@ begin
     end;
     { the PDF without XMP: level 3 and PDF/A 6.6.2.1-1; a CR stays a CR }
     Html := HtmlUtf8(R, 'a'#13#10'b', eln_English);
-    Check(Pos(TLandrixXmlUtf8('<p class="counts">2 errors, 0 warnings, 0 infos, 1 predicted</p>'), Html) > 0,
+    Check(Pos(TLandrixXmlUtf8('<p class="counts">2 errors, 0 warnings, 0 infos, 1 predicted, 0 advisory</p>'), Html) > 0,
       'error count');
     Check(Pos(TLandrixXmlUtf8('<p class="document">a&#13;'#10'b</p>'), Html) > 0, 'CR as a reference');
     { markup in a name is text }
@@ -1842,8 +1844,8 @@ begin
     '<future xmlns="urn:example:future"/></validationReport>')), 'minor version with a new element');
   CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '</parts>', '<future xmlns="urn:example:future"/></parts>')),
     'minor version with a new element in parts');
-  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, 'predicted="0"/>',
-    'predicted="0"><future xmlns="urn:example:future"/></findings>')), 'minor version with a new element in findings');
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, 'predicted="0" advisory="0"/>',
+    'predicted="0" advisory="0"><future xmlns="urn:example:future"/></findings>')), 'minor version with a new element in findings');
   Check(ReportSchemaErrors(Mutated(Xml, '</parts>', '</parts><verdict>accepted</verdict>')) <> '',
     'second verdict invalid');
   Check(ReportSchemaErrors(Mutated(Xml, '<verdict>', '<future xmlns="urn:example:future"/><verdict>')) <> '',
@@ -1868,29 +1870,29 @@ begin
   CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '</document>', '</document>' +
     Copy(Xml, Pos(TLandrixXmlUtf8('<document'), Xml), Pos(TLandrixXmlUtf8('</document>'), Xml) + 11 -
     Pos(TLandrixXmlUtf8('<document'), Xml)))), 'two documents valid');
-  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
-    '<recipient name="authority" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
+    '<recipient name="authority" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0" advisory="0">' +
     '<finding recipient="authority" rule="X-1" severity="error"><text>t</text></finding></findings>')),
     'recipient valid');
-  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
-    '<recipient name="authority" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
+    '<recipient name="authority" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0" advisory="0">' +
     '<finding recipient="portal" rule="X-1" severity="error"><text>t</text></finding></findings>')) <> '',
     'unknown recipient invalid');
-  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
     '<recipient name="a" status="failed"/><recipient name="a" status="passed"/>' +
-    '<findings errors="0" warnings="0" infos="0" predicted="0"/>')) <> '', 'a recipient twice invalid');
+    '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>')) <> '', 'a recipient twice invalid');
   { part and recipient together are invalid too (the field of the key
     findingSource selects two nodes), but the XSD validator of LandrixXml
     does not report a field with several nodes yet (backlog) }
-  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
-    '<findings errors="1" warnings="0" infos="0" predicted="0"><finding severity="error"><text>t</text></finding>' +
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
+    '<findings errors="1" warnings="0" infos="0" predicted="0" advisory="0"><finding severity="error"><text>t</text></finding>' +
     '</findings>')) <> '', 'neither part nor recipient invalid');
-  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
-    '<recipient name=" " status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
+    '<recipient name=" " status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0" advisory="0">' +
     '<finding recipient=" " severity="error"><text>t</text></finding></findings>')) <> '', 'blank recipient invalid');
   { the recipients belong to their document }
-  Doc2 := Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
-    '<recipient name="a" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+  Doc2 := Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
+    '<recipient name="a" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0" advisory="0">' +
     '<finding recipient="a" severity="error"><text>t</text></finding></findings>');
   Doc2 := Copy(Doc2, Pos(TLandrixXmlUtf8('<document'), Doc2), Pos(TLandrixXmlUtf8('</document>'), Doc2) + 11 -
     Pos(TLandrixXmlUtf8('<document'), Doc2));
@@ -1902,8 +1904,149 @@ begin
   Check(ReportSchemaErrors(Mutated(Xml, '<verdict>incomplete</verdict>', '<verdict>maybe</verdict>')) <> '',
     'unknown verdict invalid');
   Check(ReportSchemaErrors(Mutated(Xml, '<part name="read" status="notRun"/>', '')) <> '',
-    'five parts invalid');
+    'six parts invalid');
   Check(ReportSchemaErrors(Mutated(Xml, 'status="notRun"', 'status="skipped"')) <> '', 'unknown status invalid');
+end;
+
+{ an invoice for ATarget whose invoice number has a right-to-left override
+  (LX-ID-01) }
+function AdvisoryBytes(const ATarget: TLandrixEInvoiceTarget): AnsiString;
+var
+  Invoice: TLandrixInvoice;
+  Xml: TLandrixXmlUtf8;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.InvoiceNumber := Invoice.InvoiceNumber + TLandrixEInvoiceString(Wide([$202E])) + '7';
+    Xml := TLandrixEInvoice.SaveToUtf8(Invoice, ATarget, [eio_WriteDespiteErrors]);
+  finally
+    Invoice.Free;
+  end;
+  Result := '';
+  SetLength(Result, Length(Xml));
+  if Length(Xml) > 0 then
+    Move(PAnsiChar(Xml)^, PAnsiChar(Result)^, Length(Xml));
+end;
+
+type
+  { advisory checks that add a hint (as an error, which the validation
+    lowers to a warning) and then stop }
+  TStoppingValidator = class(TLandrixEInvoiceDocumentValidator)
+  protected
+    procedure Advise(AInvoice: TLandrixInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics); override;
+  end;
+
+procedure TStoppingValidator.Advise(AInvoice: TLandrixInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics);
+begin
+  ADiagnostics.AddDiagnostic(edk_RuleViolation, 'InvoiceNumber', 0, 0, 0, 'before the stop').Severity := eds_Error;
+  raise Exception.Create('advisory stopped');
+end;
+
+{ The advisory checks: a hint in the part evp_Advisory, counted apart; the
+  verdict stays the same without them and when they stop, for each of the
+  three verdicts (XML without KoSIT: incomplete, a hybrid PDF with the
+  KoSIT XRechnung configuration: accepted, skipped without it, a PDF
+  without XMP: rejected). }
+procedure TestDocumentAdvisory;
+var
+  DV, Off: TLandrixEInvoiceDocumentValidator;
+  Stop: TStoppingValidator;
+  R: TLandrixEInvoiceDocumentValidation;
+  Cfg: TLandrixEInvoiceValidator;
+  Docs: array[0..2] of AnsiString;
+  Expected: array[0..2] of TLandrixEInvoiceVerdict;
+  Verdict: TLandrixEInvoiceVerdict;
+  I, J, Hints: Integer;
+  What: string;
+  Xml: TLandrixXmlUtf8;
+begin
+  Docs[0] := AdvisoryBytes(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL));
+  Docs[1] := BuildHybridPdf('xrechnung.xml', AdvisoryBytes(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII)),
+    TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), True);
+  Docs[2] := BuildHybridPdf('xrechnung.xml', AdvisoryBytes(TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII)),
+    TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), False);
+  Cfg := NewKositValidator;
+  DV := TLandrixEInvoiceDocumentValidator.Create;
+  Off := TLandrixEInvoiceDocumentValidator.Create;
+  Stop := TStoppingValidator.Create;
+  R := TLandrixEInvoiceDocumentValidation.Create;
+  try
+    Check(DV.Options.Advisory = LandrixEInvoiceAdvisoryTechnical, 'technical families by default');
+    Off.Options.Advisory := [];
+    Expected[0] := ev_Incomplete;
+    Expected[1] := ev_Accepted;
+    Expected[2] := ev_Rejected;
+    for I := 0 to 2 do
+    begin
+      What := 'advisory ' + IntToStr(I);
+      if (I = 1) and (Cfg = nil) then
+      begin
+        Skip('advisory: no KoSIT configuration (addons/java-tools), accepted case left out');
+        Continue;
+      end;
+      if I = 1 then
+      begin
+        DV.Options.Configuration := Cfg;
+        Off.Options.Configuration := Cfg;
+        Stop.Options.Configuration := Cfg;
+      end
+      else
+      begin
+        DV.Options.Configuration := nil;
+        Off.Options.Configuration := nil;
+        Stop.Options.Configuration := nil;
+      end;
+      { with the checks: one hint, LX-ID-01 on the invoice number }
+      Verdict := ValidateBytes(DV, Docs[I], R);
+      CheckEquals(Ord(Expected[I]), Ord(Verdict), What + ': verdict ' + Findings(R));
+      What := What + ' (verdict ' + IntToStr(Ord(Verdict)) + ')';
+      CheckEquals(Ord(evr_Passed), Ord(R.Status[evp_Advisory]), What + ': advisory passed');
+      Hints := 0;
+      for J := 0 to R.FindingCount - 1 do
+        if R[J].Part = evp_Advisory then
+        begin
+          Inc(Hints);
+          CheckEqualsStr('LX-ID-01', string(R[J].RuleID), What + ': rule');
+          CheckEqualsStr('InvoiceNumber', string(R[J].Location), What + ': path');
+          CheckEqualsStr('BT-1', string(R[J].Terms), What + ': terms');
+          Check(not R[J].Predicted, What + ': not predicted');
+          Check(R[J].Found <> '', What + ': found');
+        end;
+      CheckEquals(1, Hints, What + ': one hint: ' + Findings(R));
+      CheckValidationReport(R, What);
+      Xml := ReportUtf8(R, '');
+      Check(Pos(TLandrixXmlUtf8('" advisory="1"'), Xml) > 0, What + ': advisory counted apart');
+      Check(Pos(TLandrixXmlUtf8('<part name="advisory" status="passed"/>'), Xml) > 0, What + ': part in the report');
+      { without the checks }
+      CheckEquals(Ord(Verdict), Ord(ValidateBytes(Off, Docs[I], R)), What + ': same verdict without');
+      CheckEquals(Ord(evr_NotRun), Ord(R.Status[evp_Advisory]), What + ': not run without');
+      for J := 0 to R.FindingCount - 1 do
+        Check(R[J].Part <> evp_Advisory, What + ': no hint without');
+      CheckValidationReport(R, What + ' without');
+      { checks that stop: incomplete, a warning, the hint before the stop
+        kept as a warning }
+      CheckEquals(Ord(Verdict), Ord(ValidateBytes(Stop, Docs[I], R)), What + ': same verdict when stopped');
+      CheckEquals(Ord(evr_Incomplete), Ord(R.Status[evp_Advisory]), What + ': incomplete when stopped');
+      Hints := 0;
+      for J := 0 to R.FindingCount - 1 do
+        if R[J].Part = evp_Advisory then
+        begin
+          Inc(Hints);
+          CheckEquals(Ord(eds_Warning), Ord(R[J].Severity), What + ': stop: warning');
+        end;
+      CheckEquals(2, Hints, What + ': stop: hint and failure: ' + Findings(R));
+      CheckEqualsStr('before the stop', string(R[R.FindingCount - 2].Text), What + ': stop: hint kept');
+      Check(Pos('advisory stopped', string(R[R.FindingCount - 1].Text)) > 0, What + ': stop: last finding');
+      CheckValidationReport(R, What + ' stopped');
+    end;
+  finally
+    R.Free;
+    Stop.Free;
+    Off.Free;
+    DV.Free;
+    Cfg.Free;
+  end;
 end;
 
 procedure Register;
@@ -1923,6 +2066,7 @@ begin
   RegisterTest('Validation.ReportSanitize', TestDocumentReportSanitize);
   RegisterTest('Validation.ReportSchema', TestReportSchema);
   RegisterTest('Validation.Html', TestDocumentHtml);
+  RegisterTest('Validation.Advisory', TestDocumentAdvisory);
 end;
 
 procedure RegisterLast;

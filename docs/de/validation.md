@@ -190,12 +190,21 @@ end.
   Erweiterungsschemas, PDF/A-Kennung) und 6.8 bis 6.11
   (eingebettete Dateien, optionale Inhalte, Präsentationen, Anforderungen);
   `evr_Failed` bei einem Verstoß, sonst `evr_Incomplete`, weil nicht jede PDF/A-Regel umgesetzt
-  ist; zählt nicht für das Urteil).
+  ist; zählt nicht für das Urteil), `evp_Advisory` (eigene Hinweise der Bibliothek, siehe unten).
+- Hinweisprüfungen (`Options.Advisory`, eine Menge von Familien; Vorgabe
+  `LandrixEInvoiceAdvisoryTechnical`, `[]` schaltet sie ab): Hinweise zur gelesenen Rechnung, die kein
+  Standard verlangt, Regeln LX-... (bisher LX-ID-01 bis LX-ID-05, unsichtbare und täuschende Zeichen,
+  siehe [Regeln dieser Bibliothek](rules.md)). Sie sind Hinweise oder Warnungen, nie Fehler, zählen
+  nie für das Urteil und werden getrennt gezählt (`advisory` im XML-Bericht). `evp_Advisory` ist
+  `evr_Passed`, wenn sie liefen, `evr_Incomplete`, wenn sie abbrachen (mit einer Warnung), nie
+  `evr_Failed`. Rechtliche und kontextabhängige Familien (deutsches Steuerrecht, Empfänger) laufen
+  künftig nur auf Anforderung.
 - `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part` und für die
   Regelprüfung `Terms`, `Expected`, `Found` und `Calculation` (siehe [Prüfen](checking.md);
   `Location` ist dann der Modellpfad, oft leer). Befunde der
-  eigenen Regeln sind als `Predicted` markiert: Sie sagen voraus, was KoSIT meldet, und ändern das
-  Urteil nie. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-...
+  eigenen Regelprüfung (`evp_ModelCheck`) sind als `Predicted` markiert: Sie sagen voraus, was KoSIT
+  meldet, und ändern das Urteil nie. Hinweise (`evp_Advisory`) sind keine Vorhersagen; sie tragen
+  den Modellpfad in `Location`, `Terms` und den maskierten Wert in `Found`. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-...
   (eigene Prüfungen, siehe [Regeln dieser Bibliothek](rules.md)) und PDFA-<Abschnitt>-<Test> (PDF/A, nummeriert wie bei veraPDF, z. B.
   PDFA-6.1.7.1-1).
 - Peppol BIS: Die Konfiguration hat kein `acceptMatch`, deshalb lehnt jede fehlgeschlagene

@@ -8,8 +8,20 @@ Supported invoice standards are documented per release.
 ## [Unreleased]
 
 ### Added
+- Advisory checks: internal unit `LandrixEInvoiceAdvisory` (`LandrixEInvoiceAdvise`, families
+  `TLandrixEInvoiceAdvisoryFamilies`, default `LandrixEInvoiceAdvisoryTechnical`). The document
+  validation runs them on the invoice as read (`Options.Advisory`) and shows their hints in the new
+  part `evp_Advisory`: infos and warnings only, never part of the verdict, `evr_Incomplete` (with a
+  warning) when they stop, never `evr_Failed`. The XML report counts them apart (`findings/@advisory`,
+  part `advisory`), the HTML report and the Workbench show them. First family `eaf_Identifiers`:
+  LX-ID-01 to LX-ID-05 report bidirectional control and invisible characters and spaces other than
+  U+0020 in identifiers (bidirectional control and invisible characters in names and texts only as an
+  info), C1 control characters in every field, and characters outside ASCII in identifiers whose
+  scheme is ASCII (VAT identifiers, country and currency codes, GTIN, BIC, SEPA creditor identifier,
+  the mandate reference of a SEPA direct debit, an IBAN), with the model path, the code point and the
+  value masked as `<U+XXXX>`; surrogate pairs count as one character.
 - `docs/rules.md` (and the German `docs/de/rules.md`) lists the library's own rule identifiers
-  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12) with severity, scope and the version they came
+  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12, LX-ID-01 to LX-ID-05) with severity, scope and the version they came
   with, and how they are kept stable; `tools/check-forbidden.py` fails when the sources and the
   lists disagree. The warning that the PDF/A check stopped has its own identifier LX-PDF-12 instead
   of LX-PDF-01 (a broader condition gets a new number).

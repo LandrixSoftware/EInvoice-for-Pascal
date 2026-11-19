@@ -11,8 +11,9 @@
       <part name="pdfEmbedding" status="notRun"/>
       <part name="pdfMetadata" status="notRun"/>
       <part name="pdfA" status="notRun"/>
+      <part name="advisory" status="passed"/>
     </parts>
-    <findings errors="0" warnings="0" infos="0" predicted="1">
+    <findings errors="0" warnings="0" infos="0" predicted="1" advisory="0">
       <finding part="modelCheck" rule="BR-DE-15" severity="error" predicted="true" terms="BT-10">
         <text>the buyer reference (BT-10) shall be provided</text>
       </finding>

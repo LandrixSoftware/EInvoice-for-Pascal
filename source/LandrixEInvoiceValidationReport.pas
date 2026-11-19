@@ -94,7 +94,7 @@ const
 
   VerdictNames: array[TLandrixEInvoiceVerdict] of TLandrixXmlUtf8 = ('accepted', 'rejected', 'incomplete');
   PartNames: array[TLandrixEInvoiceValidationPart] of TLandrixXmlUtf8 = ('read', 'kosit', 'modelCheck',
-    'pdfEmbedding', 'pdfMetadata', 'pdfA');
+    'pdfEmbedding', 'pdfMetadata', 'pdfA', 'advisory');
   StatusNames: array[TLandrixEInvoicePartStatus] of TLandrixXmlUtf8 = ('notRun', 'passed', 'failed',
     'incomplete');
   SeverityNames: array[TLandrixEInvoiceDiagnosticSeverity] of TLandrixXmlUtf8 = ('info', 'warning', 'error');
@@ -233,7 +233,7 @@ var
   I: Integer;
   F: TLandrixEInvoiceFinding;
   Counts: array[TLandrixEInvoiceDiagnosticSeverity] of Integer;
-  Predicted: Integer;
+  Predicted, Advisory: Integer;
   S: TLandrixEInvoiceDiagnosticSeverity;
   Location, Text: TLandrixEInvoiceString;
   Sanitized: Boolean;
@@ -241,9 +241,14 @@ begin
   for S := Low(TLandrixEInvoiceDiagnosticSeverity) to High(TLandrixEInvoiceDiagnosticSeverity) do
     Counts[S] := 0;
   Predicted := 0;
+  Advisory := 0;
+  { the predictions and the hints have their own counters
+    DE: die Vorhersagen und die Hinweise haben eigene Zaehler }
   for I := 0 to AResult.FindingCount - 1 do
     if AResult[I].Predicted then
       Inc(Predicted)
+    else if AResult[I].Part = evp_Advisory then
+      Inc(Advisory)
     else
       Inc(Counts[AResult[I].Severity]);
   W.StartElement('findings');
@@ -251,6 +256,7 @@ begin
   W.Attribute('warnings', IntToStr(Counts[eds_Warning]));
   W.Attribute('infos', IntToStr(Counts[eds_Info]));
   W.Attribute('predicted', IntToStr(Predicted));
+  W.Attribute('advisory', IntToStr(Advisory));
   for I := 0 to AResult.FindingCount - 1 do
   begin
     F := AResult[I];

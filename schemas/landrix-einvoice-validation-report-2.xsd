@@ -128,11 +128,12 @@
   </xs:complexType>
 
   <!-- Every part once (the unique constraint on document), written in this
-       order: read, kosit, modelCheck, pdfEmbedding, pdfMetadata, pdfA. kosit
-       carries the configuration and the scenario. -->
+       order: read, kosit, modelCheck, pdfEmbedding, pdfMetadata, pdfA,
+       advisory. kosit carries the configuration and the scenario. pdfA and
+       advisory never count for the verdict; advisory is never failed. -->
   <xs:complexType name="Parts">
     <xs:sequence>
-      <xs:element name="part" type="r:Part" minOccurs="6" maxOccurs="6"/>
+      <xs:element name="part" type="r:Part" minOccurs="7" maxOccurs="7"/>
       <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
     </xs:sequence>
     <xs:anyAttribute namespace="##any" processContents="lax"/>
@@ -197,7 +198,9 @@
   </xs:complexType>
 
   <!-- The findings in the order of the result. errors, warnings, infos count
-       the findings that are not predicted; predicted counts the others. -->
+       the findings that are neither predicted nor advisory; predicted counts
+       the predictions of the rule check, advisory the hints of the part
+       advisory (infos and warnings). -->
   <xs:complexType name="Findings">
     <xs:sequence>
       <xs:element name="finding" type="r:Finding" minOccurs="0" maxOccurs="unbounded">
@@ -213,6 +216,7 @@
     <xs:attribute name="warnings" type="xs:nonNegativeInteger" use="required"/>
     <xs:attribute name="infos" type="xs:nonNegativeInteger" use="required"/>
     <xs:attribute name="predicted" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="advisory" type="xs:nonNegativeInteger" use="required"/>
     <xs:anyAttribute namespace="##any" processContents="lax"/>
   </xs:complexType>
 
@@ -269,6 +273,7 @@
       <xs:enumeration value="pdfEmbedding"/>
       <xs:enumeration value="pdfMetadata"/>
       <xs:enumeration value="pdfA"/>
+      <xs:enumeration value="advisory"/>
     </xs:restriction>
   </xs:simpleType>
 

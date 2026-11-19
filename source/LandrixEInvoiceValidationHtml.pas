@@ -97,7 +97,7 @@ type
     lbLocation, lbText, lbNoFindings, lbErrors, lbWarnings, lbInfos, lbError1, lbWarning1, lbInfo1,
     lbPredictedCount, lbPredicted,
     lbPredictedNote, lbLine, lbColumn, lbInInvoice, lbInXmp, lbSanitizedNote, lbGenerator, lbExpected, lbFound,
-    lbCalculation);
+    lbCalculation, lbAdvisoryCount, lbAdvisory, lbAdvisoryNote, lbFoundAlone);
 
 const
   { HTML snippets, ASCII with character references; written as they are }
@@ -113,7 +113,9 @@ const
      'Predicted: the library''s own rule check predicts what KoSIT would report. It does not decide the ' +
      'verdict and is not counted with the errors, warnings and infos.', 'line', 'column', 'in the invoice',
      'in the XMP metadata', 'Characters that XML does not allow were replaced by U+FFFD.', 'Written by',
-     'Expected', 'found', 'Calculation'),
+     'Expected', 'found', 'Calculation', 'advisory', 'advisory',
+     'Advisory: the library''s own hints (rules LX-...), at most warnings. They never decide the verdict and are ' +
+     'not counted with the errors, warnings and infos.', 'Found'),
     ('Pr&#252;fbericht', 'Urteil', 'Dokument', 'Name', 'Herkunft', 'Wurzelelement', 'Syntax',
      'Spezifikationskennung (BT-24)', 'Gesch&#228;ftsprozess (BT-23)', 'Spezifikation', 'Stand der Bibliothek',
      'Nutzt die Extension', 'ja', 'nein', 'Teile', 'Teil', 'Status', 'Einzelheiten', 'Konfiguration', 'Szenario',
@@ -126,16 +128,18 @@ const
      'Sie entscheidet nicht &#252;ber das Urteil und z&#228;hlt nicht zu Fehlern, Warnungen und Hinweisen.',
      'Zeile', 'Spalte', 'in der Rechnung', 'in den XMP-Metadaten',
      'Zeichen, die XML nicht erlaubt, wurden durch U+FFFD ersetzt.', 'Erstellt mit',
-     'Erwartet', 'gefunden', 'Rechenweg'));
+     'Erwartet', 'gefunden', 'Rechenweg', 'beratend', 'beratend',
+     'Beratend: eigene Hinweise der Bibliothek (Regeln LX-...), h&#246;chstens Warnungen. Sie entscheiden nie ' +
+     '&#252;ber das Urteil und z&#228;hlen nicht zu Fehlern, Warnungen und Hinweisen.', 'Gefunden'));
 
   VerdictLabels: array[TLandrixEInvoiceReportLanguage, TLandrixEInvoiceVerdict] of AnsiString = (
     ('Accepted', 'Rejected', 'Incomplete'),
     ('Angenommen', 'Abgelehnt', 'Unvollst&#228;ndig'));
   PartLabels: array[TLandrixEInvoiceReportLanguage, TLandrixEInvoiceValidationPart] of AnsiString = (
     ('Reading', 'KoSIT', 'Rule check (prediction)', 'PDF embedding (level 2)', 'PDF metadata, XMP (level 3)',
-     'PDF/A (level 1)'),
+     'PDF/A (level 1)', 'Advisory checks'),
     ('Lesen', 'KoSIT', 'Regelpr&#252;fung (Vorhersage)', 'PDF-Einbettung (Ebene 2)',
-     'PDF-Metadaten, XMP (Ebene 3)', 'PDF/A (Ebene 1)'));
+     'PDF-Metadaten, XMP (Ebene 3)', 'PDF/A (Ebene 1)', 'Hinweispr&#252;fungen'));
   { How the configuration was chosen; precedence: text, number of
     candidates, ChoiceTail.
     DE: Wie die Konfiguration gewaehlt wurde; Vorrang: Text, Zahl der
@@ -191,7 +195,7 @@ const
     '.s-passed{color:#15803d}.s-failed{color:#b91c1c;font-weight:600}' +
     '.s-incomplete{color:#a16207;font-weight:600}.s-notrun{color:#6b7280}' +
     'td.sev-error{color:#b91c1c;font-weight:600}td.sev-warning{color:#a16207}td.sev-info{color:#374151}' +
-    'tr.predicted td{font-style:italic;color:#4b5563}' +
+    'tr.predicted td,tr.advisory td{font-style:italic;color:#4b5563}' +
     'td.text{white-space:pre-wrap}' +
     'td.loc{font-family:ui-monospace,Consolas,monospace;font-size:.9em;word-break:break-all}' +
     '.note,footer{color:#6b7280;font-size:.9em}' +
@@ -395,7 +399,7 @@ end;
 
 procedure WriteFindings(P: TPage; AResult: TLandrixEInvoiceDocumentValidation);
 var
-  I, Predicted: Integer;
+  I, Predicted, Advisory: Integer;
   F: TLandrixEInvoiceFinding;
   Counts: array[TLandrixEInvoiceDiagnosticSeverity] of Integer;
   S: TLandrixEInvoiceDiagnosticSeverity;
@@ -403,9 +407,12 @@ begin
   for S := Low(TLandrixEInvoiceDiagnosticSeverity) to High(TLandrixEInvoiceDiagnosticSeverity) do
     Counts[S] := 0;
   Predicted := 0;
+  Advisory := 0;
   for I := 0 to AResult.FindingCount - 1 do
     if AResult[I].Predicted then
       Inc(Predicted)
+    else if AResult[I].Part = evp_Advisory then
+      Inc(Advisory)
     else
       Inc(Counts[AResult[I].Severity]);
   P.Raw('<section><h2>');
@@ -428,6 +435,10 @@ begin
   P.Int(Predicted);
   P.Raw(' ');
   P.Lbl(lbPredictedCount);
+  P.Raw(', ');
+  P.Int(Advisory);
+  P.Raw(' ');
+  P.Lbl(lbAdvisoryCount);
   P.Raw('</p>'#10'<table class="findings"><thead><tr><th>');
   P.Lbl(lbPart);
   P.Raw('</th><th>');
@@ -446,6 +457,8 @@ begin
     F := AResult[I];
     if F.Predicted then
       P.Raw('<tr class="predicted"><td>')
+    else if F.Part = evp_Advisory then
+      P.Raw('<tr class="advisory"><td>')
     else
       P.Raw('<tr><td>');
     P.Raw(PartLabels[P.Language, F.Part]);
@@ -462,6 +475,12 @@ begin
     begin
       P.Raw(' (');
       P.Lbl(lbPredicted);
+      P.Raw(')');
+    end
+    else if F.Part = evp_Advisory then
+    begin
+      P.Raw(' (');
+      P.Lbl(lbAdvisory);
       P.Raw(')');
     end;
     P.Raw('</td><td>');
@@ -498,7 +517,9 @@ begin
         P.Text(' (' + F.Terms + ')');
     P.Raw('</td><td class="text">');
     P.Text(F.Text);
-    if (F.Expected <> '') or (F.Found <> '') then
+    { a hint has a found value without an expected one
+      DE: ein Hinweis hat einen gefundenen Wert ohne erwarteten }
+    if F.Expected <> '' then
     begin
       P.Raw('<br/>');
       P.Lbl(lbExpected);
@@ -506,6 +527,13 @@ begin
       P.Text(F.Expected);
       P.Raw(', ');
       P.Lbl(lbFound);
+      P.Raw(': ');
+      P.Text(F.Found);
+    end
+    else if F.Found <> '' then
+    begin
+      P.Raw('<br/>');
+      P.Lbl(lbFoundAlone);
       P.Raw(': ');
       P.Text(F.Found);
     end;
@@ -523,6 +551,12 @@ begin
   begin
     P.Raw('<p class="note">');
     P.Lbl(lbPredictedNote);
+    P.Raw('</p>'#10);
+  end;
+  if Advisory > 0 then
+  begin
+    P.Raw('<p class="note">');
+    P.Lbl(lbAdvisoryNote);
     P.Raw('</p>'#10);
   end;
   P.Raw('</section>'#10);
