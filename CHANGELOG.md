@@ -26,9 +26,14 @@ Supported invoice standards are documented per release.
   2.0.2 with MOD 97-10 check digits, also BT-10 when it looks like one) and a buyer reference that
   differs from the buyer's Leitweg-ID. Expected and found check digits are in `Expected` and `Found`.
   `LandrixEInvoiceIdentifiers` has the new building blocks `LandrixEInvoiceGS1CheckDigit` and
-  `LandrixEInvoiceLeitwegIDProblem`.
+  `LandrixEInvoiceLeitwegIDProblem`. A second family `eaf_Plausibility` (LX-PL-01 to LX-PL-05,
+  on by default) reports a due date before the invoice date, an IBAN with wrong form or check digits
+  (`LandrixEInvoiceIBANCheckDigits`), a BIC of wrong form, an account holder who is not the seller
+  without a payee (info) and a SEPA direct debit without mandate reference, creditor identifier or
+  debited account. `LandrixEInvoiceAdvise` takes the rule identifiers the rule check reported and
+  does not repeat them.
 - `docs/rules.md` (and the German `docs/de/rules.md`) lists the library's own rule identifiers
-  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12, LX-ID-01 to LX-ID-10) with severity, scope and the version they came
+  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12, LX-ID-01 to LX-ID-10, LX-PL-01 to LX-PL-05) with severity, scope and the version they came
   with, and how they are kept stable; `tools/check-forbidden.py` fails when the sources and the
   lists disagree. The warning that the PDF/A check stopped has its own identifier LX-PDF-12 instead
   of LX-PDF-01 (a broader condition gets a new number).

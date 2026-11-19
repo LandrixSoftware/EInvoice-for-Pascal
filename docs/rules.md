@@ -15,14 +15,14 @@ identifiers, all starting with `LX-`. This page lists every one of them.
 - A rule whose condition becomes broader gets a new number.
 - The prefix says nothing about the verdict: where a finding appears decides that (see
   [Validating](validation.md)). LX-PDF errors count for the verdict of a hybrid PDF, LX-CC rules run
-  only when asked for, LX-ID hints never count.
+  only when asked for, LX-ID and LX-PL hints never count.
 - `python tools/check-forbidden.py` (without arguments) fails when an identifier of the source is
   missing here or in the German list, when a list names an identifier the source does not have
   (unless it is marked retired), or when an identifier appears twice in a list.
 
 Families: `LX-CC` (checks of XRechnung-for-Delphi), `LX-PDF` (hybrid PDF), `LX-ID` (identifiers,
-check digits and characters). Reserved for planned checks: `LX-PL` (plausibility of dates
-and payment), `LX-AR` (arithmetic where no official rule exists), `LX-AT` (attachments), `LX-DE`
+check digits and characters), `LX-PL` (plausibility of dates and payment). Reserved for planned
+checks: `LX-AR` (arithmetic where no official rule exists), `LX-AT` (attachments), `LX-DE`
 (German tax law).
 
 ## LX-CC: checks of XRechnung-for-Delphi
@@ -103,3 +103,17 @@ a SEPA payment (58, 59) or one that starts like an IBAN.
 | LX-ID-08 | warning | a GTIN (scheme 0160) for a party, location or address, or a GLN (scheme 0088) for a trade item | unreleased |
 | LX-ID-09 | warning (BT-10 outside XRechnung: info) | a Leitweg-ID (scheme 0204) that does not follow the format specification 2.0.2 (form, coarse address of 2, 3, 5, 8, 9 or 12 digits starting with 01 to 16 or 99, check digits MOD 97-10), also as item identifier, or a buyer reference (BT-10) that looks like a Leitweg-ID (a coarse address of 8 or more digits, or 99... with a fine address) but has wrong check digits | unreleased |
 | LX-ID-10 | info | the buyer reference (BT-10) and the electronic address of the buyer (BT-49, scheme 0204) are different valid Leitweg-IDs; the Peppol ID need not be the Leitweg-ID (`expected`: BT-49, `found`: BT-10) | unreleased |
+
+## LX-PL: plausibility of dates and payment (advisory)
+
+Hints of the advisory checks (family `eaf_Plausibility`, on by default), in the part `advisory`
+like LX-ID. What the rule check of the same validation reported is not repeated (the rule in
+brackets).
+
+| Identifier | Severity | Finding | Since |
+|---|---|---|---|
+| LX-PL-01 | warning | the due date (BT-9) is before the invoice date (BT-2); not for a credit note (type code 81, 83, 261, 262, 296, 308, 381, 396, 420, 458, 502, 503, 532, also as other code), a negative total or an invoice paid in advance (BT-113 above 0 and BT-115 at most 0); `expected` the invoice date, `found` the due date | unreleased |
+| LX-PL-02 | warning | the account (BT-84, BT-91) of a SEPA payment (58, 59), or one that starts like an IBAN, is no IBAN: not two capital letters, two check digits and 1 to 30 letters or digits, small letters, or check digits other than MOD 97-10 gives (`expected` the right ones); not for an account BR-DE-19, BR-DE-20, DE-R-019 or DE-R-020 reported | unreleased |
+| LX-PL-03 | warning | the payment service provider (BT-86) consists of letters and digits with at least one letter but is no BIC: not eight or eleven characters of the form of ISO 9362 (prefix of four letters or digits, country code, location, optional branch) in capital letters, or a country code that is no ISO 3166 country (XK allowed, XI not); national bank codes, clearing identifiers such as SE:BANKGIRO and Indian IFSC are left alone | unreleased |
+| LX-PL-04 | info | the account holder (BT-85) of a credit transfer (30, 58) is not the seller (BT-27, BT-28; neither name contains the other, compared in capital letters with umlauts as AE, OE, UE and sharp s as SS; no hint when a name has characters outside Latin-1) and no payee (BG-10: name, identifier or legal registration) is named | unreleased |
+| LX-PL-05 | warning | a SEPA direct debit (59) without mandate reference (BT-89), creditor identifier (BT-90; in UBL also as payee identifier or seller global identifier with scheme SEPA) or debited account (BT-91); also with the payment means code as other text; not after BR-DE-25-a or DE-R-025-1 (mandate, account; for CII also the creditor), BR-DE-30, BR-DE-31, DE-R-030, DE-R-031, PEPPOL-EN16931-R061 | unreleased |

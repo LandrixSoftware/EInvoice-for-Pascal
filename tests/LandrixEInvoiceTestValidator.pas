@@ -1934,12 +1934,12 @@ type
     lowers to a warning) and then stop }
   TStoppingValidator = class(TLandrixEInvoiceDocumentValidator)
   protected
-    procedure Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget; AR040Reported: Boolean;
+    procedure Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget; AReported: TStrings;
       ADiagnostics: TLandrixEInvoiceDiagnostics); override;
   end;
 
 procedure TStoppingValidator.Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
-  AR040Reported: Boolean; ADiagnostics: TLandrixEInvoiceDiagnostics);
+  AReported: TStrings; ADiagnostics: TLandrixEInvoiceDiagnostics);
 begin
   ADiagnostics.AddDiagnostic(edk_RuleViolation, 'InvoiceNumber', 0, 0, 0, 'before the stop').Severity := eds_Error;
   raise Exception.Create('advisory stopped');

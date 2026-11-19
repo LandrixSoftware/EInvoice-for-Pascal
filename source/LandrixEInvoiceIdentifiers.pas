@@ -188,6 +188,16 @@ function LandrixEInvoiceGreekTINValid(const AValue: TLandrixEInvoiceString): Boo
   - 55, auch Kleinbuchstaben). }
 function LandrixEInvoiceIBANValid(const AValue: TLandrixEInvoiceString): Boolean;
 
+{ The two check digits (positions 3 and 4) an IBAN without blanks should
+  have (ISO 13616, MOD 97-10 over BBAN and country code, letters of any
+  case as 10 to 35); '' if AValue does not have the form of two letters,
+  two digits and 1 to 30 letters or digits.
+  DE: Die zwei Pruefziffern (Stellen 3 und 4), die eine IBAN ohne Leerraum
+  haben sollte (ISO 13616, MOD 97-10 ueber BBAN und Laendercode, Buchstaben
+  beliebiger Schreibung als 10 bis 35); '', wenn AValue nicht die Form aus
+  zwei Buchstaben, zwei Ziffern und 1 bis 30 Buchstaben oder Ziffern hat. }
+function LandrixEInvoiceIBANCheckDigits(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+
 { BR-DE-27 (XRechnung) and DE-R-027 (Peppol): at least three digits.
   DE: BR-DE-27 (XRechnung) und DE-R-027 (Peppol): mindestens drei Ziffern. }
 function LandrixEInvoiceTelephoneValid(const AValue: TLandrixEInvoiceString): Boolean;
@@ -578,6 +588,36 @@ begin
       Remainder := (Remainder * 10 + Value - 48) mod 97;
   end;
   Result := Remainder = 1;
+end;
+
+function LandrixEInvoiceIBANCheckDigits(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+var
+  Rearranged: TLandrixEInvoiceString;
+  I, Remainder: Integer;
+  C: TLandrixEInvoiceChar;
+begin
+  Result := '';
+  if (Length(AValue) < 5) or (Length(AValue) > 34) or not IsLetter(AValue[1]) or not IsLetter(AValue[2]) or
+    not IsDigit(AValue[3]) or not IsDigit(AValue[4]) then
+    Exit;
+  for I := 5 to Length(AValue) do
+    if not (IsDigit(AValue[I]) or IsLetter(AValue[I])) then
+      Exit;
+  Rearranged := Copy(AValue, 5, Length(AValue) - 4) + Copy(AValue, 1, 2) + '00';
+  Remainder := 0;
+  for I := 1 to Length(Rearranged) do
+  begin
+    C := Rearranged[I];
+    if IsDigit(C) then
+      Remainder := (Remainder * 10 + Ord(C) - Ord('0')) mod 97
+    else if C >= 'a' then
+      Remainder := (Remainder * 100 + Ord(C) - Ord('a') + 10) mod 97
+    else
+      Remainder := (Remainder * 100 + Ord(C) - Ord('A') + 10) mod 97;
+  end;
+  Remainder := 98 - Remainder;
+  Result := TLandrixEInvoiceString(Chr(Ord('0') + Remainder div 10)) +
+    TLandrixEInvoiceString(Chr(Ord('0') + Remainder mod 10));
 end;
 
 function LandrixEInvoiceTelephoneValid(const AValue: TLandrixEInvoiceString): Boolean;

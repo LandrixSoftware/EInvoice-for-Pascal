@@ -50,6 +50,14 @@
   specification 2.0.2, and a buyer reference that differs from the buyer's
   Leitweg-ID gets an info.
 
+  Family eaf_Plausibility (LX-PL): a due date before the invoice date, an
+  IBAN with wrong form or check digits, a BIC of wrong form, an account
+  holder who is not the seller without a payee (info), a SEPA direct debit
+  without mandate reference, creditor identifier or debited account.
+
+  What the rule check of the same invoice reported is not repeated
+  (AReported of LandrixEInvoiceAdvise).
+
   DE: Hinweispruefungen: eigene Hinweise der Bibliothek zu einer Rechnung,
   die kein Standard verlangt (Regelkennungen LX-..., siehe docs/rules.md).
   Sie entscheiden nie ueber ein Urteil: die Dokumentpruefung zeigt sie in
@@ -87,7 +95,16 @@
   und eine GLN keine Artikelkennung, eine Leitweg-ID (0204) und eine
   Kaeuferreferenz (BT-10), die wie eine aussieht, folgen der
   Formatspezifikation 2.0.2, und eine Kaeuferreferenz, die von der
-  Leitweg-ID des Kaeufers abweicht, bekommt einen Hinweis. }
+  Leitweg-ID des Kaeufers abweicht, bekommt einen Hinweis.
+
+  Familie eaf_Plausibility (LX-PL): ein Faelligkeitsdatum vor dem
+  Rechnungsdatum, eine IBAN mit falscher Form oder Pruefziffer, ein BIC
+  falscher Form, ein Kontoinhaber, der nicht der Verkaeufer ist, ohne
+  Zahlungsempfaenger (Hinweis), eine SEPA-Lastschrift ohne Mandatsreferenz,
+  Glaeubiger-Identifikationsnummer oder belastetes Konto.
+
+  Was die Regelpruefung derselben Rechnung gemeldet hat, wird nicht
+  wiederholt (AReported von LandrixEInvoiceAdvise). }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -108,16 +125,18 @@ uses
 
 type
   { The families of advisory checks. eaf_Identifiers: identifiers and
-    characters (LX-ID), technical.
+    characters (LX-ID), technical. eaf_Plausibility: dates and payment
+    (LX-PL), technical.
     DE: Die Familien der Hinweispruefungen. eaf_Identifiers: Kennungen und
-    Zeichen (LX-ID), technisch. }
-  TLandrixEInvoiceAdvisoryFamily = (eaf_Identifiers);
+    Zeichen (LX-ID), technisch. eaf_Plausibility: Daten und Zahlung
+    (LX-PL), technisch. }
+  TLandrixEInvoiceAdvisoryFamily = (eaf_Identifiers, eaf_Plausibility);
   TLandrixEInvoiceAdvisoryFamilies = set of TLandrixEInvoiceAdvisoryFamily;
 
 const
   { The technical families, on by default.
     DE: Die technischen Familien, standardmaessig an. }
-  LandrixEInvoiceAdvisoryTechnical = [eaf_Identifiers];
+  LandrixEInvoiceAdvisoryTechnical = [eaf_Identifiers, eaf_Plausibility];
 
 { Runs the advisory checks of AFamilies on AInvoice for ATarget (the target
   read from the document, its Standard est_None when unknown; it decides
@@ -128,9 +147,11 @@ const
   InvoiceLines[0].SellersItemIdentification), Terms, Found (the value
   with the characters masked, shortened around the first one, or the
   wrong check digits), Expected (the right check digits) and Message.
-  AR040Reported: the rule check (LandrixEInvoiceCheckInvoice) of the same
-  invoice reported PEPPOL-COMMON-R040, so a wrong GLN check digit at the
-  places it checks is not repeated. Returns the number of hints.
+  AReported: the rule identifiers the rule check (LandrixEInvoiceCheckInvoice)
+  of the same invoice reported (nil for none): what they report is not
+  repeated (PEPPOL-COMMON-R040, PEPPOL-EN16931-R061, BR-DE-19, BR-DE-20,
+  BR-DE-25-a, BR-DE-30, BR-DE-31, DE-R-019, DE-R-020, DE-R-030, DE-R-031).
+  Returns the number of hints.
   DE: Fuehrt die Hinweispruefungen von AFamilies auf AInvoice fuer ATarget
   aus (das aus dem Dokument gelesene Ziel, Standard est_None, wenn
   unbekannt; es entscheidet, was PEPPOL-COMMON-R040 schon prueft und wie
@@ -140,13 +161,15 @@ const
   Modellpfad, z. B. InvoiceLines[0].SellersItemIdentification), Terms,
   Found (der Wert mit maskierten Zeichen, gekuerzt um das erste, oder die
   falschen Pruefziffern), Expected (die richtigen Pruefziffern) und
-  Message. AR040Reported: die Regelpruefung (LandrixEInvoiceCheckInvoice)
-  derselben Rechnung hat PEPPOL-COMMON-R040 gemeldet, eine falsche
-  GLN-Pruefziffer an den Stellen, die sie prueft, wird also nicht
-  wiederholt. Liefert die Zahl der Hinweise. }
+  Message. AReported: die Regelkennungen, die die Regelpruefung
+  (LandrixEInvoiceCheckInvoice) derselben Rechnung gemeldet hat (nil fuer
+  keine): was sie melden, wird nicht wiederholt (PEPPOL-COMMON-R040,
+  PEPPOL-EN16931-R061, BR-DE-19, BR-DE-20, BR-DE-25-a, BR-DE-30, BR-DE-31,
+  DE-R-019, DE-R-020, DE-R-030, DE-R-031). Liefert die Zahl der
+  Hinweise. }
 function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
   AFamilies: TLandrixEInvoiceAdvisoryFamilies; ADiagnostics: TLandrixEInvoiceDiagnostics;
-  AR040Reported: Boolean = False): Integer;
+  AReported: TStrings = nil): Integer;
 
 { Adds one line per text field the character checks look at to ALines:
   model path, ' = "', value, '"' (the form of the test helper DumpInvoice,
@@ -177,6 +200,11 @@ const
   RuleWrongScheme = 'LX-ID-08';
   RuleLeitweg = 'LX-ID-09';
   RuleLeitwegDiffers = 'LX-ID-10';
+  RuleDueDate = 'LX-PL-01';
+  RuleIban = 'LX-PL-02';
+  RuleBic = 'LX-PL-03';
+  RuleAccountHolder = 'LX-PL-04';
+  RuleDirectDebit = 'LX-PL-05';
   { UTF-16 units shown before and after the first character in Found }
   ExcerptContext = 30;
 
@@ -660,7 +688,8 @@ end;
 
 function IsLetterLike(C: Cardinal): Boolean;
 begin
-  Result := ((C >= Ord('A')) and (C <= Ord('Z'))) or ((C >= $FF21) and (C <= $FF3A));
+  Result := ((C >= Ord('A')) and (C <= Ord('Z'))) or ((C >= Ord('a')) and (C <= Ord('z'))) or
+    ((C >= $FF21) and (C <= $FF3A)) or ((C >= $FF41) and (C <= $FF5A));
 end;
 
 function IsDigitLike(C: Cardinal): Boolean;
@@ -668,11 +697,11 @@ begin
   Result := ((C >= Ord('0')) and (C <= Ord('9'))) or ((C >= $FF10) and (C <= $FF19));
 end;
 
-{ True if AValue starts like an IBAN: two letters and two digits, also in
-  their fullwidth forms (which LX-ID-05 then reports). The model does not
+{ True if AValue starts like an IBAN: two letters (any case) and two
+  digits, also in their fullwidth forms (which LX-ID-05 then reports). The model does not
   keep whether CII gave the account as IBANID or ProprietaryID.
-  DE: True, wenn AValue wie eine IBAN beginnt: zwei Buchstaben und zwei
-  Ziffern, auch in ihrer vollbreiten Form (die LX-ID-05 dann meldet). Das
+  DE: True, wenn AValue wie eine IBAN beginnt: zwei Buchstaben (beliebige
+  Schreibung) und zwei Ziffern, auch in ihrer vollbreiten Form (die LX-ID-05 dann meldet). Das
   Modell haelt nicht fest, ob CII das Konto als IBANID oder ProprietaryID
   angab. }
 function LooksLikeIban(const AValue: TLandrixEInvoiceString): Boolean;
@@ -1086,23 +1115,452 @@ begin
   Lines(A.InvoiceLines, 'InvoiceLines');
 end;
 
+{ --- plausibility of dates and payment (LX-PL) ------------------------------ }
+
+type
+  TPlausibilityChecker = class(TObject)
+  private
+    FDiagnostics: TLandrixEInvoiceDiagnostics;
+    FCount: Integer;
+    FReported: TStrings;
+    FSyntax: TLandrixEInvoiceSyntax;
+    function Reported(const ARule: string): Boolean;
+    procedure DueDate(A: TLandrixInvoice);
+    procedure Iban(const APath: string; const AValue: TLandrixEInvoiceString);
+    procedure Bic(const APath: string; const AValue: TLandrixEInvoiceString);
+    procedure AccountHolder(A: TLandrixInvoice; P: TLandrixInvoicePaymentType; const APath: string);
+    procedure DirectDebit(A: TLandrixInvoice; P: TLandrixInvoicePaymentType; const APath: string; AFirst: Boolean);
+  public
+    procedure Run(A: TLandrixInvoice);
+  end;
+
+function TPlausibilityChecker.Reported(const ARule: string): Boolean;
+begin
+  Result := (FReported <> nil) and (FReported.IndexOf(ARule) >= 0);
+end;
+
+function DateText(AValue: TDateTime): TLandrixEInvoiceString;
+begin
+  Result := TLandrixEInvoiceString(FormatDateTime('yyyy"-"mm"-"dd', AValue));
+end;
+
+{ AValue without blanks (space, tab, line feed, carriage return).
+  DE: AValue ohne Leerraum (Leerzeichen, Tab, Zeilenvorschub,
+  Wagenruecklauf). }
+function WithoutBlanks(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to Length(AValue) do
+    if not ((AValue[I] = ' ') or (AValue[I] = #9) or (AValue[I] = #10) or (AValue[I] = #13)) then
+      Result := Result + AValue[I];
+end;
+
+{ True for a credit note: the type code as written (the enumeration, else
+  the other text) is one of the credit note codes of UNTDID 1001 that EN
+  16931 uses (81, 83, 261, 262, 296, 308, 381, 396, 420, 458, 502, 503,
+  532).
+  DE: True fuer eine Gutschrift: der Typcode, wie geschrieben (die
+  Aufzaehlung, sonst der andere Text), ist einer der Gutschrift-Codes aus
+  UNTDID 1001, die EN 16931 nutzt (81, 83, 261, 262, 296, 308, 381, 396,
+  420, 458, 502, 503, 532). }
+function IsCreditNote(A: TLandrixInvoice): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+begin
+  if A.InvoiceTypeCode <> itc_None then
+    Code := LandrixEInvoiceTypeCodeToStr(A.InvoiceTypeCode)
+  else
+    Code := LandrixEInvoiceNormalizeSpace(A.InvoiceTypeCodeOther);
+  Result := (Code = '81') or (Code = '83') or (Code = '261') or (Code = '262') or (Code = '296') or
+    (Code = '308') or (Code = '381') or (Code = '396') or (Code = '420') or (Code = '458') or (Code = '502') or
+    (Code = '503') or (Code = '532');
+end;
+
+{ The payment means code as written: the enumeration, else the other text.
+  DE: Der Code der Zahlungsart, wie geschrieben: die Aufzaehlung, sonst der
+  andere Text. }
+function PaymentCode(P: TLandrixInvoicePaymentType): TLandrixEInvoiceString;
+begin
+  if P.PaymentMeansCode <> ipmc_NotImplemented then
+    Result := LandrixEInvoicePaymentMeansCodeToStr(P.PaymentMeansCode)
+  else
+    Result := LandrixEInvoiceNormalizeSpace(P.PaymentMeansCodeOther);
+end;
+
+{ LX-PL-01: the due date (BT-9) before the invoice date (BT-2), except for
+  a credit note, a negative total and an invoice paid in advance (BT-113
+  above 0 and BT-115 at most 0).
+  DE: LX-PL-01: das Faelligkeitsdatum (BT-9) vor dem Rechnungsdatum (BT-2),
+  ausser bei einer Gutschrift, einer negativen Summe und einer im Voraus
+  bezahlten Rechnung (BT-113 ueber 0 und BT-115 hoechstens 0). }
+procedure TPlausibilityChecker.DueDate(A: TLandrixInvoice);
+begin
+  if (A.InvoiceDueDate <= 0) or (A.InvoiceIssueDate <= 0) or (Trunc(A.InvoiceDueDate) >= Trunc(A.InvoiceIssueDate)) or
+     IsCreditNote(A) or (A.TaxInclusiveAmount < 0) or ((A.PrepaidAmount > 0) and (A.PayableAmount <= 0)) then
+    Exit;
+  AddHint(FDiagnostics, FCount, RuleDueDate, 'InvoiceDueDate', eds_Warning,
+    'The due date (BT-9) is before the invoice date (BT-2)', DateText(A.InvoiceIssueDate),
+    DateText(A.InvoiceDueDate));
+end;
+
+{ LX-PL-02: an IBAN (ISO 13616) is two capital letters, two check digits
+  and 1 to 30 letters or digits, and the check digits are the ones MOD
+  97-10 gives; Expected the right check digits when the form is right.
+  DE: LX-PL-02: eine IBAN (ISO 13616) besteht aus zwei Grossbuchstaben,
+  zwei Pruefziffern und 1 bis 30 Buchstaben oder Ziffern, und die
+  Pruefziffern sind die, die MOD 97-10 ergibt; Expected die richtigen
+  Pruefziffern, wenn die Form stimmt. }
+procedure TPlausibilityChecker.Iban(const APath: string; const AValue: TLandrixEInvoiceString);
+var
+  Value, Expected: TLandrixEInvoiceString;
+  I: Integer;
+  Capitals: Boolean;
+begin
+  Value := WithoutBlanks(AValue);
+  if Value = '' then
+    Exit;
+  Expected := '';
+  if Length(Value) >= 5 then
+    Expected := LandrixEInvoiceIBANCheckDigits(Value);
+  if Expected = '' then
+  begin
+    AddHint(FDiagnostics, FCount, RuleIban, APath, eds_Warning,
+      'The IBAN does not have the form of two letters, two check digits and 1 to 30 letters or digits', '',
+      Shown(Value));
+    Exit;
+  end;
+  Capitals := True;
+  for I := 1 to Length(Value) do
+    if (Value[I] >= 'a') and (Value[I] <= 'z') then
+      Capitals := False;
+  if not Capitals then
+    AddHint(FDiagnostics, FCount, RuleIban, APath, eds_Warning, 'The IBAN has small letters; it is written in ' +
+      'capital letters', '', Value)
+  else if Copy(Value, 3, 2) <> Expected then
+    AddHint(FDiagnostics, FCount, RuleIban, APath, eds_Warning,
+      'The IBAN has wrong check digits (ISO 13616, MOD 97-10)', Expected, Copy(Value, 3, 2));
+end;
+
+function IsCapital(C: TLandrixEInvoiceChar): Boolean;
+begin
+  Result := (C >= 'A') and (C <= 'Z');
+end;
+
+function IsCapitalOrDigit(C: TLandrixEInvoiceChar): Boolean;
+begin
+  Result := IsCapital(C) or ((C >= '0') and (C <= '9'));
+end;
+
+{ LX-PL-03: a BIC (ISO 9362) has eight or eleven characters: four letters
+  or digits (party prefix), a country code (two letters, an ISO 3166
+  country or XK), two letters or digits (location), three optional letters
+  or digits (branch), in capital letters. Only a value of letters and
+  digits with at least one letter is taken as a BIC: a national bank code
+  (digits), a clearing identifier (e.g. SE:BANKGIRO) or an Indian IFSC
+  (eleven characters with 0 as the fifth) is left alone.
+  DE: LX-PL-03: ein BIC (ISO 9362) hat acht oder elf Zeichen: vier
+  Buchstaben oder Ziffern (Praefix), einen Laendercode (zwei Buchstaben,
+  ein ISO-3166-Land oder XK), zwei Buchstaben oder Ziffern (Ort), drei
+  optionale Buchstaben oder Ziffern (Filiale), in Grossbuchstaben. Nur ein
+  Wert aus Buchstaben und Ziffern mit mindestens einem Buchstaben gilt als
+  BIC: eine nationale Bankleitzahl (Ziffern), eine Clearing-Kennung (z. B.
+  SE:BANKGIRO) oder ein indischer IFSC (elf Zeichen mit 0 als fuenftem)
+  bleibt unbeachtet. }
+procedure TPlausibilityChecker.Bic(const APath: string; const AValue: TLandrixEInvoiceString);
+var
+  Value, Country: TLandrixEInvoiceString;
+  I: Integer;
+  Letters, Valid: Boolean;
+  Code: TLandrixInvoiceCountryCode;
+begin
+  Value := LandrixEInvoiceNormalizeSpace(AValue);
+  Letters := False;
+  for I := 1 to Length(Value) do
+    if ((Value[I] >= 'A') and (Value[I] <= 'Z')) or ((Value[I] >= 'a') and (Value[I] <= 'z')) then
+      Letters := True
+    else if not ((Value[I] >= '0') and (Value[I] <= '9')) then
+      Exit;
+  if not Letters then
+    Exit;
+  { an Indian IFSC: four letters, 0, six letters or digits
+    DE: ein indischer IFSC: vier Buchstaben, 0, sechs Buchstaben oder
+    Ziffern }
+  if (Length(Value) = 11) and (Value[5] = '0') then
+    Exit;
+  Valid := (Length(Value) = 8) or (Length(Value) = 11);
+  for I := 1 to Length(Value) do
+    if (I = 5) or (I = 6) then
+      Valid := Valid and IsCapital(Value[I])
+    else
+      Valid := Valid and IsCapitalOrDigit(Value[I]);
+  if not Valid then
+  begin
+    AddHint(FDiagnostics, FCount, RuleBic, APath, eds_Warning,
+      'The BIC does not have the form of four letters or digits, a country code, two letters or digits and an ' +
+      'optional branch of three (ISO 9362, capital letters)', '', Shown(Value));
+    Exit;
+  end;
+  { the code list of the invoice also has XI (Northern Ireland, VAT), which
+    is no ISO 3166 country; XK (Kosovo) is used by SWIFT
+    DE: die Codeliste der Rechnung hat auch XI (Nordirland, Umsatzsteuer),
+    das kein ISO-3166-Land ist; XK (Kosovo) nutzt SWIFT }
+  Country := Copy(Value, 5, 2);
+  if (Country <> 'XK') and ((Country = 'XI') or not LandrixEInvoiceCountryCodeFromStr(Country, Code)) then
+    AddHint(FDiagnostics, FCount, RuleBic, APath, eds_Warning, 'The BIC has the country code ' + string(Country) +
+      ', which is no ISO 3166 country', '', Value);
+end;
+
+{ The name as a comparison key: capital letters and digits of ASCII and
+  Latin-1, umlauts as AE, OE, UE and sharp s as SS; ok False when the name
+  has other characters, so the comparison is inconclusive.
+  DE: Der Name als Vergleichsschluessel: Grossbuchstaben und Ziffern aus
+  ASCII und Latin-1, Umlaute als AE, OE, UE und scharfes s als SS; ok
+  False, wenn der Name andere Zeichen hat, der Vergleich also nichts
+  aussagt. }
+function NameKey(const AValue: TLandrixEInvoiceString; out AOk: Boolean): TLandrixEInvoiceString;
+var
+  I: Integer;
+  C: Cardinal;
+begin
+  Result := '';
+  AOk := True;
+  for I := 1 to Length(AValue) do
+  begin
+    C := Ord(AValue[I]);
+    if C > $FF then
+    begin
+      AOk := False;
+      Exit;
+    end;
+    if ((C >= Ord('a')) and (C <= Ord('z'))) or ((C >= $E0) and (C <= $FE) and (C <> $F7)) then
+      C := C - 32;
+    case C of
+      $C4:
+        Result := Result + 'AE';
+      $D6:
+        Result := Result + 'OE';
+      $DC:
+        Result := Result + 'UE';
+      $DF:
+        Result := Result + 'SS';
+    else
+      if ((C >= Ord('0')) and (C <= Ord('9'))) or ((C >= Ord('A')) and (C <= Ord('Z'))) or
+         ((C >= $C0) and (C <= $DE) and (C <> $D7)) then
+        Result := Result + TLandrixEInvoiceChar(C);
+    end;
+  end;
+end;
+
+{ 1 if one name contains the other, 0 if not, -1 if inconclusive (a name
+  with characters NameKey does not know, or empty).
+  DE: 1, wenn ein Name den anderen enthaelt, 0, wenn nicht, -1, wenn nichts
+  aussagt (ein Name mit Zeichen, die NameKey nicht kennt, oder leer). }
+function NamesMatch(const A, B: TLandrixEInvoiceString): Integer;
+var
+  KA, KB: TLandrixEInvoiceString;
+  OkA, OkB: Boolean;
+begin
+  KA := NameKey(A, OkA);
+  KB := NameKey(B, OkB);
+  if not OkA or not OkB or (KA = '') or (KB = '') then
+    Result := -1
+  else if (Pos(KA, KB) > 0) or (Pos(KB, KA) > 0) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+{ A name as a finding shows it: hidden characters masked.
+  DE: Ein Name, wie ein Befund ihn zeigt: verborgene Zeichen maskiert. }
+function ShownName(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+begin
+  if AValue = '' then
+    Result := ''
+  else
+    Result := Masked(AValue, 1, [cc_Bidi, cc_Invisible, cc_C1]);
+end;
+
+{ LX-PL-04 (info): the account holder (BT-85) of a credit transfer is not
+  the seller (BT-27, BT-28) and no payee (BG-10: name, identifier or legal
+  registration) is named: please check, the account may belong to someone
+  else. No hint when a comparison is inconclusive.
+  DE: LX-PL-04 (Hinweis): der Kontoinhaber (BT-85) einer Ueberweisung ist
+  nicht der Verkaeufer (BT-27, BT-28), und kein Zahlungsempfaenger (BG-10:
+  Name, Kennung oder Registernummer) ist genannt: bitte pruefen, das Konto
+  kann jemand anderem gehoeren. Kein Hinweis, wenn ein Vergleich nichts
+  aussagt. }
+procedure TPlausibilityChecker.AccountHolder(A: TLandrixInvoice; P: TLandrixInvoicePaymentType; const APath: string);
+var
+  Holder, Seller: TLandrixEInvoiceString;
+  ByRegistration, ByName: Integer;
+begin
+  Holder := LandrixEInvoiceNormalizeSpace(P.FinancialAccountName);
+  if (Holder = '') or not ((PaymentCode(P) = '30') or (PaymentCode(P) = '58')) or
+     (LandrixEInvoiceNormalizeSpace(A.PayeeParty.Name) <> '') or
+     (LandrixEInvoiceNormalizeSpace(A.PayeeParty.Identifier) <> '') or
+     (LandrixEInvoiceNormalizeSpace(A.PayeeParty.CompanyID) <> '') then
+    Exit;
+  ByRegistration := NamesMatch(Holder, A.AccountingSupplierParty.RegistrationName);
+  ByName := NamesMatch(Holder, A.AccountingSupplierParty.Name);
+  { a hint only when every seller name there is clearly another one
+    DE: ein Hinweis nur, wenn jeder vorhandene Verkaeufername klar ein
+    anderer ist }
+  if (ByRegistration = 1) or (ByName = 1) or (ByRegistration + ByName = -2) or
+     ((ByRegistration = -1) and (LandrixEInvoiceNormalizeSpace(A.AccountingSupplierParty.RegistrationName) <> '')) or
+     ((ByName = -1) and (LandrixEInvoiceNormalizeSpace(A.AccountingSupplierParty.Name) <> '')) then
+    Exit;
+  Seller := A.AccountingSupplierParty.RegistrationName;
+  if LandrixEInvoiceNormalizeSpace(Seller) = '' then
+    Seller := A.AccountingSupplierParty.Name;
+  AddHint(FDiagnostics, FCount, RuleAccountHolder, APath + '.FinancialAccountName', eds_Info,
+    'The account holder (BT-85) is not the seller (BT-27, BT-28) and no payee (BG-10) is named; please check that ' +
+    'the account belongs to the seller', ShownName(Seller), ShownName(Holder));
+end;
+
+{ True if the invoice has the creditor identifier (BT-90) where a writer
+  puts it: at the seller, and for UBL (or an unknown syntax) also as payee
+  identifier or as global identifier of the seller with scheme SEPA (Peppol
+  DE-R-030); CII reads it only from the seller.
+  DE: True, wenn die Rechnung die Glaeubiger-Identifikationsnummer (BT-90)
+  dort hat, wo ein Writer sie hinlegt: beim Verkaeufer, und bei UBL (oder
+  unbekannter Syntax) auch als Kennung des Zahlungsempfaengers oder als
+  globale Kennung des Verkaeufers mit Schema SEPA (Peppol DE-R-030); CII
+  liest sie nur beim Verkaeufer. }
+function HasCreditor(A: TLandrixInvoice; ASyntax: TLandrixEInvoiceSyntax): Boolean;
+begin
+  Result := (LandrixEInvoiceNormalizeSpace(A.AccountingSupplierParty.BankAssignedCreditorIdentifier) <> '') or
+    (ASyntax <> esy_CII) and
+    ((LandrixEInvoiceNormalizeSpace(A.PayeeParty.Identifier) <> '') and
+     (LandrixEInvoiceNormalizeSpace(A.PayeeParty.IdentifierSchemeID) = 'SEPA')) or
+    (ASyntax <> esy_CII) and
+    ((LandrixEInvoiceNormalizeSpace(A.AccountingSupplierParty.GlobalIdentifierSellerBuyer) <> '') and
+     (LandrixEInvoiceNormalizeSpace(A.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID) = 'SEPA'));
+end;
+
+{ LX-PL-05: a SEPA direct debit needs the mandate reference (BT-89), the
+  creditor identifier (BT-90) and the debited account (BT-91); not again
+  when the rule check reported it (BR-DE-25-a and DE-R-025-1, the missing
+  direct debit group, for mandate and account, for CII also the creditor;
+  BR-DE-30, BR-DE-31, DE-R-030, DE-R-031, PEPPOL-EN16931-R061).
+  DE: LX-PL-05: eine SEPA-Lastschrift braucht die Mandatsreferenz (BT-89),
+  die Glaeubiger-Identifikationsnummer (BT-90) und das belastete Konto
+  (BT-91); nicht noch einmal, wenn die Regelpruefung es gemeldet hat
+  (BR-DE-25-a und DE-R-025-1, die fehlende Lastschriftgruppe, fuer Mandat
+  und Konto, bei CII auch die Glaeubiger-ID; BR-DE-30, BR-DE-31, DE-R-030,
+  DE-R-031, PEPPOL-EN16931-R061). }
+procedure TPlausibilityChecker.DirectDebit(A: TLandrixInvoice; P: TLandrixInvoicePaymentType; const APath: string;
+  AFirst: Boolean);
+begin
+  if PaymentCode(P) <> '59' then
+    Exit;
+  { the invoice-wide fields once, for the first direct debit
+    DE: die rechnungsweiten Felder einmal, fuer die erste Lastschrift }
+  if AFirst and (LandrixEInvoiceNormalizeSpace(A.PaymentMandateID) = '') and not Reported('BR-DE-25-a') and
+     not Reported('DE-R-025-1') and not Reported('PEPPOL-EN16931-R061') then
+    AddHint(FDiagnostics, FCount, RuleDirectDebit, 'PaymentMandateID', eds_Warning,
+      'A SEPA direct debit (payment means 59) has no mandate reference (BT-89)', '', '');
+  if AFirst and not HasCreditor(A, FSyntax) and not Reported('BR-DE-30') and not Reported('DE-R-030') and
+     not (Reported('BR-DE-25-a') and (FSyntax = esy_CII)) then
+    AddHint(FDiagnostics, FCount, RuleDirectDebit, 'AccountingSupplierParty.BankAssignedCreditorIdentifier',
+      eds_Warning, 'A SEPA direct debit (payment means 59) has no creditor identifier (BT-90)', '', '');
+  if (LandrixEInvoiceNormalizeSpace(P.FinancialAccount) = '') and not Reported('BR-DE-31') and
+     not Reported('DE-R-031') and not Reported('BR-DE-25-a') and not Reported('DE-R-025-1') then
+    AddHint(FDiagnostics, FCount, RuleDirectDebit, APath + '.FinancialAccount', eds_Warning,
+      'A SEPA direct debit (payment means 59) has no debited account (BT-91)', '', '');
+end;
+
+{ The test of BR-DE-19 and BR-DE-20 (KoSIT xr:checkIBAN) on an account:
+  False if the rule finds it no IBAN. ACIIPayee: CII writes the payee
+  account as IBAN only with 15 or more characters besides spaces.
+  DE: Der Test von BR-DE-19 und BR-DE-20 (KoSIT xr:checkIBAN) fuer ein
+  Konto: False, wenn die Regel es fuer keine IBAN haelt. ACIIPayee: CII
+  schreibt das Konto des Zahlungsempfaengers nur mit 15 oder mehr Zeichen
+  ausser Leerzeichen als IBAN. }
+function RuleIbanValid(const AValue: TLandrixEInvoiceString; ACIIPayee: Boolean): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if ACIIPayee then
+    for I := 1 to Length(AValue) do
+      if (AValue[I] = #9) or (AValue[I] = #10) or (AValue[I] = #13) then
+        Exit;
+  if ACIIPayee and (Length(WithoutBlanks(AValue)) < 15) then
+    Exit;
+  Result := LandrixEInvoiceIBANValid(WithoutBlanks(AValue));
+end;
+
+procedure TPlausibilityChecker.Run(A: TLandrixInvoice);
+var
+  I: Integer;
+  P: TLandrixInvoicePaymentType;
+  Q: string;
+  Direct, Skip: Boolean;
+  Code: TLandrixEInvoiceString;
+begin
+  DueDate(A);
+  Direct := False;
+  for I := 0 to Integer(A.PaymentTypes.Count) - 1 do
+  begin
+    P := A.PaymentTypes[I];
+    Q := Item('PaymentTypes', I);
+    Code := PaymentCode(P);
+    { the IBAN of a SEPA payment or an account that looks like one; not
+      again when the rule check reported it for this account (the rule's
+      own test on the enumerated payment means: KoSIT xr:checkIBAN)
+      DE: die IBAN einer SEPA-Zahlung oder ein Konto, das wie eine aussieht;
+      nicht noch einmal, wenn die Regelpruefung es fuer dieses Konto
+      gemeldet hat (der Test der Regel auf der aufgezaehlten Zahlungsart:
+      KoSIT xr:checkIBAN) }
+    Skip := ((P.PaymentMeansCode = ipmc_SEPACreditTransfer) and (Reported('BR-DE-19') or Reported('DE-R-019')) and
+             not RuleIbanValid(P.FinancialAccount, FSyntax = esy_CII)) or
+            ((P.PaymentMeansCode = ipmc_SEPADirectDebit) and (Reported('BR-DE-20') or Reported('DE-R-020')) and
+             not RuleIbanValid(P.FinancialAccount, False));
+    if not Skip and ((Code = '58') or (Code = '59') or LooksLikeIban(WithoutBlanks(P.FinancialAccount))) then
+      Iban(Q + '.FinancialAccount', P.FinancialAccount);
+    Bic(Q + '.FinancialInstitutionBranch', P.FinancialInstitutionBranch);
+    AccountHolder(A, P, Q);
+    DirectDebit(A, P, Q, not Direct);
+    if Code = '59' then
+      Direct := True;
+  end;
+end;
+
 { --- entry points ------------------------------------------------------------ }
 
 function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
   AFamilies: TLandrixEInvoiceAdvisoryFamilies; ADiagnostics: TLandrixEInvoiceDiagnostics;
-  AR040Reported: Boolean): Integer;
+  AReported: TStrings): Integer;
 var
   Checker: TCharacterChecker;
   Schemes: TSchemeChecker;
+  Plausibility: TPlausibilityChecker;
 begin
   Result := 0;
-  if (AInvoice = nil) or not (eaf_Identifiers in AFamilies) then
+  if AInvoice = nil then
+    Exit;
+  if eaf_Plausibility in AFamilies then
+  begin
+    Plausibility := TPlausibilityChecker.Create;
+    try
+      Plausibility.FDiagnostics := ADiagnostics;
+      Plausibility.FReported := AReported;
+      Plausibility.FSyntax := ATarget.Syntax;
+      Plausibility.Run(AInvoice);
+      Inc(Result, Plausibility.FCount);
+    finally
+      Plausibility.Free;
+    end;
+  end;
+  if not (eaf_Identifiers in AFamilies) then
     Exit;
   Checker := TCharacterChecker.Create;
   try
     Checker.FDiagnostics := ADiagnostics;
     WalkInvoice(Checker, AInvoice);
-    Result := Checker.FCount;
+    Inc(Result, Checker.FCount);
   finally
     Checker.Free;
   end;
@@ -1111,7 +1569,7 @@ begin
     Schemes.FDiagnostics := ADiagnostics;
     Schemes.FPeppol := ATarget.Standard = est_PeppolBIS;
     Schemes.FXRechnung := ATarget.Standard = est_XRechnung;
-    Schemes.FR040Reported := AR040Reported;
+    Schemes.FR040Reported := (AReported <> nil) and (AReported.IndexOf('PEPPOL-COMMON-R040') >= 0);
     Schemes.Run(AInvoice);
     Inc(Result, Schemes.FCount);
   finally

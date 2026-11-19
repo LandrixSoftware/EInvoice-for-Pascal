@@ -46,20 +46,28 @@ begin
   Result := TLandrixEInvoiceString(AText) + TLandrixEInvoiceString(Wide(AUnits));
 end;
 
-{ The hints of AInvoice read as AStandard, one line each: rule, path,
-  terms, severity }
-function HintsAs(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics; AStandard: TLandrixEInvoiceStandard;
-  AR040Reported: Boolean = False): string;
+{ The hints of the families AFamilies on AInvoice read as AStandard, the
+  rule check having reported AReported (comma separated), one line each:
+  rule, path, terms, severity }
+function FamilyHints(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics;
+  AFamilies: TLandrixEInvoiceAdvisoryFamilies; AStandard: TLandrixEInvoiceStandard; const AReported: string): string;
 var
   I: Integer;
   Target: TLandrixEInvoiceTarget;
+  Reported: TStringList;
 const
   Sev: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
 begin
   D.Clear;
   FillChar(Target, SizeOf(Target), 0);
   Target.Standard := AStandard;
-  I := LandrixEInvoiceAdvise(AInvoice, Target, LandrixEInvoiceAdvisoryTechnical, D, AR040Reported);
+  Reported := TStringList.Create;
+  try
+    Reported.CommaText := AReported;
+    I := LandrixEInvoiceAdvise(AInvoice, Target, AFamilies, D, Reported);
+  finally
+    Reported.Free;
+  end;
   CheckEquals(D.Count, I, 'number of hints');
   Result := '';
   for I := 0 to D.Count - 1 do
@@ -73,9 +81,46 @@ begin
   end;
 end;
 
+{ the identifier family; AR040Reported: PEPPOL-COMMON-R040 was reported }
+function HintsAs(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics; AStandard: TLandrixEInvoiceStandard;
+  AR040Reported: Boolean = False): string;
+begin
+  if AR040Reported then
+    Result := FamilyHints(AInvoice, D, [eaf_Identifiers], AStandard, 'PEPPOL-COMMON-R040')
+  else
+    Result := FamilyHints(AInvoice, D, [eaf_Identifiers], AStandard, '');
+end;
+
 function Hints(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics): string;
 begin
   Result := HintsAs(AInvoice, D, est_None);
+end;
+
+function PlHints(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics; const AReported: string): string;
+begin
+  Result := FamilyHints(AInvoice, D, [eaf_Plausibility], est_None, AReported);
+end;
+
+{ plausibility for a CII target }
+function PlCiiHints(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics): string;
+var
+  I: Integer;
+  Target: TLandrixEInvoiceTarget;
+const
+  Sev: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
+begin
+  D.Clear;
+  FillChar(Target, SizeOf(Target), 0);
+  Target.Syntax := esy_CII;
+  LandrixEInvoiceAdvise(AInvoice, Target, [eaf_Plausibility], D, nil);
+  Result := '';
+  for I := 0 to D.Count - 1 do
+  begin
+    if Result <> '' then
+      Result := Result + '; ';
+    Result := Result + string(D[I].RuleID) + ':' + string(D[I].Path) + ':' + string(D[I].Terms) + ':' +
+      Sev[D[I].Severity];
+  end;
 end;
 
 { the target of nothing in particular }
@@ -153,7 +198,7 @@ begin
     CheckEquals(0, LandrixEInvoiceAdvise(Inv, NoTarget, [], D), 'no family');
     CheckEquals(0, D.Count, 'no family: no diagnostic');
     { without a list the hints are counted }
-    CheckEquals(1, LandrixEInvoiceAdvise(Inv, NoTarget, LandrixEInvoiceAdvisoryTechnical, nil),
+    CheckEquals(1, LandrixEInvoiceAdvise(Inv, NoTarget, [eaf_Identifiers], nil),
       'counted without a list');
     { two zero width spaces and a C1 control character }
     Inv.InvoiceNumber := With_('A', [$200B]) + With_('B', [$200B, $0085]);
@@ -439,9 +484,209 @@ begin
   end;
 end;
 
+{ Dates and payment (LX-PL): due date, IBAN, BIC, account holder, SEPA
+  direct debit; what the rule check reported is not repeated. }
+procedure TestPlausibility;
+var
+  Inv: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Pay, Pay2: TLandrixInvoicePaymentType;
+begin
+  Inv := TLandrixInvoice.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    Check(eaf_Plausibility in LandrixEInvoiceAdvisoryTechnical, 'plausibility is technical');
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'empty invoice');
+    CheckEqualsInvoiceStr('89', LandrixEInvoiceIBANCheckDigits('DE00370400440532013000'), 'IBAN check digits');
+    CheckEqualsInvoiceStr('', LandrixEInvoiceIBANCheckDigits('D1893704'), 'IBAN form');
+    CheckEqualsInvoiceStr('', LandrixEInvoiceIBANCheckDigits('DE36'), 'IBAN without BBAN');
+    { due date }
+    Inv.InvoiceIssueDate := EncodeDate(2026, 11, 19);
+    Inv.InvoiceDueDate := EncodeDate(2026, 11, 18);
+    CheckEqualsStr('LX-PL-01:InvoiceDueDate:BT-9:warning', PlHints(Inv, D, ''), 'due date before');
+    CheckEqualsInvoiceStr('2026-11-19', D[0].Expected, 'due date: expected');
+    CheckEqualsInvoiceStr('2026-11-18', D[0].Found, 'due date: found');
+    Inv.InvoiceTypeCode := itc_CreditNote;
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'credit note');
+    Inv.InvoiceTypeCode := itc_None;
+    Inv.InvoiceTypeCodeOther := '381';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'credit note as other code');
+    Inv.InvoiceTypeCodeOther := '503';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'credit note 503');
+    Inv.InvoiceTypeCodeOther := '';
+    Inv.InvoiceTypeCode := itc_CommercialInvoice;
+    Inv.TaxInclusiveAmount := -10;
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'negative total');
+    Inv.TaxInclusiveAmount := 119;
+    Inv.PrepaidAmount := 119;
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'paid in advance');
+    Inv.PrepaidAmount := 0;
+    Inv.InvoiceDueDate := EncodeDate(2026, 11, 19) + 0.5;
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'due on the invoice date');
+    Inv.InvoiceDueDate := 0;
+    { IBAN }
+    Pay := Inv.PaymentTypes.AddPaymentType;
+    Pay.PaymentMeansCode := ipmc_SEPACreditTransfer;
+    Pay.FinancialAccount := 'DE89 3704 0044 0532 0130 00';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'valid IBAN with blanks');
+    Pay.FinancialAccount := 'DE88370400440532013000';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'IBAN check digits');
+    CheckEqualsInvoiceStr('89', D[0].Expected, 'IBAN: expected');
+    CheckEqualsInvoiceStr('88', D[0].Found, 'IBAN: found');
+    CheckEqualsStr('', PlHints(Inv, D, 'BR-DE-19'), 'IBAN reported by BR-DE-19');
+    CheckEqualsStr('', PlHints(Inv, D, 'DE-R-019'), 'IBAN reported by DE-R-019');
+    Pay.FinancialAccount := 'de89370400440532013000';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'IBAN in small letters');
+    Check(Pos('small letters', string(D[0].Message)) > 0, 'small letters: ' + string(D[0].Message));
+    Pay.FinancialAccount := 'DE99370400440532013000';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'IBAN with 99 as check digits');
+    Pay.FinancialAccount := 'DE36';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'IBAN without BBAN');
+    { two SEPA credit transfers: BR-DE-19 may mean the other one }
+    Pay2 := Inv.PaymentTypes.AddPaymentType;
+    Pay2.PaymentMeansCode := ipmc_SEPACreditTransfer;
+    Pay2.FinancialAccount := 'DE89370400440532013000';
+    Pay.FinancialAccount := 'DE88370400440532013000';
+    CheckEqualsStr('', PlHints(Inv, D, 'BR-DE-19'), 'BR-DE-19 with two transfers: it means the bad one');
+    Pay2.FinancialAccount := 'DE88370400440532013000';
+    CheckEqualsStr('', PlHints(Inv, D, 'BR-DE-19'), 'BR-DE-19 with two bad transfers');
+    { the other code ' 58 ' is not BR-DE-19's: it stays }
+    Pay2.PaymentMeansCode := ipmc_NotImplemented;
+    Pay2.PaymentMeansCodeOther := ' 58 ';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[1].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, 'BR-DE-19'),
+      'BR-DE-19 and a transfer as other code');
+    Pay2.PaymentMeansCodeOther := '';
+    Pay2.PaymentMeansCode := ipmc_SEPACreditTransfer;
+    Pay2.FinancialAccount := 'de89370400440532013000';
+    Pay2.PaymentMeansCode := ipmc_CreditTransfer;
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning; ' +
+      'LX-PL-02:PaymentTypes[1].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'small letters on a credit transfer 30');
+    Inv.PaymentTypes.Delete(1);
+    Pay.FinancialAccount := 'KONTO-4711';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'SEPA account of no IBAN form');
+    Pay.PaymentMeansCode := ipmc_CreditTransfer;
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'other account of a credit transfer');
+    Pay.FinancialAccount := 'DE88370400440532013000';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'IBAN of a credit transfer');
+    Pay.FinancialAccount := 'DE89370400440532013000';
+    { BIC }
+    Pay.FinancialInstitutionBranch := 'COBADEFFXXX';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'valid BIC');
+    Pay.FinancialInstitutionBranch := '37040044';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'national bank code');
+    Pay.FinancialInstitutionBranch := 'COBADEF';
+    CheckEqualsStr('LX-PL-03:PaymentTypes[0].FinancialInstitutionBranch:BT-86:warning', PlHints(Inv, D, ''),
+      'BIC of seven characters');
+    Pay.FinancialInstitutionBranch := 'cobadeff';
+    CheckEqualsStr('LX-PL-03:PaymentTypes[0].FinancialInstitutionBranch:BT-86:warning', PlHints(Inv, D, ''),
+      'BIC in small letters');
+    Pay.FinancialInstitutionBranch := 'COBAQQFF';
+    CheckEqualsStr('LX-PL-03:PaymentTypes[0].FinancialInstitutionBranch:BT-86:warning', PlHints(Inv, D, ''),
+      'BIC with an unknown country');
+    Pay.FinancialInstitutionBranch := 'BANKXKPR';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'BIC of Kosovo');
+    Pay.FinancialInstitutionBranch := 'A1BCDEFF';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'BIC with a digit in the prefix');
+    Pay.FinancialInstitutionBranch := 'BANKXI22';
+    CheckEqualsStr('LX-PL-03:PaymentTypes[0].FinancialInstitutionBranch:BT-86:warning', PlHints(Inv, D, ''),
+      'BIC of XI');
+    Pay.FinancialInstitutionBranch := 'SE:BANKGIRO';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'Swedish clearing identifier');
+    Pay.FinancialInstitutionBranch := 'RBIS0NEFTHY';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'Indian IFSC');
+    Pay.FinancialInstitutionBranch := '';
+    { account holder }
+    Inv.AccountingSupplierParty.RegistrationName := 'Muster GmbH & Co. KG';
+    Pay.FinancialAccountName := 'MUSTER GMBH';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'holder is the seller');
+    Pay.FinancialAccountName := 'Anders AG';
+    CheckEqualsStr('LX-PL-04:PaymentTypes[0].FinancialAccountName:BT-85/BT-88:info', PlHints(Inv, D, ''),
+      'holder is someone else');
+    CheckEqualsInvoiceStr('Muster GmbH & Co. KG', D[0].Expected, 'holder: expected');
+    Inv.PayeeParty.Name := 'Anders AG';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'with a payee');
+    Inv.PayeeParty.Name := '';
+    Inv.PayeeParty.CompanyID := 'HRB 1';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'with a payee by legal registration');
+    Inv.PayeeParty.CompanyID := '';
+    Inv.AccountingSupplierParty.RegistrationName := With_('Stra', [$00DF]) + 'e GmbH';
+    Pay.FinancialAccountName := 'STRASSE GMBH';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'sharp s');
+    Pay.FinancialAccountName := With_('', [$041E, $041E, $041E]);
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'Cyrillic holder: inconclusive');
+    Pay.FinancialAccountName := With_('Anders', [$0085]) + ' AG';
+    CheckEqualsStr('LX-PL-04:PaymentTypes[0].FinancialAccountName:BT-85/BT-88:info', PlHints(Inv, D, ''),
+      'holder with a C1 control');
+    CheckEqualsInvoiceStr('Anders<U+0085> AG', D[0].Found, 'holder masked');
+    Pay.FinancialAccountName := '';
+    { SEPA direct debit }
+    Pay.PaymentMeansCode := ipmc_SEPADirectDebit;
+    Pay.FinancialAccount := '';
+    CheckEqualsStr('LX-PL-05:PaymentMandateID:BT-89:warning; ' +
+      'LX-PL-05:AccountingSupplierParty.BankAssignedCreditorIdentifier:BT-90:warning; ' +
+      'LX-PL-05:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''), 'direct debit');
+    CheckEqualsStr('LX-PL-05:PaymentMandateID:BT-89:warning', PlHints(Inv, D, 'BR-DE-30,BR-DE-31'),
+      'direct debit with BR-DE-30 and BR-DE-31');
+    CheckEqualsStr('LX-PL-05:AccountingSupplierParty.BankAssignedCreditorIdentifier:BT-90:warning',
+      PlHints(Inv, D, 'BR-DE-25-a'), 'direct debit with BR-DE-25-a');
+    CheckEqualsStr('', PlHints(Inv, D, 'DE-R-025-1,DE-R-030'), 'direct debit with DE-R-025-1 and DE-R-030');
+    CheckEqualsStr('LX-PL-05:AccountingSupplierParty.BankAssignedCreditorIdentifier:BT-90:warning; ' +
+      'LX-PL-05:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, 'PEPPOL-EN16931-R061'),
+      'direct debit with R061');
+    { the creditor identifier as payee identifier with scheme SEPA (UBL,
+      not CII) }
+    Inv.PayeeParty.IdentifierSchemeID := 'SEPA';
+    Inv.PayeeParty.Identifier := 'DE98ZZZ09999999999';
+    CheckEqualsStr('LX-PL-05:PaymentMandateID:BT-89:warning; ' +
+      'LX-PL-05:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'creditor identifier of the payee');
+    CheckEqualsStr('LX-PL-05:PaymentMandateID:BT-89:warning; ' +
+      'LX-PL-05:AccountingSupplierParty.BankAssignedCreditorIdentifier:BT-90:warning; ' +
+      'LX-PL-05:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlCiiHints(Inv, D),
+      'creditor identifier of the payee in CII');
+    { BR-DE-25-a in UBL does not cover the creditor }
+    Inv.PayeeParty.Identifier := '';
+    CheckEqualsStr('LX-PL-05:AccountingSupplierParty.BankAssignedCreditorIdentifier:BT-90:warning',
+      PlHints(Inv, D, 'BR-DE-25-a'), 'BR-DE-25-a without the creditor');
+    { a payment means code with blanks as other text }
+    Pay.PaymentMeansCode := ipmc_NotImplemented;
+    Pay.PaymentMeansCodeOther := ' 59 ';
+    CheckEqualsStr('LX-PL-05:PaymentMandateID:BT-89:warning; ' +
+      'LX-PL-05:AccountingSupplierParty.BankAssignedCreditorIdentifier:BT-90:warning; ' +
+      'LX-PL-05:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'direct debit as other code');
+    Pay.PaymentMeansCodeOther := '';
+    Pay.PaymentMeansCode := ipmc_SEPADirectDebit;
+    Inv.PayeeParty.Identifier := '';
+    Inv.PayeeParty.IdentifierSchemeID := '';
+    Inv.PaymentMandateID := 'M-1';
+    Inv.AccountingSupplierParty.BankAssignedCreditorIdentifier := 'DE98ZZZ09999999999';
+    Pay.FinancialAccount := 'DE89370400440532013000';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'complete direct debit');
+    { a second direct debit: only its own account }
+    Pay2 := Inv.PaymentTypes.AddPaymentType;
+    Pay2.PaymentMeansCode := ipmc_SEPADirectDebit;
+    Inv.PaymentMandateID := '';
+    CheckEqualsStr('LX-PL-05:PaymentMandateID:BT-89:warning; ' +
+      'LX-PL-05:PaymentTypes[1].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'second direct debit');
+  finally
+    D.Free;
+    Inv.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Advisory.Fields', TestFields);
+  RegisterTest('Advisory.Plausibility', TestPlausibility);
   RegisterTest('Advisory.Characters', TestCharacters);
   RegisterTest('Advisory.Schemes', TestSchemes);
 end;
