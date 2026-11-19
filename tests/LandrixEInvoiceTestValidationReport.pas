@@ -13,7 +13,7 @@
 }
 
 { Checks for the validation report (LandrixEInvoiceValidationReport): every
-  report is valid against schemas/landrix-einvoice-validation-report-1.xsd
+  report is valid against schemas/landrix-einvoice-validation-report-2.xsd
   and, read back, shows the verdict, the statuses and the findings of the
   result. The tests themselves are in LandrixEInvoiceTestValidator, which
   calls CheckValidationReport after its validations. }
@@ -86,7 +86,7 @@ const
     'sev-error');
 
 const
-  ReportNs = 'urn:landrix:einvoice:validation-report:1';
+  ReportNs = 'urn:landrix:einvoice:validation-report:2';
   { the tokens of the format, written down independently of the writer }
   VerdictTokens: array[TLandrixEInvoiceVerdict] of string = ('accepted', 'rejected', 'incomplete');
   PartTokens: array[TLandrixEInvoiceValidationPart] of string = ('read', 'kosit', 'modelCheck', 'pdfEmbedding',
@@ -103,7 +103,7 @@ function ReportSchema: TLandrixXmlXsdSchemaSet;
 begin
   if Schema = nil then
     Schema := LandrixXmlXsdLoadSchema(RepositoryRoot + 'schemas' + PathDelim +
-      'landrix-einvoice-validation-report-1.xsd');
+      'landrix-einvoice-validation-report-2.xsd');
   Result := Schema;
 end;
 
@@ -182,7 +182,6 @@ var
   Sanitized: Boolean;
   What: string;
   Location: TLandrixXmlNode;
-  Wanted, ModelPath: TLandrixEInvoiceString;
 begin
   for S := Low(TLandrixEInvoiceDiagnosticSeverity) to High(TLandrixEInvoiceDiagnosticSeverity) do
     Counts[S] := 0;
@@ -213,22 +212,11 @@ begin
       begin
         Check(AttrW(F, 'rule') = Finding.RuleID, What + ' rule');
         Check(ChildElement(F, 'text').TextW = Finding.Text, What + ' text');
-        { 1.1: a finding of the rule check keeps its terms as location, the
-          model path is modelPath
-          DE: 1.1: ein Befund der Regelpruefung behaelt seine Begriffe als
-          location, der Modellpfad ist modelPath }
-        Wanted := Finding.Location;
-        ModelPath := '';
-        if Finding.Terms <> '' then
-        begin
-          Wanted := Finding.Terms;
-          ModelPath := Finding.Location;
-        end;
-        if Wanted = '' then
+        if Finding.Location = '' then
           Check(Location = nil, What + ' no location')
         else
-          Check((Location <> nil) and (Location.TextW = Wanted), What + ' location');
-        Check(AttrW(F, 'modelPath') = ModelPath, What + ' model path');
+          Check((Location <> nil) and (Location.TextW = Finding.Location), What + ' location');
+        Check(AttrW(F, 'terms') = Finding.Terms, What + ' terms');
         Check(AttrW(F, 'expected') = Finding.Expected, What + ' expected');
         Check(AttrW(F, 'found') = Finding.Found, What + ' found');
         Check(AttrW(F, 'calculation') = Finding.Calculation, What + ' calculation');
@@ -404,7 +392,7 @@ var
   Xml: TLandrixXmlUtf8;
   Errors: string;
   Doc: TLandrixXmlDocument;
-  Root, N, Part: TLandrixXmlNode;
+  Root, Document, N, Part: TLandrixXmlNode;
   P: TLandrixEInvoiceValidationPart;
 begin
   Xml := ReportUtf8(AResult, '');
@@ -415,12 +403,16 @@ begin
     Doc.LoadFromUtf8(Xml);
     Root := Doc.Root;
     CheckEqualsStr(ReportNs, Root.NamespaceUri, AName + ': report namespace');
-    CheckEqualsStr('1.1', Attr(Root, 'version'), AName + ': report version');
-    N := ChildElement(Root, 'verdict');
+    CheckEqualsStr('2.0', Attr(Root, 'version'), AName + ': report version');
+    Document := ChildElement(Root, 'document');
+    Check((Document <> nil) and (Attr(Document, 'source') = SourceTokens[AResult.Info.Source]),
+      AName + ': report source');
+    Check((Document <> nil) and (Document.NextSiblingElement = nil), AName + ': one document');
+    if Document = nil then
+      Exit;
+    N := ChildElement(Document, 'verdict');
     Check((N <> nil) and (N.Text = VerdictTokens[AResult.Verdict]), AName + ': report verdict');
-    N := ChildElement(Root, 'document');
-    Check((N <> nil) and (Attr(N, 'source') = SourceTokens[AResult.Info.Source]), AName + ': report source');
-    N := ChildElement(Root, 'parts');
+    N := ChildElement(Document, 'parts');
     if N <> nil then
     begin
       Part := N.FirstChildElement;
@@ -446,8 +438,9 @@ begin
           Part := Part.NextSiblingElement;
         end;
     end;
-    Check((ChildElement(Root, 'pdf') <> nil) = (AResult.Pdf <> nil), AName + ': report pdf');
-    N := ChildElement(Root, 'findings');
+    Check((ChildElement(Document, 'pdf') <> nil) = (AResult.Pdf <> nil), AName + ': report pdf');
+    Check(ChildElement(Document, 'recipient') = nil, AName + ': no recipient written');
+    N := ChildElement(Document, 'findings');
     Check(N <> nil, AName + ': report findings');
     if N <> nil then
       CheckFindings(N, AResult, AName);

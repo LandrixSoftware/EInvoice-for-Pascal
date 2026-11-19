@@ -220,9 +220,15 @@ finally
 end;
 ```
 
-The XML report follows `schemas/landrix-einvoice-validation-report-1.xsd` (format version 1.1;
-since 1.1 a finding of the rule check carries `modelPath`, `expected`, `found` and `calculation`
-as attributes; its `location` is still the business terms).
+The XML report follows `schemas/landrix-einvoice-validation-report-2.xsd` (format version 2.0,
+namespace `urn:landrix:einvoice:validation-report:2`). Below the root element is one `document`
+with the verdict, the parts, the PDF facts and the findings (the schema allows several for a later
+report on several documents). A finding has its path in `location` (XPath, element path, model path
+of the rule check or place in the PDF) and the details of the rule check in the attributes `terms`,
+`expected`, `found` and `calculation`. Verdict, status, severity and part are closed lists: a new
+value is a new major version. Standard, profile, hybrid kind and the configuration choice and kind
+are open: treat a value you do not know as "other". Version 1
+(`schemas/landrix-einvoice-validation-report-1.xsd`) is no longer written.
 
 The KoSIT report: the report the KoSIT validator writes, made the same way. The report input
 (`LandrixEInvoiceKositReportInput`: engine, time, document hash, the chosen scenario, the steps,

@@ -13,21 +13,21 @@
 }
 
 { Writes the result of a validation (LandrixEInvoiceValidation) as an XML
-  report of format version 1.1, namespace
-  urn:landrix:einvoice:validation-report:1, schema
-  schemas/landrix-einvoice-validation-report-1.xsd: the document, the
-  verdict, every part with its status, the PDF facts and the flat list of
-  findings. No timestamp: the same result gives the same bytes. A character
+  report of format version 2.0, namespace
+  urn:landrix:einvoice:validation-report:2, schema
+  schemas/landrix-einvoice-validation-report-2.xsd: the document and below
+  it the verdict, every part with its status, the PDF facts and the flat
+  list of findings. No timestamp: the same result gives the same bytes. A character
   that XML does not allow (from a broken document, a PDF name) is replaced
   by U+FFFD (LandrixEInvoiceReportSanitize) and the element is marked
   sanitized, so the report never fails
   because of the document it describes.
   DE: Schreibt das Ergebnis einer Pruefung (LandrixEInvoiceValidation) als
-  XML-Bericht im Format 1.1, Namespace
-  urn:landrix:einvoice:validation-report:1, Schema
-  schemas/landrix-einvoice-validation-report-1.xsd: das Dokument, das
-  Urteil, jeden Teil mit seinem Status, die PDF-Fakten und die flache
-  Befundliste. Kein Zeitstempel: dasselbe Ergebnis ergibt dieselben Bytes.
+  XML-Bericht im Format 2.0, Namespace
+  urn:landrix:einvoice:validation-report:2, Schema
+  schemas/landrix-einvoice-validation-report-2.xsd: das Dokument und
+  darunter das Urteil, jeden Teil mit seinem Status, die PDF-Fakten und
+  die flache Befundliste. Kein Zeitstempel: dasselbe Ergebnis ergibt dieselben Bytes.
   Ein Zeichen, das XML nicht erlaubt (aus einem kaputten Dokument, einem
   PDF-Namen), wird durch U+FFFD ersetzt (LandrixEInvoiceReportSanitize) und
   das Element als sanitized markiert; der Bericht scheitert so nie an dem Dokument, das er
@@ -88,8 +88,8 @@ uses
   LandrixEInvoiceReportHtml;
 
 const
-  ReportNamespace = 'urn:landrix:einvoice:validation-report:1';
-  ReportVersion = '1.1';
+  ReportNamespace = 'urn:landrix:einvoice:validation-report:2';
+  ReportVersion = '2.0';
   GeneratorName = 'EInvoice-for-Pascal';
 
   VerdictNames: array[TLandrixEInvoiceVerdict] of TLandrixXmlUtf8 = ('accepted', 'rejected', 'incomplete');
@@ -133,6 +133,8 @@ begin
     W.AttributeUtf8('sanitized', 'true');
 end;
 
+{ Starts the element document with its attributes and specification; the
+  caller writes the result below it and ends it. }
 procedure WriteDocument(W: TLandrixXmlWriter; AResult: TLandrixEInvoiceDocumentValidation;
   const ADocumentName: TLandrixEInvoiceString);
 var
@@ -166,7 +168,6 @@ begin
       W.AttributeUtf8('usesExtension', 'true');
     W.EndElement;
   end;
-  W.EndElement;
 end;
 
 procedure WriteParts(W: TLandrixXmlWriter; AResult: TLandrixEInvoiceDocumentValidation);
@@ -261,21 +262,6 @@ begin
     TokenAttribute(W, 'step', StepNames[F.Step]);
     if F.Predicted then
       W.AttributeUtf8('predicted', 'true');
-    { since 1.1: the details of the rule check; location keeps its meaning
-      of 1.0 (the business terms of a rule check finding), the model path
-      is modelPath
-      DE: seit 1.1: die Einzelheiten der Regelpruefung; location behaelt
-      seine Bedeutung aus 1.0 (die Geschaeftsbegriffe eines Befunds der
-      Regelpruefung), der Modellpfad ist modelPath }
-    { a finding with terms comes from the rule check of the invoice model
-      (every rule row names its terms)
-      DE: ein Befund mit Begriffen stammt aus der Regelpruefung des
-      Rechnungsmodells (jede Regelzeile nennt ihre Begriffe) }
-    if F.Terms <> '' then
-      TextAttribute(W, 'modelPath', F.Location, Sanitized);
-    TextAttribute(W, 'expected', F.Expected, Sanitized);
-    TextAttribute(W, 'found', F.Found, Sanitized);
-    TextAttribute(W, 'calculation', F.Calculation, Sanitized);
     if F.Line > 0 then
     begin
       W.Attribute('line', IntToStr(F.Line));
@@ -290,10 +276,15 @@ begin
       else
         W.AttributeUtf8('positionIn', 'invoice');
     end;
-    if F.Terms <> '' then
-      Location := LandrixEInvoiceReportSanitize(F.Terms, Sanitized)
-    else
-      Location := LandrixEInvoiceReportSanitize(F.Location, Sanitized);
+    { the business terms and the details of the rule check; location is
+      the path for every part
+      DE: die Geschaeftsbegriffe und die Einzelheiten der Regelpruefung;
+      location ist fuer jeden Teil der Pfad }
+    TextAttribute(W, 'terms', F.Terms, Sanitized);
+    TextAttribute(W, 'expected', F.Expected, Sanitized);
+    TextAttribute(W, 'found', F.Found, Sanitized);
+    TextAttribute(W, 'calculation', F.Calculation, Sanitized);
+    Location := LandrixEInvoiceReportSanitize(F.Location, Sanitized);
     Text := LandrixEInvoiceReportSanitize(F.Text, Sanitized);
     SanitizedAttribute(W, Sanitized);
     if Location <> '' then
@@ -322,12 +313,15 @@ begin
     W.AttributeUtf8('name', GeneratorName);
     W.AttributeUtf8('version', LandrixEInvoiceVersion);
     W.EndElement;
+    { one document; the format allows several
+      DE: ein Dokument; das Format erlaubt mehrere }
     WriteDocument(W, AResult, FDocumentName);
     W.ElementUtf8('verdict', VerdictNames[AResult.Verdict]);
     WriteParts(W, AResult);
     if AResult.Pdf <> nil then
       WritePdf(W, AResult.Pdf);
     WriteFindings(W, AResult);
+    W.EndElement;
     W.EndElement;
     W.EndDocument;
   except

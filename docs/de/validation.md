@@ -225,9 +225,15 @@ finally
 end;
 ```
 
-Der XML-Bericht folgt `schemas/landrix-einvoice-validation-report-1.xsd` (Formatversion 1.1; seit
-1.1 trägt ein Befund der Regelprüfung `modelPath`, `expected`, `found` und `calculation` als
-Attribute; sein `location` sind weiter die Geschäftsbegriffe).
+Der XML-Bericht folgt `schemas/landrix-einvoice-validation-report-2.xsd` (Formatversion 2.0,
+Namespace `urn:landrix:einvoice:validation-report:2`). Unter dem Wurzelelement steht ein
+`document` mit Urteil, Teilen, PDF-Fakten und Befunden (das Schema erlaubt mehrere für einen
+späteren Bericht über mehrere Dokumente). Ein Befund hat seinen Pfad in `location` (XPath,
+Elementpfad, Modellpfad der Regelprüfung oder Ort im PDF) und die Einzelheiten der Regelprüfung in
+den Attributen `terms`, `expected`, `found` und `calculation`. Urteil, Status, Schweregrad und Teil
+sind geschlossene Listen: ein neuer Wert ist eine neue Hauptversion. Standard, Profil, hybride Art
+sowie Wahl und Art der Konfiguration sind offen: einen unbekannten Wert als „sonstige“ behandeln.
+Version 1 (`schemas/landrix-einvoice-validation-report-1.xsd`) wird nicht mehr geschrieben.
 
 Der KoSIT-Prüfbericht: der Bericht, den der KoSIT-Validator schreibt, auf demselben Weg erzeugt.
 Der Berichtseingang (`LandrixEInvoiceKositReportInput`: Engine, Zeit, Hash des Dokuments, das

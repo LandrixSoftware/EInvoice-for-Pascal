@@ -1577,7 +1577,7 @@ begin
     end;
     CheckGoldenReport(ReportUtf8(R, 'invoice.xml'), 'xml-no-kosit.xml');
     CheckGoldenReport(HtmlUtf8(R, 'invoice.xml', eln_English), 'xml-no-kosit.html');
-    { the details of a calculation rule in both reports (1.1) }
+    { the details of a calculation rule in both reports }
     S := WrongTotalStream;
     try
       DV.ValidateStream(S, R);
@@ -1586,10 +1586,10 @@ begin
     end;
     CheckValidationReport(R, 'rule details');
     Xml := ReportUtf8(R, 'invoice.xml');
-    Check(Pos(TLandrixXmlUtf8('rule="BR-CO-10" severity="error" predicted="true" modelPath="LineAmount" ' +
+    Check(Pos(TLandrixXmlUtf8('rule="BR-CO-10" severity="error" predicted="true" terms="BT-106, BT-131" ' +
       'expected="100.00" found="99.00" calculation="sum of the invoice line net amounts (BT-131) of 1 line">'), Xml) > 0,
       'BR-CO-10 details in the XML report: ' + LandrixXmlUtf8ToString(Xml));
-    Check(Pos(TLandrixXmlUtf8('<location>BT-106, BT-131</location>'), Xml) > 0, 'BR-CO-10 terms as location');
+    Check(Pos(TLandrixXmlUtf8('<location>LineAmount</location>'), Xml) > 0, 'BR-CO-10 model path as location');
     Check(Pos(TLandrixXmlUtf8('<td class="loc">LineAmount (BT-106, BT-131)</td>'), HtmlUtf8(R, 'invoice.xml',
       eln_English)) > 0, 'BR-CO-10 path and terms in the HTML report');
     Check(Pos(TLandrixXmlUtf8('<br/>Expected: 100.00, found: 99.00<br/>Calculation: sum of the invoice line net ' +
@@ -1813,12 +1813,21 @@ begin
   end;
 end;
 
+{ ReplaceUtf8, and AOld must be in S. }
+function Mutated(const S, AOld, ANew: TLandrixXmlUtf8): TLandrixXmlUtf8;
+begin
+  Check(Pos(AOld, S) > 0, 'schema test: "' + LandrixXmlUtf8ToString(AOld) + '" not in the report');
+  Result := ReplaceUtf8(S, AOld, ANew);
+end;
+
 { The schema: a minor version may add attributes and trailing elements; the
-  enumerations, the major version and the six parts are fixed. }
+  closed enumerations, the major version and the six parts are fixed, the
+  classifying enumerations are open; several documents and recipients are
+  valid. }
 procedure TestReportSchema;
 var
   R: TLandrixEInvoiceDocumentValidation;
-  Xml: TLandrixXmlUtf8;
+  Xml, Doc2: TLandrixXmlUtf8;
 begin
   R := TLandrixEInvoiceDocumentValidation.Create;
   try
@@ -1827,24 +1836,74 @@ begin
     R.Free;
   end;
   CheckEqualsStr('', ReportSchemaErrors(Xml), 'new result valid');
-  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.1"', '1" version="1.2" future="x"')),
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '2" version="2.0"', '2" version="2.1" future="x"')),
     'minor version with a new attribute');
-  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '</validationReport>',
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '</validationReport>',
     '<future xmlns="urn:example:future"/></validationReport>')), 'minor version with a new element');
-  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '</parts>', '<future xmlns="urn:example:future"/></parts>')),
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '</parts>', '<future xmlns="urn:example:future"/></parts>')),
     'minor version with a new element in parts');
-  CheckEqualsStr('', ReportSchemaErrors(ReplaceUtf8(Xml, '</findings>',
-    '<future xmlns="urn:example:future"/></findings>')), 'minor version with a new element in findings');
-  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '</validationReport>', '<verdict>maybe</verdict></validationReport>')) <>
-    '', 'second verdict invalid');
-  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<part name="kosit"', '<part name="read"')) <> '',
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, 'predicted="0"/>',
+    'predicted="0"><future xmlns="urn:example:future"/></findings>')), 'minor version with a new element in findings');
+  Check(ReportSchemaErrors(Mutated(Xml, '</parts>', '</parts><verdict>accepted</verdict>')) <> '',
+    'second verdict invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<verdict>', '<future xmlns="urn:example:future"/><verdict>')) <> '',
+    'foreign element before the verdict invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<part name="kosit"', '<part name="read"')) <> '',
     'a part twice invalid');
-  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '1" version="1.1"', '1" version="2.0"')) <> '', 'major version 2 invalid');
-  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<verdict>incomplete</verdict>', '<verdict>maybe</verdict>')) <> '',
+  Check(ReportSchemaErrors(Mutated(Xml, '2" version="2.0"', '2" version="3.0"')) <> '', 'major version 3 invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '2" version="2.0"', '2" version="1.1"')) <> '', 'version 1 invalid');
+  { the classifying enumerations are open, the others closed }
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '<part name="kosit" status="notRun"/>',
+    '<part name="kosit" status="notRun" configurationChoice="byDate" configurationKind="einvoiceX"/>')),
+    'unknown configuration choice and kind valid');
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '<verdict>', '<specification standard="nlcius" ' +
+    'syntax="ubl" profile="custom"/><verdict>')), 'unknown standard and profile valid');
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '<findings', '<pdf hybridKind="orderX" ' +
+    'factsChecked="false"/><findings')), 'unknown hybrid kind valid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<verdict>', '<specification standard="xrechnung" ' +
+    'syntax="edifact"/><verdict>')) <> '', 'unknown syntax invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<part name="kosit" status="notRun"/>',
+    '<part name="kosit" status="notRun" configurationChoice=""/>')) <> '', 'empty configuration choice invalid');
+  { several documents; a recipient with its finding }
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '</document>', '</document>' +
+    Copy(Xml, Pos(TLandrixXmlUtf8('<document'), Xml), Pos(TLandrixXmlUtf8('</document>'), Xml) + 11 -
+    Pos(TLandrixXmlUtf8('<document'), Xml)))), 'two documents valid');
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
+    '<recipient name="authority" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+    '<finding recipient="authority" rule="X-1" severity="error"><text>t</text></finding></findings>')),
+    'recipient valid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
+    '<recipient name="authority" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+    '<finding recipient="portal" rule="X-1" severity="error"><text>t</text></finding></findings>')) <> '',
+    'unknown recipient invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
+    '<recipient name="a" status="failed"/><recipient name="a" status="passed"/>' +
+    '<findings errors="0" warnings="0" infos="0" predicted="0"/>')) <> '', 'a recipient twice invalid');
+  { part and recipient together are invalid too (the field of the key
+    findingSource selects two nodes), but the XSD validator of LandrixXml
+    does not report a field with several nodes yet (backlog) }
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
+    '<findings errors="1" warnings="0" infos="0" predicted="0"><finding severity="error"><text>t</text></finding>' +
+    '</findings>')) <> '', 'neither part nor recipient invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
+    '<recipient name=" " status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+    '<finding recipient=" " severity="error"><text>t</text></finding></findings>')) <> '', 'blank recipient invalid');
+  { the recipients belong to their document }
+  Doc2 := Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0"/>',
+    '<recipient name="a" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0">' +
+    '<finding recipient="a" severity="error"><text>t</text></finding></findings>');
+  Doc2 := Copy(Doc2, Pos(TLandrixXmlUtf8('<document'), Doc2), Pos(TLandrixXmlUtf8('</document>'), Doc2) + 11 -
+    Pos(TLandrixXmlUtf8('<document'), Doc2));
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '</document>', '</document>' + Doc2)),
+    'two documents with recipients valid');
+  Check(ReportSchemaErrors(Mutated(Xml, '</document>', '</document>' +
+    Mutated(Doc2, '<recipient name="a" status="failed"/>', ''))) <> '', 'recipient of another document invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '2" version="2.0"', '2" version="2.01"')) <> '', 'version 2.01 invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, '<verdict>incomplete</verdict>', '<verdict>maybe</verdict>')) <> '',
     'unknown verdict invalid');
-  Check(ReportSchemaErrors(ReplaceUtf8(Xml, '<part name="read" status="notRun"/>', '')) <> '',
+  Check(ReportSchemaErrors(Mutated(Xml, '<part name="read" status="notRun"/>', '')) <> '',
     'five parts invalid');
-  Check(ReportSchemaErrors(ReplaceUtf8(Xml, 'status="notRun"', 'status="skipped"')) <> '', 'unknown status invalid');
+  Check(ReportSchemaErrors(Mutated(Xml, 'status="notRun"', 'status="skipped"')) <> '', 'unknown status invalid');
 end;
 
 procedure Register;

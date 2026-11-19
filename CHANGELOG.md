@@ -20,9 +20,8 @@ Supported invoice standards are documented per release.
   expected and the found value, how
   the expected value came about and the model path of the first wrong place (e.g.
   `InvoiceLines[0].LineAmount`); R041, R042, R110, R111, R121 and R130 report the path. The
-  validation findings carry the same fields, the XML report writes them as attributes `modelPath`,
-  `expected`, `found` and `calculation` (format version 1.1), the HTML report and the Workbench
-  show them. The rule check through the facade judges the caller's invoice, so its paths fit the
+  validation findings carry the same fields, the XML report writes them (see report version 2), the
+  HTML report and the Workbench show them. The rule check through the facade judges the caller's invoice, so its paths fit the
   caller's invoice; paths into lines the target writes flat are left out. Numbers and dates that
   cannot be written count only where they are written (not in group lines or INFORMATION lines
   the flat copy leaves out), also for direct calls of the check.
@@ -130,7 +129,16 @@ Supported invoice standards are documented per release.
   calculation cannot write or judge) are in the new field `Terms`, no longer in `Path`. For the
   rule check `Path` is now the model path of the violation, or empty; reading and writing keep
   the element path. `ToText` shows the terms where the path stood, so its output is unchanged
-  for entries without a path. The XML report keeps writing them as `location`.
+  for entries without a path.
+- Validation report version 2.0 (internal unit `LandrixEInvoiceValidationReport`): namespace
+  `urn:landrix:einvoice:validation-report:2`, schema `schemas/landrix-einvoice-validation-report-2.xsd`;
+  version 1 is no longer written (its schema stays in the repository). Verdict, parts, PDF facts and
+  findings are below `document` (one is written; the schema allows several). A finding has its path
+  in `location` for every part and the business terms of the rule check in the attribute `terms`
+  (version 1.0 had the terms in `location`). Standard, profile, hybrid kind and the configuration
+  choice and kind are open lists (a consumer treats an unknown value as "other"); verdict, status,
+  severity and part stay closed. The element `recipient` and the attribute `finding/@recipient` are
+  reserved for recipient profiles and not written yet.
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
   license covers EInvoice-for-Pascal and XRechnung-for-Delphi together.
 - Peppol rules: the Peppol Schematron 3.0.22 (OpenPEPPOL October 2026 hotfix, RFC-607) replaces 3.0.21.
