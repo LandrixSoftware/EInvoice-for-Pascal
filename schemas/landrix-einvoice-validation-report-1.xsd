@@ -20,10 +20,6 @@
 
   Empty values, line and column 0 and false flags are omitted, except
   pdf/@factsChecked, which is always written.
-
-  Version 1.1: finding/@modelPath, @expected, @found and @calculation (the
-  details of the rule check, TLandrixEInvoiceDiagnostic). location keeps
-  its meaning: for a finding of the rule check the business terms.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
     xmlns:r="urn:landrix:einvoice:validation-report:1"
@@ -193,11 +189,6 @@
     <xs:attribute name="column" type="xs:positiveInteger"/>
     <xs:attribute name="positionIn" type="r:PositionIn"/>
     <xs:attribute name="sanitized" type="xs:boolean"/>
-    <!-- since 1.1 -->
-    <xs:attribute name="modelPath" type="xs:string"/>
-    <xs:attribute name="expected" type="xs:string"/>
-    <xs:attribute name="found" type="xs:string"/>
-    <xs:attribute name="calculation" type="xs:string"/>
     <xs:anyAttribute namespace="##any" processContents="lax"/>
   </xs:complexType>
 

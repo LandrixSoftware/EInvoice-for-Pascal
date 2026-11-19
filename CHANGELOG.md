@@ -8,6 +8,36 @@ Supported invoice standards are documented per release.
 ## [Unreleased]
 
 ### Added
+- Advisory checks: internal unit `LandrixEInvoiceAdvisory` (`LandrixEInvoiceAdvise`, families
+  `TLandrixEInvoiceAdvisoryFamilies`, default `LandrixEInvoiceAdvisoryTechnical`). The document
+  validation runs them on the invoice as read (`Options.Advisory`) and shows their hints in the new
+  part `evp_Advisory`: infos and warnings only, never part of the verdict, `evr_Incomplete` (with a
+  warning) when they stop, never `evr_Failed`. The XML report counts them apart (`findings/@advisory`,
+  part `advisory`), the HTML report and the Workbench show them. First family `eaf_Identifiers`:
+  LX-ID-01 to LX-ID-05 report bidirectional control and invisible characters and spaces other than
+  U+0020 in identifiers (bidirectional control and invisible characters in names and texts only as an
+  info), C1 control characters in every field, and characters outside ASCII in identifiers whose
+  scheme is ASCII (VAT identifiers, country and currency codes, GTIN, BIC, SEPA creditor identifier,
+  the mandate reference of a SEPA direct debit, an IBAN), with the model path, the code point and the
+  value masked as `<U+XXXX>`; surrogate pairs count as one character. LX-ID-06 to LX-ID-10 check
+  identifiers by their scheme: GLN (0088, 13 digits and GS1 check digit; for Peppol BIS no second
+  report of PEPPOL-COMMON-R040), GTIN (0160 at BT-157 and the GTIN field: 8, 12, 13 or 14 digits and
+  check digit), a GTIN for a party or a GLN for an item, the Leitweg-ID (0204, format specification
+  2.0.2 with MOD 97-10 check digits, also BT-10 when it looks like one) and a buyer reference that
+  differs from the buyer's Leitweg-ID. Expected and found check digits are in `Expected` and `Found`.
+  `LandrixEInvoiceIdentifiers` has the new building blocks `LandrixEInvoiceGS1CheckDigit` and
+  `LandrixEInvoiceLeitwegIDProblem`. A second family `eaf_Plausibility` (LX-PL-01 to LX-PL-05,
+  on by default) reports a due date before the invoice date, an IBAN with wrong form, country code or check digits
+  (`LandrixEInvoiceIBANCheckDigits`; no length per country, the IBAN registry of SWIFT may not be copied for
+  profit), a BIC of wrong form, an account holder who is not the seller
+  without a payee (info) and a SEPA direct debit without mandate reference, creditor identifier or
+  debited account. `LandrixEInvoiceAdvise` takes the rule identifiers the rule check reported and
+  does not repeat them.
+- `docs/rules.md` (and the German `docs/de/rules.md`) lists the library's own rule identifiers
+  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12, LX-ID-01 to LX-ID-10, LX-PL-01 to LX-PL-05) with severity, scope and the version they came
+  with, and how they are kept stable; `tools/check-forbidden.py` fails when the sources and the
+  lists disagree. The warning that the PDF/A check stopped has its own identifier LX-PDF-12 instead
+  of LX-PDF-01 (a broader condition gets a new number).
 - Rule details: `TLandrixEInvoiceDiagnostic` has new fields `Terms`, `Expected`, `Found` and
   `Calculation` and the methods `Assign` and `AddCopy` (the facade and the XRechnung adapter copy
   every field). The calculation rules BR-CO-10 to BR-CO-17, BR-FXEXT-CO-10 to BR-FXEXT-CO-13,
@@ -15,9 +45,8 @@ Supported invoice standards are documented per release.
   expected and the found value, how
   the expected value came about and the model path of the first wrong place (e.g.
   `InvoiceLines[0].LineAmount`); R041, R042, R110, R111, R121 and R130 report the path. The
-  validation findings carry the same fields, the XML report writes them as attributes `modelPath`,
-  `expected`, `found` and `calculation` (format version 1.1), the HTML report and the Workbench
-  show them. The rule check through the facade judges the caller's invoice, so its paths fit the
+  validation findings carry the same fields, the XML report writes them (see report version 2), the
+  HTML report and the Workbench show them. The rule check through the facade judges the caller's invoice, so its paths fit the
   caller's invoice; paths into lines the target writes flat are left out. Numbers and dates that
   cannot be written count only where they are written (not in group lines or INFORMATION lines
   the flat copy leaves out), also for direct calls of the check.
@@ -163,7 +192,16 @@ Supported invoice standards are documented per release.
   calculation cannot write or judge) are in the new field `Terms`, no longer in `Path`. For the
   rule check `Path` is now the model path of the violation, or empty; reading and writing keep
   the element path. `ToText` shows the terms where the path stood, so its output is unchanged
-  for entries without a path. The XML report keeps writing them as `location`.
+  for entries without a path.
+- Validation report version 2.0 (internal unit `LandrixEInvoiceValidationReport`): namespace
+  `urn:landrix:einvoice:validation-report:2`, schema `schemas/landrix-einvoice-validation-report-2.xsd`;
+  version 1 is no longer written (its schema stays in the repository). Verdict, parts, PDF facts and
+  findings are below `document` (one is written; the schema allows several). A finding has its path
+  in `location` for every part and the business terms of the rule check in the attribute `terms`
+  (version 1.0 had the terms in `location`). Standard, profile, hybrid kind and the configuration
+  choice and kind are open lists (a consumer treats an unknown value as "other"); verdict, status,
+  severity and part stay closed. The element `recipient` and the attribute `finding/@recipient` are
+  reserved for recipient profiles and not written yet.
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
   license covers EInvoice-for-Pascal and XRechnung-for-Delphi together.
 - Peppol rules: the Peppol Schematron 3.0.22 (OpenPEPPOL October 2026 hotfix, RFC-607) replaces 3.0.21.

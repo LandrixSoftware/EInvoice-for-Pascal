@@ -26,7 +26,9 @@
   and the rule check still run. PDF/A (level 1, so far the rules of clauses
   6.1, 6.3 to 6.6 and 6.8 to 6.11) is
   reported with its findings and status but does not count for the
-  verdict. One flat list of findings, a status per part.
+  verdict. The advisory checks (LandrixEInvoiceAdvisory, Options.Advisory)
+  run on the invoice as read and never count for the verdict either. One
+  flat list of findings, a status per part.
 
   DE: Prueft ein E-Rechnungs-Dokument als Ganzes, XML oder ein hybrides
   PDF (ZUGFeRD, Factur-X; am Inhalt erkannt): den KoSIT-Lauf einer
@@ -43,8 +45,10 @@
   und 3; Lesen und Regelpruefung laufen trotzdem. PDF/A (Ebene 1, bisher
   die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis
   6.11) wird mit Befunden und Status gemeldet,
-  zaehlt aber nicht fuer das Urteil. Eine flache Befundliste, ein Status je
-  Teil. }
+  zaehlt aber nicht fuer das Urteil. Die Hinweispruefungen
+  (LandrixEInvoiceAdvisory, Options.Advisory) laufen auf der gelesenen
+  Rechnung und zaehlen ebenfalls nie fuer das Urteil. Eine flache
+  Befundliste, ein Status je Teil. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -63,9 +67,11 @@ uses
   Contnrs,
   LandrixEInvoiceTypes,
   LandrixEInvoiceDiagnostics,
+  LandrixEInvoiceInvoice,
   LandrixEInvoice,
   LandrixEInvoicePdfCheck,
-  LandrixEInvoiceValidator;
+  LandrixEInvoiceValidator,
+  LandrixEInvoiceAdvisory;
 
 type
   { The verdict on a document. Incomplete: no verdict could be reached
@@ -81,14 +87,19 @@ type
     the own rule check (a prediction); for a PDF the embedding of the XML
     (level 2), the XMP metadata (level 3) and PDF/A (level 1: evr_Failed on a
     violation, else evr_Incomplete, as not every PDF/A rule is implemented;
-    it does not count for the verdict).
+    it does not count for the verdict); the advisory checks (hints, at most
+    warnings; evr_Passed when they ran, evr_Incomplete when they stopped,
+    never evr_Failed; they never count for the verdict).
     DE: Die Teile einer Pruefung: Lesen ueber die Fassade, der KoSIT-Lauf,
     die eigene Regelpruefung (eine Vorhersage); bei einem PDF die
     Einbettung der XML (Ebene 2), die XMP-Metadaten (Ebene 3) und PDF/A
     (Ebene 1: evr_Failed bei einem Verstoss, sonst evr_Incomplete, weil
-    nicht jede PDF/A-Regel umgesetzt ist; zaehlt nicht fuer das Urteil). }
+    nicht jede PDF/A-Regel umgesetzt ist; zaehlt nicht fuer das Urteil);
+    die Hinweispruefungen (Hinweise, hoechstens Warnungen; evr_Passed, wenn
+    sie liefen, evr_Incomplete, wenn sie abbrachen, nie evr_Failed; sie
+    zaehlen nie fuer das Urteil). }
   TLandrixEInvoiceValidationPart = (evp_Read, evp_KoSIT, evp_ModelCheck, evp_PdfEmbedding, evp_PdfMetadata,
-    evp_PdfA);
+    evp_PdfA, evp_Advisory);
 
   { The status of a part. Failed: it found errors (reading: an error, or
     the document could not be read at all). Incomplete: it started but
@@ -259,10 +270,10 @@ type
     property Verdict: TLandrixEInvoiceVerdict read FVerdict;
     { The status of each part. DE: Der Status jedes Teils. }
     property Status[APart: TLandrixEInvoiceValidationPart]: TLandrixEInvoicePartStatus read GetStatus;
-    { The findings in the order: PDF embedding, PDF metadata, KoSIT,
-      reading, rule check.
+    { The findings in the order: PDF embedding, PDF metadata, PDF/A,
+      KoSIT, reading, rule check, advisory checks.
       DE: Die Befunde in der Reihenfolge: PDF-Einbettung, PDF-Metadaten,
-      KoSIT, Lesen, Regelpruefung. }
+      PDF/A, KoSIT, Lesen, Regelpruefung, Hinweispruefungen. }
     property FindingCount: Integer read GetFindingCount;
     property Findings[AIndex: Integer]: TLandrixEInvoiceFinding read GetFinding; default;
     { The KoSIT scenario chosen, '' if none.
@@ -327,6 +338,7 @@ type
   private
     FConfiguration: TLandrixEInvoiceValidator;
     FModelCheck: Boolean;
+    FAdvisory: TLandrixEInvoiceAdvisoryFamilies;
     FConfigurations: TObjectList;
     FKinds: array of TLandrixEInvoiceConfigurationKind;
     function GetConfigurationCount: Integer;
@@ -364,6 +376,13 @@ type
     { Run the own rule check (default True).
       DE: Die eigene Regelpruefung ausfuehren (Vorgabe True). }
     property ModelCheck: Boolean read FModelCheck write FModelCheck;
+    { The families of advisory checks to run (default
+      LandrixEInvoiceAdvisoryTechnical; [] for none: evp_Advisory stays
+      evr_NotRun).
+      DE: Die Familien der Hinweispruefungen, die laufen sollen (Vorgabe
+      LandrixEInvoiceAdvisoryTechnical; [] fuer keine: evp_Advisory bleibt
+      evr_NotRun). }
+    property Advisory: TLandrixEInvoiceAdvisoryFamilies read FAdvisory write FAdvisory;
   end;
 
   { Validates documents with its Options.
@@ -381,6 +400,21 @@ type
     procedure ValidatePdf(AData: TMemoryStream; AResult: TLandrixEInvoiceDocumentValidation);
     procedure ReadAndCheck(AData: TMemoryStream; AResult: TLandrixEInvoiceDocumentValidation;
       APdfChecker: TLandrixEInvoicePdfChecker);
+    procedure RunModelCheck(ADoc: TLandrixEInvoiceDocument; AResult: TLandrixEInvoiceDocumentValidation);
+    procedure RunAdvisory(ADoc: TLandrixEInvoiceDocument; AResult: TLandrixEInvoiceDocumentValidation);
+  protected
+    { Runs the advisory checks of Options.Advisory on AInvoice (read as
+      ATarget, Standard est_None when unknown; AReported: the rule identifiers
+      the rule check reported) into ADiagnostics. An
+      exception leaves evp_Advisory evr_Incomplete with a warning; the
+      verdict stays. Tests override it.
+      DE: Fuehrt die Hinweispruefungen von Options.Advisory auf AInvoice
+      (gelesen als ATarget, Standard est_None, wenn unbekannt;
+      AReported: die Regelkennungen, die die Regelpruefung meldete) in
+      ADiagnostics aus. Eine Ausnahme laesst evp_Advisory evr_Incomplete
+      mit einer Warnung; das Urteil bleibt. Tests ueberschreiben sie. }
+    procedure Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget; AReported: TStrings;
+      ADiagnostics: TLandrixEInvoiceDiagnostics); virtual;
   public
     constructor Create;
     destructor Destroy; override;
@@ -556,6 +590,10 @@ var
 begin
   F := AddFinding(APart, ADiagnostic.RuleID, ADiagnostic.Severity, ADiagnostic.Path, ADiagnostic.Line,
     ADiagnostic.Column, ADiagnostic.Message);
+  { a hint is never an error
+    DE: ein Hinweis ist nie ein Fehler }
+  if (APart = evp_Advisory) and (F.FSeverity = eds_Error) then
+    F.FSeverity := eds_Warning;
   F.FTerms := ADiagnostic.Terms;
   F.FExpected := ADiagnostic.Expected;
   F.FFound := ADiagnostic.Found;
@@ -563,7 +601,8 @@ begin
 end;
 
 { A part that raised: a document the facade cannot read fails reading;
-  anything else leaves the part incomplete. }
+  anything else leaves the part incomplete (the advisory checks with a
+  warning, never an error). }
 procedure TLandrixEInvoiceDocumentValidation.AddFailure(APart: TLandrixEInvoiceValidationPart; E: Exception);
 var
   Line, Column: Integer;
@@ -580,6 +619,11 @@ begin
     AddFinding(APart, '', eds_Error, '', Line, Column, TLandrixEInvoiceString(E.Message));
     FStatus[APart] := evr_Failed;
   end
+  else if APart = evp_Advisory then
+  begin
+    AddFinding(APart, '', eds_Warning, '', 0, 0, TLandrixEInvoiceString(E.ClassName + ': ' + E.Message));
+    FStatus[APart] := evr_Incomplete;
+  end
   else
   begin
     AddFinding(APart, '', eds_Error, '', 0, 0, TLandrixEInvoiceString(E.ClassName + ': ' + E.Message));
@@ -593,6 +637,7 @@ constructor TLandrixEInvoiceValidationOptions.Create;
 begin
   inherited Create;
   FModelCheck := True;
+  FAdvisory := LandrixEInvoiceAdvisoryTechnical;
   { not owned: the caller frees the configurations }
   FConfigurations := TObjectList.Create(False);
 end;
@@ -1046,9 +1091,7 @@ procedure TLandrixEInvoiceDocumentValidator.ReadAndCheck(AData: TMemoryStream;
   AResult: TLandrixEInvoiceDocumentValidation; APdfChecker: TLandrixEInvoicePdfChecker);
 var
   Doc: TLandrixEInvoiceDocument;
-  D: TLandrixEInvoiceDiagnostics;
   I: TLandrixEInvoiceListIndex;
-  Errors: Integer;
   Facts: TLandrixEInvoicePdfInvoiceFacts;
 begin
   Doc := nil;
@@ -1087,33 +1130,107 @@ begin
     end;
     { without a known specification (BT-24) there are no rules to check;
       reading reported it }
-    if not FOptions.ModelCheck or not Doc.Info.SpecFound then
-      Exit;
-    D := TLandrixEInvoiceDiagnostics.Create;
-    try
-      try
-        Errors := LandrixEInvoiceCheckInvoice(Doc.Invoice, Doc.Info.Spec, D);
-      except
-        on E: Exception do
-        begin
-          if E is EOutOfMemory then
-            raise;
-          AResult.AddFailure(evp_ModelCheck, E);
-          Exit;
-        end;
-      end;
-      for I := 0 to D.Count - 1 do
-        AResult.AddDiagnosticFinding(evp_ModelCheck, D[I]);
-      if Errors > 0 then
-        AResult.FStatus[evp_ModelCheck] := evr_Failed
-      else
-        AResult.FStatus[evp_ModelCheck] := evr_Passed;
-    finally
-      D.Free;
-    end;
+    if FOptions.ModelCheck and Doc.Info.SpecFound then
+      RunModelCheck(Doc, AResult);
+    { the advisory checks need no specification
+      DE: die Hinweispruefungen brauchen keine Spezifikation }
+    if FOptions.Advisory <> [] then
+      RunAdvisory(Doc, AResult);
   finally
     Doc.Free;
   end;
+end;
+
+procedure TLandrixEInvoiceDocumentValidator.RunModelCheck(ADoc: TLandrixEInvoiceDocument;
+  AResult: TLandrixEInvoiceDocumentValidation);
+var
+  D: TLandrixEInvoiceDiagnostics;
+  I: TLandrixEInvoiceListIndex;
+  Errors: Integer;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    try
+      Errors := LandrixEInvoiceCheckInvoice(ADoc.Invoice, ADoc.Info.Spec, D);
+    except
+      on E: Exception do
+      begin
+        if E is EOutOfMemory then
+          raise;
+        AResult.AddFailure(evp_ModelCheck, E);
+        Exit;
+      end;
+    end;
+    for I := 0 to D.Count - 1 do
+      AResult.AddDiagnosticFinding(evp_ModelCheck, D[I]);
+    if Errors > 0 then
+      AResult.FStatus[evp_ModelCheck] := evr_Failed
+    else
+      AResult.FStatus[evp_ModelCheck] := evr_Passed;
+  finally
+    D.Free;
+  end;
+end;
+
+{ The advisory checks: evr_Passed when they ran (whatever they found),
+  evr_Incomplete when they raised; the hints found before are kept.
+  DE: Die Hinweispruefungen: evr_Passed, wenn sie liefen (was immer sie
+  fanden), evr_Incomplete, wenn sie eine Ausnahme ausloesten; die bis
+  dahin gefundenen Hinweise bleiben. }
+procedure TLandrixEInvoiceDocumentValidator.RunAdvisory(ADoc: TLandrixEInvoiceDocument;
+  AResult: TLandrixEInvoiceDocumentValidation);
+var
+  D: TLandrixEInvoiceDiagnostics;
+  I: TLandrixEInvoiceListIndex;
+  Failure: Boolean;
+  Target: TLandrixEInvoiceTarget;
+  J: Integer;
+  Reported: TStringList;
+begin
+  Reported := TStringList.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    Failure := False;
+    Target := ADoc.Info.Spec.Target;
+    if not ADoc.Info.SpecFound then
+    begin
+      Target.Standard := est_None;
+      Target.Syntax := ADoc.Info.Syntax;
+    end;
+    { what the rule check reported is not repeated
+      DE: was die Regelpruefung gemeldet hat, wird nicht wiederholt }
+    for J := 0 to AResult.FindingCount - 1 do
+      if (AResult[J].Part = evp_ModelCheck) and (AResult[J].RuleID <> '') then
+        Reported.Add(string(AResult[J].RuleID));
+    try
+      Advise(ADoc.Invoice, Target, Reported, D);
+    except
+      on E: Exception do
+      begin
+        if E is EOutOfMemory then
+          raise;
+        for I := 0 to D.Count - 1 do
+          AResult.AddDiagnosticFinding(evp_Advisory, D[I]);
+        AResult.AddFailure(evp_Advisory, E);
+        Failure := True;
+      end;
+    end;
+    if not Failure then
+    begin
+      for I := 0 to D.Count - 1 do
+        AResult.AddDiagnosticFinding(evp_Advisory, D[I]);
+      AResult.FStatus[evp_Advisory] := evr_Passed;
+    end;
+  finally
+    D.Free;
+    Reported.Free;
+  end;
+end;
+
+procedure TLandrixEInvoiceDocumentValidator.Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  AReported: TStrings; ADiagnostics: TLandrixEInvoiceDiagnostics);
+begin
+  LandrixEInvoiceAdvise(AInvoice, ATarget, FOptions.Advisory, ADiagnostics, AReported);
 end;
 
 end.

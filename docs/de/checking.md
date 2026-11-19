@@ -132,4 +132,5 @@ siehe [Schreiben](writing.md).
 ## Regelkennungen
 
 Regelkennungen sind stabil. Regeln dieser Bibliothek, die die Standards nicht haben, beginnen
-mit `LX-` (z. B. LX-CC-04).
+mit `LX-` (z. B. LX-CC-04); [Regeln dieser Bibliothek](rules.md) führt sie auf und sagt, wie sie
+stabil bleiben.

@@ -17,7 +17,9 @@
   u:mod97-0208, u:checkCodiceIPA, u:checkCF, u:checkPIVAseIT,
   u:checkSEOrgnr, u:abn, u:TinVerification) and the IBAN check of KoSIT
   (xr:checkIBAN), and the patterns of telephone, email and the cash
-  discount lines of KoSIT and Peppol. The functions take the value as the
+  discount lines of KoSIT and Peppol; for the advisory checks the expected
+  GS1 check digit and the Leitweg-ID (format specification 2.0.2). The
+  functions take the value as the
   schematron passes it (most rules normalize it first, see
   LandrixEInvoiceNormalizeSpace) and know nothing about invoices or
   targets.
@@ -27,7 +29,9 @@
   u:mod97-0208, u:checkCodiceIPA, u:checkCF, u:checkPIVAseIT,
   u:checkSEOrgnr, u:abn, u:TinVerification) und die IBAN-Pruefung der KoSIT
   (xr:checkIBAN), sowie die Muster fuer Telefon, E-Mail und die
-  Skontozeilen von KoSIT und Peppol. Die Funktionen nehmen den Wert so, wie
+  Skontozeilen von KoSIT und Peppol; fuer die Hinweispruefungen die
+  erwartete GS1-Pruefziffer und die Leitweg-ID (Formatspezifikation
+  2.0.2). Die Funktionen nehmen den Wert so, wie
   das Schematron ihn uebergibt (die meisten Regeln normalisieren ihn
   vorher, siehe LandrixEInvoiceNormalizeSpace), und wissen nichts von
   Rechnungen oder Zielen. }
@@ -45,6 +49,23 @@ interface
 
 uses
   LandrixEInvoiceTypes;
+
+type
+  { What is wrong with a Leitweg-ID (LandrixEInvoiceLeitwegIDProblem).
+    elp_Form: not <coarse>-<check digits> or <coarse>-<fine>-<check
+    digits> (coarse: 1 to 12 digits, fine: 1 to 30 letters A to Z or
+    digits, check digits: two digits). elp_CoarseLength: the coarse address
+    has not 2, 3, 5, 8, 9 or 12 digits. elp_State: it does not start with a
+    federal state (01 to 16) or the federation (99). elp_CheckDigits: the
+    check digits are wrong.
+    DE: Was an einer Leitweg-ID falsch ist (LandrixEInvoiceLeitwegIDProblem).
+    elp_Form: nicht <Grob>-<Pruefziffern> oder <Grob>-<Fein>-<Pruefziffern>
+    (Grob: 1 bis 12 Ziffern, Fein: 1 bis 30 Buchstaben A bis Z oder
+    Ziffern, Pruefziffern: zwei Ziffern). elp_CoarseLength: die
+    Grobadressierung hat nicht 2, 3, 5, 8, 9 oder 12 Ziffern. elp_State:
+    sie beginnt nicht mit einem Bundesland (01 bis 16) oder dem Bund (99).
+    elp_CheckDigits: die Pruefziffern sind falsch. }
+  TLandrixEInvoiceLeitwegProblem = (elp_None, elp_Form, elp_CoarseLength, elp_State, elp_CheckDigits);
 
 { XPath normalize-space: no blank (space, tab, line feed, carriage return)
   at either end, one space between words.
@@ -70,6 +91,33 @@ function LandrixEInvoiceIsInteger(const AValue: TLandrixEInvoiceString): Boolean
   die uebrigen, von rechts mit 3 und 1 gewichtet. AValue muss aus Ziffern
   bestehen. }
 function LandrixEInvoiceGS1CheckDigitValid(const AValue: TLandrixEInvoiceString): Boolean;
+
+{ The GS1 check digit (0 to 9) that the last digit of AValue should be,
+  computed from the others; -1 if AValue is not at least two digits.
+  DE: Die GS1-Pruefziffer (0 bis 9), die die letzte Ziffer von AValue sein
+  sollte, berechnet aus den uebrigen; -1, wenn AValue nicht mindestens zwei
+  Ziffern sind. }
+function LandrixEInvoiceGS1CheckDigit(const AValue: TLandrixEInvoiceString): Integer;
+
+{ Leitweg-ID after the format specification 2.0.2 (KoSIT, 28.07.2021): the
+  coarse address (2, 3, 5, 8, 9 or 12 digits, starting with 01 to 16 or
+  99), an optional fine address (up to 30 letters A to Z, any case, or
+  digits) and two check digits after ISO/IEC 7064 MOD 97-10 over coarse and
+  fine address (letters as 10 to 35), each part after a hyphen-minus. The
+  first problem found, elp_None if it is valid. AExpected: the check digits
+  the value should have, '' when the form is wrong. AValue as it is (no
+  blanks allowed).
+  DE: Leitweg-ID nach der Formatspezifikation 2.0.2 (KoSIT, 28.07.2021):
+  die Grobadressierung (2, 3, 5, 8, 9 oder 12 Ziffern, beginnend mit 01 bis
+  16 oder 99), eine optionale Feinadressierung (bis zu 30 Buchstaben A bis
+  Z, beliebige Schreibung, oder Ziffern) und zwei Pruefziffern nach ISO/IEC
+  7064 MOD 97-10 ueber Grob- und Feinadressierung (Buchstaben als 10 bis
+  35), jeder Teil nach einem Bindestrich-Minus. Das erste gefundene
+  Problem, elp_None, wenn sie gueltig ist. AExpected: die Pruefziffern, die
+  der Wert haben sollte, '' bei falscher Form. AValue so, wie er ist (kein
+  Leerraum erlaubt). }
+function LandrixEInvoiceLeitwegIDProblem(const AValue: TLandrixEInvoiceString;
+  out AExpected: TLandrixEInvoiceString): TLandrixEInvoiceLeitwegProblem;
 
 { Modulus 11 (u:mod11, Norwegian organization number, scheme 0192):
   weights 2 to 7 from the right, the value is above 0. AValue must consist
@@ -139,6 +187,16 @@ function LandrixEInvoiceGreekTINValid(const AValue: TLandrixEInvoiceString): Boo
   34 Zeichen), und die Pruefsumme modulo 97 ist 1 (Buchstaben als Codepunkt
   - 55, auch Kleinbuchstaben). }
 function LandrixEInvoiceIBANValid(const AValue: TLandrixEInvoiceString): Boolean;
+
+{ The two check digits (positions 3 and 4) an IBAN without blanks should
+  have (ISO 13616, MOD 97-10 over BBAN and country code, letters of any
+  case as 10 to 35); '' if AValue does not have the form of two letters,
+  two digits and 1 to 30 letters or digits.
+  DE: Die zwei Pruefziffern (Stellen 3 und 4), die eine IBAN ohne Leerraum
+  haben sollte (ISO 13616, MOD 97-10 ueber BBAN und Laendercode, Buchstaben
+  beliebiger Schreibung als 10 bis 35); '', wenn AValue nicht die Form aus
+  zwei Buchstaben, zwei Ziffern und 1 bis 30 Buchstaben oder Ziffern hat. }
+function LandrixEInvoiceIBANCheckDigits(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
 
 { BR-DE-27 (XRechnung) and DE-R-027 (Peppol): at least three digits.
   DE: BR-DE-27 (XRechnung) und DE-R-027 (Peppol): mindestens drei Ziffern. }
@@ -244,6 +302,109 @@ begin
     Weight := 4 - Weight;
   end;
   Result := (10 - Sum) mod 10 = DigitAt(AValue, Length(AValue));
+end;
+
+function LandrixEInvoiceGS1CheckDigit(const AValue: TLandrixEInvoiceString): Integer;
+var
+  I, Sum, Weight: Integer;
+begin
+  Result := -1;
+  if (Length(AValue) < 2) or not LandrixEInvoiceIsDigits(AValue, 0) then
+    Exit;
+  Sum := 0;
+  Weight := 3;
+  for I := Length(AValue) - 1 downto 1 do
+  begin
+    Sum := (Sum + DigitAt(AValue, I) * Weight) mod 10;
+    Weight := 4 - Weight;
+  end;
+  Result := (10 - Sum) mod 10;
+end;
+
+function LandrixEInvoiceLeitwegIDProblem(const AValue: TLandrixEInvoiceString;
+  out AExpected: TLandrixEInvoiceString): TLandrixEInvoiceLeitwegProblem;
+var
+  Last, First, I, Rest, State: Integer;
+  Coarse, Fine, Check: TLandrixEInvoiceString;
+  C: TLandrixEInvoiceChar;
+
+  procedure Add(ADigits: Integer);
+  begin
+    if ADigits >= 10 then
+      Rest := (Rest * 100 + ADigits) mod 97
+    else
+      Rest := (Rest * 10 + ADigits) mod 97;
+  end;
+
+begin
+  AExpected := '';
+  Result := elp_Form;
+  Last := 0;
+  for I := Length(AValue) downto 1 do
+    if AValue[I] = '-' then
+    begin
+      Last := I;
+      Break;
+    end;
+  if (Last < 2) or (Last <> Length(AValue) - 2) then
+    Exit;
+  Check := Copy(AValue, Last + 1, 2);
+  if not LandrixEInvoiceIsDigits(Check, 2) then
+    Exit;
+  First := Pos(TLandrixEInvoiceString('-'), AValue);
+  if First = Last then
+  begin
+    Coarse := Copy(AValue, 1, Last - 1);
+    Fine := '';
+  end
+  else
+  begin
+    Coarse := Copy(AValue, 1, First - 1);
+    Fine := Copy(AValue, First + 1, Last - First - 1);
+    if (Fine = '') or (Length(Fine) > 30) then
+      Exit;
+    for I := 1 to Length(Fine) do
+      if not IsDigit(Fine[I]) and not IsLetter(Fine[I]) then
+        Exit;
+  end;
+  if (Length(Coarse) > 12) or not LandrixEInvoiceIsDigits(Coarse, 0) then
+    Exit;
+  { MOD 97-10 over coarse and fine address, letters as 10 to 35, then two
+    zeros for the check digits
+    DE: MOD 97-10 ueber Grob- und Feinadressierung, Buchstaben als 10 bis
+    35, dann zwei Nullen fuer die Pruefziffern }
+  Rest := 0;
+  for I := 1 to Length(Coarse) do
+    Add(DigitAt(Coarse, I));
+  for I := 1 to Length(Fine) do
+  begin
+    C := Fine[I];
+    if IsDigit(C) then
+      Add(Ord(C) - Ord('0'))
+    else if C >= 'a' then
+      Add(Ord(C) - Ord('a') + 10)
+    else
+      Add(Ord(C) - Ord('A') + 10);
+  end;
+  Rest := (Rest * 100) mod 97;
+  AExpected := TLandrixEInvoiceString(Chr(Ord('0') + (98 - Rest) div 10)) +
+    TLandrixEInvoiceString(Chr(Ord('0') + (98 - Rest) mod 10));
+  case Length(Coarse) of
+    2, 3, 5, 8, 9, 12:
+      ;
+  else
+    begin
+      Result := elp_CoarseLength;
+      Exit;
+    end;
+  end;
+  State := DigitAt(Coarse, 1) * 10 + DigitAt(Coarse, 2);
+  if not (((State >= 1) and (State <= 16)) or (State = 99)) then
+    Result := elp_State
+  else if Check <> AExpected then
+    Result := elp_CheckDigits
+  else
+    Result := elp_None;
 end;
 
 function LandrixEInvoiceMod11Valid(const AValue: TLandrixEInvoiceString): Boolean;
@@ -427,6 +588,36 @@ begin
       Remainder := (Remainder * 10 + Value - 48) mod 97;
   end;
   Result := Remainder = 1;
+end;
+
+function LandrixEInvoiceIBANCheckDigits(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+var
+  Rearranged: TLandrixEInvoiceString;
+  I, Remainder: Integer;
+  C: TLandrixEInvoiceChar;
+begin
+  Result := '';
+  if (Length(AValue) < 5) or (Length(AValue) > 34) or not IsLetter(AValue[1]) or not IsLetter(AValue[2]) or
+    not IsDigit(AValue[3]) or not IsDigit(AValue[4]) then
+    Exit;
+  for I := 5 to Length(AValue) do
+    if not (IsDigit(AValue[I]) or IsLetter(AValue[I])) then
+      Exit;
+  Rearranged := Copy(AValue, 5, Length(AValue) - 4) + Copy(AValue, 1, 2) + '00';
+  Remainder := 0;
+  for I := 1 to Length(Rearranged) do
+  begin
+    C := Rearranged[I];
+    if IsDigit(C) then
+      Remainder := (Remainder * 10 + Ord(C) - Ord('0')) mod 97
+    else if C >= 'a' then
+      Remainder := (Remainder * 100 + Ord(C) - Ord('a') + 10) mod 97
+    else
+      Remainder := (Remainder * 100 + Ord(C) - Ord('A') + 10) mod 97;
+  end;
+  Remainder := 98 - Remainder;
+  Result := TLandrixEInvoiceString(Chr(Ord('0') + Remainder div 10)) +
+    TLandrixEInvoiceString(Chr(Ord('0') + Remainder mod 10));
 end;
 
 function LandrixEInvoiceTelephoneValid(const AValue: TLandrixEInvoiceString): Boolean;

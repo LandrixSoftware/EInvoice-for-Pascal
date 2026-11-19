@@ -18,7 +18,8 @@
   6.11 (embedded files, optional content,
   presentations, requirements) of LandrixEInvoicePdfARules on the raw syntax collected while the document
   loads; findings PDFA-<clause>-<test> (veraPDF numbering) with paths that
-  start with "PDF/A ". Not every rule of PDF/A-3b is implemented, so level 1
+  start with "PDF/A " (LX-PDF-12 when the check stops before it is
+  complete). Not every rule of PDF/A-3b is implemented, so level 1
   is eps_Failed on a violation and eps_Incomplete otherwise, never
   eps_Passed. It runs last and not when the XMP claims PDF/A-4 (its rules
   are not implemented). Level 2, the embedding of the invoice XML: the business rules for hybrid
@@ -54,7 +55,8 @@
   Dateien, optionale Inhalte, Praesentationen, Anforderungen) aus
   LandrixEInvoicePdfARules auf der rohen Syntax, die
   beim Laden gesammelt wird; Befunde PDFA-<Abschnitt>-<Test>
-  (veraPDF-Nummerierung) mit Pfaden, die mit "PDF/A " beginnen. Nicht jede
+  (veraPDF-Nummerierung) mit Pfaden, die mit "PDF/A " beginnen (LX-PDF-12,
+  wenn die Pruefung abbricht, bevor sie vollstaendig ist). Nicht jede
   Regel von PDF/A-3b ist umgesetzt, darum ist Ebene 1 bei einem Verstoss
   eps_Failed und sonst eps_Incomplete, nie eps_Passed. Sie laeuft zuletzt
   und nicht, wenn das XMP PDF/A-4 behauptet (dessen Regeln sind nicht
@@ -310,6 +312,8 @@ const
   RuleXmpProfileMatch = 'BR-HYBRID-15';
   { the XMP metadata is missing, cannot be decoded or is not well-formed }
   RuleNoXmp = 'LX-PDF-11';
+  { the PDF/A check (level 1) stopped before it was complete }
+  RulePdfAStopped = 'LX-PDF-12';
 
 function ToText(const S: string): TLandrixEInvoiceString;
 begin
@@ -1887,7 +1891,7 @@ begin
       begin
         if E is EOutOfMemory then
           raise;
-        AddFindingAt(AResult, RuleUnreadable, eds_Warning, 'PDF/A file', ToText('PDF/A check not completed: ' +
+        AddFindingAt(AResult, RulePdfAStopped, eds_Warning, 'PDF/A file', ToText('PDF/A check not completed: ' +
           E.Message));
         Exit;
       end;

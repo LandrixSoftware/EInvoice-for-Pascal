@@ -190,13 +190,24 @@ end.
   Erweiterungsschemas, PDF/A-Kennung) und 6.8 bis 6.11
   (eingebettete Dateien, optionale Inhalte, Präsentationen, Anforderungen);
   `evr_Failed` bei einem Verstoß, sonst `evr_Incomplete`, weil nicht jede PDF/A-Regel umgesetzt
-  ist; zählt nicht für das Urteil).
+  ist; zählt nicht für das Urteil), `evp_Advisory` (eigene Hinweise der Bibliothek, siehe unten).
+- Hinweisprüfungen (`Options.Advisory`, eine Menge von Familien; Vorgabe
+  `LandrixEInvoiceAdvisoryTechnical`, `[]` schaltet sie ab): Hinweise zur gelesenen Rechnung, die kein
+  Standard verlangt, Regeln LX-... (bisher LX-ID-01 bis LX-ID-10: unsichtbare und täuschende Zeichen
+  und Kennungen nach ihrem Schema wie GLN, GTIN und Leitweg-ID; LX-PL-01 bis LX-PL-05: Daten und
+  Zahlung; siehe [Regeln dieser Bibliothek](rules.md)). Was die Regelprüfung derselben Validierung
+  gemeldet hat, wird nicht wiederholt. Sie sind Hinweise oder Warnungen, nie Fehler, zählen
+  nie für das Urteil und werden getrennt gezählt (`advisory` im XML-Bericht). `evp_Advisory` ist
+  `evr_Passed`, wenn sie liefen, `evr_Incomplete`, wenn sie abbrachen (mit einer Warnung), nie
+  `evr_Failed`. Rechtliche und kontextabhängige Familien (deutsches Steuerrecht, Empfänger) laufen
+  künftig nur auf Anforderung.
 - `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part` und für die
   Regelprüfung `Terms`, `Expected`, `Found` und `Calculation` (siehe [Prüfen](checking.md);
   `Location` ist dann der Modellpfad, oft leer). Befunde der
-  eigenen Regeln sind als `Predicted` markiert: Sie sagen voraus, was KoSIT meldet, und ändern das
-  Urteil nie. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-01 bis LX-PDF-11
-  (eigene Prüfungen) und PDFA-<Abschnitt>-<Test> (PDF/A, nummeriert wie bei veraPDF, z. B.
+  eigenen Regelprüfung (`evp_ModelCheck`) sind als `Predicted` markiert: Sie sagen voraus, was KoSIT
+  meldet, und ändern das Urteil nie. Hinweise (`evp_Advisory`) sind keine Vorhersagen; sie tragen
+  den Modellpfad in `Location`, `Terms` und den maskierten Wert in `Found`. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-...
+  (eigene Prüfungen, siehe [Regeln dieser Bibliothek](rules.md)) und PDFA-<Abschnitt>-<Test> (PDF/A, nummeriert wie bei veraPDF, z. B.
   PDFA-6.1.7.1-1).
 - Peppol BIS: Die Konfiguration hat kein `acceptMatch`, deshalb lehnt jede fehlgeschlagene
   Assertion ab, auch eine Warnung. So entscheidet der KoSIT-Validator; sein HTML-Bericht zeigt
@@ -225,9 +236,15 @@ finally
 end;
 ```
 
-Der XML-Bericht folgt `schemas/landrix-einvoice-validation-report-1.xsd` (Formatversion 1.1; seit
-1.1 trägt ein Befund der Regelprüfung `modelPath`, `expected`, `found` und `calculation` als
-Attribute; sein `location` sind weiter die Geschäftsbegriffe).
+Der XML-Bericht folgt `schemas/landrix-einvoice-validation-report-2.xsd` (Formatversion 2.0,
+Namespace `urn:landrix:einvoice:validation-report:2`). Unter dem Wurzelelement steht ein
+`document` mit Urteil, Teilen, PDF-Fakten und Befunden (das Schema erlaubt mehrere für einen
+späteren Bericht über mehrere Dokumente). Ein Befund hat seinen Pfad in `location` (XPath,
+Elementpfad, Modellpfad der Regelprüfung oder Ort im PDF) und die Einzelheiten der Regelprüfung in
+den Attributen `terms`, `expected`, `found` und `calculation`. Urteil, Status, Schweregrad und Teil
+sind geschlossene Listen: ein neuer Wert ist eine neue Hauptversion. Standard, Profil, hybride Art
+sowie Wahl und Art der Konfiguration sind offen: einen unbekannten Wert als „sonstige“ behandeln.
+Version 1 (`schemas/landrix-einvoice-validation-report-1.xsd`) wird nicht mehr geschrieben.
 
 Der KoSIT-Prüfbericht: der Bericht, den der KoSIT-Validator schreibt, auf demselben Weg erzeugt.
 Der Berichtseingang (`LandrixEInvoiceKositReportInput`: Engine, Zeit, Hash des Dokuments, das

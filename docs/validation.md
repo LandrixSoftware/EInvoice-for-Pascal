@@ -186,13 +186,23 @@ end.
   identification) and 6.8 to 6.11 (embedded
   files, optional content, presentations, requirements);
   `evr_Failed` on a violation, otherwise `evr_Incomplete`, as not every PDF/A rule is implemented;
-  it does not count for the verdict).
+  it does not count for the verdict), `evp_Advisory` (the library's own hints, see below).
+- Advisory checks (`Options.Advisory`, a set of families; default `LandrixEInvoiceAdvisoryTechnical`,
+  `[]` turns them off): hints on the invoice as read that no standard demands, rules LX-... (so far
+  LX-ID-01 to LX-ID-10: invisible and deceptive characters, and identifiers by their scheme such as GLN,
+  GTIN and Leitweg-ID; LX-PL-01 to LX-PL-05: dates and payment; see [Rules of this library](rules.md)).
+  What the rule check of the same validation reported is not repeated.
+  They are infos or warnings, never errors, never count for the verdict and are counted apart
+  (`advisory` in the XML report). `evp_Advisory` is `evr_Passed` when they ran, `evr_Incomplete`
+  when they stopped (with a warning), never `evr_Failed`. Legal and context-dependent families
+  (German tax law, recipients) will only run on request.
 - `Res.Findings[I]`: `RuleID`, `Severity`, `Text`, `Location`, `Line`, `Column`, `Part`, and for
   the rule check `Terms`, `Expected`, `Found` and `Calculation` (see [Checking](checking.md);
   `Location` is then the model path, often empty). Findings of
-  the library's own rules are marked `Predicted`: they predict what KoSIT reports and never change
-  the verdict. PDF findings have the identifiers BR-HYBRID-... (ZUGFeRD), LX-PDF-01 to LX-PDF-11
-  (own checks) and PDFA-<clause>-<test> (PDF/A, numbered as in veraPDF, e.g. PDFA-6.1.7.1-1).
+  the library's own rule check (`evp_ModelCheck`) are marked `Predicted`: they predict what KoSIT
+  reports and never change the verdict. Hints (`evp_Advisory`) are not predictions; they carry the
+  model path in `Location`, `Terms` and the masked value in `Found`. PDF findings have the identifiers BR-HYBRID-... (ZUGFeRD), LX-PDF-...
+  (own checks, see [Rules of this library](rules.md)) and PDFA-<clause>-<test> (PDF/A, numbered as in veraPDF, e.g. PDFA-6.1.7.1-1).
 - Peppol BIS: the configuration has no `acceptMatch`, so every failed assert rejects, a warning
   too. This is how the KoSIT validator decides; its HTML report shows the assessment of its
   stylesheet instead, which rejects on errors only (the repository's `tools/validate.ps1` uses
@@ -220,9 +230,15 @@ finally
 end;
 ```
 
-The XML report follows `schemas/landrix-einvoice-validation-report-1.xsd` (format version 1.1;
-since 1.1 a finding of the rule check carries `modelPath`, `expected`, `found` and `calculation`
-as attributes; its `location` is still the business terms).
+The XML report follows `schemas/landrix-einvoice-validation-report-2.xsd` (format version 2.0,
+namespace `urn:landrix:einvoice:validation-report:2`). Below the root element is one `document`
+with the verdict, the parts, the PDF facts and the findings (the schema allows several for a later
+report on several documents). A finding has its path in `location` (XPath, element path, model path
+of the rule check or place in the PDF) and the details of the rule check in the attributes `terms`,
+`expected`, `found` and `calculation`. Verdict, status, severity and part are closed lists: a new
+value is a new major version. Standard, profile, hybrid kind and the configuration choice and kind
+are open: treat a value you do not know as "other". Version 1
+(`schemas/landrix-einvoice-validation-report-1.xsd`) is no longer written.
 
 The KoSIT report: the report the KoSIT validator writes, made the same way. The report input
 (`LandrixEInvoiceKositReportInput`: engine, time, document hash, the chosen scenario, the steps,
