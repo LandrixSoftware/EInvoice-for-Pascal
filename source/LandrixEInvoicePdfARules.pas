@@ -14,7 +14,7 @@
 
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.2 (graphics: content
   stream operators, graphics states, rendering intents, images, XObjects,
-  blend modes; not yet colour, output intents and fonts), 6.3 (annotations),
+  blend modes, output intents; not yet colour and fonts), 6.3 (annotations),
   6.4 (interactive forms), 6.5 (actions), 6.6 (XMP metadata: packets,
   properties, extension schemas, PDF/A identification), 6.8
   (embedded files), 6.9 (optional content), 6.10 (alternate presentations)
@@ -38,7 +38,7 @@
 
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.2 (Grafik:
   Operatoren in Content-Streams, Grafikzustaende, Rendering-Intents, Bilder,
-  XObjects, Blend-Modes; noch nicht Farbe, Output-Intents und Schriften),
+  XObjects, Blend-Modes, Output-Intents; noch nicht Farbe und Schriften),
   6.3 (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
   (XMP-Metadaten: Pakete, Eigenschaften, Erweiterungsschemas,
   PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10
@@ -81,18 +81,19 @@ uses
   LandrixEInvoicePdfXmp;
 
 type
-  { The rules of clauses 6.1, 6.2 (without colour, output intents and
-    fonts), 6.3 to 6.6 and 6.8 to 6.11 in the veraPDF profile PDF/A-3B,
-    named after clause and test number.
-    DE: Die Regeln der Abschnitte 6.1, 6.2 (ohne Farbe, Output-Intents und
-    Schriften), 6.3 bis 6.6 und 6.8 bis 6.11 im veraPDF-Profil PDF/A-3B,
+  { The rules of clauses 6.1, 6.2 (without colour and fonts), 6.3 to 6.6
+    and 6.8 to 6.11 in the veraPDF profile PDF/A-3B, named after clause and
+    test number.
+    DE: Die Regeln der Abschnitte 6.1, 6.2 (ohne Farbe und Schriften), 6.3
+    bis 6.6 und 6.8 bis 6.11 im veraPDF-Profil PDF/A-3B,
     benannt nach Abschnitt und Testnummer. }
   TLandrixEInvoicePdfARule = (
     par_6_1_2_1, par_6_1_2_2, par_6_1_3_1, par_6_1_3_2, par_6_1_3_3, par_6_1_4_2, par_6_1_6_1, par_6_1_6_2,
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
     par_6_1_12_1, par_6_1_12_2, par_6_1_13_1, par_6_1_13_2, par_6_1_13_3, par_6_1_13_4, par_6_1_13_5,
     par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11,
-    par_6_2_2_1, par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5, par_6_2_5_6, par_6_2_6_1,
+    par_6_2_2_1, par_6_2_3_1, par_6_2_3_2, par_6_2_3_3,
+    par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5, par_6_2_5_6, par_6_2_6_1,
     par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1, par_6_2_9_2, par_6_2_9_3,
     par_6_2_10_1,
     par_6_3_1_1, par_6_3_2_1, par_6_3_2_2, par_6_3_3_1, par_6_3_3_2, par_6_3_3_3, par_6_3_3_4,
@@ -171,6 +172,10 @@ type
     FNodesC: Integer;
     FWalkBroken: Boolean;
     FAssoc: array of Boolean;
+    { the colour space of the PDF/A output profile as veraPDF's gOutputCS
+      (empty: none); False when it is not certain }
+    FOutputCS: AnsiString;
+    FOutputCSKnown: Boolean;
     { associations made in the page tree (doubtful where veraPDF may see
       other pages) }
     FAssocPage: array of Boolean;
@@ -246,6 +251,7 @@ type
     procedure RegisterAF(AObj: TLandrixEInvoicePdfObject);
     function AFBudget(ADepth: Integer): Boolean;
     function AFRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
+    function GenRef(ARaw: TLandrixEInvoicePdfObject; var AUnsure: Boolean): TLandrixEInvoicePdfObject;
     function AFGet(AObj: TLandrixEInvoicePdfObject; const AKey: AnsiString): TLandrixEInvoicePdfObject;
     function AFFirstVisit(ARaw: TLandrixEInvoicePdfObject; AKind: Byte): Boolean;
     function AFPages(ANode, AInherited: TLandrixEInvoicePdfObject; ADepth: Integer): Integer;
@@ -261,6 +267,7 @@ type
     procedure CheckFileSpecs;
     procedure CheckOptionalContent;
     procedure CheckCatalogLate;
+    procedure CheckOutputIntents;
     procedure AddMetadata(ADict: TLandrixEInvoicePdfObject);
     procedure MarkMetadata;
     procedure JudgePacket(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
@@ -356,6 +363,11 @@ const
     (Number: '6.1.13-10'; Coverage: prc_None; Text: 'CID values are at most 65535'),
     (Number: '6.1.13-11'; Coverage: prc_Full; Text: 'Page boundaries are between 3 and 14400 units in each direction'),
     (Number: '6.2.2-1'; Coverage: prc_Full; Text: 'Content streams use only operators defined in ISO 32000-1'),
+    (Number: '6.2.3-1'; Coverage: prc_Full;
+      Text: 'An output intent profile is a printer or monitor profile for RGB, CMYK or Gray below ICC version 5'),
+    (Number: '6.2.3-2'; Coverage: prc_Full;
+      Text: 'All output intents with an indirect /DestOutputProfile refer to the same object'),
+    (Number: '6.2.3-3'; Coverage: prc_Full; Text: 'A PDF/X output intent has no /DestOutputProfileRef'),
     (Number: '6.2.5-1'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /TR'),
     (Number: '6.2.5-2'; Coverage: prc_Full; Text: 'An ExtGState dictionary has /TR2 only with the value Default'),
     (Number: '6.2.5-3'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /HTP'),
@@ -830,6 +842,8 @@ begin
   FContentMaybe := nil;
   FAFSeen := nil;
   FAFUnsure := False;
+  FOutputCS := '';
+  FOutputCSKnown := True;
 end;
 
 procedure TLandrixEInvoicePdfARuleCheck.Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer;
@@ -982,12 +996,17 @@ begin
     CheckCatalogActions;
     CheckOptionalContent;
     CheckCatalogLate;
+    CheckOutputIntents;
   end
   else
   begin
     FIncomplete[par_6_1_12_1] := True;
     FIncomplete[par_6_1_12_2] := True;
     FIncomplete[par_6_1_13_11] := True;
+    FIncomplete[par_6_2_3_1] := True;
+    FIncomplete[par_6_2_3_2] := True;
+    FIncomplete[par_6_2_3_3] := True;
+    FOutputCSKnown := False;
     MarkStageB;
     MarkLateA;
   end;
@@ -2161,40 +2180,23 @@ begin
 end;
 
 { A reference to the object in use with that number and generation (nil
-  otherwise, veraPDF reads null); a direct object as it is. }
-function TLandrixEInvoicePdfARuleCheck.AFRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
-var
-  E: TLandrixEInvoicePdfXrefEntry;
-  Depth, Num, Gen: Integer;
+  otherwise, veraPDF reads null); a direct object as it is. A chain too long
+  to follow sets AUnsure.
+  DE: Eine Referenz auf das benutzte Objekt mit dieser Nummer und Generation
+  (sonst nil, veraPDF liest null); ein direktes Objekt unveraendert. Eine
+  Kette, die zu lang zum Verfolgen ist, setzt AUnsure. }
+function TLandrixEInvoicePdfARuleCheck.GenRef(ARaw: TLandrixEInvoicePdfObject;
+  var AUnsure: Boolean): TLandrixEInvoicePdfObject;
 begin
-  Result := ARaw;
-  Depth := 0;
-  while (Result <> nil) and (Result.Kind = pok_Ref) do
-  begin
-    Inc(Depth);
-    E := FDoc.XrefEntry(Result.RefNum);
-    if Depth > 32 then
-    begin
-      { veraPDF may follow it further }
-      FAFUnsure := True;
-      Result := nil;
-      Exit;
-    end;
-    if not E.Known or (E.Kind = pxk_Free) or (E.Gen <> Result.RefGen) then
-    begin
-      Result := nil;
-      Exit;
-    end;
-    Gen := Result.RefGen;
-    Num := Result.RefNum;
-    Result := FDoc.GetObject(Num);
-    { the object header must carry the generation too }
-    if (Result <> nil) and (Result.OwnerNum = Num) and ((Result.OwnerGen <> Gen) or Result.HeaderGenBad) then
-    begin
-      Result := nil;
-      Exit;
-    end;
-  end;
+  Result := LandrixEInvoicePdfResolveRef(FDoc, ARaw, AUnsure);
+end;
+
+{ GenRef for the walk of 6.8: a chain too long leaves it undecided.
+  DE: GenRef fuer den Durchlauf zu 6.8: eine zu lange Kette laesst ihn
+  offen. }
+function TLandrixEInvoicePdfARuleCheck.AFRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
+begin
+  Result := GenRef(ARaw, FAFUnsure);
 end;
 
 function TLandrixEInvoicePdfARuleCheck.AFGet(AObj: TLandrixEInvoicePdfObject;
@@ -2798,6 +2800,160 @@ begin
       if (S <> nil) and (S.Kind = pok_Name) then
         FailAt(par_6_11_1, Cat, 'catalog with /Requirements');
     end;
+end;
+
+type
+  { an ICC header in a string list }
+  TIccHeaderBox = class
+    H: TLandrixEInvoicePdfIccHeader;
+  end;
+
+{ 6.2.3: the output intents of the catalog as veraPDF reads them: every
+  dictionary of the /OutputIntents array, in order, whatever its /S;
+  references resolve only to the object in use with that number and
+  generation. 6.2.3-1: a /DestOutputProfile stream has the device class
+  prtr or mntr, the colour space RGB, CMYK or GRAY and a major version below
+  5 (header bytes as LandrixEInvoicePdfIccHeader reads them). 6.2.3-2: the
+  indirect /DestOutputProfile references (object and generation number,
+  resolved or not) are all equal to the first; direct profiles do not
+  count; veraPDF reports one failure. 6.2.3-3: an intent whose /S is the
+  name GTS_PDFX has no /DestOutputProfileRef (a reference to null counts).
+  The colour space of the last /S /GTS_PDFA1 profile becomes gOutputCS
+  (empty when its header has none); an intent without a profile stream
+  leaves it, a repeated indirect intent sets it again. A repeated indirect
+  intent is judged once; a profile shared by intents is judged for each. A
+  reference chain too long to follow leaves the three rules and gOutputCS
+  undecided.
+  DE: 6.2.3: die Output-Intents des Katalogs, wie veraPDF sie liest: jedes
+  Dictionary des Arrays /OutputIntents, in Reihenfolge, gleich welches /S;
+  Referenzen fuehren nur zum benutzten Objekt mit dieser Nummer und
+  Generation. 6.2.3-1: ein /DestOutputProfile-Stream hat die Geraeteklasse
+  prtr oder mntr, den Farbraum RGB, CMYK oder GRAY und eine Hauptversion
+  unter 5 (Kopfbytes, wie LandrixEInvoicePdfIccHeader sie liest). 6.2.3-2:
+  die indirekten /DestOutputProfile-Referenzen (Objekt- und
+  Generationsnummer, aufgeloest oder nicht) gleichen alle der ersten;
+  direkte Profile zaehlen nicht; veraPDF meldet einen Fehler. 6.2.3-3: ein
+  Intent, dessen /S der Name GTS_PDFX ist, hat kein /DestOutputProfileRef
+  (eine Referenz auf null zaehlt). Der Farbraum des letzten Profils mit /S
+  /GTS_PDFA1 wird gOutputCS (leer, wenn sein Kopf keinen hat); ein Intent
+  ohne Profil-Stream laesst ihn stehen, ein wiederholter indirekter Intent
+  setzt ihn erneut. Ein wiederholter indirekter Intent wird einmal
+  beurteilt; ein Profil, das sich Intents teilen, fuer jeden. Eine
+  Referenzkette, die zu lang zum Verfolgen ist, laesst die drei Regeln und
+  gOutputCS offen. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckOutputIntents;
+var
+  Arr, Item, Intent, S, Raw, Prof: TLandrixEInvoicePdfObject;
+  I, FirstNum, FirstGen: Integer;
+  HaveFirst, Differs, IsA, IsX, Once, Unsure, CsKnown: Boolean;
+  H: TLandrixEInvoicePdfIccHeader;
+  Cs: AnsiString;
+  SeenIntent: array of Boolean;
+  { the headers read so far, by the profile's position in the document }
+  Cache: TStringList;
+  Box: TIccHeaderBox;
+  K: Integer;
+  Key: string;
+begin
+  FOutputCS := '';
+  FOutputCSKnown := True;
+  Unsure := False;
+  Arr := GenRef(FDoc.Catalog.RawGet('OutputIntents'), Unsure);
+  if (Arr = nil) or (Arr.Kind <> pok_Arr) then
+  begin
+    if Unsure then
+    begin
+      FIncomplete[par_6_2_3_1] := True;
+      FIncomplete[par_6_2_3_2] := True;
+      FIncomplete[par_6_2_3_3] := True;
+      FOutputCSKnown := False;
+    end;
+    Exit;
+  end;
+  Cs := '';
+  CsKnown := True;
+  HaveFirst := False;
+  Differs := False;
+  FirstNum := 0;
+  FirstGen := 0;
+  SeenIntent := nil;
+  SetLength(SeenIntent, FDoc.XrefCount);
+  for I := 0 to Integer(High(SeenIntent)) do
+    SeenIntent[I] := False;
+  Cache := TStringList.Create;
+  try
+    Cache.Sorted := True;
+    for I := 0 to Arr.ArrCount - 1 do
+    begin
+      Item := Arr.ArrItem(I);
+      Intent := GenRef(Item, Unsure);
+      if (Intent = nil) or not Intent.IsDictLike then
+        Continue;
+      Once := True;
+      if (Item <> nil) and (Item.Kind = pok_Ref) and (Item.RefNum >= 0) and (Item.RefNum <= High(SeenIntent)) then
+      begin
+        Once := not SeenIntent[Item.RefNum];
+        SeenIntent[Item.RefNum] := True;
+      end;
+      S := GenRef(Intent.RawGet('S'), Unsure);
+      IsA := (S <> nil) and (S.Kind = pok_Name) and (S.NameVal = 'GTS_PDFA1');
+      IsX := (S <> nil) and (S.Kind = pok_Name) and (S.NameVal = 'GTS_PDFX');
+      if Once and IsX and Known(Intent, 'DestOutputProfileRef') then
+        FailAt(par_6_2_3_3, Intent, 'PDF/X output intent with /DestOutputProfileRef');
+      Raw := Intent.RawGet('DestOutputProfile');
+      if (Raw <> nil) and (Raw.Kind = pok_Ref) then
+      begin
+        if not HaveFirst then
+        begin
+          HaveFirst := True;
+          FirstNum := Raw.RefNum;
+          FirstGen := Raw.RefGen;
+        end
+        else if not Differs and ((Raw.RefNum <> FirstNum) or (Raw.RefGen <> FirstGen)) then
+        begin
+          Differs := True;
+          FailAt(par_6_2_3_2, Intent, 'output profile ' + IntToStr(Raw.RefNum) + ' ' + IntToStr(Raw.RefGen) +
+            ' R, the first is ' + IntToStr(FirstNum) + ' ' + IntToStr(FirstGen) + ' R');
+        end;
+      end;
+      Prof := GenRef(Raw, Unsure);
+      if (Prof = nil) or (Prof.Kind <> pok_Stream) then
+        Continue;
+      Key := IntToStr(Prof.Serial);
+      if Cache.Find(Key, K) then
+        H := TIccHeaderBox(Cache.Objects[K]).H
+      else
+      begin
+        H := LandrixEInvoicePdfIccHeader(FDoc, Prof);
+        Box := TIccHeaderBox.Create;
+        Box.H := H;
+        Cache.AddObject(Key, Box);
+      end;
+      if not H.Known then
+        FIncomplete[par_6_2_3_1] := True
+      else if Once and not (((H.DeviceClass = 'prtr') or (H.DeviceClass = 'mntr')) and
+        ((H.ColorSpace = 'RGB ') or (H.ColorSpace = 'CMYK') or (H.ColorSpace = 'GRAY')) and (H.Major < 5)) then
+        FailAt(par_6_2_3_1, Prof, 'output profile with device class "' + AsciiText(H.DeviceClass) +
+          '", colour space "' + AsciiText(H.ColorSpace) + '", major version ' + IntToStr(H.Major));
+      if IsA then
+      begin
+        Cs := H.ColorSpace;
+        CsKnown := H.Known;
+      end;
+    end;
+  finally
+    for K := 0 to Cache.Count - 1 do
+      Cache.Objects[K].Free;
+    Cache.Free;
+  end;
+  if Unsure then
+  begin
+    FIncomplete[par_6_2_3_1] := True;
+    FIncomplete[par_6_2_3_2] := True;
+    FIncomplete[par_6_2_3_3] := True;
+  end;
+  FOutputCS := Cs;
+  FOutputCSKnown := not Unsure and CsKnown;
 end;
 
 { A metadata stream as veraPDF accepts one: a stream with the names /Type

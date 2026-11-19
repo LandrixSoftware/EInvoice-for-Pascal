@@ -134,6 +134,16 @@ Supported invoice standards are documented per release.
   content lexer now ends an inline image at `EI` before another `EI` and reads a real `/L` by its integer part.
   Test `PdfA.Graphics`; `PdfA.VeraPdf` agrees with veraPDF on all 1,600 PDFs and finds all 36 corpus failures of these
   rules.
+- PDF/A level 1, stage D, second part (output intents): 6.2.3-1 (the `/DestOutputProfile` of every catalog output
+  intent is a printer or monitor profile for RGB, CMYK or Gray below ICC version 5, judged from the header bytes
+  veraPDF reads, not from `/N`), 6.2.3-2 (all indirect `/DestOutputProfile` references are the same object) and
+  6.2.3-3 (no `/DestOutputProfileRef` in a PDF/X output intent), all fully implemented. References lead only to the
+  object in use with their generation. The profile header is decided only where veraPDF certainly reads the same
+  bytes (no filter or `FlateDecode` alone, intact zlib data, no decode parameters, an integer `/Length`, at least 20
+  unfiltered bytes, not encrypted, no external file); otherwise 6.2.3-1 is incomplete, and so are the three rules
+  for a reference chain too long to follow. The colour space of the PDF/A output profile is kept for the colour
+  rules that follow. Test `PdfA.OutputIntents`; 4 of the 5 corpus failures of these rules are found, the fifth (a
+  damaged profile stream) stays incomplete.
 
 ### Changed
 - Diagnostics: the business terms of a rule violation (and of the values the rule check and the

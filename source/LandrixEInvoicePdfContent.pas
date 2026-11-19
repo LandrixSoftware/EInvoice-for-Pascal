@@ -220,6 +220,50 @@ type
     function AssociatedMaybe(ANum: Integer): Boolean;
   end;
 
+  { The header fields of an ICC profile stream as veraPDF reads them for
+    6.2.3 and 6.2.4.2: one read of at most 128 decoded bytes. Known is False
+    when the bytes veraPDF reads are not certain (a filter other than
+    FlateDecode, decode parameters, a /Length that is no integer, an
+    external file, an encrypted document, zlib data that is not intact, an
+    unfiltered profile of fewer than 20 bytes); the other fields are then
+    empty. Count is the number of bytes read. DeviceClass (bytes 12 to 15)
+    and ColorSpace (bytes 16 to 19) are empty when the bytes are missing or
+    all zero; Major (byte 8) is -1 when fewer than 10 bytes were read.
+    DE: Die Kopffelder eines ICC-Profil-Streams, wie veraPDF sie fuer 6.2.3
+    und 6.2.4.2 liest: ein Lesevorgang von hoechstens 128 dekodierten Bytes.
+    Known ist False, wenn die Bytes, die veraPDF liest, nicht sicher sind
+    (ein anderer Filter als FlateDecode, Dekodierparameter, eine /Length,
+    die keine ganze Zahl ist, eine externe Datei, ein verschluesseltes
+    Dokument, zlib-Daten, die nicht intakt sind, ein ungefiltertes Profil
+    unter 20 Bytes); die uebrigen Felder sind dann leer. Count ist die Zahl der
+    gelesenen Bytes.
+    DeviceClass (Bytes 12 bis 15) und ColorSpace (Bytes 16 bis 19) sind
+    leer, wenn die Bytes fehlen oder alle null sind; Major (Byte 8) ist -1,
+    wenn weniger als 10 Bytes gelesen wurden. }
+  TLandrixEInvoicePdfIccHeader = record
+    Known: Boolean;
+    Count: Integer;
+    DeviceClass: AnsiString;
+    ColorSpace: AnsiString;
+    Major: Integer;
+  end;
+
+{ Follows the reference ARaw as veraPDF does: to the object in use with that
+  number and generation, nil (null) otherwise; a direct object as it is.
+  After 32 references AUnsure becomes True and the result is nil (veraPDF
+  may follow further).
+  DE: Folgt der Referenz ARaw wie veraPDF: zum benutzten Objekt mit dieser
+  Nummer und Generation, sonst nil (null); ein direktes Objekt unveraendert.
+  Nach 32 Referenzen wird AUnsure True und das Ergebnis nil (veraPDF folgt
+  womoeglich weiter). }
+function LandrixEInvoicePdfResolveRef(ADoc: TLandrixEInvoicePdfDocument; ARaw: TLandrixEInvoicePdfObject;
+  var AUnsure: Boolean): TLandrixEInvoicePdfObject;
+
+{ Reads the header of the ICC profile stream AStream.
+  DE: Liest den Kopf des ICC-Profil-Streams AStream. }
+function LandrixEInvoicePdfIccHeader(ADoc: TLandrixEInvoicePdfDocument;
+  AStream: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfIccHeader;
+
 implementation
 
 uses
@@ -3063,37 +3107,14 @@ end;
   there is none (veraPDF reads null); a direct object as it is. }
 function TLandrixEInvoicePdfContentWalk.ResolveRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
 var
-  E: TLandrixEInvoicePdfXrefEntry;
-  Depth, Num, Gen: Integer;
+  Unsure: Boolean;
 begin
-  Result := ARaw;
-  Depth := 0;
-  while (Result <> nil) and (Result.Kind = pok_Ref) do
+  Unsure := False;
+  Result := LandrixEInvoicePdfResolveRef(FDoc, ARaw, Unsure);
+  if Unsure then
   begin
-    Inc(Depth);
-    E := FDoc.XrefEntry(Result.RefNum);
-    if Depth > 32 then
-    begin
-      { veraPDF may follow it further }
-      FIncomplete := True;
-      FLimitHit := True;
-      Result := nil;
-      Exit;
-    end;
-    if not E.Known or (E.Kind = pxk_Free) or (E.Gen <> Result.RefGen) then
-    begin
-      Result := nil;
-      Exit;
-    end;
-    Gen := Result.RefGen;
-    Num := Result.RefNum;
-    Result := FDoc.GetObject(Num);
-    { the object header must carry the generation too }
-    if (Result <> nil) and (Result.OwnerNum = Num) and ((Result.OwnerGen <> Gen) or Result.HeaderGenBad) then
-    begin
-      Result := nil;
-      Exit;
-    end;
+    FIncomplete := True;
+    FLimitHit := True;
   end;
 end;
 
@@ -4051,6 +4072,150 @@ end;
 function TLandrixEInvoicePdfContentWalk.AssociatedMaybe(ANum: Integer): Boolean;
 begin
   Result := FAssocAll or ((ANum >= 0) and (ANum < Integer(Length(FAssocMaybe))) and FAssocMaybe[ANum]);
+end;
+
+function LandrixEInvoicePdfResolveRef(ADoc: TLandrixEInvoicePdfDocument; ARaw: TLandrixEInvoicePdfObject;
+  var AUnsure: Boolean): TLandrixEInvoicePdfObject;
+var
+  E: TLandrixEInvoicePdfXrefEntry;
+  Depth, Num, Gen: Integer;
+begin
+  Result := ARaw;
+  Depth := 0;
+  while (Result <> nil) and (Result.Kind = pok_Ref) do
+  begin
+    Inc(Depth);
+    E := ADoc.XrefEntry(Result.RefNum);
+    if Depth > 32 then
+    begin
+      AUnsure := True;
+      Result := nil;
+      Exit;
+    end;
+    if not E.Known or (E.Kind = pxk_Free) or (E.Gen <> Result.RefGen) then
+    begin
+      Result := nil;
+      Exit;
+    end;
+    Gen := Result.RefGen;
+    Num := Result.RefNum;
+    Result := ADoc.GetObject(Num);
+    { the object header must carry the generation too }
+    if (Result <> nil) and (Result.OwnerNum = Num) and ((Result.OwnerGen <> Gen) or Result.HeaderGenBad) then
+    begin
+      Result := nil;
+      Exit;
+    end;
+  end;
+end;
+
+{ A stream dictionary value that the decoder of this library reads as
+  veraPDF does: direct, or a reference veraPDF follows to the same object.
+  DE: Ein Wert eines Stream-Dictionarys, den der Dekoder dieser Bibliothek
+  wie veraPDF liest: direkt oder eine Referenz, der veraPDF zum selben
+  Objekt folgt. }
+function SameAsVeraPdf(ADoc: TLandrixEInvoicePdfDocument; ARaw: TLandrixEInvoicePdfObject): Boolean;
+var
+  Unsure: Boolean;
+begin
+  Result := True;
+  if (ARaw = nil) or (ARaw.Kind <> pok_Ref) then
+    Exit;
+  Unsure := False;
+  Result := (LandrixEInvoicePdfResolveRef(ADoc, ARaw, Unsure) <> nil) and not Unsure;
+end;
+
+{ Four header bytes from AStart as veraPDF takes them: empty when fewer were
+  read or all are zero.
+  DE: Vier Kopfbytes ab AStart, wie veraPDF sie nimmt: leer, wenn weniger
+  gelesen wurden oder alle null sind. }
+function IccField(const AData: TLandrixEInvoicePdfBytes; ACount, AStart: Integer): AnsiString;
+var
+  I: Integer;
+  AllZero: Boolean;
+begin
+  Result := '';
+  if ACount < AStart + 4 then
+    Exit;
+  AllZero := True;
+  for I := AStart to AStart + 3 do
+    if AData[I] <> 0 then
+      AllZero := False;
+  if AllZero then
+    Exit;
+  SetLength(Result, 4);
+  for I := 0 to 3 do
+    Result[I + 1] := AnsiChar(AData[AStart + I]);
+end;
+
+function LandrixEInvoicePdfIccHeader(ADoc: TLandrixEInvoicePdfDocument;
+  AStream: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfIccHeader;
+var
+  F, L: TLandrixEInvoicePdfObject;
+  Raw, Data: TLandrixEInvoicePdfBytes;
+  Flate: Boolean;
+begin
+  Result.Known := False;
+  Result.Count := 0;
+  Result.DeviceClass := '';
+  Result.ColorSpace := '';
+  Result.Major := -1;
+  if (AStream = nil) or (AStream.Kind <> pok_Stream) then
+    Exit;
+  { an external file or an encrypted document: not read here }
+  if (ADoc.DGet(AStream, 'F') <> nil) or ADoc.Encrypted or (ADoc.CryptError <> '') then
+    Exit;
+  { decided only where veraPDF and the decoder of this library certainly read
+    the same bytes: no /DP or /DecodeParms entry, no filter or FlateDecode
+    alone, a /Length that is a non-negative integer, directly or by a
+    reference veraPDF follows to the same object }
+  if (AStream.RawGet('DP') <> nil) or (AStream.RawGet('DecodeParms') <> nil) then
+    Exit;
+  if not SameAsVeraPdf(ADoc, AStream.RawGet('Filter')) or not SameAsVeraPdf(ADoc, AStream.RawGet('Length')) then
+    Exit;
+  L := ADoc.DGet(AStream, 'Length');
+  if (L = nil) or (L.Kind <> pok_Num) or not L.NumExact or (L.NumInt < 0) then
+    Exit;
+  F := ADoc.DGet(AStream, 'Filter');
+  if (F <> nil) and (F.Kind = pok_Arr) then
+  begin
+    if (F.ArrCount <> 1) or not SameAsVeraPdf(ADoc, F.ArrItem(0)) then
+      Exit;
+    F := ADoc.Resolve(F.ArrItem(0));
+    if F = nil then
+      Exit;
+  end;
+  if F = nil then
+    Flate := False
+  else if (F.Kind = pok_Name) and (F.NameVal = 'FlateDecode') then
+    Flate := True
+  else
+    Exit;
+  if not ADoc.GetStreamRaw(AStream, Raw) then
+    Exit;
+  { damaged zlib data: whether veraPDF reads the header before it notices
+    depends on where the damage is }
+  if Flate then
+  begin
+    if not LandrixEInvoicePdfInflateStrict(Raw, Data) then
+      Exit;
+  end
+  else
+  begin
+    { a short unfiltered profile: a /Length that cuts off white space before
+      endstream may be read differently }
+    if Length(Raw) < 20 then
+      Exit;
+    Data := Raw;
+  end;
+  Result.Known := True;
+  Result.Count := Integer(Length(Data));
+  if Result.Count > 128 then
+    Result.Count := 128;
+  Result.DeviceClass := IccField(Data, Result.Count, 12);
+  Result.ColorSpace := IccField(Data, Result.Count, 16);
+  if Result.Count >= 10 then
+    Result.Major := Data[8];
 end;
 
 end.

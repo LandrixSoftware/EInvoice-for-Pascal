@@ -1501,17 +1501,19 @@ begin
     LF + AData + LF + 'endstream' + LF + 'endobj' + LF;
 end;
 
-{ A one-page document: the page's content AContent (stream 4 with the
-  dictionary entries AContentDict), more page entries APage, the resources
-  ARes and further objects AExtra (numbers from 10 on). }
-function ContentPdf(const AContent, AContentDict, APage, ARes: AnsiString; const AExtra: array of AnsiString): AnsiString;
+{ A one-page document: more catalog entries ACatalog, the page's content
+  AContent (stream 4 with the dictionary entries AContentDict), more page
+  entries APage, the resources ARes and further objects AExtra (numbers from
+  10 on). }
+function CatalogPdf(const ACatalog, AContent, AContentDict, APage, ARes: AnsiString;
+  const AExtra: array of AnsiString): AnsiString;
 var
   Objs: array of AnsiString;
   I: Integer;
 begin
   Objs := nil;
   SetLength(Objs, 4);
-  Objs[0] := '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R >>' + LF + 'endobj' + LF;
+  Objs[0] := '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R ' + ACatalog + ' >>' + LF + 'endobj' + LF;
   Objs[1] := '2 0 obj' + LF + '<< /Type /Pages /Kids [3 0 R] /Count 1 >>' + LF + 'endobj' + LF;
   Objs[2] := '3 0 obj' + LF + '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R ' + APage +
     ' /Resources << ' + ARes + ' >> >>' + LF + 'endobj' + LF;
@@ -1523,6 +1525,12 @@ begin
       Objs[High(Objs)] := AExtra[I];
     end;
   Result := BuildPdf(GoodHeader, Objs, LF, FileId, LF);
+end;
+
+{ CatalogPdf without more catalog entries. }
+function ContentPdf(const AContent, AContentDict, APage, ARes: AnsiString; const AExtra: array of AnsiString): AnsiString;
+begin
+  Result := CatalogPdf('', AContent, AContentDict, APage, ARes, AExtra);
 end;
 
 function OutcomeOf(const APdf: AnsiString; ARule: TLandrixEInvoicePdfARule): TLandrixEInvoicePdfARuleOutcome;
@@ -2050,6 +2058,168 @@ begin
   CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '', [ObjText(10, '<< /Type /Annot /Subtype /Square ' +
     '/Rect [0 0 1 1] /F 4 /AP 12 0 R >>'), StreamObj(11, 'Unknown', ' /Subtype /Form /Ref 13 0 R'),
     StreamObj(12, '', ' /N 11 0 R')]), par_6_2_9_2, pro_Passed, 'an /AP that is a stream has no appearances');
+end;
+
+{ 128 bytes of an ICC profile header: the major version AMajor (byte 8), the
+  device class AClass (bytes 12 to 15), the colour space ASpace (bytes 16 to
+  19) and the signature acsp. }
+function IccHead(const AClass, ASpace: AnsiString; AMajor: Integer): AnsiString;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, 128);
+  for I := 1 to 128 do
+    Result[I] := #0;
+  Result[9] := AnsiChar(AMajor);
+  for I := 1 to 4 do
+  begin
+    Result[12 + I] := AClass[I];
+    Result[16 + I] := ASpace[I];
+    Result[36 + I] := AnsiString('acsp')[I];
+  end;
+end;
+
+{ AData as a zlib stream of one stored block; with ABreak the last byte of
+  the Adler-32 check value is wrong. }
+function ZlibStored(const AData: AnsiString; ABreak: Boolean): AnsiString;
+var
+  A, B: Cardinal;
+  I, N: Integer;
+begin
+  N := Length(AData);
+  A := 1;
+  B := 0;
+  for I := 1 to N do
+  begin
+    A := (A + Ord(AData[I])) mod 65521;
+    B := (B + A) mod 65521;
+  end;
+  if ABreak then
+    A := A xor 1;
+  Result := AnsiString(#$78#$01#$01);
+  Result := Result + AnsiChar(N and $FF);
+  Result := Result + AnsiChar(N shr 8);
+  Result := Result + AnsiChar((not N) and $FF);
+  Result := Result + AnsiChar(((not N) shr 8) and $FF);
+  Result := Result + AData;
+  Result := Result + AnsiChar(B shr 8);
+  Result := Result + AnsiChar(B and $FF);
+  Result := Result + AnsiChar(A shr 8);
+  Result := Result + AnsiChar(A and $FF);
+end;
+
+{ 6.2.3: output intents and their profiles. }
+procedure TestPdfAOutputIntents;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Rgb, Cmyk, Bad: AnsiString;
+  Chain: array of AnsiString;
+  I: Integer;
+begin
+  Bad := StreamObj(10, IccHead('scnr', 'RGB ', 4), ' /N 3');
+  Rgb := StreamObj(10, IccHead('mntr', 'RGB ', 4), ' /N 3');
+  Cmyk := StreamObj(11, IccHead('prtr', 'CMYK', 2), ' /N 4');
+  CheckOutcome(ContentPdf('', '', '', '', NoExtra), par_6_2_3_1, pro_Passed, 'no output intents');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '', [Rgb]),
+    par_6_2_3_1, pro_Passed, 'a monitor RGB profile');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 11 0 R >>]', '', '', '', '', [Cmyk]),
+    par_6_2_3_1, pro_Passed, 'a printer CMYK profile');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, IccHead('scnr', 'RGB ', 4), ' /N 3')]), par_6_2_3_1, pro_Failed, 'an input profile');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, IccHead('mntr', 'Lab ', 4), ' /N 3')]), par_6_2_3_1, pro_Failed, 'a Lab profile');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, IccHead('mntr', 'RGB ', 5), ' /N 3')]), par_6_2_3_1, pro_Failed, 'ICC version 5');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, Copy(IccHead('mntr', 'RGB ', 4), 1, 19), ' /N 3')]), par_6_2_3_1, pro_Incomplete,
+    'a short unfiltered header: a stale /Length may cut it');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, ZlibStored(Copy(IccHead('mntr', 'RGB ', 4), 1, 19), False), ' /N 3 /Filter /FlateDecode')]),
+    par_6_2_3_1, pro_Failed, 'a header too short for the colour space');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, IccHead('scnr', 'RGB ', 4), ' /N 3 /Filter [null]')]), par_6_2_3_1, pro_Incomplete,
+    'a filter array with null');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    ['10 0 obj' + LF + '<< /Length (12345678901234567890123456789012345678901234567890123456789012345678901234' +
+    '5678901234567890123456789012345678901234567890123456) /N 3 >>' + LF + 'stream' + LF +
+    IccHead('scnr', 'RGB ', 4) + LF + 'endstream' + LF + 'endobj' + LF]), par_6_2_3_1, pro_Incomplete,
+    'a /Length that is a string');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, Copy(IccHead('mntr', 'RGB ', 4), 1, 20), ' /N 4')]), par_6_2_3_1, pro_Passed,
+    'only the header fields count, not /N');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /Custom /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, IccHead('abst', 'RGB ', 4), ' /N 3')]), par_6_2_3_1, pro_Failed, 'any intent type is checked');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, '00', ' /N 3 /Filter /ASCIIHexDecode')]), par_6_2_3_1, pro_Incomplete,
+    'a filter veraPDF may read differently');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [ObjText(10, '42')]), par_6_2_3_1, pro_Passed, 'a profile that is no stream is no profile');
+  { 6.2.3-2 }
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >> ' +
+    '<< /S /GTS_PDFX /DestOutputProfile 10 0 R >>]', '', '', '', '', [Rgb]), par_6_2_3_2, pro_Passed,
+    'the same profile');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >> ' +
+    '<< /S /GTS_PDFX /DestOutputProfile 11 0 R >>]', '', '', '', '', [Rgb, Cmyk]), par_6_2_3_2, pro_Failed,
+    'two profiles');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >> ' +
+    '<< /S /GTS_PDFX /DestOutputProfile 10 0 R >> << /S /Custom /DestOutputProfile 99 0 R >>]', '', '', '', '',
+    [Rgb]), par_6_2_3_2, pro_Failed, 'a reference to a missing object counts');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >> ' +
+    '<< /S /GTS_PDFX /DestOutputProfile 42 >>]', '', '', '', '', [Rgb]), par_6_2_3_2, pro_Passed,
+    'a direct value does not count');
+  { 6.2.3-3 }
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFX /DestOutputProfileRef << >> >>]', '', '', '', '',
+    NoExtra), par_6_2_3_3, pro_Failed, 'a PDF/X intent with /DestOutputProfileRef');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFX /DestOutputProfileRef null >>]', '', '', '', '',
+    NoExtra), par_6_2_3_3, pro_Passed, 'a direct null is no entry');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFX /DestOutputProfileRef 12 0 R >>]', '', '', '', '',
+    [ObjText(12, 'null')]), par_6_2_3_3, pro_Failed, 'a reference to null is an entry');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfileRef << >> >>]', '', '', '', '',
+    NoExtra), par_6_2_3_3, pro_Passed, 'only PDF/X intents');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S (GTS_PDFX) /DestOutputProfileRef << >> >>]', '', '', '', '',
+    NoExtra), par_6_2_3_3, pro_Passed, 'a string /S is no PDF/X intent');
+  { references to another generation lead to null }
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 1 R >>]', '', '', '', '', [Bad]),
+    par_6_2_3_1, pro_Passed, 'a profile reference of another generation');
+  CheckOutcome(CatalogPdf('/OutputIntents [12 1 R]', '', '', '', '',
+    [ObjText(12, '<< /S /GTS_PDFX /DestOutputProfileRef true >>')]), par_6_2_3_3, pro_Passed,
+    'an intent reference of another generation');
+  { the bytes veraPDF reads }
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, ZlibStored(IccHead('scnr', 'RGB ', 4), False), ' /N 3 /Filter /FlateDecode')]), par_6_2_3_1,
+    pro_Failed, 'a FlateDecode profile is read');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, ZlibStored(IccHead('mntr', 'RGB ', 4), False), ' /N 3 /Filter [/FlateDecode]')]), par_6_2_3_1,
+    pro_Passed, 'a filter array of one FlateDecode');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, ZlibStored(IccHead('mntr', 'RGB ', 4), True), ' /N 3 /Filter /FlateDecode')]), par_6_2_3_1,
+    pro_Incomplete, 'a damaged check value');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, ZlibStored(IccHead('mntr', 'RGB ', 4), False), ' /N 3 /Filter /FlateDecode ' +
+    '/DecodeParms << /Predictor 2 /Columns 20 >>')]), par_6_2_3_1, pro_Incomplete, 'a predictor');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, ZlibStored(IccHead('mntr', 'RGB ', 4), False), ' /N 3 /Filter /FlateDecode ' +
+    '/DP << /Predictor 2 /Columns 20 >>')]), par_6_2_3_1, pro_Incomplete, 'a /DP entry veraPDF ignores');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, IccHead('scnr', 'RGB ', 4), ' /N 3 /F (profile.icc)')]), par_6_2_3_1, pro_Incomplete,
+    'an external file');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    [StreamObj(10, ZlibStored(IccHead('mntr', 'RGB ', 4), False), ' /N 3 /Filter 12 1 R'),
+    ObjText(12, '/FlateDecode')]), par_6_2_3_1, pro_Incomplete, 'a filter reference of another generation');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '',
+    ['10 0 obj' + LF + '<< /Length 12 1 R /N 3 >>' + LF + 'stream' + LF + IccHead('mntr', 'RGB ', 4) + LF +
+    'endstream' + LF + 'endobj' + LF, ObjText(12, '19')]), par_6_2_3_1, pro_Incomplete,
+    'a length reference of another generation');
+  { a chain of 40 references: veraPDF follows it }
+  Chain := nil;
+  SetLength(Chain, 41);
+  for I := 0 to 39 do
+    Chain[I] := ObjText(10 + I, IntToAnsi(11 + I) + ' 0 R');
+  Chain[40] := StreamObj(50, IccHead('scnr', 'RGB ', 4), ' /N 3');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', '', '', '', '', Chain),
+    par_6_2_3_1, pro_Incomplete, 'a reference chain too long to follow');
 end;
 
 { Round 64 of the reviews: a tiling pattern starts with the state its
@@ -2799,6 +2969,7 @@ begin
   RegisterTest('PdfA.Content8', TestPdfAContent8);
   RegisterTest('PdfA.Content9', TestPdfAContent9);
   RegisterTest('PdfA.Graphics', TestPdfAGraphics);
+  RegisterTest('PdfA.OutputIntents', TestPdfAOutputIntents);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 
