@@ -80,17 +80,36 @@ type
     hex digits, a name too long, an inline image filter that is not
     allowed, q nested too deep, a file specification with /EF but without
     /F and /UF strings, without /AFRelationship, or direct (never
-    associated).
+    associated); an operator ISO 32000-1 does not define; an ExtGState with
+    /TR, with /TR2 other than /Default, with /HTP; a halftone of another
+    type than 1 or 5, with /HalftoneName, with a /TransferFunction where
+    none may be or without one where one must be; a rendering intent
+    outside the four of ISO 32000-1; an image with /Alternates, with /OPI,
+    with /Interpolate true, with BitsPerComponent other than 1, 2, 4, 8 or
+    16; an image mask with BitsPerComponent other than 1; a form XObject
+    with /OPI, /PS or /Subtype2 /PS; a reference XObject; a PostScript
+    XObject; a blend mode outside ISO 32000-1.
     DE: Worum es bei einem Befund in einem Content-Stream geht: eine ganze
     Zahl, eine reelle Zahl ausserhalb des Bereichs oder zu nah an null, ein
     zu langer String, ein hexadezimaler String mit ungerader Zeichenzahl
     oder mit anderen Zeichen als Hex-Ziffern, ein zu langer Name, ein nicht
     erlaubter Filter eines Inline-Bilds, q zu tief verschachtelt, eine
     Dateispezifikation mit /EF ohne /F- und /UF-Strings, ohne
-    /AFRelationship oder direkt (nie zugeordnet). }
+    /AFRelationship oder direkt (nie zugeordnet); ein Operator, den ISO
+    32000-1 nicht definiert; ein ExtGState mit /TR, mit /TR2 ungleich
+    /Default, mit /HTP; ein Halftone eines anderen Typs als 1 oder 5, mit
+    /HalftoneName, mit /TransferFunction, wo keine sein darf, oder ohne,
+    wo eine sein muss; ein Rendering-Intent ausserhalb der vier aus ISO
+    32000-1; ein Bild mit /Alternates, mit /OPI, mit /Interpolate true, mit
+    BitsPerComponent ungleich 1, 2, 4, 8 oder 16; eine Bildmaske mit
+    BitsPerComponent ungleich 1; ein Form-XObject mit /OPI, /PS oder
+    /Subtype2 /PS; ein Referenz-XObject; ein PostScript-XObject; ein
+    Blend-Mode ausserhalb von ISO 32000-1. }
   TLandrixEInvoicePdfContentCheck = (pcc_Integer, pcc_Real, pcc_SmallReal, pcc_StringLength, pcc_HexOdd,
     pcc_HexDigits, pcc_NameLength, pcc_InlineFilter, pcc_Nesting, pcc_SpecNames, pcc_SpecRelationship,
-    pcc_SpecDirect);
+    pcc_SpecDirect, pcc_Undefined, pcc_TR, pcc_TR2, pcc_HTP, pcc_HalftoneType, pcc_HalftoneName,
+    pcc_HalftoneTransfer, pcc_Intent, pcc_ImageAlternates, pcc_ImageOPI, pcc_Interpolate, pcc_ImageBits,
+    pcc_MaskBits, pcc_FormPS, pcc_FormRef, pcc_PSXObject, pcc_BlendMode);
 
   { A finding that veraPDF certainly reports: the content stream object
     (for the /Contents array of a page its first stream) and a short text.
@@ -149,6 +168,19 @@ type
     { the pages veraPDF sees may differ: no finding is certain }
     FPagesUnsure: Boolean;
     FLimitHit: Boolean;
+    { findings outside any parse (the form dictionaries of annotation
+      appearances): check, object, text }
+    FRCheck: array of TLandrixEInvoicePdfContentCheck;
+    FRNum: array of Integer;
+    FRDetail: array of string;
+    FRCount: Integer;
+    { per object, the colorant classes a halftone may be visited in
+      anywhere in the file (bits HtPrimary, HtDefault, HtOther) }
+    FHtCtx: array of Byte;
+    FHtBuilt: Boolean;
+    FHtBroken: Boolean;
+    { veraPDF throws while validating: it reports nothing }
+    FThrows: Boolean;
     function ObjId(AObj: TLandrixEInvoicePdfObject): string;
     function ResolveRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
     function DGetRef(AObj: TLandrixEInvoicePdfObject; const AKey: AnsiString): TLandrixEInvoicePdfObject;
@@ -158,6 +190,11 @@ type
     procedure WalkPage(APage, AInherited: TLandrixEInvoicePdfObject);
     procedure Finish;
     procedure ScanTiling;
+    procedure ScanAlternates;
+    procedure AddRootFinding(ACheck: TLandrixEInvoicePdfContentCheck; ANum: Integer; const ADetail: string);
+    procedure CheckAppearanceForm(V, ARaw: TLandrixEInvoicePdfObject);
+    procedure BuildHalftoneContexts;
+    function HalftonePassesElsewhere(ANum: Integer; ATransferNull: Boolean): Boolean;
   public
     constructor Create(ADoc: TLandrixEInvoicePdfDocument);
     destructor Destroy; override;
@@ -292,6 +329,32 @@ const
     oc_Inline,
     oc_ExtGState, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other,
     oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other);
+
+  { the rendering intents of ISO 32000-1, Table 70 (6.2.6-1). DE: die
+    Rendering-Intents aus ISO 32000-1, Tabelle 70 (6.2.6-1). }
+  RenderingIntents: array[0..3] of AnsiString = ('RelativeColorimetric', 'AbsoluteColorimetric', 'Perceptual',
+    'Saturation');
+  { the blend modes of ISO 32000-1, 11.3.5 (6.2.10-1). DE: die Blend-Modes
+    aus ISO 32000-1, 11.3.5 (6.2.10-1). }
+  BlendModes: array[0..16] of AnsiString = ('Normal', 'Compatible', 'Multiply', 'Screen', 'Overlay', 'Darken',
+    'Lighten', 'ColorDodge', 'ColorBurn', 'HardLight', 'SoftLight', 'Difference', 'Exclusion', 'Hue', 'Saturation',
+    'Color', 'Luminosity');
+  { the colorant classes of a halftone for 6.2.5-6: top level or a primary
+    colorant (no transfer function), Default (any), another colorant (a
+    transfer function). DE: die Farbmittelklassen eines Halftones fuer
+    6.2.5-6: oberste Ebene oder ein Primaerfarbmittel (keine
+    Transferfunktion), Default (beliebig), ein anderes Farbmittel (eine
+    Transferfunktion). }
+  HtPrimary = 1;
+  HtDefault = 2;
+  HtOther = 4;
+  MaxHalftoneDepth = 32;
+  MaxImageDepth = 32;
+  { the kinds of image veraPDF builds: an image, the /Mask stream of one
+    (an image mask), the /SMask stream of one }
+  ik_Image = 0;
+  ik_Mask = 1;
+  ik_SMask = 2;
 
   { the filters 6.1.10-1 allows for inline images }
   InlineFilters: array[0..11] of AnsiString = ('ASCIIHexDecode', 'ASCII85Decode', 'FlateDecode', 'RunLengthDecode',
@@ -430,6 +493,8 @@ type
     Hex: Boolean;
     HexChars: Integer;
     HexInvalid: Boolean;
+    { strings: the number of decoded bytes }
+    ByteLen: Integer;
     { array items or dictionary values (owned by the pool) }
     Items: TObjectList;
     Keys: array of AnsiString;
@@ -840,6 +905,7 @@ begin
     Add(B);
   end;
   SetLength(Bytes, N);
+  Result.ByteLen := N;
   LandrixEInvoicePdfJavaStringLength(Bytes, CrLf, Result.LenLo, Result.LenHi);
 end;
 
@@ -860,6 +926,12 @@ begin
   Hi := -1;
   Closed := False;
   Inc(FPos);
+  { <~ starts an ASCII85 string for veraPDF: not followed }
+  if (FPos < FLen) and (FBuf[FPos] = Ord('~')) then
+  begin
+    FStatus := lxs_Unknown;
+    Exit;
+  end;
   while FPos < FLen do
   begin
     B := FBuf[FPos];
@@ -897,6 +969,7 @@ begin
     Inc(N);
   end;
   SetLength(Bytes, N);
+  Result.ByteLen := N;
   LandrixEInvoicePdfJavaStringLength(Bytes, 0, Result.LenLo, Result.LenHi);
 end;
 
@@ -916,6 +989,13 @@ begin
   I := Start;
   while I < Stop do
   begin
+    { a # with fewer than two characters left: veraPDF reads on past the
+      name, so the following tokens are not known }
+    if (FBuf[I] = Ord('#')) and (I + 2 >= Stop) then
+    begin
+      FStatus := lxs_Unknown;
+      Exit;
+    end;
     if (FBuf[I] = Ord('#')) and (I + 2 < Stop) then
     begin
       V1 := HexDigit(FBuf[I + 1]);
@@ -1105,7 +1185,7 @@ begin
   if K = 'BI' then
     Exit;
   Code := OpCode(K);
-  if (Code <> oc_None) or (K = 'true') or (K = 'false') or (K = 'null') then
+  if (Code <> oc_None) or (K = 'EI') or (K = 'true') or (K = 'false') or (K = 'null') then
     Result := lka_Accept
   else
     Result := lka_Reject;
@@ -1166,7 +1246,22 @@ begin
   if V = nil then
     V := D.Get('Length');
   if (V <> nil) and (V.Kind = cvk_Int) and (V.IntVal >= 0) then
-    L := V.IntVal;
+    L := V.IntVal
+  else if (V <> nil) and (V.Kind = cvk_Real) and (V.RealVal >= 0) then
+  begin
+    { veraPDF takes the integer part }
+    if V.RealVal >= 2147483647.0 then
+    begin
+      FStatus := lxs_Unknown;
+      Exit;
+    end;
+    L := Trunc(V.RealVal);
+  end
+  else if (V <> nil) and (V.Kind = cvk_Str) then
+  begin
+    FStatus := lxs_Unknown;
+    Exit;
+  end;
   Found := False;
   I := DataStart;
   while I + 1 < FLen do
@@ -1361,6 +1456,9 @@ type
     FInit: TGState;
     FStack: TGStack;
     FOp: string;
+    { graphics states, halftones and images checked by this parse }
+    FSeen: TStringList;
+    function SeenBefore(const AKey: string): Boolean;
     procedure Mark(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AWhat: string);
     procedure ExposeNumber(V: TCv);
     procedure ExposeString(V: TCv);
@@ -1379,10 +1477,37 @@ type
     procedure ReachPattern(const AName: AnsiString; AFill: Boolean);
     procedure RegisterAF(const AName: AnsiString);
     procedure InlineImage(D: TCv);
+    procedure CheckIntent(const AName: AnsiString; const AWhere: string);
+    procedure CheckExtGState(G, ARaw: TLandrixEInvoicePdfObject);
+    procedure CheckHalftone(V, ARaw: TLandrixEInvoicePdfObject; AClass: Integer; ADepth: Integer);
+    procedure CheckImage(V, ARaw: TLandrixEInvoicePdfObject; AKind, ADepth: Integer);
+    procedure CheckForm(V, ARaw: TLandrixEInvoicePdfObject);
+    procedure CheckInline(D: TCv);
     procedure Operate(AOp: TCv; AOps: TObjectList);
   public
+    destructor Destroy; override;
     procedure Run(ALex: TContentLexer);
   end;
+
+destructor TInterpreter.Destroy;
+begin
+  FSeen.Free;
+  inherited Destroy;
+end;
+
+{ AKey was checked by this parse before (context-free checks run once). }
+function TInterpreter.SeenBefore(const AKey: string): Boolean;
+begin
+  if FSeen = nil then
+  begin
+    FSeen := TStringList.Create;
+    FSeen.Sorted := True;
+    FSeen.Duplicates := dupIgnore;
+  end;
+  Result := FSeen.IndexOf(AKey) >= 0;
+  if not Result then
+    FSeen.Add(AKey);
+end;
 
 { The parse of AStreams (one stream, or the parts of a page's /Contents) in
   the context ARes/AState; the index of the parse, -1 if the stream is being
@@ -1581,6 +1706,90 @@ begin
     if (N = 1) or (N = 2) then
       Result := Integer(N);
   end;
+end;
+
+{ A key veraPDF's knownKey sees: stored with any value but a direct null
+  (a reference counts even when its object is null or missing).
+  DE: Ein Schluessel, den veraPDFs knownKey sieht: gespeichert mit jedem
+  Wert ausser einem direkten null (ein Verweis zaehlt, auch wenn sein
+  Objekt null ist oder fehlt). }
+function HasKey(V: TLandrixEInvoicePdfObject; const AKey: AnsiString): Boolean;
+var
+  R: TLandrixEInvoicePdfObject;
+begin
+  Result := False;
+  if (V = nil) or not V.IsDictLike then
+    Exit;
+  R := V.RawGet(AKey);
+  Result := (R <> nil) and (R.Kind <> pok_Null);
+end;
+
+{ The resolved value of AKey is a name (veraPDF reads names this way, a
+  string with the same text is none).
+  DE: Der aufgeloeste Wert von AKey ist ein Name (so liest veraPDF Namen,
+  ein String mit demselben Text ist keiner). }
+function NameKey(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject; const AKey: AnsiString;
+  out AName: AnsiString): Boolean;
+var
+  R: TLandrixEInvoicePdfObject;
+begin
+  AName := '';
+  R := AWalk.DGetRef(V, AKey);
+  Result := (R <> nil) and (R.Kind = pok_Name);
+  if Result then
+    AName := R.NameVal;
+end;
+
+{ "object 12" for a reference, "a direct object" otherwise. }
+function ObjLabel(AWalk: TLandrixEInvoicePdfContentWalk; ARaw: TLandrixEInvoicePdfObject): string;
+begin
+  if (ARaw <> nil) and (ARaw.Kind = pok_Ref) then
+    Result := 'object ' + IntToStr(AWalk.LastRefNum(ARaw))
+  else
+    Result := 'a direct object';
+end;
+
+{ The colorant class of a key of a Type 5 halftone (6.2.5-6): Default needs
+  nothing, Cyan, Magenta, Yellow and Black no transfer function, any other
+  colorant one.
+  DE: Die Farbmittelklasse eines Schluessels eines Halftones vom Typ 5
+  (6.2.5-6): Default braucht nichts, Cyan, Magenta, Yellow und Black keine
+  Transferfunktion, jedes andere Farbmittel eine. }
+function HalftoneClass(const AKey: AnsiString): Integer;
+begin
+  if AKey = 'Default' then
+    Result := HtDefault
+  else if (AKey = 'Cyan') or (AKey = 'Magenta') or (AKey = 'Yellow') or (AKey = 'Black') then
+    Result := HtPrimary
+  else
+    Result := HtOther;
+end;
+
+{ 6.2.9: what a form XObject dictionary has that it must not: /OPI, /PS or
+  /Subtype2 /PS (APs), /Ref (ARef), /Subtype /PS (ASub); '' for none.
+  DE: 6.2.9: was ein Form-XObject-Dictionary hat, das es nicht haben darf:
+  /OPI, /PS oder /Subtype2 /PS (APs), /Ref (ARef), /Subtype /PS (ASub);
+  '' fuer nichts. }
+procedure FormFaults(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject; out APs, ARef,
+  ASub: string);
+var
+  N: AnsiString;
+begin
+  APs := '';
+  ARef := '';
+  ASub := '';
+  if (V = nil) or not V.IsDictLike then
+    Exit;
+  if HasKey(V, 'OPI') then
+    APs := ' /OPI';
+  if HasKey(V, 'PS') then
+    APs := APs + ' /PS';
+  if NameKey(AWalk, V, 'Subtype2', N) and (N = 'PS') then
+    APs := APs + ' /Subtype2 /PS';
+  if HasKey(V, 'Ref') then
+    ARef := ' /Ref';
+  if NameKey(AWalk, V, 'Subtype', N) and (N = 'PS') then
+    ASub := ' /Subtype /PS';
 end;
 
 type
@@ -2071,6 +2280,7 @@ begin
   G := Lookup('ExtGState', AName, Raw);
   if (G = nil) or not G.IsDictLike then
     Exit;
+  CheckExtGState(G, Raw);
   F := FWalk.DGetRef(G, 'Font');
   if (F = nil) or (F.Kind <> pok_Arr) or (F.ArrCount = 0) then
     Exit;
@@ -2155,10 +2365,25 @@ var
   Res: TRes;
 begin
   X := Lookup('XObject', AName, Raw);
-  if (X = nil) or (X.Kind <> pok_Stream) or (Raw = nil) or (Raw.Kind <> pok_Ref) then
+  if X = nil then
     Exit;
+  { the lookup gives only /Image, /Form and /PS: veraPDF checks the
+    dictionary of each (also one that is no stream) }
   Sub := FWalk.DGetRef(X, 'Subtype');
-  if (Sub = nil) or (Sub.Kind <> pok_Name) or (Sub.NameVal <> 'Form') then
+  if (Sub = nil) or (Sub.Kind <> pok_Name) then
+    Exit;
+  if Sub.NameVal = 'PS' then
+  begin
+    Mark(pcc_PSXObject, False, 'PostScript XObject ' + ObjLabel(FWalk, Raw));
+    Exit;
+  end;
+  if Sub.NameVal = 'Image' then
+  begin
+    CheckImage(X, Raw, ik_Image, 0);
+    Exit;
+  end;
+  CheckForm(X, Raw);
+  if (X.Kind <> pok_Stream) or (Raw = nil) or (Raw.Kind <> pok_Ref) then
     Exit;
   Local := FWalk.DGetRef(X, 'Resources');
   if (Local <> nil) and not Local.IsDictLike then
@@ -2260,6 +2485,7 @@ begin
   if not FState.ColorOn and not ((IM <> nil) and (IM.Kind = cvk_Bool) and (IM.IntVal = 1)) then
     Exit;
   ExposeCos(D, True);
+  CheckInline(D);
   F := D.Get('F');
   if F = nil then
     F := D.Get('Filter');
@@ -2283,6 +2509,277 @@ begin
         if not InList(Item.Text, InlineFilters) then
           Mark(pcc_InlineFilter, False, 'inline image filter /' + TextOf(Item.Text));
       end;
+  end;
+end;
+
+{ 6.2.6-1: a rendering intent (a name) is one of the four.
+  DE: 6.2.6-1: ein Rendering-Intent (ein Name) ist einer der vier. }
+procedure TInterpreter.CheckIntent(const AName: AnsiString; const AWhere: string);
+begin
+  if not InList(AName, RenderingIntents) then
+    Mark(pcc_Intent, False, AWhere + ' rendering intent /' + TextOf(AName));
+end;
+
+{ 6.2.5-1 to -3, 6.2.6-1 (/RI), 6.2.10-1 (/BM) and the halftone of an
+  ExtGState selected by gs. /BM: a name, or the first name of an array.
+  DE: 6.2.5-1 bis -3, 6.2.6-1 (/RI), 6.2.10-1 (/BM) und der Halftone eines
+  mit gs gewaehlten ExtGState. /BM: ein Name oder der erste Name eines
+  Arrays. }
+procedure TInterpreter.CheckExtGState(G, ARaw: TLandrixEInvoicePdfObject);
+var
+  V, It: TLandrixEInvoicePdfObject;
+  W: string;
+  N: AnsiString;
+  I: Integer;
+begin
+  if SeenBefore('G' + FWalk.ObjId(G)) then
+    Exit;
+  W := 'ExtGState ' + ObjLabel(FWalk, ARaw);
+  if HasKey(G, 'TR') then
+    Mark(pcc_TR, False, W + ' has /TR');
+  if HasKey(G, 'TR2') and not (NameKey(FWalk, G, 'TR2', N) and (N = 'Default')) then
+    Mark(pcc_TR2, False, W + ' has /TR2 other than /Default');
+  if HasKey(G, 'HTP') then
+    Mark(pcc_HTP, False, W + ' has /HTP');
+  if NameKey(FWalk, G, 'RI', N) then
+    CheckIntent(N, W);
+  V := FWalk.DGetRef(G, 'BM');
+  if (V <> nil) and (V.Kind = pok_Name) then
+  begin
+    if not InList(V.NameVal, BlendModes) then
+      Mark(pcc_BlendMode, False, W + ' blend mode /' + TextOf(V.NameVal));
+  end
+  else if (V <> nil) and (V.Kind = pok_Arr) then
+    for I := 0 to V.ArrCount - 1 do
+    begin
+      It := FWalk.ResolveRef(V.ArrItem(I));
+      if (It <> nil) and (It.Kind = pok_Name) then
+      begin
+        if not InList(It.NameVal, BlendModes) then
+          Mark(pcc_BlendMode, False, W + ' blend mode /' + TextOf(It.NameVal));
+        Break;
+      end;
+    end;
+  V := FWalk.DGetRef(G, 'HT');
+  if (V <> nil) and ((V.Kind = pok_Name) or V.IsDictLike) then
+    CheckHalftone(V, G.RawGet('HT'), HtPrimary, 0);
+end;
+
+{ 6.2.5-4 to -6 for a halftone visited in the colorant class AClass (the
+  top level counts as HtPrimary): a name other than /Default has no type
+  and is its own name; a Type 5 halftone visits every dictionary or
+  stream it holds with the key as colorant. veraPDF checks an indirect
+  halftone once, in the first class it meets it: a failure of 6.2.5-6 is
+  certain only where no other class it may meet it in passes.
+  DE: 6.2.5-4 bis -6 fuer einen Halftone, besucht in der Farbmittelklasse
+  AClass (die oberste Ebene zaehlt als HtPrimary): ein Name ausser
+  /Default hat keinen Typ und ist sein eigener Name; ein Halftone vom Typ
+  5 besucht jedes Dictionary und jeden Stream darin mit dem Schluessel als
+  Farbmittel. veraPDF prueft einen indirekten Halftone einmal, in der
+  ersten Klasse, in der er ihn trifft: ein Verstoss gegen 6.2.5-6 ist nur
+  sicher, wo keine andere Klasse, in der er ihn treffen kann, besteht. }
+procedure TInterpreter.CheckHalftone(V, ARaw: TLandrixEInvoicePdfObject; AClass: Integer; ADepth: Integer);
+var
+  W: string;
+  T: Int64;
+  HasType, TfNull, Bad: Boolean;
+  Tf, Nm, C, Raw: TLandrixEInvoicePdfObject;
+  Num, I: Integer;
+begin
+  if ADepth > MaxHalftoneDepth then
+  begin
+    FParse.Uncertain := True;
+    Exit;
+  end;
+  if SeenBefore('H' + FWalk.ObjId(V) + ':' + IntToStr(AClass)) then
+    Exit;
+  W := 'halftone ' + ObjLabel(FWalk, ARaw);
+  if V.Kind = pok_Name then
+  begin
+    if V.NameVal <> 'Default' then
+    begin
+      Mark(pcc_HalftoneType, False, W + ' is the name /' + TextOf(V.NameVal));
+      Mark(pcc_HalftoneName, False, W + ' is the name /' + TextOf(V.NameVal));
+    end;
+    { a name has no transfer function; it is met at the top level only }
+    Exit;
+  end;
+  HasType := IntegerOf(FWalk.DGetRef(V, 'HalftoneType'), T);
+  if not HasType or ((T <> 1) and (T <> 5)) then
+    Mark(pcc_HalftoneType, False, W + ' has no HalftoneType 1 or 5');
+  Nm := FWalk.DGetRef(V, 'HalftoneName');
+  if (Nm <> nil) and (Nm.Kind = pok_Str) then
+    Mark(pcc_HalftoneName, False, W + ' has /HalftoneName');
+  Tf := FWalk.DGetRef(V, 'TransferFunction');
+  { any value counts, also an empty string or name }
+  TfNull := (Tf = nil) or (Tf.Kind = pok_Null);
+  Bad := ((AClass = HtPrimary) and not TfNull) or ((AClass = HtOther) and TfNull);
+  Num := -1;
+  if (ARaw <> nil) and (ARaw.Kind = pok_Ref) then
+    Num := FWalk.LastRefNum(ARaw);
+  if Bad then
+    Mark(pcc_HalftoneTransfer, (Num >= 0) and FWalk.HalftonePassesElsewhere(Num, TfNull),
+      W + ' /TransferFunction against its colorant');
+  if HasType and (T = 5) then
+    for I := 0 to Integer(V.DVals.Count) - 1 do
+    begin
+      Raw := TLandrixEInvoicePdfObject(V.DVals[I]);
+      C := FWalk.ResolveRef(Raw);
+      if (C <> nil) and C.IsDictLike then
+        CheckHalftone(C, Raw, HalftoneClass(V.DKeys[I]), ADepth + 1);
+    end;
+end;
+
+{ 6.2.8-1 to -5, 6.2.6-1 (/Intent) and 6.2.9-3 for an image veraPDF builds
+  (AKind): an image reached by Do or as an alternate, the /Mask stream of
+  one (an image mask: its own BitsPerComponent rule, no /Intent, no
+  nested /Mask), the /SMask stream of one (no nested masks or alternates).
+  An alternate dictionary without an image stream makes veraPDF throw: it
+  then reports nothing, so no content finding is certain.
+  DE: 6.2.8-1 bis -5, 6.2.6-1 (/Intent) und 6.2.9-3 fuer ein Bild, das
+  veraPDF baut (AKind): ein Bild ueber Do oder als Alternative, der
+  /Mask-Stream eines Bilds (eine Bildmaske: eigene
+  BitsPerComponent-Regel, kein /Intent, keine weitere /Mask), der
+  /SMask-Stream eines Bilds (keine weiteren Masken oder Alternativen). Ein
+  Alternativen-Dictionary ohne Bild-Stream laesst veraPDF eine Ausnahme
+  werfen: es meldet dann nichts, also ist kein Content-Befund sicher. }
+procedure TInterpreter.CheckImage(V, ARaw: TLandrixEInvoicePdfObject; AKind, ADepth: Integer);
+const
+  KindNames: array[ik_Image..ik_SMask] of string = ('image ', 'image mask ', 'soft mask ');
+var
+  W: string;
+  B, A, Item, Img, Raw: TLandrixEInvoicePdfObject;
+  Bits: Int64;
+  N: AnsiString;
+  I: Integer;
+begin
+  if (V = nil) or not V.IsDictLike then
+    Exit;
+  if ADepth > MaxImageDepth then
+  begin
+    FParse.Uncertain := True;
+    Exit;
+  end;
+  if SeenBefore('I' + FWalk.ObjId(V) + ':' + IntToStr(AKind)) then
+    Exit;
+  W := KindNames[AKind] + ObjLabel(FWalk, ARaw);
+  if HasKey(V, 'Alternates') then
+    Mark(pcc_ImageAlternates, False, W + ' has /Alternates');
+  if HasKey(V, 'OPI') then
+    Mark(pcc_ImageOPI, False, W + ' has /OPI');
+  B := FWalk.DGetRef(V, 'Interpolate');
+  if (B <> nil) and (B.Kind = pok_Bool) and B.BoolVal then
+    Mark(pcc_Interpolate, False, W + ' has /Interpolate true');
+  if IntegerOf(FWalk.DGetRef(V, 'BitsPerComponent'), Bits) then
+  begin
+    if AKind = ik_Mask then
+    begin
+      if Bits <> 1 then
+        Mark(pcc_MaskBits, False, W + ' has BitsPerComponent ' + IntToStr(Bits));
+    end
+    else if (Bits <> 1) and (Bits <> 2) and (Bits <> 4) and (Bits <> 8) and (Bits <> 16) then
+      Mark(pcc_ImageBits, False, W + ' has BitsPerComponent ' + IntToStr(Bits));
+  end;
+  if NameKey(FWalk, V, 'Subtype', N) and (N = 'PS') then
+    Mark(pcc_PSXObject, False, W + ' has /Subtype /PS');
+  if (AKind <> ik_Mask) and NameKey(FWalk, V, 'Intent', N) then
+    CheckIntent(N, W);
+  if AKind = ik_SMask then
+    Exit;
+  if AKind = ik_Image then
+  begin
+    Raw := V.RawGet('Mask');
+    Img := FWalk.ResolveRef(Raw);
+    if (Img <> nil) and (Img.Kind = pok_Stream) then
+      CheckImage(Img, Raw, ik_Mask, ADepth + 1);
+  end;
+  Raw := V.RawGet('SMask');
+  Img := FWalk.ResolveRef(Raw);
+  if (Img <> nil) and (Img.Kind = pok_Stream) then
+    CheckImage(Img, Raw, ik_SMask, ADepth + 1);
+  A := FWalk.DGetRef(V, 'Alternates');
+  if (A <> nil) and (A.Kind = pok_Arr) then
+    for I := 0 to A.ArrCount - 1 do
+    begin
+      { veraPDF takes dictionaries only (no streams) }
+      Item := FWalk.ResolveRef(A.ArrItem(I));
+      if (Item = nil) or (Item.Kind <> pok_Dict) then
+        Continue;
+      Raw := Item.RawGet('Image');
+      Img := FWalk.ResolveRef(Raw);
+      if (Img = nil) or (Img.Kind <> pok_Stream) then
+      begin
+        { veraPDF throws and reports nothing }
+        FWalk.FThrows := True;
+        FWalk.FIncomplete := True;
+        Continue;
+      end;
+      CheckImage(Img, Raw, ik_Image, ADepth + 1);
+    end;
+end;
+
+{ 6.2.9-1 to -3 for a form XObject reached by Do. DE: 6.2.9-1 bis -3 fuer
+  ein mit Do erreichtes Form-XObject. }
+procedure TInterpreter.CheckForm(V, ARaw: TLandrixEInvoicePdfObject);
+var
+  APs, ARef, ASub: string;
+begin
+  FormFaults(FWalk, V, APs, ARef, ASub);
+  if APs <> '' then
+    Mark(pcc_FormPS, False, 'form XObject ' + ObjLabel(FWalk, ARaw) + ' has' + APs);
+  if ARef <> '' then
+    Mark(pcc_FormRef, False, 'form XObject ' + ObjLabel(FWalk, ARaw) + ' has' + ARef);
+  if ASub <> '' then
+    Mark(pcc_PSXObject, False, 'form XObject ' + ObjLabel(FWalk, ARaw) + ' has' + ASub);
+end;
+
+{ An inline image is an image for 6.2.8-1 to -4 and 6.2.6-1 (veraPDF gives
+  it no subtype, so 6.2.9-3 never applies); /I and /BPC are read before
+  /Interpolate and /BitsPerComponent.
+  DE: Ein Inline-Bild ist ein Bild fuer 6.2.8-1 bis -4 und 6.2.6-1 (veraPDF
+  gibt ihm keinen Subtype, 6.2.9-3 gilt also nie); /I und /BPC werden vor
+  /Interpolate und /BitsPerComponent gelesen. }
+procedure TInterpreter.CheckInline(D: TCv);
+var
+  V: TCv;
+  Bits: Int64;
+begin
+  V := D.Get('Intent');
+  if (V <> nil) and (V.Kind = cvk_Name) then
+    CheckIntent(V.Text, 'inline image');
+  if D.Get('Alternates') <> nil then
+    Mark(pcc_ImageAlternates, False, 'inline image has /Alternates');
+  if D.Get('OPI') <> nil then
+    Mark(pcc_ImageOPI, False, 'inline image has /OPI');
+  V := D.Get('I');
+  if V = nil then
+    V := D.Get('Interpolate');
+  if (V <> nil) and (V.Kind = cvk_Bool) and (V.IntVal = 1) then
+    Mark(pcc_Interpolate, False, 'inline image has /Interpolate true');
+  V := D.Get('BPC');
+  if V = nil then
+    V := D.Get('BitsPerComponent');
+  if V <> nil then
+  begin
+    Bits := 1;
+    if V.Kind = cvk_Int then
+      Bits := V.IntVal
+    else if V.Kind = cvk_Real then
+    begin
+      if V.RealVal >= 9.0E18 then
+        Bits := High(Int64)
+      else if V.RealVal <= -9.0E18 then
+        Bits := Low(Int64)
+      else
+        Bits := Trunc(V.RealVal);
+    end
+    else if V.Kind = cvk_Str then
+    begin
+      { a string counts its decoded bytes }
+      Bits := V.ByteLen;
+    end;
+    if (Bits <> 1) and (Bits <> 2) and (Bits <> 4) and (Bits <> 8) and (Bits <> 16) then
+      Mark(pcc_ImageBits, False, 'inline image has BitsPerComponent ' + IntToStr(Bits));
   end;
 end;
 
@@ -2331,8 +2828,13 @@ begin
           ExposeNumber(L1);
       end;
     oc_Intent:
-      if FState.ColorOn and IsKind(L1, cvk_Name) then
+      { veraPDF builds ri only while colour operators count. DE: veraPDF baut
+      ri nur, solange Farboperatoren zaehlen. }
+    if FState.ColorOn and IsKind(L1, cvk_Name) then
+      begin
         ExposeName(L1);
+        CheckIntent(L1.Text, 'ri');
+      end;
     oc_Push:
       begin
         SetLength(FStack, Length(FStack) + 1);
@@ -2471,6 +2973,10 @@ begin
     oc_Inline:
       if AOp.ImageDict <> nil then
         InlineImage(AOp.ImageDict);
+    oc_None:
+      { 6.2.2-1, also between BX and EX. DE: 6.2.2-1, auch zwischen BX und
+        EX. }
+      Mark(pcc_Undefined, False, 'undefined operator');
   else
     { sh, gs, Tr, painting, text objects, marked content end, BX/EX and
       unknown operators pass nothing on }
@@ -2719,7 +3225,108 @@ begin
     WalkPages(Pages, nil, 0);
   end;
   ScanTiling;
+  ScanAlternates;
   Finish;
+end;
+
+{ veraPDF throws (and reports nothing) on an image whose /Alternates holds a
+  dictionary without an image stream. Whether it reaches such an image
+  depends on the content it reads first, so any such dictionary anywhere
+  in the file leaves every content rule incomplete.
+  DE: veraPDF wirft eine Ausnahme (und meldet nichts) bei einem Bild, dessen
+  /Alternates ein Dictionary ohne Bild-Stream enthaelt. Ob es so ein Bild
+  erreicht, haengt davon ab, welchen Inhalt es zuerst liest; daher laesst
+  jedes solche Dictionary irgendwo in der Datei jede Content-Regel
+  unvollstaendig. }
+procedure TLandrixEInvoicePdfContentWalk.ScanAlternates;
+const
+  MaxScanNodes = 2000000;
+  MaxScanDepth = 200;
+var
+  N, Count, Nodes: Integer;
+  O: TLandrixEInvoicePdfObject;
+  X: TLandrixEInvoicePdfXrefEntry;
+  Done: array of Boolean;
+
+  procedure Visit(V: TLandrixEInvoicePdfObject; ADepth: Integer);
+  var
+    I, M: Integer;
+    A, Item, Img, Raw: TLandrixEInvoicePdfObject;
+  begin
+    if (V = nil) or FThrows then
+      Exit;
+    Inc(Nodes);
+    if (Nodes > MaxScanNodes) or (ADepth > MaxScanDepth) then
+    begin
+      FThrows := True;
+      Exit;
+    end;
+    case V.Kind of
+      pok_Arr:
+        for I := 0 to V.ArrCount - 1 do
+          if (V.ArrItem(I) <> nil) and (V.ArrItem(I).Kind <> pok_Ref) then
+            Visit(V.ArrItem(I), ADepth + 1);
+      pok_Dict, pok_Stream:
+        begin
+          Raw := V.RawGet('Alternates');
+          A := ResolveRef(Raw);
+          { an indirect array is looked at once }
+          M := LastRefNum(Raw);
+          if (M >= 0) and (M < Count) then
+          begin
+            if Done[M] then
+              A := nil
+            else
+              Done[M] := True;
+          end;
+          if (A <> nil) and (A.Kind = pok_Arr) then
+            for I := 0 to A.ArrCount - 1 do
+            begin
+              Inc(Nodes);
+              if Nodes > MaxScanNodes then
+              begin
+                FThrows := True;
+                Exit;
+              end;
+              Item := ResolveRef(A.ArrItem(I));
+              if (Item = nil) or (Item.Kind <> pok_Dict) then
+                Continue;
+              Img := DGetRef(Item, 'Image');
+              if (Img = nil) or (Img.Kind <> pok_Stream) then
+              begin
+                FThrows := True;
+                Exit;
+              end;
+            end;
+          for I := 0 to Integer(V.DVals.Count) - 1 do
+            if (V.DVals[I] <> nil) and (TLandrixEInvoicePdfObject(V.DVals[I]).Kind <> pok_Ref) then
+              Visit(TLandrixEInvoicePdfObject(V.DVals[I]), ADepth + 1);
+        end;
+    else
+      { numbers, strings, names: nothing }
+    end;
+  end;
+
+begin
+  Count := FDoc.XrefCount;
+  Nodes := 0;
+  Done := nil;
+  SetLength(Done, Count);
+  for N := 0 to Count - 1 do
+    Done[N] := False;
+  for N := 0 to Count - 1 do
+  begin
+    if FThrows then
+      Break;
+    X := FDoc.XrefEntry(N);
+    if not X.Known or (X.Kind = pxk_Free) then
+      Continue;
+    O := FDoc.GetObject(N);
+    if O <> nil then
+      Visit(O, 0);
+  end;
+  if FThrows then
+    FIncomplete := True;
 end;
 
 { veraPDF also reads a tiling pattern that stands where a colour space is
@@ -2996,8 +3603,9 @@ begin
     A := ResolveRef(Annots.ArrItem(I));
     if (A = nil) or (A.Kind <> pok_Dict) then
       Continue;
+    { an /AP that is a stream gives veraPDF no appearances }
     AP := DGetRef(A, 'AP');
-    if (AP = nil) or not AP.IsDictLike then
+    if (AP = nil) or (AP.Kind <> pok_Dict) then
       Continue;
     for K := 0 to High(ApKeys) do
     begin
@@ -3009,6 +3617,7 @@ begin
       begin
         if Raw.Kind <> pok_Ref then
           Continue;
+        CheckAppearanceForm(V, Raw);
         Local := DGetRef(V, 'Resources');
         if (Local <> nil) and not Local.IsDictLike then
           Local := nil;
@@ -3023,6 +3632,7 @@ begin
           S2 := ResolveRef(Raw2);
           if (S2 = nil) or (S2.Kind <> pok_Stream) or (Raw2.Kind <> pok_Ref) then
             Continue;
+          CheckAppearanceForm(S2, Raw2);
           Local := DGetRef(S2, 'Resources');
           if (Local <> nil) and not Local.IsDictLike then
             Local := nil;
@@ -3033,6 +3643,164 @@ begin
         end;
     end;
   end;
+end;
+
+{ A finding outside any parse, once per check and object (at most
+  MaxFindingsPerCheck per check). }
+procedure TLandrixEInvoicePdfContentWalk.AddRootFinding(ACheck: TLandrixEInvoicePdfContentCheck; ANum: Integer;
+  const ADetail: string);
+var
+  I, N: Integer;
+begin
+  N := 0;
+  for I := 0 to FRCount - 1 do
+    if FRCheck[I] = ACheck then
+    begin
+      if FRNum[I] = ANum then
+        Exit;
+      Inc(N);
+    end;
+  if N >= MaxFindingsPerCheck then
+    Exit;
+  if FRCount >= Length(FRCheck) then
+  begin
+    SetLength(FRCheck, 16 + 2 * FRCount);
+    SetLength(FRNum, 16 + 2 * FRCount);
+    SetLength(FRDetail, 16 + 2 * FRCount);
+  end;
+  FRCheck[FRCount] := ACheck;
+  FRNum[FRCount] := ANum;
+  FRDetail[FRCount] := ADetail;
+  Inc(FRCount);
+end;
+
+{ 6.2.9-1 to -3: veraPDF builds every appearance stream as a form XObject,
+  whatever its /Subtype.
+  DE: 6.2.9-1 bis -3: veraPDF baut jeden Erscheinungsbild-Stream als
+  Form-XObject, gleich welchen /Subtype er hat. }
+procedure TLandrixEInvoicePdfContentWalk.CheckAppearanceForm(V, ARaw: TLandrixEInvoicePdfObject);
+var
+  APs, ARef, ASub: string;
+  Num: Integer;
+begin
+  FormFaults(Self, V, APs, ARef, ASub);
+  Num := LastRefNum(ARaw);
+  if APs <> '' then
+    AddRootFinding(pcc_FormPS, Num, 'appearance form XObject has' + APs);
+  if ARef <> '' then
+    AddRootFinding(pcc_FormRef, Num, 'appearance form XObject has' + ARef);
+  if ASub <> '' then
+    AddRootFinding(pcc_PSXObject, Num, 'appearance form XObject has' + ASub);
+end;
+
+{ The colorant classes each object may be visited in as a halftone: the
+  value of any /HT (top level) and of any key of a dictionary whose
+  HalftoneType reads as 5 (more than veraPDF visits, never less).
+  DE: Die Farbmittelklassen, in denen jedes Objekt als Halftone besucht
+  werden kann: der Wert jedes /HT (oberste Ebene) und jedes Schluessels
+  eines Dictionarys, dessen HalftoneType als 5 gelesen wird (mehr, als
+  veraPDF besucht, nie weniger). }
+procedure TLandrixEInvoicePdfContentWalk.BuildHalftoneContexts;
+const
+  MaxScanNodes = 2000000;
+  MaxScanDepth = 200;
+var
+  N, Count, Nodes: Integer;
+  O: TLandrixEInvoicePdfObject;
+  X: TLandrixEInvoicePdfXrefEntry;
+
+  procedure Note(ARaw: TLandrixEInvoicePdfObject; AClass: Integer);
+  var
+    M: Integer;
+  begin
+    if (ARaw = nil) or (ARaw.Kind <> pok_Ref) then
+      Exit;
+    M := LastRefNum(ARaw);
+    if (M >= 0) and (M < Count) then
+      FHtCtx[M] := Byte(FHtCtx[M] or AClass);
+  end;
+
+  procedure Visit(V: TLandrixEInvoicePdfObject; ADepth: Integer);
+  var
+    I: Integer;
+    T: Int64;
+    K: TLandrixEInvoicePdfObject;
+    Five: Boolean;
+  begin
+    if (V = nil) or FHtBroken then
+      Exit;
+    Inc(Nodes);
+    if (Nodes > MaxScanNodes) or (ADepth > MaxScanDepth) then
+    begin
+      FHtBroken := True;
+      Exit;
+    end;
+    case V.Kind of
+      pok_Arr:
+        for I := 0 to V.ArrCount - 1 do
+          if (V.ArrItem(I) <> nil) and (V.ArrItem(I).Kind <> pok_Ref) then
+            Visit(V.ArrItem(I), ADepth + 1);
+      pok_Dict, pok_Stream:
+        begin
+          Note(V.RawGet('HT'), HtPrimary);
+          Five := IntegerOf(DGetRef(V, 'HalftoneType'), T) and (T = 5);
+          for I := 0 to Integer(V.DVals.Count) - 1 do
+          begin
+            K := TLandrixEInvoicePdfObject(V.DVals[I]);
+            if K = nil then
+              Continue;
+            if K.Kind = pok_Ref then
+            begin
+              if Five then
+                Note(K, HalftoneClass(V.DKeys[I]));
+            end
+            else
+              Visit(K, ADepth + 1);
+          end;
+        end;
+    else
+      { numbers, strings, names: nothing }
+    end;
+  end;
+
+begin
+  FHtBuilt := True;
+  Count := FDoc.XrefCount;
+  SetLength(FHtCtx, Count);
+  for N := 0 to Count - 1 do
+    FHtCtx[N] := 0;
+  Nodes := 0;
+  for N := 0 to Count - 1 do
+  begin
+    if FHtBroken then
+      Break;
+    X := FDoc.XrefEntry(N);
+    if not X.Known or (X.Kind = pxk_Free) then
+      Continue;
+    O := FDoc.GetObject(N);
+    if O <> nil then
+      Visit(O, 0);
+  end;
+end;
+
+{ Object ANum, visited as a halftone with a transfer function or not
+  (ATransferNull), may pass 6.2.5-6 in another class veraPDF may meet it
+  in first.
+  DE: Objekt ANum, als Halftone mit oder ohne Transferfunktion
+  (ATransferNull) besucht, kann 6.2.5-6 in einer anderen Klasse bestehen,
+  in der veraPDF es zuerst treffen kann. }
+function TLandrixEInvoicePdfContentWalk.HalftonePassesElsewhere(ANum: Integer; ATransferNull: Boolean): Boolean;
+var
+  M: Integer;
+begin
+  if not FHtBuilt then
+    BuildHalftoneContexts;
+  Result := True;
+  if FHtBroken or (ANum < 0) or (ANum >= Integer(Length(FHtCtx))) then
+    Exit;
+  M := FHtCtx[ANum];
+  Result := ((M and HtDefault) <> 0) or (((M and HtPrimary) <> 0) and ATransferNull) or
+    (((M and HtOther) <> 0) and not ATransferNull);
 end;
 
 { veraPDF validates a content stream once, in whichever context it meets it
@@ -3142,7 +3910,7 @@ begin
   { a stream not read with certainty, or not parsed at a limit, may reach
     any stream (also page contents and appearances) in another context
     first }
-  if FPagesUnsure or FAnyUncertain or FLimitHit then
+  if FPagesUnsure or FAnyUncertain or FLimitHit or FThrows then
     for G := 0 to NG - 1 do
       Reach[G] := False;
   for Chk := Low(TLandrixEInvoicePdfContentCheck) to High(TLandrixEInvoicePdfContentCheck) do
@@ -3238,6 +4006,26 @@ begin
       end;
     end;
   end;
+
+  { the findings outside any parse: certain where the pages are. DE: die
+    Befunde ausserhalb jeder Analyse: sicher, wo die Seiten es sind. }
+  for I := 0 to FRCount - 1 do
+    if FPagesUnsure or FThrows then
+      FUncertain[FRCheck[I]] := True
+    else
+    begin
+      if FFindingCount >= Length(FFindings) then
+        SetLength(FFindings, 16 + 2 * FFindingCount);
+      Num := FRNum[I];
+      FFindings[FFindingCount].Check := FRCheck[I];
+      FFindings[FFindingCount].ObjNum := Num;
+      if Num >= 0 then
+        FFindings[FFindingCount].ObjGen := FDoc.XrefEntry(Num).Gen
+      else
+        FFindings[FFindingCount].ObjGen := -1;
+      FFindings[FFindingCount].Detail := 'object ' + IntToStr(Num) + ': ' + FRDetail[I];
+      Inc(FFindingCount);
+    end;
 end;
 
 function TLandrixEInvoicePdfContentWalk.FindingCount: Integer;

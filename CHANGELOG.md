@@ -119,6 +119,21 @@ Supported invoice standards are documented per release.
   them (annotations, XObjects, fonts, structure elements). Tests `PdfA.Content` to `PdfA.Content9`; `PdfA.VeraPdf`
   still agrees with veraPDF on all 1,600 PDFs, and the seven corpus failures in content streams it missed before are
   found.
+- PDF/A level 1, stage D, first part: the graphics rules 6.2.2-1 (operators ISO 32000-1 does not define, also between
+  `BX` and `EX`), 6.2.5-1 to -6 (`/TR`, `/TR2`, `/HTP` of an ExtGState; halftone type, `/HalftoneName` and
+  `/TransferFunction` per colorant, Type 5 halftones included), 6.2.6-1 (rendering intents of `ri`, of an ExtGState
+  `/RI` and of an image `/Intent`), 6.2.8-1 to -5 (`/Alternates`, `/OPI`, `/Interpolate` and `BitsPerComponent` of
+  images, inline images, their `/Mask` and `/SMask` streams and alternates), 6.2.9-1 to -3 (form XObjects with `/OPI`,
+  `/PS`, `/Subtype2 /PS` or `/Ref`, PostScript XObjects) and 6.2.10-1 (blend modes; of an array its first name), all
+  fully implemented. They judge the objects veraPDF builds from the content it reads: the ExtGState a `gs` selects, the
+  XObject a `Do` calls (also an image dictionary that is no stream), every annotation appearance stream as a form
+  whatever its `/Subtype` (an `/AP` that is a stream gives none, also for the earlier content rules); unused resources
+  are not judged. A halftone veraPDF may meet first under another colorant leaves 6.2.5-6 incomplete; an alternate
+  dictionary without an image stream anywhere in the file (veraPDF throws on it) leaves every content rule incomplete,
+  and so does a content stream with a name ending in an unfinished `#` escape or with an ASCII85 string `<~...~>`. The
+  content lexer now ends an inline image at `EI` before another `EI` and reads a real `/L` by its integer part.
+  Test `PdfA.Graphics`; `PdfA.VeraPdf` agrees with veraPDF on all 1,600 PDFs and finds all 36 corpus failures of these
+  rules.
 
 ### Changed
 - Diagnostics: the business terms of a rule violation (and of the values the rule check and the

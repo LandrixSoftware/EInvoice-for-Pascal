@@ -1882,6 +1882,176 @@ begin
     pro_Failed, 'a tiling pattern only as a pattern');
 end;
 
+{ Stage D1 of 6.2: undefined operators, graphics states, halftones,
+  rendering intents, images, masks, forms, PostScript XObjects and blend
+  modes, on the objects veraPDF builds from the content it reads. }
+procedure TestPdfAGraphics;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Ht1, Img, Form, Annot: AnsiString;
+begin
+  { 6.2.2-1 }
+  CheckOutcome(ContentPdf('q Unknown Q', '', '', '', NoExtra), par_6_2_2_1, pro_Failed, 'an undefined operator');
+  CheckOutcome(ContentPdf('BX Unknown EX', '', '', '', NoExtra), par_6_2_2_1, pro_Failed, 'BX does not excuse it');
+  CheckOutcome(ContentPdf('true false null q Q', '', '', '', NoExtra), par_6_2_2_1, pro_Passed,
+    'true, false and null are operands');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 ID x EI EI Q', '', '', '', NoExtra), par_6_2_2_1, pro_Failed,
+    'EI before EI ends the image, the second is undefined');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /L 11.0 ID xEI /Bad ri EI Q', '', '', '', NoExtra),
+    par_6_2_6_1, pro_Passed, 'an inline /L 11.0 counts as 11');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 10 0 R >>',
+    [StreamObj(10, 'Unknown', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_2_2_1, pro_Failed,
+    'an undefined operator in a form');
+  CheckOutcome(ContentPdf('q Q', '', '', '', [StreamObj(10, 'Unknown', '')]), par_6_2_2_1, pro_Passed,
+    'a stream nothing reaches');
+
+  { 6.2.5-1 to -3 }
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /TR 10 0 R >> >>', [ObjText(10, 'null')]),
+    par_6_2_5_1, pro_Failed, '/TR referring to null is there');
+  CheckOutcome(ContentPdf('q Q', '', '', '/ExtGState << /G << /TR /Identity >> >>', NoExtra), par_6_2_5_1,
+    pro_Passed, 'an ExtGState no gs selects');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /TR null >> >>', NoExtra), par_6_2_5_1, pro_Passed,
+    'a direct null is no key');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /TR2 /Default >> >>', NoExtra), par_6_2_5_2,
+    pro_Passed, '/TR2 /Default');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /TR2 (Default) >> >>', NoExtra), par_6_2_5_2,
+    pro_Failed, '/TR2 as a string');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HTP [0 1] >> >>', NoExtra), par_6_2_5_3, pro_Failed,
+    '/HTP');
+
+  { 6.2.5-4 to -6 }
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT /Default >> >>', NoExtra), par_6_2_5_4,
+    pro_Passed, '/HT /Default');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT /Bogus >> >>', NoExtra), par_6_2_5_4, pro_Failed,
+    'a halftone name has no type');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT /Bogus >> >>', NoExtra), par_6_2_5_5, pro_Failed,
+    'a halftone name is its name');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 1.9 >> >> >>', NoExtra),
+    par_6_2_5_4, pro_Passed, 'HalftoneType 1.9 reads as 1');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 6 >> >> >>', NoExtra),
+    par_6_2_5_4, pro_Failed, 'HalftoneType 6');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 1 /HalftoneName /N >> >> >>',
+    NoExtra), par_6_2_5_5, pro_Passed, 'a /HalftoneName name is none');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 1 /HalftoneName () >> >> >>',
+    NoExtra), par_6_2_5_5, pro_Failed, 'an empty /HalftoneName string');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 1 /TransferFunction /Identity ' +
+    '>> >> >>', NoExtra), par_6_2_5_6, pro_Failed, 'a transfer function at the top level');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 1 /TransferFunction () >> >> >>',
+    NoExtra), par_6_2_5_6, pro_Failed, 'an empty transfer function is one');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 5 /Default << /HalftoneType 1 ' +
+    '/TransferFunction /Identity >> /Cyan << /HalftoneType 1 >> /Spot << /HalftoneType 1 /TransferFunction /Identity ' +
+    '>> >> >> >>', NoExtra), par_6_2_5_6, pro_Passed, 'Type 5 with the colorants as required');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 5 /Red << /HalftoneType 1 >> ' +
+    '>> >> >>', NoExtra), par_6_2_5_6, pro_Failed, 'a spot colorant without transfer function');
+  Ht1 := ObjText(10, '<< /HalftoneType 1 >>');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 5 /Spot 10 0 R >> >> >>', [Ht1]),
+    par_6_2_5_6, pro_Failed, 'an indirect halftone met only as a spot colorant');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 5 /Default 10 0 R /Spot 10 0 R ' +
+    '>> >> >>', [Ht1]), par_6_2_5_6, pro_Incomplete, 'veraPDF checks a shared halftone once');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /HT << /HalftoneType 5 /Spot 10 0 R >> >> >>',
+    [Ht1, ObjText(11, '<< /HT 10 0 R >>')]), par_6_2_5_6, pro_Incomplete, 'the same halftone at the top level');
+
+  { 6.2.6-1 }
+  CheckOutcome(ContentPdf('/Custom ri', '', '', '', NoExtra), par_6_2_6_1, pro_Failed, 'ri /Custom');
+  CheckOutcome(ContentPdf('/Perceptual ri', '', '', '', NoExtra), par_6_2_6_1, pro_Passed, 'ri /Perceptual');
+  CheckOutcome(ContentPdf('/Bad# ri', '', '', '', NoExtra), par_6_2_6_1, pro_Incomplete,
+    'veraPDF reads a name ending in # past its end');
+  CheckOutcome(ContentPdf('0 0 0 0 1 1 d1 /Custom ri', '', '', '', NoExtra), par_6_2_6_1, pro_Passed,
+    'ri after d1 is not built');
+  CheckOutcome(ContentPdf('0 0 0 0 1 1 d1 /G gs', '', '', '/ExtGState << /G << /RI /Custom >> >>', NoExtra),
+    par_6_2_6_1, pro_Failed, 'an ExtGState /RI after d1');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /RI (Custom) >> >>', NoExtra), par_6_2_6_1,
+    pro_Passed, 'a string /RI is no intent');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /Intent /Custom ID x EI', '', '', '', NoExtra), par_6_2_6_1,
+    pro_Failed, 'an inline image intent');
+
+  { 6.2.10-1 }
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /BM /Custom >> >>', NoExtra), par_6_2_10_1,
+    pro_Failed, '/BM /Custom');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /BM [27 /Normal /Foo] >> >>', NoExtra),
+    par_6_2_10_1, pro_Passed, 'the first name of an array counts');
+  CheckOutcome(ContentPdf('/G gs', '', '', '/ExtGState << /G << /BM [27 /Foo /Normal] >> >>', NoExtra),
+    par_6_2_10_1, pro_Failed, 'the first name of an array fails');
+
+  { 6.2.8 }
+  Img := ' /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8';
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img +
+    ' /Alternates []')]), par_6_2_8_1, pro_Failed, '/Alternates');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img + ' /OPI 11 0 R')]),
+    par_6_2_8_2, pro_Failed, '/OPI');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I << /Subtype /Image /Interpolate true >> >>', NoExtra),
+    par_6_2_8_3, pro_Failed, 'an image dictionary that is no stream');
+  CheckOutcome(ContentPdf('q Q', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img +
+    ' /Interpolate true')]), par_6_2_8_3, pro_Passed, 'an image no Do uses');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x',
+    ' /Subtype /Image /Width 1 /Height 1 /ImageMask true /BitsPerComponent 3')]), par_6_2_8_4, pro_Failed,
+    '/ImageMask true is no image mask for the rule');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img + ' /Mask 11 0 R'),
+    StreamObj(11, 'x', ' /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8')]), par_6_2_8_5, pro_Failed,
+    'a /Mask stream is an image mask');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img + ' /Mask 11 0 R'),
+    StreamObj(11, 'x', ' /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 3')]), par_6_2_8_4, pro_Passed,
+    'an image mask is exempt from 6.2.8-4');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img + ' /SMask 11 0 R'),
+    StreamObj(11, 'x', ' /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 3')]), par_6_2_8_4, pro_Failed,
+    'a soft mask is an image');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img +
+    ' /BitsPerComponent (123)')]), par_6_2_8_4, pro_Failed, 'a string counts its bytes');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img +
+    ' /Alternates [<< /Image 11 0 R >>]'), StreamObj(11, 'x', ' /Subtype /Image /Interpolate true')]), par_6_2_8_3,
+    pro_Failed, 'an alternate image');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img +
+    ' /Alternates [<< /DefaultForPrinting true >>]')]), par_6_2_8_3, pro_Incomplete,
+    'an alternate without an image makes veraPDF throw');
+  CheckOutcome(ContentPdf('/Custom ri', '', '', '', [StreamObj(10, 'x', Img + ' /Alternates [<< >>]')]), par_6_2_6_1,
+    pro_Incomplete, 'veraPDF may meet the throwing alternate anywhere');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img +
+    ' /Alternates [<< >>]')]), par_6_2_8_1, pro_Incomplete, 'veraPDF throws and reports no /Alternates');
+  CheckOutcome(ContentPdf('/I Do', '', '', '/XObject << /I 10 0 R >>', [StreamObj(10, 'x', Img +
+    ' /Alternates [11 0 R]'), StreamObj(11, 'x', ' /Image 12 0 R')]), par_6_2_8_1, pro_Failed,
+    'a stream in /Alternates is skipped');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC (123) ID x EI', '', '', '', NoExtra), par_6_2_8_4, pro_Failed,
+    'an inline /BPC string of three bytes');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC (12345678) ID x EI', '', '', '', NoExtra), par_6_2_8_4,
+    pro_Passed, 'an inline /BPC string of eight bytes');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC <~z~> ID x EI', '', '', '', NoExtra), par_6_2_8_4,
+    pro_Incomplete, 'veraPDF decodes an ASCII85 string');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /I false /Interpolate true ID x EI', '', '', '', NoExtra),
+    par_6_2_8_3, pro_Passed, '/I comes first');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 3 ID x EI', '', '', '', NoExtra), par_6_2_8_4, pro_Failed,
+    'an inline image with BPC 3');
+  CheckOutcome(ContentPdf('0 0 0 0 1 1 d1 BI /W 1 /H 1 /CS /G /BPC 3 ID x EI', '', '', '', NoExtra), par_6_2_8_4,
+    pro_Passed, 'no inline image after d1');
+  CheckOutcome(ContentPdf('0 0 0 0 1 1 d1 BI /W 1 /H 1 /IM true /BPC 3 ID x EI', '', '', '', NoExtra), par_6_2_8_4,
+    pro_Failed, 'an inline image mask after d1');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /G /BPC 8 /Subtype /PS ID x EI', '', '', '', NoExtra), par_6_2_9_3,
+    pro_Passed, 'an inline image has no subtype for veraPDF');
+
+  { 6.2.9 }
+  Form := ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]';
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 10 0 R >>', [StreamObj(10, '', Form + ' /Subtype2 /PS')]),
+    par_6_2_9_1, pro_Failed, '/Subtype2 /PS');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 10 0 R >>', [StreamObj(10, '', Form + ' /Subtype2 (PS)')]),
+    par_6_2_9_1, pro_Passed, '/Subtype2 as a string');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 10 0 R >>', [StreamObj(10, '', Form + ' /PS 11 0 R')]),
+    par_6_2_9_1, pro_Failed, '/PS');
+  CheckOutcome(ContentPdf('/F Do', '', '', '/XObject << /F 10 0 R >>', [StreamObj(10, '', Form +
+    ' /Ref << /F (x) /Page 0 >>')]), par_6_2_9_2, pro_Failed, 'a reference XObject');
+  CheckOutcome(ContentPdf('/P Do', '', '', '/XObject << /P 10 0 R >>', [StreamObj(10, 'x',
+    ' /Type /XObject /Subtype /PS')]), par_6_2_9_3, pro_Failed, 'a PostScript XObject');
+  CheckOutcome(ContentPdf('q Q', '', '', '/XObject << /P 10 0 R >>', [StreamObj(10, 'x',
+    ' /Type /XObject /Subtype /PS')]), par_6_2_9_3, pro_Passed, 'a PostScript XObject no Do uses');
+  Annot := ObjText(10, '<< /Type /Annot /Subtype /Square /Rect [0 0 1 1] /F 4 /AP << /N 11 0 R >> >>');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '', [Annot, StreamObj(11, '', ' /Subtype /PS /Ref 12 0 R')]),
+    par_6_2_9_3, pro_Failed, 'an appearance stream is a form, whatever its /Subtype');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '', [Annot, StreamObj(11, '', ' /Subtype /PS /Ref 12 0 R')]),
+    par_6_2_9_2, pro_Failed, 'an appearance stream with /Ref');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '', [ObjText(10, '<< /Type /Annot /Subtype /Square ' +
+    '/Rect [0 0 1 1] /F 4 /AP 12 0 R >>'), StreamObj(11, 'Unknown', ' /Subtype /Form /Ref 13 0 R'),
+    StreamObj(12, '', ' /N 11 0 R')]), par_6_2_9_2, pro_Passed, 'an /AP that is a stream has no appearances');
+end;
+
 { Round 64 of the reviews: a tiling pattern starts with the state its
   calling stream started with, a Type 3 glyph with the current state, an
   underlying pattern space is not followed, exponents are no numbers. }
@@ -2628,6 +2798,7 @@ begin
   RegisterTest('PdfA.Content7', TestPdfAContent7);
   RegisterTest('PdfA.Content8', TestPdfAContent8);
   RegisterTest('PdfA.Content9', TestPdfAContent9);
+  RegisterTest('PdfA.Graphics', TestPdfAGraphics);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

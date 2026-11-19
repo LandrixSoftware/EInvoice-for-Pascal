@@ -12,8 +12,10 @@
   SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Landrix-Commercial
 }
 
-{ The PDF/A-3b rules of clauses 6.1 (file structure), 6.3 (annotations), 6.4
-  (interactive forms), 6.5 (actions), 6.6 (XMP metadata: packets,
+{ The PDF/A-3b rules of clauses 6.1 (file structure), 6.2 (graphics: content
+  stream operators, graphics states, rendering intents, images, XObjects,
+  blend modes; not yet colour, output intents and fonts), 6.3 (annotations),
+  6.4 (interactive forms), 6.5 (actions), 6.6 (XMP metadata: packets,
   properties, extension schemas, PDF/A identification), 6.8
   (embedded files), 6.9 (optional content), 6.10 (alternate presentations)
   and 6.11 (requirements) of ISO 19005-3, checked on the raw syntax facts of LandrixEInvoicePdfSyntax and the objects of the document.
@@ -30,10 +32,14 @@
   of /A, of the named /AA events, of a dictionary /OpenAction, of outline
   items and their /Next chains, the AcroForm /Fields with kids that have /T.
   Content streams are read by LandrixEInvoicePdfContent: the operands their
-  operators pass on count for 6.1.6 and 6.1.13 like the tokens of objects.
+  operators pass on count for 6.1.6 and 6.1.13 like the tokens of objects;
+  the graphics rules of 6.2 judge the objects those streams use, as
+  veraPDF builds them.
 
-  DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
-  (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
+  DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.2 (Grafik:
+  Operatoren in Content-Streams, Grafikzustaende, Rendering-Intents, Bilder,
+  XObjects, Blend-Modes; noch nicht Farbe, Output-Intents und Schriften),
+  6.3 (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
   (XMP-Metadaten: Pakete, Eigenschaften, Erweiterungsschemas,
   PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10
   (alternative Darstellungen) und 6.11 (Anforderungen) der ISO 19005-3, geprueft auf den
@@ -54,7 +60,8 @@
   /Next-Ketten, die AcroForm-/Fields mit Kindern, die /T haben.
   Content-Streams liest LandrixEInvoicePdfContent: die Operanden, die ihre
   Operatoren weitergeben, zaehlen fuer 6.1.6 und 6.1.13 wie die Token von
-  Objekten. }
+  Objekten; die Grafikregeln aus 6.2 beurteilen die Objekte, die diese
+  Streams benutzen, so wie veraPDF sie baut. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -74,15 +81,20 @@ uses
   LandrixEInvoicePdfXmp;
 
 type
-  { The rules of clauses 6.1, 6.3 to 6.6 and 6.8 to 6.11 in the veraPDF
-    profile PDF/A-3B, named after clause and test number.
-    DE: Die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis 6.11 im
-    veraPDF-Profil PDF/A-3B, benannt nach Abschnitt und Testnummer. }
+  { The rules of clauses 6.1, 6.2 (without colour, output intents and
+    fonts), 6.3 to 6.6 and 6.8 to 6.11 in the veraPDF profile PDF/A-3B,
+    named after clause and test number.
+    DE: Die Regeln der Abschnitte 6.1, 6.2 (ohne Farbe, Output-Intents und
+    Schriften), 6.3 bis 6.6 und 6.8 bis 6.11 im veraPDF-Profil PDF/A-3B,
+    benannt nach Abschnitt und Testnummer. }
   TLandrixEInvoicePdfARule = (
     par_6_1_2_1, par_6_1_2_2, par_6_1_3_1, par_6_1_3_2, par_6_1_3_3, par_6_1_4_2, par_6_1_6_1, par_6_1_6_2,
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
     par_6_1_12_1, par_6_1_12_2, par_6_1_13_1, par_6_1_13_2, par_6_1_13_3, par_6_1_13_4, par_6_1_13_5,
     par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11,
+    par_6_2_2_1, par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5, par_6_2_5_6, par_6_2_6_1,
+    par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1, par_6_2_9_2, par_6_2_9_3,
+    par_6_2_10_1,
     par_6_3_1_1, par_6_3_2_1, par_6_3_2_2, par_6_3_3_1, par_6_3_3_2, par_6_3_3_3, par_6_3_3_4,
     par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
     par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2,
@@ -343,6 +355,25 @@ const
     (Number: '6.1.13-9'; Coverage: prc_None; Text: 'A DeviceN colour space has at most 32 colourants'),
     (Number: '6.1.13-10'; Coverage: prc_None; Text: 'CID values are at most 65535'),
     (Number: '6.1.13-11'; Coverage: prc_Full; Text: 'Page boundaries are between 3 and 14400 units in each direction'),
+    (Number: '6.2.2-1'; Coverage: prc_Full; Text: 'Content streams use only operators defined in ISO 32000-1'),
+    (Number: '6.2.5-1'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /TR'),
+    (Number: '6.2.5-2'; Coverage: prc_Full; Text: 'An ExtGState dictionary has /TR2 only with the value Default'),
+    (Number: '6.2.5-3'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /HTP'),
+    (Number: '6.2.5-4'; Coverage: prc_Full; Text: 'A halftone has HalftoneType 1 or 5'),
+    (Number: '6.2.5-5'; Coverage: prc_Full; Text: 'A halftone has no /HalftoneName'),
+    (Number: '6.2.5-6'; Coverage: prc_Full;
+      Text: 'A halftone has a /TransferFunction only for colorants other than the primary ones'),
+    (Number: '6.2.6-1'; Coverage: prc_Full;
+      Text: 'A rendering intent is RelativeColorimetric, AbsoluteColorimetric, Perceptual or Saturation'),
+    (Number: '6.2.8-1'; Coverage: prc_Full; Text: 'An image dictionary has no /Alternates'),
+    (Number: '6.2.8-2'; Coverage: prc_Full; Text: 'An image dictionary has no /OPI'),
+    (Number: '6.2.8-3'; Coverage: prc_Full; Text: 'An image has /Interpolate (inline: /I) false or not at all'),
+    (Number: '6.2.8-4'; Coverage: prc_Full; Text: 'The BitsPerComponent of an image is 1, 2, 4, 8 or 16'),
+    (Number: '6.2.8-5'; Coverage: prc_Full; Text: 'The BitsPerComponent of an image mask is 1'),
+    (Number: '6.2.9-1'; Coverage: prc_Full; Text: 'A form XObject has no /OPI, no /PS and no /Subtype2 /PS'),
+    (Number: '6.2.9-2'; Coverage: prc_Full; Text: 'No reference XObjects (/Ref in a form XObject)'),
+    (Number: '6.2.9-3'; Coverage: prc_Full; Text: 'No PostScript XObjects'),
+    (Number: '6.2.10-1'; Coverage: prc_Full; Text: 'Only the blend modes of ISO 32000-1 in /BM'),
     (Number: '6.3.1-1'; Coverage: prc_Full;
       Text: 'Only annotation types of ISO 32000-1 except 3D, Sound, Screen and Movie'),
     (Number: '6.3.2-1'; Coverage: prc_Full; Text: 'Every annotation except Popup has the flags /F'),
@@ -2066,18 +2097,24 @@ begin
 end;
 
 { 6.1.6, 6.1.10-1, 6.1.13-1 to -5, 6.1.13-8 and 6.8-2 to -4 in the content
-  streams veraPDF reads (LandrixEInvoicePdfContent): certain findings fail
-  the rule, uncertain ones leave it undecided; the associations of /AF
-  /Name BDC are kept for 6.8-4.
+  streams veraPDF reads, and 6.2.2-1, 6.2.5, 6.2.6-1, 6.2.8-1 to -5, 6.2.9
+  and 6.2.10-1 for the operators, graphics states, images and forms they
+  use (LandrixEInvoicePdfContent): certain findings fail the rule,
+  uncertain ones leave it undecided; the associations of /AF /Name BDC are
+  kept for 6.8-4.
   DE: 6.1.6, 6.1.10-1, 6.1.13-1 bis -5, 6.1.13-8 und 6.8-2 bis -4 in den
-  Content-Streams, die veraPDF liest (LandrixEInvoicePdfContent): sichere
+  Content-Streams, die veraPDF liest, und 6.2.2-1, 6.2.5, 6.2.6-1, 6.2.8-1
+  bis -5, 6.2.9 und 6.2.10-1 fuer die Operatoren, Grafikzustaende, Bilder
+  und Formen, die sie benutzen (LandrixEInvoicePdfContent): sichere
   Befunde verletzen die Regel, unsichere lassen sie offen; die Zuordnungen
   durch /AF /Name BDC bleiben fuer 6.8-4. }
 procedure TLandrixEInvoicePdfARuleCheck.CheckContent;
 const
   RuleOf: array[TLandrixEInvoicePdfContentCheck] of TLandrixEInvoicePdfARule = (par_6_1_13_1, par_6_1_13_2,
     par_6_1_13_5, par_6_1_13_3, par_6_1_6_1, par_6_1_6_2, par_6_1_13_4, par_6_1_10_1, par_6_1_13_8, par_6_8_2,
-    par_6_8_3, par_6_8_4);
+    par_6_8_3, par_6_8_4, par_6_2_2_1, par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5,
+    par_6_2_5_6, par_6_2_6_1, par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1,
+    par_6_2_9_2, par_6_2_9_3, par_6_2_10_1);
 var
   Walk: TLandrixEInvoicePdfContentWalk;
   F: TLandrixEInvoicePdfContentFinding;

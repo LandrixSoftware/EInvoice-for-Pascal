@@ -2519,6 +2519,7 @@ var
   D: TLandrixEInvoiceDiagnostics;
   Sub: TLandrixInvoiceLine;
   I: Integer;
+  Big: Double;
 
   procedure Expect(AKind: TTargetKind; const ARule, APath, AExpected, AFound, ACalculation: string);
   begin
@@ -2544,6 +2545,10 @@ var
   end;
 
 begin
+  { 1e24 built at run time: Delphi 13 Win64 warns W1066 for the literal }
+  Big := 1;
+  for I := 1 to 24 do
+    Big := Big * 10;
   D := TLandrixEInvoiceDiagnostics.Create;
   Invoice := nil;
   try
@@ -2585,7 +2590,7 @@ begin
     Expect(tk_XRUBL, 'BR-CO-17', 'TaxAmountSubtotals[0].TaxAmount', '19.00', '21.00',
       'magnitude of the VAT category taxable amount (BT-116) 100.00 x');
     { a later rate that cannot be written skips the rule, as before }
-    Invoice.TaxAmountSubtotals[1].TaxPercent := 1e24;
+    Invoice.TaxAmountSubtotals[1].TaxPercent := Big;
     D.Clear;
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-17', D), 'BR-CO-17 skipped: ' + string(D.ToText));
     Reset;
@@ -2679,7 +2684,7 @@ begin
     Expect(tk_Peppol, 'BR-CO-14', 'TaxAmountTotal', '19.00', '20.00', '');
     Invoice.TaxAmountTotal := 19;
     { a number the flat copy leaves out (the group line) is not reported }
-    Invoice.InvoiceLines[0].BaseQuantity := 1e24;
+    Invoice.InvoiceLines[0].BaseQuantity := Big;
     D.Clear;
     LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_Peppol), D);
     CheckEquals(0, D.CountOf(edk_ConversionFailed), 'group line left out: ' + string(D.ToText));
