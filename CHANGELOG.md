@@ -144,6 +144,19 @@ Supported invoice standards are documented per release.
   for a reference chain too long to follow. The colour space of the PDF/A output profile is kept for the colour
   rules that follow. Test `PdfA.OutputIntents`; 4 of the 5 corpus failures of these rules are found, the fifth (a
   damaged profile stream) stays incomplete.
+- PDF/A level 1, stage D, third part (colour spaces in content): 6.2.4.3-2, -3 and -4 (DeviceRGB, DeviceCMYK and
+  DeviceGray only with an output intent that allows them; an output intent colour space that cannot be read leaves
+  them incomplete), 6.2.4.2-1 (ICC input profiles: input, display, output or colour space profile for RGB, CMYK,
+  Gray or Lab below version 5), 6.1.13-9 (at most 32 DeviceN colourants) and 6.2.4.4-1 (every DeviceN colourant
+  is in `/Colorants` or a process component), all fully implemented. The content walk keeps the fill and stroke
+  colour space and the text rendering mode and follows the links veraPDF makes: colour, painting and text operators,
+  `sh`, images (stencil masks with the fill space, also after `d1`), inline images, page, form and appearance
+  groups, Indexed bases, Separation and DeviceN alternates, process spaces and colourants, with `/Default*` spaces
+  and aliases resolved as veraPDF does. Objects veraPDF validates once by identity (indirect images, shadings,
+  colour space arrays, groups) count as certain only when every context they are reached in agrees; routes not
+  modelled (soft masks, alternate images, shading patterns, JPEG 2000, 3D annotations) leave the findings
+  uncertain. Test `PdfA.Colour`; no false positives in the corpus, 210 of 213 expected failures found, the other three
+  stay incomplete.
 
 ### Changed
 - Diagnostics: the business terms of a rule violation (and of the values the rule check and the

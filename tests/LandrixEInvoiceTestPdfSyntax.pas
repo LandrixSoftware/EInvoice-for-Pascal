@@ -2222,6 +2222,174 @@ begin
     par_6_2_3_1, pro_Incomplete, 'a reference chain too long to follow');
 end;
 
+{ 6.2.4: colour spaces used in content. }
+procedure TestPdfAColour;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+  Intent = '/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]';
+  ImageDict = ' /Type /XObject /Subtype /Image /Width 1 /Height 1';
+var
+  Rgb, Cmyk, Good, Bad, Fn, Stencil, Names: AnsiString;
+  I: Integer;
+begin
+  Rgb := StreamObj(10, IccHead('mntr', 'RGB ', 2), ' /N 3');
+  Cmyk := StreamObj(10, IccHead('prtr', 'CMYK', 2), ' /N 4');
+  Good := StreamObj(11, IccHead('mntr', 'RGB ', 2), ' /N 3');
+  Bad := StreamObj(12, IccHead('abst', 'RGB ', 2), ' /N 3');
+  Fn := ObjText(13, '<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 1 1 1] /N 1 >>');
+  Stencil := StreamObj(14, 'a', ImageDict + ' /ImageMask true');
+
+  { the operators }
+  CheckOutcome(ContentPdf('0 0 1 rg 0 0 10 10 re f', '', '', '', NoExtra), par_6_2_4_3_2, pro_Failed,
+    'rg without an output intent');
+  CheckOutcome(CatalogPdf(Intent, '0 0 1 rg 0 0 10 10 re f', '', '', '', [Rgb]), par_6_2_4_3_2, pro_Passed,
+    'rg with an RGB output intent');
+  CheckOutcome(CatalogPdf(Intent, '0 0 1 rg', '', '', '', [Cmyk]), par_6_2_4_3_2, pro_Failed,
+    'rg with a CMYK output intent');
+  CheckOutcome(CatalogPdf(Intent, '0 0 0 1 k', '', '', '', [Cmyk]), par_6_2_4_3_3, pro_Passed,
+    'k with a CMYK output intent');
+  CheckOutcome(ContentPdf('0 0 10 10 re f', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+    'painting in the initial DeviceGray');
+  CheckOutcome(CatalogPdf(Intent, '0 0 10 10 re f', '', '', '', [Rgb]), par_6_2_4_3_4, pro_Passed,
+    'DeviceGray with any output intent');
+  CheckOutcome(ContentPdf('0 0 10 10 re n', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed, 'n paints nothing');
+  CheckOutcome(ContentPdf('0.5 SC', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed, 'SC links no space');
+  CheckOutcome(ContentPdf('0.5 SCN', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed, 'SCN links the stroke space');
+  CheckOutcome(ContentPdf('/Bad cs', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+    'cs with an unknown name links the empty space');
+  CheckOutcome(ContentPdf('0 0 0 0 0 0 d1 1 0 0 rg', '', '', '', NoExtra), par_6_2_4_3_2, pro_Passed,
+    'no colour after d1');
+  CheckOutcome(ContentPdf('BT 3 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed, 'invisible text');
+  CheckOutcome(ContentPdf('BT (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed, 'filled text');
+  CheckOutcome(ContentPdf('/Pattern cs /P0 scn', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+    'a pattern name that selects nothing');
+
+  { defaults and ICC profiles }
+  CheckOutcome(ContentPdf('1 0 0 rg 0 0 10 10 re f', '', '', '/ColorSpace << /DefaultRGB [/ICCBased 11 0 R] >>',
+    [Good]), par_6_2_4_3_2, pro_Passed, '/DefaultRGB replaces DeviceRGB');
+  CheckOutcome(ContentPdf('1 0 0 rg', '', '', '/ColorSpace << /DefaultRGB [/ICCBased 11 0 R] >>', [Good]),
+    par_6_2_4_2_1, pro_Passed, 'a monitor input profile');
+  CheckOutcome(ContentPdf('1 0 0 rg', '', '', '/ColorSpace << /DefaultRGB [/ICCBased 12 0 R] >>', [Bad]),
+    par_6_2_4_2_1, pro_Failed, 'an abstract profile');
+  CheckOutcome(ContentPdf('1 0 0 rg', '', '', '/ColorSpace << /DefaultRGB /DeviceCMYK /DefaultCMYK /DeviceGray >>',
+    NoExtra), par_6_2_4_3_3, pro_Incomplete, 'a default reached from a default');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '', '/ColorSpace << /A [/ICCBased 11 0 R] /B [/ICCBased 12 0 R] >>',
+    [Good, Bad]), par_6_2_4_2_1, pro_Failed, 'two direct RGB profiles');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '', '/ColorSpace << /A [/ICCBased 11 0 R] /B [/ICCBased 12 0 R] >>',
+    [StreamObj(11, IccHead('prtr', 'CMYK', 2), ' /N 4'), StreamObj(12, IccHead('abst', 'CMYK', 2), ' /N 4')]),
+    par_6_2_4_2_1, pro_Incomplete, 'direct CMYK profiles share one identity');
+
+  { nested spaces }
+  CheckOutcome(ContentPdf('/CS0 cs 1 scn 0 0 10 10 re f', '', '',
+    '/ColorSpace << /CS0 [/Separation /Spot /DeviceCMYK 13 0 R] >>', [Fn]), par_6_2_4_3_3, pro_Failed,
+    'the alternate of a Separation space');
+  CheckOutcome(CatalogPdf(Intent, '/CS0 cs 1 scn 0 0 10 10 re f', '', '',
+    '/ColorSpace << /CS0 [/Separation /Spot /DeviceCMYK 13 0 R] >>', [Cmyk, Fn]), par_6_2_4_3_3, pro_Passed,
+    'a CMYK alternate with a CMYK output intent');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/Indexed /DeviceRGB 1 <000000FFFFFF>] >>',
+    NoExtra), par_6_2_4_3_2, pro_Failed, 'the base of an Indexed space');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/Indexed /Missing 1 <0000>] >>', NoExtra),
+    par_6_2_4_3_4, pro_Failed, 'an Indexed base that is not built');
+
+  { DeviceN }
+  Names := '';
+  for I := 1 to 33 do
+    Names := Names + ' /None';
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/DeviceN [' + Names + '] /DeviceCMYK 13 0 R] >>',
+    [Fn]), par_6_1_13_9, pro_Failed, '33 colourants');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/DeviceN [' + Copy(Names, 7, MaxInt) +
+    '] /DeviceCMYK 13 0 R] >>', [Fn]), par_6_1_13_9, pro_Passed, '32 colourants');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/DeviceN [/Spot] /DeviceCMYK 13 0 R] >>', [Fn]),
+    par_6_2_4_4_1, pro_Failed, 'a spot colourant without /Colorants');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/DeviceN [/Spot] /DeviceCMYK 13 0 R ' +
+    '<< /Colorants << /Spot [/Separation /Spot /DeviceCMYK 13 0 R] >> >>] >>', [Fn]), par_6_2_4_4_1, pro_Passed,
+    'a spot colourant in /Colorants');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/DeviceN [/Spot] /DeviceCMYK 13 0 R ' +
+    '<< /Process << /ColorSpace /DeviceCMYK /Components [/Spot] >> >>] >>', [Fn]), par_6_2_4_4_1, pro_Passed,
+    'a process component');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/DeviceN [/Cyan /None] /DeviceCMYK 13 0 R] >>',
+    [Fn]), par_6_2_4_4_1, pro_Passed, 'process and None colourants');
+
+  { images, shadings, groups }
+  CheckOutcome(ContentPdf('/Im1 Do', '', '', '/XObject << /Im1 14 0 R >>',
+    [StreamObj(14, 'abc', ImageDict + ' /ColorSpace /DeviceRGB /BitsPerComponent 8')]), par_6_2_4_3_2, pro_Failed,
+    'an RGB image');
+  CheckOutcome(ContentPdf('/Im1 Do', '', '', '/XObject << /Im1 14 0 R >>',
+    [StreamObj(14, 'abc', ImageDict + ' /BitsPerComponent 8')]), par_6_2_4_3_4, pro_Passed,
+    'an image without a colour space links none');
+  CheckOutcome(ContentPdf('/Im1 Do', '', '', '/XObject << /Im1 14 0 R >>',
+    [StreamObj(14, 'abc', ImageDict + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /JPXDecode')]),
+    par_6_2_4_3_2, pro_Incomplete, 'a JPEG 2000 image');
+  CheckOutcome(ContentPdf('0 0 0 0 0 0 d1 /Im1 Do', '', '', '/XObject << /Im1 14 0 R >>', [Stencil]),
+    par_6_2_4_3_4, pro_Failed, 'a stencil mask takes the fill space, also after d1');
+  CheckOutcome(ContentPdf('/Im1 Do /CS0 cs /Im1 Do', '', '',
+    '/XObject << /Im1 14 0 R >> /ColorSpace << /CS0 [/ICCBased 11 0 R] >>', [Stencil, Good]), par_6_2_4_3_4,
+    pro_Incomplete, 'a shared stencil mask is validated in its first context');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /RGB /BPC 8 ID abc EI', '', '', '', NoExtra), par_6_2_4_3_2, pro_Failed,
+    'an RGB inline image');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /BPC 8 ID a EI', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+    'an inline image without a colour space');
+  CheckOutcome(ContentPdf('/Sh1 sh', '', '',
+    '/Shading << /Sh1 << /ShadingType 2 /ColorSpace /DeviceCMYK /Coords [0 0 1 0] /Function 13 0 R >> >>', [Fn]),
+    par_6_2_4_3_3, pro_Failed, 'a CMYK shading');
+  CheckOutcome(ContentPdf('', '', '/Group << /S /Transparency /CS /DeviceRGB >>', '', NoExtra), par_6_2_4_3_2,
+    pro_Failed, 'a page group');
+  CheckOutcome(ContentPdf('', '', '/Group << /CS /DeviceRGB >>', '', NoExtra), par_6_2_4_3_2, pro_Failed,
+    'a page group without /S');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 14 0 R >>',
+    [StreamObj(14, '', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1] /Group << /S /Transparency /CS /DeviceCMYK >>')]),
+    par_6_2_4_3_3, pro_Failed, 'a form group');
+  CheckOutcome(ContentPdf('/CS0 cs /Fm1 Do', '', '', '/XObject << /Fm1 14 0 R >> /ColorSpace << /CS0 [/ICCBased 11 0 R] >>',
+    [Good, StreamObj(14, '0 0 1 1 re f', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_2_4_3_4, pro_Passed,
+    'a form keeps the caller''s fill space');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 14 0 R >> /ColorSpace << /DefaultGray /DeviceRGB >>',
+    [StreamObj(14, '0 0 1 1 re f', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_2_4_3_2, pro_Failed,
+    'a form paints in the page''s initial space');
+  CheckOutcome(ContentPdf('BT 3 0 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed,
+    'Tr takes its first operand');
+  CheckOutcome(ContentPdf('BT 9 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+    'an invalid rendering mode fills');
+  CheckOutcome(ContentPdf('/DeviceRGB cs', '', '', '/ColorSpace << /DefaultRGB 20 0 R >>', NoExtra), par_6_2_4_3_4,
+    pro_Failed, 'a default that leads to no object gives the empty space');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS [/Indexed /RGB 0 <000000>] /BPC 8 ID a EI', '', '', '', NoExtra),
+    par_6_2_4_3_4, pro_Failed, 'an abbreviation inside an inline array is no device space');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS [/Indexed /RGB 0 <000000>] /BPC 8 ID a EI', '', '', '', NoExtra),
+    par_6_2_4_3_2, pro_Passed, 'an abbreviation inside an inline array is not DeviceRGB');
+  CheckOutcome(ContentPdf('/Fm1 Do /Fm2 Do', '', '', '/XObject << /Fm1 14 0 R /Fm2 15 0 R >>',
+    [StreamObj(14, '', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1] /Group 16 0 R ' +
+    '/Resources << /ColorSpace << /C [/CalRGB << /WhitePoint [1 1 1] >>] >> >>'),
+    StreamObj(15, '', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1] /Group 16 0 R ' +
+    '/Resources << /ColorSpace << /C /DeviceRGB >> >>'), ObjText(16, '<< /S /Transparency /CS /C >>')]),
+    par_6_2_4_3_2, pro_Incomplete, 'a shared group is validated in its first context');
+  CheckOutcome(ContentPdf('/A Do', '', '', '/XObject << /A << /Subtype /Form /Group << /CS /DeviceRGB >> >> >>',
+    NoExtra), par_6_2_4_3_2, pro_Failed, 'the group of a form that is no stream');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/DeviceN [/Spot] /DeviceCMYK 13 0 R ' +
+    '<< /Process 17 0 R >>] >>', [Fn, StreamObj(17, '', ' /Components [/Spot]')]), par_6_2_4_4_1, pro_Passed,
+    'process components of a /Process stream');
+  CheckOutcome(ContentPdf('/Im1 Do', '', '', '/XObject << /Im1 14 0 R >> /ColorSpace << /DeviceRGB /DeviceCMYK >>',
+    [StreamObj(14, 'abc', ImageDict + ' /ColorSpace [/DeviceRGB] /BitsPerComponent 8')]), par_6_2_4_3_2,
+    pro_Incomplete, 'a one-name image array the resources may change');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /RGB /BPC 8 ID abc EI', '', '', '/ColorSpace << /DeviceRGB /DeviceCMYK >>',
+    NoExtra), par_6_2_4_3_3, pro_Incomplete, 'an inline name the resources may change');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS [/X] /BPC 8 ID a EI /X cs', '', '',
+    '/ColorSpace << /X [/Indexed /DeviceRGB 0 <000000>] >>', NoExtra), par_6_2_4_3_2, pro_Incomplete,
+    'an inline array not modelled leaves the colour rules open');
+  CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/Separation /Spot] >>', NoExtra), par_6_2_4_3_4,
+    pro_Incomplete, 'a Separation space without an alternate');
+  CheckOutcome(ContentPdf('BT 3.0 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Incomplete,
+    'a real rendering mode');
+  CheckOutcome(ContentPdf('BT 1 0 0 rg 1 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+    'stroked text uses the stroke space');
+  CheckOutcome(ContentPdf('BT 1 0 0 RG 1 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed,
+    'stroked text does not use the fill space');
+  CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /Fl /BPC 8 ID a EI', '', '',
+    '/ColorSpace << /Fl /DeviceCMYK /FlateDecode /DeviceRGB >>', NoExtra), par_6_2_4_3_3, pro_Passed,
+    'inline names are expanded like filter names');
+  CheckOutcome(ContentPdf('BT 7 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed, 'clipping text');
+  CheckOutcome(CatalogPdf(Intent, '1 0 0 rg 0 0 0 1 k 0 g', '', '', '', [Cmyk]), par_6_2_4_3_4, pro_Passed,
+    'DeviceGray with a CMYK output intent');
+end;
+
 { Round 64 of the reviews: a tiling pattern starts with the state its
   calling stream started with, a Type 3 glyph with the current state, an
   underlying pattern space is not followed, exponents are no numbers. }
@@ -2970,6 +3138,7 @@ begin
   RegisterTest('PdfA.Content9', TestPdfAContent9);
   RegisterTest('PdfA.Graphics', TestPdfAGraphics);
   RegisterTest('PdfA.OutputIntents', TestPdfAOutputIntents);
+  RegisterTest('PdfA.Colour', TestPdfAColour);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

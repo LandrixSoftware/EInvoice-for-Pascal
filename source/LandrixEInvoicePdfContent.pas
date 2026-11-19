@@ -88,7 +88,12 @@ type
     with /Interpolate true, with BitsPerComponent other than 1, 2, 4, 8 or
     16; an image mask with BitsPerComponent other than 1; a form XObject
     with /OPI, /PS or /Subtype2 /PS; a reference XObject; a PostScript
-    XObject; a blend mode outside ISO 32000-1.
+    XObject; a blend mode outside ISO 32000-1; a DeviceGray, DeviceRGB or
+    DeviceCMYK colour space veraPDF links (whether that breaks a rule
+    depends on the output intent); an ICC input profile of a class, colour
+    space or version not allowed; a DeviceN colour space with more than 32
+    colourants, or with a colourant that is neither in /Colorants nor a
+    process component.
     DE: Worum es bei einem Befund in einem Content-Stream geht: eine ganze
     Zahl, eine reelle Zahl ausserhalb des Bereichs oder zu nah an null, ein
     zu langer String, ein hexadezimaler String mit ungerader Zeichenzahl
@@ -104,12 +109,18 @@ type
     BitsPerComponent ungleich 1, 2, 4, 8 oder 16; eine Bildmaske mit
     BitsPerComponent ungleich 1; ein Form-XObject mit /OPI, /PS oder
     /Subtype2 /PS; ein Referenz-XObject; ein PostScript-XObject; ein
-    Blend-Mode ausserhalb von ISO 32000-1. }
+    Blend-Mode ausserhalb von ISO 32000-1; ein Farbraum DeviceGray,
+    DeviceRGB oder DeviceCMYK, den veraPDF verknuepft (ob das eine Regel
+    verletzt, haengt vom Output-Intent ab); ein ICC-Eingangsprofil mit nicht
+    erlaubter Klasse, Farbraum oder Version; ein DeviceN-Farbraum mit mehr
+    als 32 Farbmitteln oder mit einem Farbmittel, das weder in /Colorants
+    noch eine Prozesskomponente ist. }
   TLandrixEInvoicePdfContentCheck = (pcc_Integer, pcc_Real, pcc_SmallReal, pcc_StringLength, pcc_HexOdd,
     pcc_HexDigits, pcc_NameLength, pcc_InlineFilter, pcc_Nesting, pcc_SpecNames, pcc_SpecRelationship,
     pcc_SpecDirect, pcc_Undefined, pcc_TR, pcc_TR2, pcc_HTP, pcc_HalftoneType, pcc_HalftoneName,
     pcc_HalftoneTransfer, pcc_Intent, pcc_ImageAlternates, pcc_ImageOPI, pcc_Interpolate, pcc_ImageBits,
-    pcc_MaskBits, pcc_FormPS, pcc_FormRef, pcc_PSXObject, pcc_BlendMode);
+    pcc_MaskBits, pcc_FormPS, pcc_FormRef, pcc_PSXObject, pcc_BlendMode, pcc_DeviceGray, pcc_DeviceRGB,
+    pcc_DeviceCMYK, pcc_IccInput, pcc_DeviceNComponents, pcc_DeviceNColorants);
 
   { A finding that veraPDF certainly reports: the content stream object
     (for the /Contents array of a page its first stream) and a short text.
@@ -181,6 +192,16 @@ type
     FHtBroken: Boolean;
     { veraPDF throws while validating: it reports nothing }
     FThrows: Boolean;
+    { ICC profile headers read so far, by object }
+    FIccCache: TStringList;
+    { a 3D annotation: veraPDF reaches colour spaces through its 3D stream
+      first, which is not modelled }
+    FColourUnsure: Boolean;
+    { nested colour spaces looked into (a budget against hostile nesting) }
+    FCsSteps: Integer;
+    { a colour space was not followed somewhere: veraPDF may meet a shared
+      one there first, so findings on shared objects are not certain }
+    FSharedUnsure: Boolean;
     function ObjId(AObj: TLandrixEInvoicePdfObject): string;
     function ResolveRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
     function DGetRef(AObj: TLandrixEInvoicePdfObject; const AKey: AnsiString): TLandrixEInvoicePdfObject;
@@ -322,6 +343,10 @@ const
   oc_Inline = 26;
   oc_Other = 27;
   oc_ExtGState = 28;
+  oc_PaintFill = 29;
+  oc_PaintStroke = 30;
+  oc_PaintBoth = 31;
+  oc_TextMode = 32;
 
   OpCount = 71;
   OpNames: array[0..OpCount - 1] of AnsiString = (
@@ -371,8 +396,9 @@ const
     oc_Tag, oc_Tag,
     oc_TagProps, oc_TagPropsBegin,
     oc_Inline,
-    oc_ExtGState, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other,
-    oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other, oc_Other);
+    oc_ExtGState, oc_TextMode, oc_Other, oc_Other, oc_Other, oc_Other, oc_PaintStroke, oc_PaintStroke, oc_PaintFill,
+    oc_PaintFill, oc_PaintFill, oc_PaintBoth, oc_PaintBoth, oc_PaintBoth, oc_PaintBoth, oc_Other, oc_Other, oc_Other,
+    oc_Other, oc_Other, oc_Other);
 
   { the rendering intents of ISO 32000-1, Table 70 (6.2.6-1). DE: die
     Rendering-Intents aus ISO 32000-1, Tabelle 70 (6.2.6-1). }
@@ -1427,6 +1453,20 @@ type
     Page: TLandrixEInvoicePdfObject;
   end;
 
+  { A colour space as veraPDF's colour space factory builds it: none (null),
+    a device space (defaults applied), a space array to look into (V; R the
+    resources its nested names are looked up in; Num its object number, -1
+    when direct; WasDefault: selected by a /Default* entry), a pattern space
+    (with an underlying space or not), or not decided. }
+  TCsKind = (csk_Null, csk_Gray, csk_RGB, csk_CMYK, csk_Value, csk_Pattern, csk_PatternUnder, csk_Unknown);
+  TCsRef = record
+    Kind: TCsKind;
+    V: TLandrixEInvoicePdfObject;
+    R: TLandrixEInvoicePdfObject;
+    Num: Integer;
+    WasDefault: Boolean;
+  end;
+
   { The parts of the graphics state the checks need. }
   TGState = record
     ColorOn: Boolean;
@@ -1438,6 +1478,11 @@ type
     { a pattern space with an underlying space was selected: veraPDF then
       changes the start state of later tiling patterns }
     Under: Boolean;
+    { the current fill and stroke colour spaces; the text rendering mode
+      (-1 not decided) }
+    FillCs: TCsRef;
+    StrokeCs: TCsRef;
+    TextMode: Integer;
   end;
 
   TGStack = array of TGState;
@@ -1456,6 +1501,10 @@ type
     Assoc: array of Integer;
     Group: Integer;
     Index: Integer;
+    { no stream: something veraPDF validates once by its identity (an image,
+      a shading, a colour space array, a group), in the context it meets it
+      first }
+    Virtual: Boolean;
     procedure AddChild(AIndex: Integer);
     procedure AddAssoc(ANum: Integer);
   end;
@@ -1484,7 +1533,30 @@ begin
   Assoc[High(Assoc)] := ANum;
 end;
 
+function NullCs: TCsRef;
+begin
+  Result.Kind := csk_Null;
+  Result.V := nil;
+  Result.R := nil;
+  Result.Num := -1;
+  Result.WasDefault := False;
+end;
+
+{ A key of a colour space for the memo. }
+function CsKey(AWalk: TLandrixEInvoicePdfContentWalk; const C: TCsRef): string;
+begin
+  Result := IntToStr(Ord(C.Kind)) + ':' + AWalk.ObjId(C.V) + ':' + AWalk.ObjId(C.R) + ':' +
+    IntToStr(Ord(C.WasDefault));
+end;
+
 type
+  { The parse an interpreter writes to, kept while it writes to a virtual
+    one. }
+  TVSave = record
+    Parse: TContentParse;
+    Index: Integer;
+  end;
+
   { The interpretation of one parse (operators, state, reaching further
     streams). }
   TInterpreter = class(TObject)
@@ -1502,6 +1574,14 @@ type
     FOp: string;
     { graphics states, halftones and images checked by this parse }
     FSeen: TStringList;
+    { above 0: colour findings are not certain }
+    FCsMaybe: Integer;
+    { the resources the last Lookup found its entry in; the resources that
+      supplied the image or shading being looked into }
+    FLookupFrom: TLandrixEInvoicePdfObject;
+    FSiteFrom: TLandrixEInvoicePdfObject;
+    { shading patterns being followed }
+    FPatternNest: Integer;
     function SeenBefore(const AKey: string): Boolean;
     procedure Mark(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AWhat: string);
     procedure ExposeNumber(V: TCv);
@@ -1527,6 +1607,22 @@ type
     procedure CheckImage(V, ARaw: TLandrixEInvoicePdfObject; AKind, ADepth: Integer);
     procedure CheckForm(V, ARaw: TLandrixEInvoicePdfObject);
     procedure CheckInline(D: TCv);
+    procedure MaybeColour(const AWhat: string);
+    function EnterVirtual(const AKey, ACtx: string; ANum: Integer; out ASave: TVSave): Boolean;
+    procedure LeaveVirtual(const ASave: TVSave);
+    procedure ExposeCs(const C: TCsRef; ANullGray: Boolean; ADepth: Integer);
+    procedure ExposeArray(const C: TCsRef; ADepth: Integer);
+    procedure ExposeIcc(const C: TCsRef);
+    procedure ExposeDeviceN(const C: TCsRef; ADepth: Integer);
+    function SiteSpace(ARaw: TLandrixEInvoicePdfObject; AShading: Boolean): TCsRef;
+    procedure SiteLink(ARaw: TLandrixEInvoicePdfObject; AShading: Boolean);
+    procedure ImageColour(V, ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure ImageSpace(V: TLandrixEInvoicePdfObject; ADepth: Integer);
+    procedure ShadingColour(S, ARaw: TLandrixEInvoicePdfObject);
+    procedure InlineColour(D: TCv);
+    procedure GroupColour(G, R: TLandrixEInvoicePdfObject);
+    procedure OwnerGroup(AOwner, R: TLandrixEInvoicePdfObject; const AOwnerKey: string; AOwnerNum: Integer);
+    procedure TextColour;
     procedure Operate(AOp: TCv; AOps: TObjectList);
   public
     destructor Destroy; override;
@@ -1576,7 +1672,8 @@ begin
   Ctx := AWalk.ObjId(ARes.Local) + '/' + AWalk.ObjId(ARes.Page) + '/' +
     IntToStr(Ord(AState.ColorOn)) + IntToStr(Ord(AState.FillPattern)) + IntToStr(Ord(AState.StrokePattern)) +
     IntToStr(Ord(AState.Unsure)) + IntToStr(Ord(AState.Under)) + '/' +
-    AWalk.ObjId(AState.Font);
+    AWalk.ObjId(AState.Font) + '/' + CsKey(AWalk, AState.FillCs) + '/' + CsKey(AWalk, AState.StrokeCs) + '/' +
+    IntToStr(AState.TextMode);
   MemoKey := AKey + '#' + Ctx;
   Idx := AWalk.FMemo.IndexOf(MemoKey);
   if Idx >= 0 then
@@ -1698,6 +1795,78 @@ begin
     Dec(AWalk.FReachDepth);
   end;
 end;
+
+{ A parse without a stream (TContentParse.Virtual) for AKey in the context
+  ACtx; ANew when it was made now (the caller fills it). -1 at the limit. }
+function VirtualParse(AWalk: TLandrixEInvoicePdfContentWalk; const AKey, ACtx: string; ANum: Integer;
+  ARoot: Boolean; out ANew: Boolean): Integer;
+var
+  MemoKey: string;
+  Idx: Integer;
+  P: TContentParse;
+begin
+  ANew := False;
+  Result := -1;
+  MemoKey := AKey + '#' + ACtx;
+  Idx := AWalk.FMemo.IndexOf(MemoKey);
+  if Idx >= 0 then
+  begin
+    Result := TContentParse(AWalk.FMemo.Objects[Idx]).Index;
+    if ARoot then
+      TContentParse(AWalk.FParses[Result]).Root := True;
+    Exit;
+  end;
+  if Integer(AWalk.FParses.Count) >= MaxParses then
+  begin
+    AWalk.FIncomplete := True;
+    AWalk.FLimitHit := True;
+    Exit;
+  end;
+  P := TContentParse.Create;
+  P.Key := AKey;
+  P.Num := ANum;
+  P.Root := ARoot;
+  P.Virtual := True;
+  Result := Integer(AWalk.FParses.Add(P));
+  P.Index := Result;
+  AWalk.FMemo.AddObject(MemoKey, P);
+  ANew := True;
+end;
+
+type
+  { an ICC header in a string list }
+  TIccBox = class(TObject)
+  public
+    H: TLandrixEInvoicePdfIccHeader;
+  end;
+
+{ The header of the ICC profile stream S, read once per object. }
+function CachedIccHeader(AWalk: TLandrixEInvoicePdfContentWalk; S: TLandrixEInvoicePdfObject):
+  TLandrixEInvoicePdfIccHeader;
+var
+  K: Integer;
+  Key: string;
+  Box: TIccBox;
+begin
+  Key := IntToStr(S.Serial);
+  if AWalk.FIccCache.Find(Key, K) then
+  begin
+    Result := TIccBox(AWalk.FIccCache.Objects[K]).H;
+    Exit;
+  end;
+  Result := LandrixEInvoicePdfIccHeader(AWalk.FDoc, S);
+  Box := TIccBox.Create;
+  Box.H := Result;
+  AWalk.FIccCache.AddObject(Key, Box);
+end;
+
+const
+  { the checks of colour spaces }
+  ColourChecks = [pcc_DeviceGray..pcc_DeviceNColorants];
+  { DeviceN names and process components compared one by one at most }
+  MaxColorantScan = 1000;
+  { nested colour spaces looked into per document }
+  MaxCsSteps = 2000000;
 
 { An integer as veraPDF's getIntegerKey reads it: a number truncated
   toward zero, a string its byte length; False for anything else. }
@@ -2006,9 +2175,271 @@ begin
   Result := ClassifyIn(AWalk, ARes, nil, V, -1, 0, True, True) in [csc_Pattern, csc_PatternUnder];
 end;
 
-{ A new graphics state: colour on, no font, both colour spaces DeviceGray
-  (resolved when the state is made, against the resources of the stream);
-  Unsure where that is not decided. }
+{ The device space a name stands for (csk_Null: none). }
+function DeviceKind(const AName: AnsiString): TCsKind;
+begin
+  if AName = 'DeviceGray' then
+    Result := csk_Gray
+  else if AName = 'DeviceRGB' then
+    Result := csk_RGB
+  else if AName = 'DeviceCMYK' then
+    Result := csk_CMYK
+  else
+    Result := csk_Null;
+end;
+
+function IsDefaultName(const AName: AnsiString): Boolean;
+begin
+  Result := (AName = 'DefaultGray') or (AName = 'DefaultRGB') or (AName = 'DefaultCMYK');
+end;
+
+{ The entry AName of the /ColorSpace dictionary of the resources R as it is
+  stored; nil if there is none or it is a direct null (a reference to no
+  object is an entry: veraPDF builds null from it). }
+function CsRaw(AWalk: TLandrixEInvoicePdfContentWalk; R: TLandrixEInvoicePdfObject;
+  const AName: AnsiString): TLandrixEInvoicePdfObject;
+var
+  C: TLandrixEInvoicePdfObject;
+begin
+  Result := nil;
+  C := AWalk.DGetRef(R, 'ColorSpace');
+  if (C = nil) or not C.IsDictLike then
+    Exit;
+  Result := C.RawGet(AName);
+  if (Result <> nil) and (Result.Kind = pok_Null) then
+    Result := nil;
+end;
+
+function CsValue(AWalk: TLandrixEInvoicePdfContentWalk; R, ARaw: TLandrixEInvoicePdfObject; AWasDefault: Boolean;
+  ADepth: Integer): TCsRef; forward;
+
+{ A name met in a colour space value of the resources R, as veraPDF's
+  factory resolves it: a device name takes the /Default* entry of R unless
+  the value was itself selected by one (AWasDefault); /Pattern is the
+  pattern space; any other name is an alias looked up in R only. veraPDF
+  keeps resolved names by name, so a default reached again from a default,
+  and an alias named like a default, depend on the order of the lookups:
+  not decided.
+  DE: Ein Name in einem Farbraumwert der Ressourcen R, wie veraPDFs Fabrik
+  ihn aufloest: ein Geraetename nimmt den /Default*-Eintrag von R, ausser
+  der Wert wurde selbst ueber einen ausgewaehlt (AWasDefault); /Pattern ist
+  der Musterraum; jeder andere Name ist ein Alias, der nur in R gesucht
+  wird. veraPDF merkt sich aufgeloeste Namen nach dem Namen; ein Default,
+  der von einem Default aus wieder erreicht wird, und ein Alias, der wie
+  ein Default heisst, haengen daher von der Reihenfolge der Abfragen ab:
+  nicht entschieden. }
+function CsName(AWalk: TLandrixEInvoicePdfContentWalk; R: TLandrixEInvoicePdfObject; const AName: AnsiString;
+  AWasDefault: Boolean; ADepth: Integer): TCsRef;
+var
+  D: TCsKind;
+  E: TLandrixEInvoicePdfObject;
+begin
+  Result := NullCs;
+  D := DeviceKind(AName);
+  if D <> csk_Null then
+  begin
+    E := CsRaw(AWalk, R, 'Default' + Copy(AName, 7, MaxInt));
+    if E = nil then
+      Result.Kind := D
+    else if AWasDefault then
+      Result.Kind := csk_Unknown
+    else
+      Result := CsValue(AWalk, R, E, True, ADepth + 1);
+    Exit;
+  end;
+  if AName = 'Pattern' then
+  begin
+    Result.Kind := csk_Pattern;
+    Exit;
+  end;
+  E := CsRaw(AWalk, R, AName);
+  if E = nil then
+    Exit;
+  if IsDefaultName(AName) then
+    Result.Kind := csk_Unknown
+  else
+    Result := CsValue(AWalk, R, E, False, ADepth + 1);
+end;
+
+{ The colour space veraPDF's factory builds from the value ARaw met in the
+  resources R: a name (CsName), a one-element array as its element, an
+  array by its first name (/CalCMYK as DeviceCMYK; /Pattern a pattern space
+  with an underlying space), a pattern dictionary or stream; null for
+  anything else.
+  DE: Der Farbraum, den veraPDFs Fabrik aus dem Wert ARaw in den Ressourcen
+  R baut: ein Name (CsName), ein Array mit einem Element als dieses
+  Element, ein Array nach seinem ersten Namen (/CalCMYK als DeviceCMYK;
+  /Pattern ein Musterraum mit zugrunde liegendem Raum), ein
+  Muster-Dictionary oder -Stream; null fuer alles andere. }
+function CsValue(AWalk: TLandrixEInvoicePdfContentWalk; R, ARaw: TLandrixEInvoicePdfObject; AWasDefault: Boolean;
+  ADepth: Integer): TCsRef;
+var
+  V, F: TLandrixEInvoicePdfObject;
+  N: AnsiString;
+begin
+  Result := NullCs;
+  if ADepth > MaxCsDepth then
+  begin
+    Result.Kind := csk_Unknown;
+    Exit;
+  end;
+  V := AWalk.ResolveRef(ARaw);
+  if V = nil then
+    Exit;
+  if V.Kind = pok_Name then
+    Result := CsName(AWalk, R, V.NameVal, AWasDefault, ADepth)
+  else if V.Kind = pok_Arr then
+  begin
+    if V.ArrCount = 1 then
+    begin
+      Result := CsValue(AWalk, R, V.ArrItem(0), AWasDefault, ADepth + 1);
+      Exit;
+    end;
+    if V.ArrCount < 2 then
+      Exit;
+    F := AWalk.ResolveRef(V.ArrItem(0));
+    if (F = nil) or (F.Kind <> pok_Name) then
+      Exit;
+    N := F.NameVal;
+    if N = 'CalCMYK' then
+    begin
+      Result := CsName(AWalk, R, 'DeviceCMYK', AWasDefault, ADepth);
+      Exit;
+    end;
+    if N = 'Pattern' then
+      Result.Kind := csk_PatternUnder
+    else if (N = 'CalGray') or (N = 'CalRGB') or (N = 'Lab') or (N = 'ICCBased') or (N = 'Indexed') or
+      (N = 'Separation') or (N = 'DeviceN') then
+      Result.Kind := csk_Value
+    else
+      Exit;
+    Result.V := V;
+    Result.R := R;
+    Result.WasDefault := AWasDefault;
+    if (ARaw <> nil) and (ARaw.Kind = pok_Ref) then
+      Result.Num := AWalk.LastRefNum(ARaw);
+  end
+  else if (V.Kind = pok_Dict) or (V.Kind = pok_Stream) then
+  begin
+    if PatternTypeOf(AWalk, V) <> 0 then
+    begin
+      Result.Kind := csk_Pattern;
+      Result.V := V;
+      Result.R := R;
+    end;
+  end;
+end;
+
+{ The colour space a name selects in a content stream, as veraPDF's
+  resource handler finds it (see ResolveCsName): a device name first takes
+  the /Default* entry of the stream's own resources; then the stream's
+  resources and the page's in turn. Null where nothing is found (what that
+  gives depends on the operator).
+  DE: Der Farbraum, den ein Name in einem Content-Stream auswaehlt, wie
+  veraPDFs Ressourcen-Handler ihn findet (siehe ResolveCsName): ein
+  Geraetename nimmt zuerst den /Default*-Eintrag der eigenen Ressourcen des
+  Streams; dann die Ressourcen des Streams und die der Seite. Null, wo
+  nichts gefunden wird (was das ergibt, haengt vom Operator ab). }
+function ResolveName(AWalk: TLandrixEInvoicePdfContentWalk; const ARes: TRes; const AName: AnsiString): TCsRef;
+var
+  K: Integer;
+  R, E: TLandrixEInvoicePdfObject;
+  D: TCsKind;
+begin
+  Result := NullCs;
+  D := DeviceKind(AName);
+  if D <> csk_Null then
+  begin
+    E := CsRaw(AWalk, ARes.Local, 'Default' + Copy(AName, 7, MaxInt));
+    if E <> nil then
+    begin
+      Result := CsValue(AWalk, ARes.Local, E, True, 1);
+      Exit;
+    end;
+  end;
+  for K := 0 to 1 do
+  begin
+    if K = 0 then
+      R := ARes.Local
+    else
+      R := ARes.Page;
+    if (K = 1) and ((R = nil) or (R = ARes.Local)) then
+      Continue;
+    E := CsRaw(AWalk, R, AName);
+    if E <> nil then
+    begin
+      if IsDefaultName(AName) then
+        Result.Kind := csk_Unknown
+      else
+        Result := CsValue(AWalk, R, E, False, 1);
+      { a device name veraPDF then looks up in the page's resources with
+        their default: not modelled }
+      if (Result.Kind = csk_Null) and (D <> csk_Null) then
+        Result.Kind := csk_Unknown;
+    end
+    else if D <> csk_Null then
+      Result.Kind := D
+    else if AName = 'Pattern' then
+      Result.Kind := csk_Pattern;
+    if Result.Kind <> csk_Null then
+      Exit;
+  end;
+end;
+
+{ The first name of a colour space array ('' if none). }
+function FirstName(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): AnsiString;
+var
+  F: TLandrixEInvoicePdfObject;
+begin
+  Result := '';
+  if (V = nil) or (V.Kind <> pok_Arr) or (V.ArrCount = 0) then
+    Exit;
+  F := AWalk.ResolveRef(V.ArrItem(0));
+  if (F <> nil) and (F.Kind = pok_Name) then
+    Result := F.NameVal;
+end;
+
+{ /N of the profile of an ICCBased array as veraPDF reads it (-1 if none). }
+function IccComponents(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): Int64;
+var
+  S: TLandrixEInvoicePdfObject;
+begin
+  Result := -1;
+  if (FirstName(AWalk, V) <> 'ICCBased') or (V.ArrCount < 2) then
+    Exit;
+  S := AWalk.ResolveRef(V.ArrItem(1));
+  if (S = nil) or (S.Kind <> pok_Stream) then
+    Exit;
+  if IntegerOf(AWalk.DGetRef(S, 'N'), Result) then
+    Result := Narrow32(Result)
+  else
+    Result := -1;
+end;
+
+{ The image has JPEG 2000 data (a JPXDecode filter). }
+function IsJpx(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): Boolean;
+var
+  F, Item: TLandrixEInvoicePdfObject;
+  I: Integer;
+begin
+  Result := False;
+  F := AWalk.DGetRef(V, 'Filter');
+  if F = nil then
+    Exit;
+  if F.Kind = pok_Name then
+    Result := F.NameVal = 'JPXDecode'
+  else if F.Kind = pok_Arr then
+    for I := 0 to F.ArrCount - 1 do
+    begin
+      Item := AWalk.ResolveRef(F.ArrItem(I));
+      if (Item <> nil) and (Item.Kind = pok_Name) and (Item.NameVal = 'JPXDecode') then
+        Result := True;
+    end;
+end;
+
+{ A new graphics state: colour on, no font, text rendering mode 0, both
+  colour spaces DeviceGray (resolved when the state is made, against the
+  resources of the stream); Unsure where the pattern state is not decided. }
 function FreshState(AWalk: TLandrixEInvoicePdfContentWalk; const ARes: TRes): TGState;
 var
   C: TCsClass;
@@ -2020,6 +2451,11 @@ begin
   Result.Under := C = csc_PatternUnder;
   Result.Font := nil;
   Result.Unsure := C = csc_Unknown;
+  Result.FillCs := ResolveName(AWalk, ARes, 'DeviceGray');
+  if Result.FillCs.Kind = csk_Null then
+    Result.FillCs.Kind := csk_Unknown;
+  Result.StrokeCs := Result.FillCs;
+  Result.TextMode := 0;
 end;
 
 procedure TInterpreter.Mark(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AWhat: string);
@@ -2027,6 +2463,8 @@ var
   Lvl, N: Integer;
   W: TLandrixEInvoicePdfContentWalk;
 begin
+  if (FCsMaybe > 0) and (ACheck in ColourChecks) then
+    AMaybe := True;
   if AMaybe then
     Lvl := 1
   else
@@ -2268,6 +2706,7 @@ var
 begin
   Result := nil;
   ARaw := nil;
+  FLookupFrom := nil;
   for K := 0 to 1 do
   begin
     if K = 0 then
@@ -2286,7 +2725,10 @@ begin
       (ClassifyIn(FWalk, FRes, nil, Result, -1, 0, True, True) = csc_Unknown) then
       FParse.Uncertain := True;
     if ResourceAccepted(FWalk, FRes, ACategory, ARaw, Result) then
+    begin
+      FLookupFrom := R;
       Exit;
+    end;
     Result := nil;
     ARaw := nil;
   end;
@@ -2364,7 +2806,8 @@ begin
     Exit;
   Key := FWalk.ObjId(F) + '/' + FWalk.ObjId(FRes.Page) + '/' + IntToStr(Ord(FState.ColorOn)) +
     IntToStr(Ord(FState.FillPattern)) + IntToStr(Ord(FState.StrokePattern)) + IntToStr(Ord(FState.Unsure)) +
-    IntToStr(Ord(FState.Under));
+    IntToStr(Ord(FState.Under)) + '/' + CsKey(FWalk, FState.FillCs) + '/' + CsKey(FWalk, FState.StrokeCs) + '/' +
+    IntToStr(FState.TextMode);
   Num := FWalk.FType3Seen.IndexOf(Key);
   if Num >= 0 then
   begin
@@ -2388,8 +2831,15 @@ begin
     S := FWalk.ResolveRef(Raw);
     if (S = nil) or (S.Kind <> pok_Stream) or (Raw.Kind <> pok_Ref) then
       Continue;
-    Local := FWalk.DGetRef(S, 'Resources');
-    if (Local = nil) or not Local.IsDictLike then
+    { a glyph with /Resources uses them (none if they are no dictionary),
+      any other the font's }
+    if (S.RawGet('Resources') <> nil) and (S.RawGet('Resources').Kind <> pok_Null) then
+    begin
+      Local := FWalk.DGetRef(S, 'Resources');
+      if (Local <> nil) and not Local.IsDictLike then
+        Local := nil;
+    end
+    else
       Local := FontRes;
     Res.Local := Local;
     Res.Page := FRes.Page;
@@ -2424,14 +2874,22 @@ begin
   if Sub.NameVal = 'Image' then
   begin
     CheckImage(X, Raw, ik_Image, 0);
+    FSiteFrom := FLookupFrom;
+    ImageColour(X, Raw, 0);
+    FSiteFrom := nil;
     Exit;
   end;
   CheckForm(X, Raw);
-  if (X.Kind <> pok_Stream) or (Raw = nil) or (Raw.Kind <> pok_Ref) then
-    Exit;
   Local := FWalk.DGetRef(X, 'Resources');
   if (Local <> nil) and not Local.IsDictLike then
     Local := nil;
+  { the form's group (also of a form that is no stream) }
+  if (Raw <> nil) and (Raw.Kind = pok_Ref) then
+    OwnerGroup(X, Local, 'XG' + IntToStr(Raw.RefNum), Raw.RefNum)
+  else
+    OwnerGroup(X, Local, '', -1);
+  if (X.Kind <> pok_Stream) or (Raw = nil) or (Raw.Kind <> pok_Ref) then
+    Exit;
   Res.Local := Local;
   Res.Page := FRes.Page;
   FParse.AddChild(ParseStreams(FWalk, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [X], Res, FState, False));
@@ -2449,6 +2907,7 @@ var
   PaintType: Int64;
   K: Integer;
   Uncoloured: Boolean;
+  ShRaw: TLandrixEInvoicePdfObject;
 begin
   P := Lookup('Pattern', AName, Raw);
   K := 0;
@@ -2465,10 +2924,18 @@ begin
   end;
   if P = nil then
   begin
+    { the space becomes null: veraPDF links its empty space }
     if AFill then
-      FState.FillPattern := False
+    begin
+      FState.FillPattern := False;
+      FState.FillCs := NullCs;
+    end
     else
+    begin
       FState.StrokePattern := False;
+      FState.StrokeCs := NullCs;
+    end;
+    ExposeCs(NullCs, True, 0);
     Exit;
   end;
   { a pattern space with an underlying space as the pattern: veraPDF keeps
@@ -2476,6 +2943,21 @@ begin
   if (P.Kind = pok_Arr) and (ClassifyIn(FWalk, FRes, nil, P, -1, 0, True, True) = csc_PatternUnder) then
   begin
     FState.Under := True;
+    Exit;
+  end;
+  if P.IsDictLike and (PatternTypeOf(FWalk, P) = 2) then
+  begin
+    { a shading pattern: the colour space of its shading, in a context
+      not modelled }
+    Inc(FCsMaybe);
+    try
+      ShRaw := P.RawGet('Shading');
+      FSiteFrom := FLookupFrom;
+      ShadingColour(FWalk.ResolveRef(ShRaw), ShRaw);
+    finally
+      FSiteFrom := nil;
+      Dec(FCsMaybe);
+    end;
     Exit;
   end;
   if not P.IsDictLike or (PatternTypeOf(FWalk, P) <> 1) then
@@ -2530,6 +3012,7 @@ begin
     Exit;
   ExposeCos(D, True);
   CheckInline(D);
+  InlineColour(D);
   F := D.Get('F');
   if F = nil then
     F := D.Get('Filter');
@@ -2827,6 +3310,771 @@ begin
   end;
 end;
 
+{ A colour space veraPDF may link that is not decided: every colour check
+  may fail, and what it reaches is not known (a shared object may be met
+  there first). }
+procedure TInterpreter.MaybeColour(const AWhat: string);
+var
+  C: TLandrixEInvoicePdfContentCheck;
+begin
+  FWalk.FSharedUnsure := True;
+  for C := pcc_DeviceGray to pcc_DeviceNColorants do
+    Mark(C, True, AWhat);
+end;
+
+{ Writes to the virtual parse of AKey in the context ACtx (a child of this
+  parse) when it is new; False if it exists already (veraPDF validates it
+  once) or a limit was reached. }
+function TInterpreter.EnterVirtual(const AKey, ACtx: string; ANum: Integer; out ASave: TVSave): Boolean;
+var
+  Idx: Integer;
+  New: Boolean;
+begin
+  Result := False;
+  ASave.Parse := FParse;
+  ASave.Index := FParseIndex;
+  Idx := VirtualParse(FWalk, AKey, ACtx + '/' + IntToStr(Ord(FCsMaybe > 0)), ANum, False, New);
+  if Idx < 0 then
+    Exit;
+  FParse.AddChild(Idx);
+  if not New then
+    Exit;
+  FParse := TContentParse(FWalk.FParses[Idx]);
+  FParseIndex := Idx;
+  Result := True;
+end;
+
+procedure TInterpreter.LeaveVirtual(const ASave: TVSave);
+begin
+  FParse := ASave.Parse;
+  FParseIndex := ASave.Index;
+end;
+
+{ veraPDF links the colour space C: a device space is a finding of its rule
+  (whether it fails depends on the output intent); null is veraPDF's empty
+  space, of type DeviceGray, where the link takes it (ANullGray); a space
+  array is looked into. An indirect array is validated once by its
+  identity, and the direct CMYK ICC spaces share one identity: a virtual
+  parse per context.
+  DE: veraPDF verknuepft den Farbraum C: ein Geraeteraum ist ein Befund
+  seiner Regel (ob er scheitert, haengt vom Output-Intent ab); null ist
+  veraPDFs leerer Raum vom Typ DeviceGray, wo die Verknuepfung ihn nimmt
+  (ANullGray); in ein Raum-Array wird hineingesehen. Ein indirektes Array
+  wird einmal nach seiner Identitaet geprueft, und die direkten
+  CMYK-ICC-Raeume teilen sich eine Identitaet: eine virtuelle Analyse je
+  Kontext. }
+procedure TInterpreter.ExposeCs(const C: TCsRef; ANullGray: Boolean; ADepth: Integer);
+var
+  Save: TVSave;
+  Key, Ctx: string;
+  ShRaw: TLandrixEInvoicePdfObject;
+begin
+  if ADepth > MaxCsDepth then
+  begin
+    MaybeColour('colour spaces nested too deep');
+    Exit;
+  end;
+  { the same space array in the same parse and mode adds nothing new }
+  if (ADepth = 0) and (C.Kind = csk_Value) and
+    SeenBefore('C' + IntToStr(FParseIndex) + '/' + CsKey(FWalk, C) + '/' + IntToStr(Ord(ANullGray)) +
+    IntToStr(Ord(FCsMaybe > 0))) then
+    Exit;
+  if ADepth > 0 then
+  begin
+    Inc(FWalk.FCsSteps);
+    if FWalk.FCsSteps > MaxCsSteps then
+    begin
+      { not followed: anything may be reached first }
+      FWalk.FIncomplete := True;
+      FWalk.FLimitHit := True;
+      Exit;
+    end;
+  end;
+  case C.Kind of
+    csk_Null:
+      if ANullGray then
+        Mark(pcc_DeviceGray, False, 'empty colour space (DeviceGray to veraPDF)');
+    csk_Gray:
+      Mark(pcc_DeviceGray, False, 'DeviceGray colour space');
+    csk_RGB:
+      Mark(pcc_DeviceRGB, False, 'DeviceRGB colour space');
+    csk_CMYK:
+      Mark(pcc_DeviceCMYK, False, 'DeviceCMYK colour space');
+    csk_Unknown:
+      MaybeColour('colour space not decided');
+    csk_Pattern:
+      if (C.V <> nil) and (PatternTypeOf(FWalk, C.V) = 2) and (FPatternNest > MaxCsDepth) then
+        MaybeColour('shading patterns nested too deep')
+      else if (C.V <> nil) and (PatternTypeOf(FWalk, C.V) = 2) then
+      begin
+        { a shading pattern selected as a space: its shading, in a context
+          not modelled }
+        Inc(FCsMaybe);
+        Inc(FPatternNest);
+        try
+          ShRaw := C.V.RawGet('Shading');
+          FSiteFrom := C.R;
+          ShadingColour(FWalk.ResolveRef(ShRaw), ShRaw);
+        finally
+          FSiteFrom := nil;
+          Dec(FPatternNest);
+          Dec(FCsMaybe);
+        end;
+      end;
+    csk_PatternUnder:
+      begin
+        { the underlying space of a pattern space: not modelled }
+        Inc(FCsMaybe);
+        try
+          ExposeCs(CsValue(FWalk, C.R, C.V.ArrItem(1), C.WasDefault, 0), False, ADepth + 1);
+        finally
+          Dec(FCsMaybe);
+        end;
+      end;
+    csk_Value:
+      begin
+        Key := '';
+        Ctx := FWalk.ObjId(C.R) + '/' + IntToStr(Ord(C.WasDefault));
+        if C.Num >= 0 then
+          Key := 'XK' + IntToStr(C.Num)
+        else if IccComponents(FWalk, C.V) = 4 then
+        begin
+          Key := 'XC';
+          Ctx := FWalk.ObjId(C.V);
+        end;
+        { the direct CMYK ICC spaces share one identity: veraPDF may meet
+          one first on a route not modelled (a JPEG 2000 image, a 3D
+          stream), so their findings stay uncertain }
+        if Key = 'XC' then
+          Inc(FCsMaybe);
+        try
+          if Key = '' then
+            ExposeArray(C, ADepth)
+          else if EnterVirtual(Key, Ctx, C.Num, Save) then
+            try
+              ExposeArray(C, ADepth);
+            finally
+              LeaveVirtual(Save);
+            end;
+        finally
+          if Key = 'XC' then
+            Dec(FCsMaybe);
+        end;
+      end;
+  else
+    { bare /Pattern: the pattern scn selects is linked there }
+  end;
+end;
+
+{ The spaces inside a space array: the profile of an ICCBased space, the
+  base of an Indexed space (defaults apply again), the alternate of a
+  Separation space, the parts of a DeviceN space. Nested names are looked
+  up in the resources the array was found in.
+  DE: Die Raeume in einem Raum-Array: das Profil eines ICCBased-Raums, die
+  Basis eines Indexed-Raums (Defaults gelten wieder), die Alternative
+  eines Separation-Raums, die Teile eines DeviceN-Raums. Verschachtelte
+  Namen werden in den Ressourcen gesucht, in denen das Array gefunden
+  wurde. }
+procedure TInterpreter.ExposeArray(const C: TCsRef; ADepth: Integer);
+var
+  N: AnsiString;
+begin
+  N := FirstName(FWalk, C.V);
+  if N = 'ICCBased' then
+    ExposeIcc(C)
+  else if N = 'Indexed' then
+    ExposeCs(CsValue(FWalk, C.R, C.V.ArrItem(1), False, 0), True, ADepth + 1)
+  else if N = 'Separation' then
+  begin
+    if C.V.ArrCount > 2 then
+      ExposeCs(CsValue(FWalk, C.R, C.V.ArrItem(2), C.WasDefault, 0), True, ADepth + 1)
+    else
+      MaybeColour('Separation colour space without an alternate');
+  end
+  else if N = 'DeviceN' then
+    ExposeDeviceN(C, ADepth);
+end;
+
+{ 6.2.4.2-1: the profile of an ICCBased space (a stream in element 1) is an
+  input, display, output or colour space profile for RGB, CMYK, Gray or Lab
+  below ICC version 5; a header not read as veraPDF reads it leaves the
+  rule open.
+  DE: 6.2.4.2-1: das Profil eines ICCBased-Raums (ein Stream in Element 1)
+  ist ein Eingabe-, Anzeige-, Ausgabe- oder Farbraumprofil fuer RGB, CMYK,
+  Gray oder Lab unter ICC-Version 5; ein Kopf, der sich nicht so lesen
+  laesst wie von veraPDF, laesst die Regel offen. }
+procedure TInterpreter.ExposeIcc(const C: TCsRef);
+var
+  S: TLandrixEInvoicePdfObject;
+  H: TLandrixEInvoicePdfIccHeader;
+begin
+  S := FWalk.ResolveRef(C.V.ArrItem(1));
+  if (S = nil) or (S.Kind <> pok_Stream) then
+    Exit;
+  H := CachedIccHeader(FWalk, S);
+  if not H.Known then
+    Mark(pcc_IccInput, True, 'ICC profile not read the way veraPDF reads it')
+  else if not (((H.DeviceClass = 'prtr') or (H.DeviceClass = 'mntr') or (H.DeviceClass = 'scnr') or
+    (H.DeviceClass = 'spac')) and ((H.ColorSpace = 'RGB ') or (H.ColorSpace = 'CMYK') or (H.ColorSpace = 'GRAY') or
+    (H.ColorSpace = 'Lab ')) and (H.Major < 5)) then
+    Mark(pcc_IccInput, False, 'ICC profile with device class "' + TextOf(H.DeviceClass) + '", colour space "' +
+      TextOf(H.ColorSpace) + '", major version ' + IntToStr(H.Major));
+end;
+
+{ 6.1.13-9 and 6.2.4.4-1: a DeviceN space has at most 32 colourants (every
+  element of its names array counts), and each colourant other than None,
+  Cyan, Magenta, Yellow and Black is a key of /Colorants or a name in
+  /Process /Components of its attributes (with or without /Subtype
+  /NChannel). Then its alternate space, its process space and the
+  Separation spaces of /Colorants are linked.
+  DE: 6.1.13-9 und 6.2.4.4-1: ein DeviceN-Raum hat hoechstens 32
+  Farbmittel (jedes Element seines Namens-Arrays zaehlt), und jedes
+  Farbmittel ausser None, Cyan, Magenta, Yellow und Black ist ein
+  Schluessel von /Colorants oder ein Name in /Process /Components seiner
+  Attribute (mit oder ohne /Subtype /NChannel). Danach werden sein
+  Alternativraum, sein Prozessraum und die Separation-Raeume von
+  /Colorants verknuepft. }
+procedure TInterpreter.ExposeDeviceN(const C: TCsRef; ADepth: Integer);
+var
+  Names, Attrs, Colorants, Process, Comps, E, Item: TLandrixEInvoicePdfObject;
+  I, K, Count: Integer;
+  Found, Unsure, Missing: Boolean;
+  Miss: string;
+  B: TCsRef;
+begin
+  Names := FWalk.ResolveRef(C.V.ArrItem(1));
+  Count := 0;
+  if (Names <> nil) and (Names.Kind = pok_Arr) then
+    Count := Names.ArrCount;
+  if Count > 32 then
+    Mark(pcc_DeviceNComponents, False, 'DeviceN colour space with ' + IntToStr(Count) + ' colourants');
+  Attrs := nil;
+  if C.V.ArrCount > 4 then
+  begin
+    Attrs := FWalk.ResolveRef(C.V.ArrItem(4));
+    if (Attrs <> nil) and (Attrs.Kind <> pok_Dict) then
+      Attrs := nil;
+  end;
+  Colorants := FWalk.DGetRef(Attrs, 'Colorants');
+  if (Colorants <> nil) and (Colorants.Kind <> pok_Dict) then
+    Colorants := nil;
+  { the components count from a /Process stream too; its colour space
+    only from a dictionary }
+  Process := FWalk.DGetRef(Attrs, 'Process');
+  if (Process <> nil) and not Process.IsDictLike then
+    Process := nil;
+  Comps := FWalk.DGetRef(Process, 'Components');
+  if (Comps <> nil) and (Comps.Kind <> pok_Arr) then
+    Comps := nil;
+  if (Process <> nil) and (Process.Kind <> pok_Dict) then
+    Process := nil;
+  Miss := '';
+  Missing := False;
+  Unsure := False;
+  { very many names: not compared one by one }
+  if (Count > MaxColorantScan) or ((Comps <> nil) and (Comps.ArrCount > MaxColorantScan)) then
+  begin
+    Unsure := True;
+    Count := 0;
+  end;
+  if Comps <> nil then
+    Inc(FWalk.FCsSteps, Count * (Comps.ArrCount + 1))
+  else
+    Inc(FWalk.FCsSteps, Count);
+  if FWalk.FCsSteps > MaxCsSteps then
+  begin
+    FWalk.FIncomplete := True;
+    FWalk.FLimitHit := True;
+    Exit;
+  end;
+  for I := 0 to Count - 1 do
+  begin
+    E := FWalk.ResolveRef(Names.ArrItem(I));
+    if (E = nil) or (E.Kind <> pok_Name) then
+    begin
+      Unsure := True;
+      Continue;
+    end;
+    if (E.NameVal = 'None') or (E.NameVal = 'Cyan') or (E.NameVal = 'Magenta') or (E.NameVal = 'Yellow') or
+      (E.NameVal = 'Black') then
+      Continue;
+    Found := (Colorants <> nil) and (Colorants.RawGet(E.NameVal) <> nil);
+    if not Found and (Comps <> nil) then
+      for K := 0 to Comps.ArrCount - 1 do
+      begin
+        Item := FWalk.ResolveRef(Comps.ArrItem(K));
+        if (Item <> nil) and (Item.Kind = pok_Name) and (Item.NameVal = E.NameVal) then
+          Found := True;
+      end;
+    if not Found and not Missing then
+    begin
+      Missing := True;
+      Miss := TextOf(E.NameVal);
+    end;
+  end;
+  if Missing then
+    Mark(pcc_DeviceNColorants, False, 'DeviceN colourant /' + Miss + ' neither in /Colorants nor a process component')
+  else if Unsure then
+    Mark(pcc_DeviceNColorants, True, 'DeviceN colourant that is no name');
+  if C.V.ArrCount > 2 then
+    ExposeCs(CsValue(FWalk, C.R, C.V.ArrItem(2), C.WasDefault, 0), True, ADepth + 1)
+  else
+    MaybeColour('DeviceN colour space without an alternate');
+  if Process <> nil then
+    ExposeCs(CsValue(FWalk, C.R, Process.RawGet('ColorSpace'), C.WasDefault, 0), False, ADepth + 1);
+  if Colorants <> nil then
+    for I := 0 to Integer(Colorants.DVals.Count) - 1 do
+    begin
+      Inc(FWalk.FCsSteps);
+      if FWalk.FCsSteps > MaxCsSteps then
+      begin
+        FWalk.FIncomplete := True;
+        FWalk.FLimitHit := True;
+        Exit;
+      end;
+      B := CsValue(FWalk, C.R, TLandrixEInvoicePdfObject(Colorants.DVals[I]), False, 0);
+      if (B.Kind = csk_Value) and (FirstName(FWalk, B.V) = 'Separation') then
+        ExposeCs(B, False, ADepth + 1)
+      else if B.Kind = csk_Unknown then
+        MaybeColour('DeviceN colourant space not decided');
+    end;
+end;
+
+{ The colour space of an image or a shading as veraPDF builds it: an
+  image's name, or one-name array, by the resource handler of the invoking
+  stream; any other value by the colour space factory in the resources
+  that supplied the object (FSiteFrom). }
+function TInterpreter.SiteSpace(ARaw: TLandrixEInvoicePdfObject; AShading: Boolean): TCsRef;
+var
+  V, E, From: TLandrixEInvoicePdfObject;
+begin
+  From := FSiteFrom;
+  if From = nil then
+    From := FRes.Local;
+  if From = nil then
+    From := FRes.Page;
+  V := FWalk.ResolveRef(ARaw);
+  if not AShading and (V <> nil) and (V.Kind = pok_Arr) and (V.ArrCount = 1) then
+  begin
+    E := FWalk.ResolveRef(V.ArrItem(0));
+    if (E <> nil) and (E.Kind = pok_Name) then
+      V := E;
+  end;
+  if not AShading and (V <> nil) and (V.Kind = pok_Name) then
+    Result := ResolveName(FWalk, FRes, V.NameVal)
+  else
+    Result := CsValue(FWalk, From, ARaw, False, 0);
+end;
+
+{ The link of an image's or a shading's colour space ARaw: none for null;
+  bare /Pattern makes veraPDF throw. Certain only in the page's own content
+  and where the resources make no difference.
+  DE: Die Verknuepfung des Farbraums ARaw eines Bilds oder Shadings: keine
+  fuer null; ein blosses /Pattern laesst veraPDF eine Ausnahme werfen.
+  Sicher nur im eigenen Inhalt der Seite und wo die Ressourcen keinen
+  Unterschied machen. }
+procedure TInterpreter.SiteLink(ARaw: TLandrixEInvoicePdfObject; AShading: Boolean);
+var
+  C, Plain: TCsRef;
+  Loose: Boolean;
+  N: AnsiString;
+begin
+  C := SiteSpace(ARaw, AShading);
+  Plain := CsValue(FWalk, nil, ARaw, False, 0);
+  Loose := (FRes.Local <> FRes.Page) or (C.Kind <> Plain.Kind) or (C.V <> Plain.V);
+  if C.Kind = csk_Value then
+  begin
+    N := FirstName(FWalk, C.V);
+    if ((N = 'Indexed') or (N = 'Separation') or (N = 'DeviceN')) and (FWalk.DGetRef(C.R, 'ColorSpace') <> nil) then
+      Loose := True;
+  end;
+  if C.Kind = csk_Null then
+  begin
+    { veraPDF may build a space where this lookup builds none }
+    if Loose and (Plain.Kind <> csk_Null) then
+      MaybeColour('image or shading colour space not decided');
+    Exit;
+  end;
+  if (C.Kind = csk_Pattern) and (C.V = nil) and not Loose and (FCsMaybe = 0) then
+  begin
+    FWalk.FThrows := True;
+    FWalk.FIncomplete := True;
+    Exit;
+  end;
+  if Loose then
+    Inc(FCsMaybe);
+  try
+    if (C.Kind = csk_PatternUnder) or (C.Kind = csk_Pattern) then
+      MaybeColour('pattern as an image or shading colour space')
+    else
+    begin
+      ExposeCs(C, False, 0);
+      { the space veraPDF may build instead }
+      if Loose and ((C.Kind <> Plain.Kind) or (C.V <> Plain.V)) and (Plain.Kind <> csk_Pattern) and
+        (Plain.Kind <> csk_PatternUnder) then
+        ExposeCs(Plain, False, 0);
+    end;
+  finally
+    if Loose then
+      Dec(FCsMaybe);
+  end;
+end;
+
+{ An image XObject (Do; colour off by d1 does not matter): a stencil mask
+  (/ImageMask true) takes the current fill space (null: no link), another
+  image its /ColorSpace (missing or not built: no link; JPEG 2000 data: not
+  decided). An indirect image is validated once, in the context veraPDF
+  meets it first (a virtual parse per context). The colour spaces of its
+  /SMask, /Mask and alternate images are not modelled: uncertain.
+  DE: Ein Bild-XObject (Do; ob d1 die Farbe abgeschaltet hat, spielt keine
+  Rolle): eine Schablonenmaske (/ImageMask true) nimmt den aktuellen
+  Fuellfarbraum (null: keine Verknuepfung), ein anderes Bild seinen
+  /ColorSpace (fehlt oder nicht gebaut: keine Verknuepfung; JPEG-2000-Daten:
+  nicht entschieden). Ein indirektes Bild wird einmal geprueft, in dem
+  Kontext, in dem veraPDF es zuerst trifft (eine virtuelle Analyse je
+  Kontext). Die Farbraeume seiner /SMask-, /Mask- und Alternativbilder
+  sind nicht nachgebildet: unsicher. }
+procedure TInterpreter.ImageColour(V, ARaw: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  Save: TVSave;
+  Num: Integer;
+  Ctx: string;
+  B: TLandrixEInvoicePdfObject;
+begin
+  if (V = nil) or not V.IsDictLike then
+    Exit;
+  if ADepth > MaxImageDepth then
+  begin
+    MaybeColour('images nested too deep');
+    Exit;
+  end;
+  B := FWalk.DGetRef(V, 'ImageMask');
+  if (B <> nil) and (B.Kind = pok_Bool) and B.BoolVal then
+    Ctx := 'M' + CsKey(FWalk, FState.FillCs)
+  else
+    Ctx := FWalk.ObjId(FRes.Local) + '/' + FWalk.ObjId(FRes.Page);
+  if (ARaw <> nil) and (ARaw.Kind = pok_Ref) then
+  begin
+    Num := FWalk.LastRefNum(ARaw);
+    if EnterVirtual('XI' + IntToStr(Num), Ctx, Num, Save) then
+      try
+        ImageSpace(V, ADepth);
+      finally
+        LeaveVirtual(Save);
+      end;
+  end
+  else
+    ImageSpace(V, ADepth);
+end;
+
+procedure TInterpreter.ImageSpace(V: TLandrixEInvoicePdfObject; ADepth: Integer);
+var
+  B, Raw, Img, A, Item: TLandrixEInvoicePdfObject;
+  I: Integer;
+begin
+  B := FWalk.DGetRef(V, 'ImageMask');
+  if (B <> nil) and (B.Kind = pok_Bool) and B.BoolVal then
+  begin
+    if FState.FillCs.Kind <> csk_Null then
+      ExposeCs(FState.FillCs, False, 0);
+  end
+  else if IsJpx(FWalk, V) then
+  begin
+    { JPEG 2000: /ColorSpace (if any) is taken in a way not modelled }
+    Inc(FCsMaybe);
+    try
+      MaybeColour('JPEG 2000 image');
+      SiteLink(V.RawGet('ColorSpace'), False);
+    finally
+      Dec(FCsMaybe);
+    end;
+  end
+  else
+    SiteLink(V.RawGet('ColorSpace'), False);
+  Inc(FCsMaybe);
+  try
+    Raw := V.RawGet('SMask');
+    Img := FWalk.ResolveRef(Raw);
+    if (Img <> nil) and (Img.Kind = pok_Stream) then
+      ImageColour(Img, Raw, ADepth + 1);
+    Raw := V.RawGet('Mask');
+    Img := FWalk.ResolveRef(Raw);
+    if (Img <> nil) and (Img.Kind = pok_Stream) then
+      ImageColour(Img, Raw, ADepth + 1);
+    A := FWalk.DGetRef(V, 'Alternates');
+    if (A <> nil) and (A.Kind = pok_Arr) then
+      for I := 0 to A.ArrCount - 1 do
+      begin
+        Item := FWalk.ResolveRef(A.ArrItem(I));
+        if (Item = nil) or (Item.Kind <> pok_Dict) then
+          Continue;
+        Raw := Item.RawGet('Image');
+        Img := FWalk.ResolveRef(Raw);
+        if (Img <> nil) and (Img.Kind = pok_Stream) then
+          ImageColour(Img, Raw, ADepth + 1);
+      end;
+  finally
+    Dec(FCsMaybe);
+  end;
+end;
+
+{ sh (and a shading pattern): the shading's /ColorSpace (missing or not
+  built: no link); an indirect shading once per context.
+  DE: sh (und ein Shading-Muster): der /ColorSpace des Shadings (fehlt oder
+  nicht gebaut: keine Verknuepfung); ein indirektes Shading einmal je
+  Kontext. }
+procedure TInterpreter.ShadingColour(S, ARaw: TLandrixEInvoicePdfObject);
+var
+  Save: TVSave;
+  Num: Integer;
+begin
+  if (S = nil) or not S.IsDictLike then
+    Exit;
+  if (ARaw <> nil) and (ARaw.Kind = pok_Ref) then
+  begin
+    Num := FWalk.LastRefNum(ARaw);
+    if EnterVirtual('XH' + IntToStr(Num), FWalk.ObjId(FRes.Local) + '/' + FWalk.ObjId(FRes.Page), Num, Save) then
+      try
+        SiteLink(S.RawGet('ColorSpace'), True);
+      finally
+        LeaveVirtual(Save);
+      end;
+  end
+  else
+    SiteLink(S.RawGet('ColorSpace'), True);
+end;
+
+{ A name of an inline image as veraPDF expands it (one table for colour
+  spaces and filters). }
+function InlineSpaceName(const AName: AnsiString): AnsiString;
+begin
+  if AName = 'AHx' then
+    Result := 'ASCIIHexDecode'
+  else if AName = 'A85' then
+    Result := 'ASCII85Decode'
+  else if AName = 'LZW' then
+    Result := 'LZWDecode'
+  else if AName = 'Fl' then
+    Result := 'FlateDecode'
+  else if AName = 'RL' then
+    Result := 'RunLengthDecode'
+  else if AName = 'CCF' then
+    Result := 'CCITTFaxDecode'
+  else if AName = 'DCT' then
+    Result := 'DCTDecode'
+  else if AName = 'G' then
+    Result := 'DeviceGray'
+  else if AName = 'RGB' then
+    Result := 'DeviceRGB'
+  else if AName = 'CMYK' then
+    Result := 'DeviceCMYK'
+  else if AName = 'I' then
+    Result := 'Indexed'
+  else
+    Result := AName;
+end;
+
+{ An inline image at EI: a stencil (/IM or /ImageMask true) takes the
+  current fill space (null: no link); another image its /CS: missing, a
+  name that selects nothing or no name at all is veraPDF's empty space
+  (DeviceGray); abbreviations count only as a name, not inside an array.
+  An array is decided only as an /Indexed space with a named base.
+  DE: Ein Inline-Bild bei EI: eine Schablone (/IM oder /ImageMask true)
+  nimmt den aktuellen Fuellfarbraum (null: keine Verknuepfung); ein anderes
+  Bild seinen /CS: fehlend, ein Name, der nichts auswaehlt, oder gar kein
+  Name ist veraPDFs leerer Raum (DeviceGray); Abkuerzungen gelten nur als
+  Name, nicht in einem Array. Ein Array wird nur als /Indexed-Raum mit
+  benannter Basis entschieden. }
+procedure TInterpreter.InlineColour(D: TCv);
+var
+  M, CS, First, Base: TCv;
+  C, Plain: TCsRef;
+  R: TLandrixEInvoicePdfObject;
+  Loose, Differs: Boolean;
+begin
+  M := D.Get('IM');
+  if M = nil then
+    M := D.Get('ImageMask');
+  if (M <> nil) and (M.Kind = cvk_Bool) and (M.IntVal = 1) then
+  begin
+    if FState.FillCs.Kind <> csk_Null then
+      ExposeCs(FState.FillCs, False, 0);
+    Exit;
+  end;
+  CS := D.Get('CS');
+  if CS = nil then
+    CS := D.Get('ColorSpace');
+  Loose := FRes.Local <> FRes.Page;
+  if Loose then
+    Inc(FCsMaybe);
+  try
+    if (CS <> nil) and (CS.Kind = cvk_Name) then
+    begin
+      { veraPDF's inline lookup differs from the handler's where the
+        resources matter: then not decided }
+      C := ResolveName(FWalk, FRes, InlineSpaceName(CS.Text));
+      Plain := CsName(FWalk, nil, InlineSpaceName(CS.Text), False, 0);
+      Differs := (C.Kind <> Plain.Kind) or (C.V <> Plain.V);
+      if Differs then
+        Inc(FCsMaybe);
+      try
+        if (C.Kind = csk_PatternUnder) or (Plain.Kind = csk_PatternUnder) then
+          MaybeColour('inline image with a pattern colour space')
+        else
+        begin
+          ExposeCs(C, True, 0);
+          if Differs then
+            ExposeCs(Plain, True, 0);
+        end;
+      finally
+        if Differs then
+          Dec(FCsMaybe);
+      end;
+    end
+    else if (CS <> nil) and (CS.Kind = cvk_Arr) then
+    begin
+      First := nil;
+      Base := nil;
+      if CS.Items.Count >= 2 then
+      begin
+        First := TCv(CS.Items[0]);
+        Base := TCv(CS.Items[1]);
+      end;
+      { the array goes to the factory as it is: abbreviations inside it
+        are names like any other }
+      if (First <> nil) and (First.Kind = cvk_Name) and (First.Text = 'Indexed') and (Base.Kind = cvk_Name) then
+      begin
+        { the stream's own resources (none for a form without them) }
+        R := FRes.Local;
+        ExposeCs(CsName(FWalk, R, Base.Text, False, 0), True, 0);
+      end
+      else
+      begin
+        { an array not modelled may reach a shared colour space first }
+        FWalk.FColourUnsure := True;
+        MaybeColour('inline image colour space array');
+      end;
+    end
+    else if (CS <> nil) and (CS.Kind = cvk_Dict) then
+      MaybeColour('inline image colour space dictionary')
+    else
+      Mark(pcc_DeviceGray, False, 'inline image without a colour space (DeviceGray to veraPDF)');
+  finally
+    if Loose then
+      Dec(FCsMaybe);
+  end;
+end;
+
+{ The /CS of a transparency group (a page's or a form's /Group dictionary;
+  /S not needed), built in the resources of its owner only; missing or not
+  built: no link.
+  DE: Der /CS einer Transparenzgruppe (das /Group-Dictionary einer Seite
+  oder eines Formulars; /S nicht noetig), gebaut nur in den Ressourcen
+  seines Besitzers; fehlt oder nicht gebaut: keine Verknuepfung. }
+procedure TInterpreter.GroupColour(G, R: TLandrixEInvoicePdfObject);
+var
+  C: TCsRef;
+begin
+  C := CsValue(FWalk, R, G.RawGet('CS'), False, 0);
+  if C.Kind = csk_Null then
+    Exit;
+  if (C.Kind = csk_Pattern) and (C.V = nil) then
+  begin
+    FWalk.FThrows := True;
+    FWalk.FIncomplete := True;
+  end
+  else if (C.Kind = csk_PatternUnder) or (C.Kind = csk_Pattern) then
+    MaybeColour('group colour space with a pattern')
+  else
+    ExposeCs(C, False, 0);
+end;
+
+{ The identity veraPDF validates the /Group of AOwner under: an indirect
+  group its own (context: the owner's resources R), a direct one its
+  owner's (AOwnerKey; '' when the owner has none). False without a group
+  dictionary.
+  DE: Die Identitaet, unter der veraPDF die /Group von AOwner prueft: eine
+  indirekte Gruppe ihre eigene (Kontext: die Ressourcen R des Besitzers),
+  eine direkte die des Besitzers (AOwnerKey; '', wenn der Besitzer keine
+  hat). False ohne Gruppen-Dictionary. }
+function GroupKey(AWalk: TLandrixEInvoicePdfContentWalk; AOwner, R: TLandrixEInvoicePdfObject;
+  const AOwnerKey: string; AOwnerNum: Integer; out AG: TLandrixEInvoicePdfObject; out AKey, ACtx: string;
+  out ANum: Integer): Boolean;
+var
+  GRaw: TLandrixEInvoicePdfObject;
+begin
+  AKey := '';
+  ACtx := '';
+  ANum := -1;
+  AG := nil;
+  Result := False;
+  if (AOwner = nil) or not AOwner.IsDictLike then
+    Exit;
+  GRaw := AOwner.RawGet('Group');
+  AG := AWalk.ResolveRef(GRaw);
+  Result := (AG <> nil) and (AG.Kind = pok_Dict);
+  if not Result then
+    Exit;
+  if (GRaw <> nil) and (GRaw.Kind = pok_Ref) then
+  begin
+    ANum := AWalk.LastRefNum(GRaw);
+    AKey := 'XQ' + IntToStr(ANum);
+    ACtx := AWalk.ObjId(R);
+  end
+  else
+  begin
+    AKey := AOwnerKey;
+    ANum := AOwnerNum;
+  end;
+end;
+
+{ The group of a form XObject reached by Do. }
+procedure TInterpreter.OwnerGroup(AOwner, R: TLandrixEInvoicePdfObject; const AOwnerKey: string;
+  AOwnerNum: Integer);
+var
+  G: TLandrixEInvoicePdfObject;
+  Key, Ctx: string;
+  Num: Integer;
+  Save: TVSave;
+begin
+  if not GroupKey(FWalk, AOwner, R, AOwnerKey, AOwnerNum, G, Key, Ctx, Num) then
+    Exit;
+  if Key = '' then
+    GroupColour(G, R)
+  else if EnterVirtual(Key, Ctx, Num, Save) then
+    try
+      GroupColour(G, R);
+    finally
+      LeaveVirtual(Save);
+    end;
+end;
+
+{ Text shows link the fill space in rendering modes 0 and 4, the stroke
+  space in 1 and 5, both in 2 and 6, none in 3 and 7.
+  DE: Textausgaben verknuepfen den Fuellraum in den Darstellungsmodi 0 und
+  4, den Strichraum in 1 und 5, beide in 2 und 6, keinen in 3 und 7. }
+procedure TInterpreter.TextColour;
+var
+  M: Integer;
+  Undecided: Boolean;
+begin
+  if not FState.ColorOn then
+    Exit;
+  M := FState.TextMode;
+  Undecided := (M < 0) or (M > 7);
+  if Undecided then
+    Inc(FCsMaybe);
+  try
+    if Undecided or (M = 0) or (M = 4) or (M = 2) or (M = 6) then
+      ExposeCs(FState.FillCs, True, 0);
+    if Undecided or (M = 1) or (M = 5) or (M = 2) or (M = 6) then
+      ExposeCs(FState.StrokeCs, True, 0);
+  finally
+    if Undecided then
+      Dec(FCsMaybe);
+  end;
+end;
+
 function IsNum(V: TCv): Boolean;
 begin
   Result := (V <> nil) and ((V.Kind = cvk_Int) or (V.Kind = cvk_Real));
@@ -2844,7 +4092,10 @@ procedure TInterpreter.Operate(AOp: TCv; AOps: TObjectList);
 var
   L1, L2, L3: TCv;
   N: Integer;
-  Pat: Boolean;
+  Pat, Stroke: Boolean;
+  Cs: TCsRef;
+  DevName: AnsiString;
+  Sh, Raw: TLandrixEInvoicePdfObject;
 begin
   FOp := TextOf(AOp.Text);
   N := Integer(AOps.Count);
@@ -2919,6 +4170,7 @@ begin
         if IsKind(L1, cvk_Str) then
           ExposeString(L1);
         ShowText;
+        TextColour;
       end;
     oc_ShowSpaced:
       begin
@@ -2932,68 +4184,150 @@ begin
             ExposeNumber(L2);
         end;
         ShowText;
+        TextColour;
       end;
     oc_ShowArray:
       begin
         if IsKind(L1, cvk_Arr) then
           ExposeCos(L1, False);
         ShowText;
+        TextColour;
       end;
     oc_Color:
       if FState.ColorOn then
         TopNumbers(AOps);
     oc_SpaceStroke, oc_SpaceFill:
+      { cs and CS select a space and link it at once (null: the empty space) }
       if FState.ColorOn then
       begin
         TopNumbers(AOps);
+        Stroke := OpCode(AOp.Text) = oc_SpaceStroke;
         if IsKind(L1, cvk_Name) then
         begin
           ExposeName(L1);
-          if OpCode(AOp.Text) = oc_SpaceStroke then
-            FState.StrokePattern := IsPatternSpace(L1.Text)
-          else
-            FState.FillPattern := IsPatternSpace(L1.Text);
+          Pat := IsPatternSpace(L1.Text);
+          Cs := ResolveName(FWalk, FRes, L1.Text);
         end
-        else if OpCode(AOp.Text) = oc_SpaceStroke then
-          FState.StrokePattern := False
         else
-          FState.FillPattern := False;
+        begin
+          Pat := False;
+          Cs := NullCs;
+        end;
+        if Stroke then
+        begin
+          FState.StrokePattern := Pat;
+          FState.StrokeCs := Cs;
+        end
+        else
+        begin
+          FState.FillPattern := Pat;
+          FState.FillCs := Cs;
+        end;
+        { the pattern state and the space disagree (a default that leads
+          to no object): not decided }
+        if (Cs.Kind <> csk_Unknown) and (Pat <> ((Cs.Kind = csk_Pattern) or (Cs.Kind = csk_PatternUnder))) then
+          FParse.Uncertain := True;
+        ExposeCs(Cs, True, 0);
       end;
     oc_ColorNStroke, oc_ColorNFill:
+      { scn and SCN: in a pattern space the pattern of the name, otherwise
+        the current space is linked }
       if FState.ColorOn then
       begin
         TopNumbers(AOps);
-        if IsKind(L1, cvk_Name) then
-        begin
-          ExposeName(L1);
-          if (OpCode(AOp.Text) = oc_ColorNStroke) and FState.StrokePattern then
-            ReachPattern(L1.Text, False)
-          else if (OpCode(AOp.Text) = oc_ColorNFill) and FState.FillPattern then
-            ReachPattern(L1.Text, True);
-        end
-        { without a pattern name veraPDF leaves the pattern space }
-        else if OpCode(AOp.Text) = oc_ColorNStroke then
-          FState.StrokePattern := False
+        Stroke := OpCode(AOp.Text) = oc_ColorNStroke;
+        if Stroke then
+          Pat := FState.StrokePattern
         else
-          FState.FillPattern := False;
+          Pat := FState.FillPattern;
+        if IsKind(L1, cvk_Name) then
+          ExposeName(L1);
+        if Pat and IsKind(L1, cvk_Name) then
+          ReachPattern(L1.Text, not Stroke)
+        else if Pat then
+        begin
+          { without a pattern name veraPDF leaves the pattern space }
+          Cs := NullCs;
+          Cs.Kind := csk_Unknown;
+          if Stroke then
+          begin
+            FState.StrokePattern := False;
+            FState.StrokeCs := Cs;
+          end
+          else
+          begin
+            FState.FillPattern := False;
+            FState.FillCs := Cs;
+          end;
+          MaybeColour('pattern colour without a pattern name');
+        end
+        else if Stroke then
+          ExposeCs(FState.StrokeCs, True, 0)
+        else
+          ExposeCs(FState.FillCs, True, 0);
       end;
     oc_DeviceStroke, oc_DeviceFill:
+      { g, rg, k and the stroke forms: the device space, or the default
+        space of the resources; where that gives nothing, the device space }
       if FState.ColorOn then
       begin
         TopNumbers(AOps);
         if IsKind(L1, cvk_Name) then
           ExposeName(L1);
-        { the device space, or the default space of the resources }
         if (AOp.Text = 'G') or (AOp.Text = 'g') then
-          Pat := IsPatternSpace('DeviceGray')
+          DevName := 'DeviceGray'
         else if (AOp.Text = 'RG') or (AOp.Text = 'rg') then
-          Pat := IsPatternSpace('DeviceRGB')
+          DevName := 'DeviceRGB'
         else
-          Pat := IsPatternSpace('DeviceCMYK');
+          DevName := 'DeviceCMYK';
+        Pat := IsPatternSpace(DevName);
+        Cs := ResolveName(FWalk, FRes, DevName);
+        if Cs.Kind = csk_Null then
+          Cs.Kind := DeviceKind(DevName);
         if OpCode(AOp.Text) = oc_DeviceStroke then
-          FState.StrokePattern := Pat
+        begin
+          FState.StrokePattern := Pat;
+          FState.StrokeCs := Cs;
+        end
         else
+        begin
           FState.FillPattern := Pat;
+          FState.FillCs := Cs;
+        end;
+        if (Cs.Kind <> csk_Unknown) and (Pat <> ((Cs.Kind = csk_Pattern) or (Cs.Kind = csk_PatternUnder))) then
+          FParse.Uncertain := True;
+        ExposeCs(Cs, True, 0);
+      end;
+    oc_PaintFill:
+      if FState.ColorOn then
+        ExposeCs(FState.FillCs, True, 0);
+    oc_PaintStroke:
+      if FState.ColorOn then
+        ExposeCs(FState.StrokeCs, True, 0);
+    oc_PaintBoth:
+      if FState.ColorOn then
+      begin
+        ExposeCs(FState.FillCs, True, 0);
+        ExposeCs(FState.StrokeCs, True, 0);
+      end;
+    oc_TextMode:
+      { veraPDF reads the first operand as an int; a missing, other or
+        invalid mode is 0 (fill); a real number is not decided }
+      begin
+        FState.TextMode := 0;
+        if (N >= 1) and IsKind(TCv(AOps[0]), cvk_Real) then
+          FState.TextMode := -1;
+        if (N >= 1) and IsKind(TCv(AOps[0]), cvk_Int) and (Narrow32(TCv(AOps[0]).IntVal) >= 0) and
+          (Narrow32(TCv(AOps[0]).IntVal) <= 7) then
+          FState.TextMode := Integer(Narrow32(TCv(AOps[0]).IntVal));
+      end;
+    oc_Shading:
+      if FState.ColorOn and IsKind(L1, cvk_Name) then
+      begin
+        Sh := Lookup('Shading', L1.Text, Raw);
+        FSiteFrom := FLookupFrom;
+        ShadingColour(Sh, Raw);
+        FSiteFrom := nil;
       end;
     oc_ExtGState:
       if IsKind(L1, cvk_Name) then
@@ -3022,8 +4356,8 @@ begin
         EX. }
       Mark(pcc_Undefined, False, 'undefined operator');
   else
-    { sh, gs, Tr, painting, text objects, marked content end, BX/EX and
-      unknown operators pass nothing on }
+    { n, h, W, W*, text objects, marked content end, BX/EX and unknown
+      operators pass nothing on }
   end;
 end;
 
@@ -3078,6 +4412,8 @@ begin
   FType3Seen := TStringList.Create;
   FType3Seen.Sorted := True;
   FType3Seen.Duplicates := dupIgnore;
+  FIccCache := TStringList.Create;
+  FIccCache.Sorted := True;
   { built at run time: literals of this size lose precision as Extended }
   FMaxReal := FloatOf('3.403e38');
   FMinReal := FloatOf('1.175e-38');
@@ -3097,6 +4433,9 @@ begin
   for I := 0 to FType3Seen.Count - 1 do
     FType3Seen.Objects[I].Free;
   FType3Seen.Free;
+  for I := 0 to FIccCache.Count - 1 do
+    FIccCache.Objects[I].Free;
+  FIccCache.Free;
   FActive.Free;
   FMemo.Free;
   FParses.Free;
@@ -3549,6 +4888,37 @@ begin
   WalkPage(ANode, Inh);
 end;
 
+{ The /Group of a page or an annotation appearance (AOwner, resources R):
+  a virtual parse reached from the page, once per key. }
+procedure RootGroup(AWalk: TLandrixEInvoicePdfContentWalk; const AKey: string; ANum: Integer;
+  AOwner, R: TLandrixEInvoicePdfObject);
+var
+  G: TLandrixEInvoicePdfObject;
+  Idx, Num: Integer;
+  New: Boolean;
+  Interp: TInterpreter;
+  Key, Ctx: string;
+begin
+  if not GroupKey(AWalk, AOwner, R, AKey, ANum, G, Key, Ctx, Num) then
+    Exit;
+  Idx := VirtualParse(AWalk, Key, Ctx + '/0', Num, True, New);
+  if not New then
+    Exit;
+  Interp := TInterpreter.Create;
+  try
+    Interp.FWalk := AWalk;
+    Interp.FDoc := AWalk.FDoc;
+    Interp.FParse := TContentParse(AWalk.FParses[Idx]);
+    Interp.FParseIndex := Idx;
+    Interp.FRes.Local := R;
+    Interp.FRes.Page := R;
+    Interp.FOp := 'Group';
+    Interp.GroupColour(G, R);
+  finally
+    Interp.Free;
+  end;
+end;
+
 { A page: its /Contents (a stream or the streams of an array) and the
   appearances /N, /D and /R (a stream or the streams of a state dictionary)
   of its annotations; resources from the page or up the /Parent chain. }
@@ -3614,6 +4984,7 @@ begin
   end;
   if Length(Streams) > 0 then
     ParseStreams(Self, Key, First, Streams, Res, FreshState(Self, Res), True);
+  RootGroup(Self, 'XGP' + IntToStr(FPageCount), -1, APage, PageRes);
 
   Annots := DGetRef(APage, 'Annots');
   if (Annots = nil) or (Annots.Kind <> pok_Arr) then
@@ -3624,6 +4995,10 @@ begin
     A := ResolveRef(Annots.ArrItem(I));
     if (A = nil) or (A.Kind <> pok_Dict) then
       Continue;
+    { veraPDF reaches colour spaces through a 3D stream, not modelled }
+    V := DGetRef(A, 'Subtype');
+    if (V <> nil) and (V.Kind = pok_Name) and (V.NameVal = '3D') then
+      FColourUnsure := True;
     { an /AP that is a stream gives veraPDF no appearances }
     AP := DGetRef(A, 'AP');
     if (AP = nil) or (AP.Kind <> pok_Dict) then
@@ -3642,6 +5017,7 @@ begin
         Local := DGetRef(V, 'Resources');
         if (Local <> nil) and not Local.IsDictLike then
           Local := nil;
+        RootGroup(Self, 'XG' + IntToStr(Raw.RefNum), Raw.RefNum, V, Local);
         ApRes.Local := Local;
         ApRes.Page := PageRes;
         ParseStreams(Self, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [V], ApRes, FreshState(Self, ApRes), True);
@@ -3657,6 +5033,7 @@ begin
           Local := DGetRef(S2, 'Resources');
           if (Local <> nil) and not Local.IsDictLike then
             Local := nil;
+          RootGroup(Self, 'XG' + IntToStr(Raw2.RefNum), Raw2.RefNum, S2, Local);
           ApRes.Local := Local;
           ApRes.Page := PageRes;
           ParseStreams(Self, 'S' + IntToStr(Raw2.RefNum), Raw2.RefNum, [S2], ApRes, FreshState(Self, ApRes),
@@ -3935,7 +5312,7 @@ begin
     for G := 0 to NG - 1 do
       Reach[G] := False;
   for Chk := Low(TLandrixEInvoicePdfContentCheck) to High(TLandrixEInvoicePdfContentCheck) do
-    FUncertain[Chk] := FIncomplete;
+    FUncertain[Chk] := FIncomplete or (FColourUnsure and (Chk in ColourChecks));
   MaxNum := FDoc.XrefCount;
   SetLength(FAssocSure, MaxNum);
   SetLength(FAssocMaybe, MaxNum);
@@ -3971,7 +5348,8 @@ begin
           if P.Level[Chk] > 0 then
             AnyLvl := True;
         end;
-        if AllDef and Reach[G] then
+        if AllDef and Reach[G] and not ((FColourUnsure or (FSharedUnsure and TContentParse(FParses[P0]).Virtual)) and
+          (Chk in ColourChecks)) then
         begin
           Emitted := False;
           J := Head[P0];
@@ -3984,8 +5362,16 @@ begin
               Num := TContentParse(FParses[P0]).Num;
               FFindings[FFindingCount].Check := Chk;
               FFindings[FFindingCount].ObjNum := Num;
-              FFindings[FFindingCount].ObjGen := FDoc.XrefEntry(Num).Gen;
-              FFindings[FFindingCount].Detail := 'content of object ' + IntToStr(Num) + ': ' + FFDetail[J];
+              if Num >= 0 then
+                FFindings[FFindingCount].ObjGen := FDoc.XrefEntry(Num).Gen
+              else
+                FFindings[FFindingCount].ObjGen := -1;
+              if not TContentParse(FParses[P0]).Virtual then
+                FFindings[FFindingCount].Detail := 'content of object ' + IntToStr(Num) + ': ' + FFDetail[J]
+              else if Num >= 0 then
+                FFindings[FFindingCount].Detail := 'object ' + IntToStr(Num) + ': ' + FFDetail[J]
+              else
+                FFindings[FFindingCount].Detail := FFDetail[J];
               Inc(FFindingCount);
               Emitted := True;
             end;

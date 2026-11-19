@@ -14,7 +14,9 @@
 
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.2 (graphics: content
   stream operators, graphics states, rendering intents, images, XObjects,
-  blend modes, output intents; not yet colour and fonts), 6.3 (annotations),
+  blend modes, output intents, device colour spaces, ICC input profiles and
+  DeviceN colourants; not yet overprint, Separation consistency and fonts),
+  6.3 (annotations),
   6.4 (interactive forms), 6.5 (actions), 6.6 (XMP metadata: packets,
   properties, extension schemas, PDF/A identification), 6.8
   (embedded files), 6.9 (optional content), 6.10 (alternate presentations)
@@ -38,7 +40,9 @@
 
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.2 (Grafik:
   Operatoren in Content-Streams, Grafikzustaende, Rendering-Intents, Bilder,
-  XObjects, Blend-Modes, Output-Intents; noch nicht Farbe und Schriften),
+  XObjects, Blend-Modes, Output-Intents, Geraetefarbraeume,
+  ICC-Eingangsprofile und DeviceN-Farbmittel; noch nicht Ueberdrucken,
+  Separation-Konsistenz und Schriften),
   6.3 (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
   (XMP-Metadaten: Pakete, Eigenschaften, Erweiterungsschemas,
   PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10
@@ -92,7 +96,8 @@ type
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
     par_6_1_12_1, par_6_1_12_2, par_6_1_13_1, par_6_1_13_2, par_6_1_13_3, par_6_1_13_4, par_6_1_13_5,
     par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11,
-    par_6_2_2_1, par_6_2_3_1, par_6_2_3_2, par_6_2_3_3,
+    par_6_2_2_1, par_6_2_3_1, par_6_2_3_2, par_6_2_3_3, par_6_2_4_2_1, par_6_2_4_3_2, par_6_2_4_3_3, par_6_2_4_3_4,
+    par_6_2_4_4_1,
     par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5, par_6_2_5_6, par_6_2_6_1,
     par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1, par_6_2_9_2, par_6_2_9_3,
     par_6_2_10_1,
@@ -359,7 +364,7 @@ const
     (Number: '6.1.13-5'; Coverage: prc_Full; Text: 'Real numbers are zero or at least 1.175E-38 away from it'),
     (Number: '6.1.13-7'; Coverage: prc_Full; Text: 'At most 8388607 indirect objects'),
     (Number: '6.1.13-8'; Coverage: prc_Full; Text: 'q/Q pairs are nested at most 28 levels deep'),
-    (Number: '6.1.13-9'; Coverage: prc_None; Text: 'A DeviceN colour space has at most 32 colourants'),
+    (Number: '6.1.13-9'; Coverage: prc_Full; Text: 'A DeviceN colour space has at most 32 colourants'),
     (Number: '6.1.13-10'; Coverage: prc_None; Text: 'CID values are at most 65535'),
     (Number: '6.1.13-11'; Coverage: prc_Full; Text: 'Page boundaries are between 3 and 14400 units in each direction'),
     (Number: '6.2.2-1'; Coverage: prc_Full; Text: 'Content streams use only operators defined in ISO 32000-1'),
@@ -368,6 +373,14 @@ const
     (Number: '6.2.3-2'; Coverage: prc_Full;
       Text: 'All output intents with an indirect /DestOutputProfile refer to the same object'),
     (Number: '6.2.3-3'; Coverage: prc_Full; Text: 'A PDF/X output intent has no /DestOutputProfileRef'),
+    (Number: '6.2.4.2-1'; Coverage: prc_Full;
+      Text: 'An ICC input profile is an input, display, output or colour space profile for RGB, CMYK, Gray or Lab ' +
+      'below ICC version 5'),
+    (Number: '6.2.4.3-2'; Coverage: prc_Full; Text: 'DeviceRGB is used only with an RGB output intent'),
+    (Number: '6.2.4.3-3'; Coverage: prc_Full; Text: 'DeviceCMYK is used only with a CMYK output intent'),
+    (Number: '6.2.4.3-4'; Coverage: prc_Full; Text: 'DeviceGray is used only with an output intent'),
+    (Number: '6.2.4.4-1'; Coverage: prc_Full;
+      Text: 'Every colourant of a DeviceN colour space is in /Colorants or a process component'),
     (Number: '6.2.5-1'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /TR'),
     (Number: '6.2.5-2'; Coverage: prc_Full; Text: 'An ExtGState dictionary has /TR2 only with the value Default'),
     (Number: '6.2.5-3'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /HTP'),
@@ -2133,13 +2146,23 @@ const
     par_6_1_13_5, par_6_1_13_3, par_6_1_6_1, par_6_1_6_2, par_6_1_13_4, par_6_1_10_1, par_6_1_13_8, par_6_8_2,
     par_6_8_3, par_6_8_4, par_6_2_2_1, par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5,
     par_6_2_5_6, par_6_2_6_1, par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1,
-    par_6_2_9_2, par_6_2_9_3, par_6_2_10_1);
+    par_6_2_9_2, par_6_2_9_3, par_6_2_10_1, par_6_2_4_3_4, par_6_2_4_3_2, par_6_2_4_3_3, par_6_2_4_2_1, par_6_1_13_9,
+    par_6_2_4_4_1);
 var
   Walk: TLandrixEInvoicePdfContentWalk;
   F: TLandrixEInvoicePdfContentFinding;
   C: TLandrixEInvoicePdfContentCheck;
   I: Integer;
+  Allowed: array[TLandrixEInvoicePdfContentCheck] of Boolean;
 begin
+  { 6.2.4.3: a device space passes with an output intent of its family
+    (DeviceGray with any); without a certain output intent a device space
+    in use leaves the rule open }
+  for C := Low(TLandrixEInvoicePdfContentCheck) to High(TLandrixEInvoicePdfContentCheck) do
+    Allowed[C] := False;
+  Allowed[pcc_DeviceGray] := FOutputCSKnown and (FOutputCS <> '');
+  Allowed[pcc_DeviceRGB] := FOutputCSKnown and (FOutputCS = 'RGB ');
+  Allowed[pcc_DeviceCMYK] := FOutputCSKnown and (FOutputCS = 'CMYK');
   SetLength(FContentSure, FDoc.XrefCount);
   SetLength(FContentMaybe, FDoc.XrefCount);
   Walk := TLandrixEInvoicePdfContentWalk.Create(FDoc);
@@ -2148,10 +2171,15 @@ begin
     for I := 0 to Walk.FindingCount - 1 do
     begin
       F := Walk.Finding(I);
-      Fail(RuleOf[F.Check], F.ObjNum, F.ObjGen, pss_File, -1, F.Detail);
+      if Allowed[F.Check] then
+        Continue;
+      if (F.Check in [pcc_DeviceGray, pcc_DeviceRGB, pcc_DeviceCMYK]) and not FOutputCSKnown then
+        FIncomplete[RuleOf[F.Check]] := True
+      else
+        Fail(RuleOf[F.Check], F.ObjNum, F.ObjGen, pss_File, -1, F.Detail);
     end;
     for C := Low(TLandrixEInvoicePdfContentCheck) to High(TLandrixEInvoicePdfContentCheck) do
-      if Walk.Uncertain(C) then
+      if Walk.Uncertain(C) and not Allowed[C] then
         FIncomplete[RuleOf[C]] := True;
     for I := 0 to FDoc.XrefCount - 1 do
     begin
