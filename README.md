@@ -73,7 +73,8 @@ schema validation; see [Checking](docs/checking.md) for the details and the know
 
 - [Getting started](docs/getting-started.md) ([Deutsch](docs/de/getting-started.md)): setup,
   the three models, targets
-- [Writing](docs/writing.md), [Reading](docs/reading.md), [Checking](docs/checking.md)
+- [Writing](docs/writing.md), [Reading](docs/reading.md), [Checking](docs/checking.md),
+  [Rules of this library](docs/rules.md) (the own LX-... identifiers)
 - [Validating and showing invoices](docs/validation.md): the KoSIT files, validation, reports
   (also the KoSIT report), HTML and Markdown, the KoSIT visualization, what to ship
 - [Moving from XRechnung-for-Delphi](docs/compat-xrechnung.md),

@@ -14,6 +14,11 @@ interface section of a stable unit uses only stable units of this library
 (internal units may change in any release, so a stable signature must not
 depend on them).
 
+Own rule identifiers: every identifier ``LX-<family>-<nn>`` that a unit in
+source/ names in a string literal is listed in docs/rules.md and
+docs/de/rules.md, and the lists name no identifier the sources do not have
+(checked when the default paths are used).
+
 Usage: python tools/check-forbidden.py [path ...]
 Default paths: source, tests, examples.
 """
@@ -325,6 +330,134 @@ def check_api(files, violations):
                                             item.strip().split()[0]))
 
 
+RULE_LITERAL = re.compile(r"LX-[A-Z]+-[0-9]{2}")
+RULE_ROW = re.compile(r"^\|\s*(LX-[^|\s]*)\s*\|(.*)$", re.MULTILINE)
+# the column Since: a version, "unreleased", and "retired in <version>" at the end of a retired rule
+SINCE_EN = re.compile(r"^(unreleased|[0-9][^\s,]*)(, retired in [0-9][^\s,]*)?$")
+SINCE_DE = re.compile(r"^(unver\u00f6ffentlicht|[0-9][^\s,]*)(, aufgegeben in [0-9][^\s,]*)?$")
+
+
+def pascal_strings(text):
+    """Yield (line, value) for every string literal of a Pascal source, outside comments."""
+    i = 0
+    n = len(text)
+    line = 1
+    while i < n:
+        c = text[i]
+        if c == "\n":
+            line += 1
+            i += 1
+        elif c == "{":
+            j = text.find("}", i + 1)
+            j = n if j < 0 else j + 1
+            line += text.count("\n", i, j)
+            i = j
+        elif text.startswith("(*", i):
+            j = text.find("*)", i + 2)
+            j = n if j < 0 else j + 2
+            line += text.count("\n", i, j)
+            i = j
+        elif text.startswith("//", i):
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+        elif c == "'":
+            j = i + 1
+            value = []
+            while j < n:
+                if text[j] == "'":
+                    if j + 1 < n and text[j + 1] == "'":
+                        value.append("'")
+                        j += 2
+                        continue
+                    break
+                if text[j] == "\n":
+                    break
+                value.append(text[j])
+                j += 1
+            yield line, "".join(value)
+            i = j + 1
+        else:
+            i += 1
+
+
+def check_rule_registry(root, violations):
+    """The own rule identifiers of source/ against the lists in docs/rules.md and docs/de/rules.md.
+    An identifier is a complete string literal 'LX-<family>-<nn>'; a literal that starts with 'LX-'
+    but is no complete identifier is reported (identifiers are never built at run time)."""
+    in_source = {}
+    folder = os.path.join(root, "source")
+    for fn in sorted(os.listdir(folder)):
+        if not fn.lower().endswith(".pas"):
+            continue
+        path = os.path.join(folder, fn)
+        with open(path, encoding="latin-1") as f:
+            text = f.read()
+        for number, value in pascal_strings(text):
+            if not value.startswith("LX-"):
+                continue
+            if RULE_LITERAL.fullmatch(value):
+                in_source.setdefault(value, (path, number))
+            else:
+                violations.append(Violation(path, number, "'%s' is no complete rule identifier "
+                                            "(LX-<family>-<two digits>)" % value))
+    lists = []
+    for doc, since_form in ((os.path.join(root, "docs", "rules.md"), SINCE_EN),
+                            (os.path.join(root, "docs", "de", "rules.md"), SINCE_DE)):
+        if not os.path.isfile(doc):
+            violations.append(Violation(doc, 1, "list of the own rule identifiers is missing"))
+            continue
+        with open(doc, encoding="utf-8") as f:
+            text = f.read()
+        listed = {}
+        retired = set()
+        since_of = {}
+        for m in RULE_ROW.finditer(text):
+            rule = m.group(1)
+            number = text.count("\n", 0, m.start()) + 1
+            if not RULE_LITERAL.fullmatch(rule):
+                violations.append(Violation(doc, number, "'%s' is no complete rule identifier" % rule))
+                continue
+            if rule in listed:
+                violations.append(Violation(doc, number, "rule %s is listed twice (first in line %d)" %
+                                            (rule, listed[rule])))
+                continue
+            listed[rule] = number
+            since = m.group(2).rstrip().rstrip("|").split("|")[-1].strip()
+            form = since_form.match(since)
+            if form is None:
+                violations.append(Violation(doc, number, "rule %s: the column Since '%s' is no version, "
+                                            "unreleased or '<version>, retired in <version>'" % (rule, since)))
+                continue
+            since_of[rule] = (form.group(1), (form.group(2) or "").split(" in ")[-1])
+            if form.group(2):
+                retired.add(rule)
+        for rule, (path, number) in sorted(in_source.items()):
+            if rule not in listed:
+                violations.append(Violation(path, number, "rule %s is not listed in %s" % (rule, doc)))
+            elif rule in retired:
+                violations.append(Violation(doc, listed[rule], "rule %s is marked retired but %s has it" %
+                                            (rule, path)))
+        for rule, number in sorted(listed.items()):
+            if rule not in in_source and rule not in retired:
+                violations.append(Violation(doc, number, "rule %s is listed but no unit in source/ has it "
+                                            "(mark it retired)" % rule))
+        lists.append((doc, listed, retired, since_of))
+    if len(lists) == 2:
+        (doc_en, listed_en, retired_en, since_en), (doc_de, listed_de, retired_de, since_de) = lists
+        for rule in sorted(set(listed_en) ^ set(listed_de)):
+            violations.append(Violation(doc_de, 1, "rule %s is in only one of the two lists" % rule))
+        for rule in sorted((retired_en ^ retired_de) & set(listed_en) & set(listed_de)):
+            violations.append(Violation(doc_de, listed_de[rule], "rule %s is retired in only one of the two lists" %
+                                        rule))
+        unreleased = {"unreleased": "", "unver\u00f6ffentlicht": ""}
+        for rule in sorted(set(since_en) & set(since_de)):
+            en = (unreleased.get(since_en[rule][0], since_en[rule][0]), since_en[rule][1])
+            de = (unreleased.get(since_de[rule][0], since_de[rule][0]), since_de[rule][1])
+            if en != de:
+                violations.append(Violation(doc_de, listed_de[rule], "rule %s: the column Since differs from the "
+                                            "English list" % rule))
+
+
 def main(argv):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     paths = argv[1:] or [os.path.join(root, d) for d in ("source", "tests", "examples")]
@@ -342,6 +475,8 @@ def main(argv):
     for f in files:
         check_file(f, violations)
     check_api(files, violations)
+    if not argv[1:]:
+        check_rule_registry(root, violations)
     for v in violations:
         print(v)
     print("check-forbidden: %d file(s), %d violation(s)" % (len(files), len(violations)))

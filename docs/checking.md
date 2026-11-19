@@ -125,4 +125,4 @@ invoice as this library writes it for that specification: sub lines it does not 
 ## Rule identifiers
 
 Rule identifiers are stable. Rules of this library that the standards do not have start with
-`LX-` (e.g. LX-CC-04).
+`LX-` (e.g. LX-CC-04); [Rules of this library](rules.md) lists them and how they are kept stable.

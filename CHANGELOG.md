@@ -8,6 +8,11 @@ Supported invoice standards are documented per release.
 ## [Unreleased]
 
 ### Added
+- `docs/rules.md` (and the German `docs/de/rules.md`) lists the library's own rule identifiers
+  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12) with severity, scope and the version they came
+  with, and how they are kept stable; `tools/check-forbidden.py` fails when the sources and the
+  lists disagree. The warning that the PDF/A check stopped has its own identifier LX-PDF-12 instead
+  of LX-PDF-01 (a broader condition gets a new number).
 - Rule details: `TLandrixEInvoiceDiagnostic` has new fields `Terms`, `Expected`, `Found` and
   `Calculation` and the methods `Assign` and `AddCopy` (the facade and the XRechnung adapter copy
   every field). The calculation rules BR-CO-10 to BR-CO-17, BR-FXEXT-CO-10 to BR-FXEXT-CO-13,

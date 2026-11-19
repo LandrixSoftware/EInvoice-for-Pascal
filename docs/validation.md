@@ -191,8 +191,8 @@ end.
   the rule check `Terms`, `Expected`, `Found` and `Calculation` (see [Checking](checking.md);
   `Location` is then the model path, often empty). Findings of
   the library's own rules are marked `Predicted`: they predict what KoSIT reports and never change
-  the verdict. PDF findings have the identifiers BR-HYBRID-... (ZUGFeRD), LX-PDF-01 to LX-PDF-11
-  (own checks) and PDFA-<clause>-<test> (PDF/A, numbered as in veraPDF, e.g. PDFA-6.1.7.1-1).
+  the verdict. PDF findings have the identifiers BR-HYBRID-... (ZUGFeRD), LX-PDF-...
+  (own checks, see [Rules of this library](rules.md)) and PDFA-<clause>-<test> (PDF/A, numbered as in veraPDF, e.g. PDFA-6.1.7.1-1).
 - Peppol BIS: the configuration has no `acceptMatch`, so every failed assert rejects, a warning
   too. This is how the KoSIT validator decides; its HTML report shows the assessment of its
   stylesheet instead, which rejects on errors only (the repository's `tools/validate.ps1` uses

@@ -195,8 +195,8 @@ end.
   Regelprüfung `Terms`, `Expected`, `Found` und `Calculation` (siehe [Prüfen](checking.md);
   `Location` ist dann der Modellpfad, oft leer). Befunde der
   eigenen Regeln sind als `Predicted` markiert: Sie sagen voraus, was KoSIT meldet, und ändern das
-  Urteil nie. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-01 bis LX-PDF-11
-  (eigene Prüfungen) und PDFA-<Abschnitt>-<Test> (PDF/A, nummeriert wie bei veraPDF, z. B.
+  Urteil nie. PDF-Befunde haben die Kennungen BR-HYBRID-... (ZUGFeRD), LX-PDF-...
+  (eigene Prüfungen, siehe [Regeln dieser Bibliothek](rules.md)) und PDFA-<Abschnitt>-<Test> (PDF/A, nummeriert wie bei veraPDF, z. B.
   PDFA-6.1.7.1-1).
 - Peppol BIS: Die Konfiguration hat kein `acceptMatch`, deshalb lehnt jede fehlgeschlagene
   Assertion ab, auch eine Warnung. So entscheidet der KoSIT-Validator; sein HTML-Bericht zeigt
