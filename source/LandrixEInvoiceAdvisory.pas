@@ -437,10 +437,18 @@ end;
 
 { --- TFieldLister ------------------------------------------------------------ }
 
+{ the list does not need the kind }
+{$IFDEF FPC}
+  {$PUSH}
+  {$WARN 5024 OFF}
+{$ENDIF}
 procedure TFieldLister.Visit(const APath: string; const AValue: TLandrixEInvoiceString; AKind: TFieldKind);
 begin
   FLines.Add(APath + ' = "' + string(AValue) + '"');
 end;
+{$IFDEF FPC}
+  {$POP}
+{$ENDIF}
 
 { --- TCharacterChecker ------------------------------------------------------- }
 
@@ -1205,13 +1213,31 @@ begin
     DateText(A.InvoiceDueDate));
 end;
 
-{ LX-PL-02: an IBAN (ISO 13616) is two capital letters, two check digits
-  and 1 to 30 letters or digits, and the check digits are the ones MOD
-  97-10 gives; Expected the right check digits when the form is right.
-  DE: LX-PL-02: eine IBAN (ISO 13616) besteht aus zwei Grossbuchstaben,
-  zwei Pruefziffern und 1 bis 30 Buchstaben oder Ziffern, und die
-  Pruefziffern sind die, die MOD 97-10 ergibt; Expected die richtigen
-  Pruefziffern, wenn die Form stimmt. }
+{ True if ACode is an ISO 3166 country: the country code list of the
+  invoice without XI (Northern Ireland, VAT), which is no ISO 3166 country,
+  plus XK (Kosovo), which SWIFT uses for BIC and IBAN.
+  DE: True, wenn ACode ein ISO-3166-Land ist: die Laendercodeliste der
+  Rechnung ohne XI (Nordirland, Umsatzsteuer), das kein ISO-3166-Land ist,
+  dazu XK (Kosovo), das SWIFT fuer BIC und IBAN nutzt. }
+function IsIsoCountry(const ACode: TLandrixEInvoiceString): Boolean;
+var
+  Code: TLandrixInvoiceCountryCode;
+begin
+  Result := (ACode = 'XK') or ((ACode <> 'XI') and LandrixEInvoiceCountryCodeFromStr(ACode, Code));
+end;
+
+{ LX-PL-02: an IBAN (ISO 13616) is two capital letters (an ISO 3166
+  country), two check digits and 1 to 30 letters or digits, and the check
+  digits are the ones MOD 97-10 (ISO/IEC 7064) gives; Expected the right
+  check digits when the form is right. The length per country is not
+  checked: the complete table is the IBAN registry of SWIFT, which may not
+  be copied for profit.
+  DE: LX-PL-02: eine IBAN (ISO 13616) besteht aus zwei Grossbuchstaben
+  (einem ISO-3166-Land), zwei Pruefziffern und 1 bis 30 Buchstaben oder
+  Ziffern, und die Pruefziffern sind die, die MOD 97-10 (ISO/IEC 7064)
+  ergibt; Expected die richtigen Pruefziffern, wenn die Form stimmt. Die
+  Laenge je Land wird nicht geprueft: die vollstaendige Tabelle ist das
+  IBAN-Register von SWIFT, das nicht gewerblich kopiert werden darf. }
 procedure TPlausibilityChecker.Iban(const APath: string; const AValue: TLandrixEInvoiceString);
 var
   Value, Expected: TLandrixEInvoiceString;
@@ -1238,6 +1264,9 @@ begin
   if not Capitals then
     AddHint(FDiagnostics, FCount, RuleIban, APath, eds_Warning, 'The IBAN has small letters; it is written in ' +
       'capital letters', '', Value)
+  else if not IsIsoCountry(Copy(Value, 1, 2)) then
+    AddHint(FDiagnostics, FCount, RuleIban, APath, eds_Warning, 'The IBAN starts with ' + string(Copy(Value, 1, 2)) +
+      ', which is no ISO 3166 country', '', Value)
   else if Copy(Value, 3, 2) <> Expected then
     AddHint(FDiagnostics, FCount, RuleIban, APath, eds_Warning,
       'The IBAN has wrong check digits (ISO 13616, MOD 97-10)', Expected, Copy(Value, 3, 2));
@@ -1273,7 +1302,6 @@ var
   Value, Country: TLandrixEInvoiceString;
   I: Integer;
   Letters, Valid: Boolean;
-  Code: TLandrixInvoiceCountryCode;
 begin
   Value := LandrixEInvoiceNormalizeSpace(AValue);
   Letters := False;
@@ -1307,7 +1335,7 @@ begin
     DE: die Codeliste der Rechnung hat auch XI (Nordirland, Umsatzsteuer),
     das kein ISO-3166-Land ist; XK (Kosovo) nutzt SWIFT }
   Country := Copy(Value, 5, 2);
-  if (Country <> 'XK') and ((Country = 'XI') or not LandrixEInvoiceCountryCodeFromStr(Country, Code)) then
+  if not IsIsoCountry(Country) then
     AddHint(FDiagnostics, FCount, RuleBic, APath, eds_Warning, 'The BIC has the country code ' + string(Country) +
       ', which is no ISO 3166 country', '', Value);
 end;

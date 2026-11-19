@@ -27,8 +27,9 @@ Supported invoice standards are documented per release.
   differs from the buyer's Leitweg-ID. Expected and found check digits are in `Expected` and `Found`.
   `LandrixEInvoiceIdentifiers` has the new building blocks `LandrixEInvoiceGS1CheckDigit` and
   `LandrixEInvoiceLeitwegIDProblem`. A second family `eaf_Plausibility` (LX-PL-01 to LX-PL-05,
-  on by default) reports a due date before the invoice date, an IBAN with wrong form or check digits
-  (`LandrixEInvoiceIBANCheckDigits`), a BIC of wrong form, an account holder who is not the seller
+  on by default) reports a due date before the invoice date, an IBAN with wrong form, country code or check digits
+  (`LandrixEInvoiceIBANCheckDigits`; no length per country, the IBAN registry of SWIFT may not be copied for
+  profit), a BIC of wrong form, an account holder who is not the seller
   without a payee (info) and a SEPA direct debit without mandate reference, creditor identifier or
   debited account. `LandrixEInvoiceAdvise` takes the rule identifiers the rule check reported and
   does not repeat them.

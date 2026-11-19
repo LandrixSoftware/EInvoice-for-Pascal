@@ -46,6 +46,10 @@ begin
   Result := TLandrixEInvoiceString(AText) + TLandrixEInvoiceString(Wide(AUnits));
 end;
 
+const
+  { the target of nothing in particular }
+  NoTarget: TLandrixEInvoiceTarget = (Standard: est_None; Syntax: esy_None; Profile: epr_None; Version: '');
+
 { The hints of the families AFamilies on AInvoice read as AStandard, the
   rule check having reported AReported (comma separated), one line each:
   rule, path, terms, severity }
@@ -59,7 +63,7 @@ const
   Sev: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
 begin
   D.Clear;
-  FillChar(Target, SizeOf(Target), 0);
+  Target := NoTarget;
   Target.Standard := AStandard;
   Reported := TStringList.Create;
   try
@@ -110,7 +114,7 @@ const
   Sev: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
 begin
   D.Clear;
-  FillChar(Target, SizeOf(Target), 0);
+  Target := NoTarget;
   Target.Syntax := esy_CII;
   LandrixEInvoiceAdvise(AInvoice, Target, [eaf_Plausibility], D, nil);
   Result := '';
@@ -121,12 +125,6 @@ begin
     Result := Result + string(D[I].RuleID) + ':' + string(D[I].Path) + ':' + string(D[I].Terms) + ':' +
       Sev[D[I].Severity];
   end;
-end;
-
-{ the target of nothing in particular }
-function NoTarget: TLandrixEInvoiceTarget;
-begin
-  FillChar(Result, SizeOf(Result), 0);
 end;
 
 { Every text field of the model, and nothing else: the walk lists the same
@@ -543,6 +541,12 @@ begin
     Pay.FinancialAccount := 'DE99370400440532013000';
     CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
       'IBAN with 99 as check digits');
+    Pay.FinancialAccount := 'QQ33370400440532013000';
+    CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
+      'IBAN of no country');
+    Check(Pos('starts with QQ', string(D[0].Message)) > 0, 'IBAN country: ' + string(D[0].Message));
+    Pay.FinancialAccount := 'XK051212012345678906';
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'IBAN of Kosovo');
     Pay.FinancialAccount := 'DE36';
     CheckEqualsStr('LX-PL-02:PaymentTypes[0].FinancialAccount:BT-84/BT-91/BT-87:warning', PlHints(Inv, D, ''),
       'IBAN without BBAN');

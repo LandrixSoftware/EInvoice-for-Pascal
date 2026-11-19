@@ -1938,12 +1938,19 @@ type
       ADiagnostics: TLandrixEInvoiceDiagnostics); override;
   end;
 
+{$IFDEF FPC}
+  {$PUSH}
+  {$WARN 5024 OFF}
+{$ENDIF}
 procedure TStoppingValidator.Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
   AReported: TStrings; ADiagnostics: TLandrixEInvoiceDiagnostics);
 begin
   ADiagnostics.AddDiagnostic(edk_RuleViolation, 'InvoiceNumber', 0, 0, 0, 'before the stop').Severity := eds_Error;
   raise Exception.Create('advisory stopped');
 end;
+{$IFDEF FPC}
+  {$POP}
+{$ENDIF}
 
 { The advisory checks: a hint in the part evp_Advisory, counted apart; the
   verdict stays the same without them and when they stop, for each of the
