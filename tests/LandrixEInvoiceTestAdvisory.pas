@@ -35,6 +35,7 @@ uses
   LandrixEInvoiceDiagnostics,
   LandrixEInvoiceInvoice,
   LandrixEInvoiceCodes,
+  LandrixEInvoiceIdentifiers,
   LandrixEInvoiceAdvisory,
   LandrixEInvoiceTestFramework,
   LandrixEInvoiceTestInvoiceCompare;
@@ -45,15 +46,20 @@ begin
   Result := TLandrixEInvoiceString(AText) + TLandrixEInvoiceString(Wide(AUnits));
 end;
 
-{ The hints of AInvoice, one line each: rule, path, terms, severity }
-function Hints(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics): string;
+{ The hints of AInvoice read as AStandard, one line each: rule, path,
+  terms, severity }
+function HintsAs(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics; AStandard: TLandrixEInvoiceStandard;
+  AR040Reported: Boolean = False): string;
 var
   I: Integer;
+  Target: TLandrixEInvoiceTarget;
 const
   Sev: array[TLandrixEInvoiceDiagnosticSeverity] of string = ('info', 'warning', 'error');
 begin
   D.Clear;
-  I := LandrixEInvoiceAdvise(AInvoice, LandrixEInvoiceAdvisoryTechnical, D);
+  FillChar(Target, SizeOf(Target), 0);
+  Target.Standard := AStandard;
+  I := LandrixEInvoiceAdvise(AInvoice, Target, LandrixEInvoiceAdvisoryTechnical, D, AR040Reported);
   CheckEquals(D.Count, I, 'number of hints');
   Result := '';
   for I := 0 to D.Count - 1 do
@@ -65,6 +71,17 @@ begin
     Result := Result + string(D[I].RuleID) + ':' + string(D[I].Path) + ':' + string(D[I].Terms) + ':' +
       Sev[D[I].Severity];
   end;
+end;
+
+function Hints(AInvoice: TLandrixInvoice; D: TLandrixEInvoiceDiagnostics): string;
+begin
+  Result := HintsAs(AInvoice, D, est_None);
+end;
+
+{ the target of nothing in particular }
+function NoTarget: TLandrixEInvoiceTarget;
+begin
+  FillChar(Result, SizeOf(Result), 0);
 end;
 
 { Every text field of the model, and nothing else: the walk lists the same
@@ -133,10 +150,11 @@ begin
     Check(Pos('U+202E at character 4;', string(D[0].Message)) > 0, 'bidi: message ' + string(D[0].Message));
     { not in the family set: nothing }
     D.Clear;
-    CheckEquals(0, LandrixEInvoiceAdvise(Inv, [], D), 'no family');
+    CheckEquals(0, LandrixEInvoiceAdvise(Inv, NoTarget, [], D), 'no family');
     CheckEquals(0, D.Count, 'no family: no diagnostic');
     { without a list the hints are counted }
-    CheckEquals(1, LandrixEInvoiceAdvise(Inv, LandrixEInvoiceAdvisoryTechnical, nil), 'counted without a list');
+    CheckEquals(1, LandrixEInvoiceAdvise(Inv, NoTarget, LandrixEInvoiceAdvisoryTechnical, nil),
+      'counted without a list');
     { two zero width spaces and a C1 control character }
     Inv.InvoiceNumber := With_('A', [$200B]) + With_('B', [$200B, $0085]);
     CheckEqualsStr('LX-ID-03:InvoiceNumber:BT-1:warning; LX-ID-02:InvoiceNumber:BT-1:warning', Hints(Inv, D),
@@ -240,7 +258,9 @@ begin
     Line.StandardItemIdentifierSchemeID := '0160';
     Line.StandardItemIdentifier := With_('400638133393', [$FF11]);
     Line.GlobalID_EAN_GTIN := Line.StandardItemIdentifier;
-    CheckEqualsStr('LX-ID-05:InvoiceLines[0].StandardItemIdentifier:BT-157:warning', Hints(Inv, D), 'GTIN once');
+    CheckEqualsStr('LX-ID-05:InvoiceLines[0].StandardItemIdentifier:BT-157:warning; ' +
+      'LX-ID-07:InvoiceLines[0].StandardItemIdentifier:BT-157:warning', Hints(Inv, D), 'GTIN once');
+    CheckEqualsInvoiceStr('400638133393<U+FF11>', D[1].Found, 'GTIN: fullwidth digit masked');
     Line.StandardItemIdentifier := '';
     Line.GlobalID_EAN_GTIN := '';
     Line.SubInvoiceLines.AddInvoiceLine;
@@ -263,10 +283,167 @@ begin
   end;
 end;
 
+{ Identifiers by their scheme: GLN, GTIN, a scheme in the wrong place,
+  Leitweg-ID (format specification 2.0.2, example 04011000-1234512345-06),
+  BT-10 against the buyer's Leitweg-ID. }
+procedure TestSchemes;
+var
+  Inv: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Line: TLandrixInvoiceLine;
+  Expected: TLandrixEInvoiceString;
+begin
+  Inv := TLandrixInvoice.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    { the Leitweg-ID building block }
+    Check(LandrixEInvoiceLeitwegIDProblem('04011000-1234512345-06', Expected) = elp_None, 'Leitweg example');
+    CheckEqualsInvoiceStr('06', Expected, 'Leitweg example: check digits');
+    Check(LandrixEInvoiceLeitwegIDProblem('991-33333test-33', Expected) = elp_None, 'Leitweg, lower case');
+    Check(LandrixEInvoiceLeitwegIDProblem('99-92', Expected) = elp_None, 'Leitweg, two digits');
+    Check(LandrixEInvoiceLeitwegIDProblem('04011000-1234512345-35', Expected) = elp_CheckDigits, 'check digits');
+    CheckEqualsInvoiceStr('06', Expected, 'check digits: expected');
+    Check(LandrixEInvoiceLeitwegIDProblem('0401100-12-06', Expected) = elp_CoarseLength, 'coarse length');
+    Check(LandrixEInvoiceLeitwegIDProblem('17011000-X-76', Expected) = elp_State, 'state');
+    Check(LandrixEInvoiceLeitwegIDProblem('04011000--06', Expected) = elp_Form, 'empty fine address');
+    Check(LandrixEInvoiceLeitwegIDProblem('04011000-12_45-06', Expected) = elp_Form, 'fine address character');
+    Check(LandrixEInvoiceLeitwegIDProblem('04011000-1234512345-6', Expected) = elp_Form, 'one check digit');
+    Check(LandrixEInvoiceLeitwegIDProblem('0401100012345-06', Expected) = elp_Form, 'coarse of 13 digits');
+    Check(LandrixEInvoiceLeitwegIDProblem('-06', Expected) = elp_Form, 'no coarse address');
+    CheckEquals(7, LandrixEInvoiceGS1CheckDigit('5901234123457'), 'GS1 check digit');
+    CheckEquals(-1, LandrixEInvoiceGS1CheckDigit('5'), 'GS1: one digit');
+    { GLN }
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := '0088';
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '4000001000005';
+    CheckEqualsStr('', Hints(Inv, D), 'valid GLN');
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '4000001000006';
+    CheckEqualsStr('LX-ID-06:AccountingSupplierParty.GlobalIdentifierSellerBuyer:BT-29-0:warning', Hints(Inv, D),
+      'GLN check digit');
+    CheckEqualsInvoiceStr('5', D[0].Expected, 'GLN: expected');
+    CheckEqualsInvoiceStr('6', D[0].Found, 'GLN: found');
+    { Peppol: PEPPOL-COMMON-R040 reported the check digit, the length is
+      ours }
+    CheckEqualsStr('', HintsAs(Inv, D, est_PeppolBIS, True), 'GLN check digit with Peppol');
+    CheckEqualsStr('LX-ID-06:AccountingSupplierParty.GlobalIdentifierSellerBuyer:BT-29-0:warning',
+      HintsAs(Inv, D, est_PeppolBIS), 'GLN check digit with Peppol, R040 not reported');
+    { 13 characters, one no digit: R040 reports it }
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '400000100000X';
+    CheckEqualsStr('', HintsAs(Inv, D, est_PeppolBIS, True), 'GLN with a letter, R040 reported');
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := With_('400000100000', [$D835, $DFCF]);
+    CheckEqualsStr('', HintsAs(Inv, D, est_PeppolBIS, True), 'GLN with a supplementary digit, R040 reported');
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '00012345600013';
+    CheckEqualsStr('LX-ID-06:AccountingSupplierParty.GlobalIdentifierSellerBuyer:BT-29-0:warning',
+      HintsAs(Inv, D, est_PeppolBIS, True), 'GLN of 14 digits with Peppol');
+    Check(Pos('not 13 digits', string(D[0].Message)) > 0, 'GLN length: ' + string(D[0].Message));
+    { a padded scheme: R040 compares the scheme as written, so ours stays }
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := ' 0088';
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '4000001000006';
+    CheckEqualsStr('LX-ID-06:AccountingSupplierParty.GlobalIdentifierSellerBuyer:BT-29-0:warning',
+      HintsAs(Inv, D, est_PeppolBIS, True), 'GLN with a padded scheme');
+    { without scheme the global identifier is a GLN }
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := '';
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '00012345600012';
+    CheckEqualsStr('LX-ID-06:AccountingSupplierParty.GlobalIdentifierSellerBuyer:BT-29-0:warning', Hints(Inv, D),
+      'global identifier without scheme');
+    Inv.AccountingSupplierParty.GlobalIdentifierSellerBuyer := '';
+    { the delivery location is no PEPPOL-COMMON place }
+    Inv.DeliveryInformation.LocationIdentifierSchemeID := '0088';
+    Inv.DeliveryInformation.LocationIdentifier := '4000001000006';
+    CheckEqualsStr('LX-ID-06:DeliveryInformation.LocationIdentifier:BT-71:warning', HintsAs(Inv, D, est_PeppolBIS),
+      'delivery GLN with Peppol');
+    { a GTIN for a location }
+    Inv.DeliveryInformation.LocationIdentifierSchemeID := '0160';
+    Inv.DeliveryInformation.LocationIdentifier := '96385074';
+    CheckEqualsStr('LX-ID-08:DeliveryInformation.LocationIdentifier:BT-71:warning', Hints(Inv, D), 'GTIN for a place');
+    Inv.DeliveryInformation.LocationIdentifier := '';
+    { GTIN }
+    Line := Inv.InvoiceLines.AddInvoiceLine;
+    Line.StandardItemIdentifierSchemeID := '0160';
+    Line.StandardItemIdentifier := '96385074';
+    Line.GlobalID_EAN_GTIN := '96385074';
+    CheckEqualsStr('', Hints(Inv, D), 'valid GTIN-8');
+    Line.StandardItemIdentifier := '00012345600012';
+    Line.GlobalID_EAN_GTIN := Line.StandardItemIdentifier;
+    CheckEqualsStr('', Hints(Inv, D), 'valid GTIN-14');
+    Line.StandardItemIdentifier := '5901234123458';
+    Line.GlobalID_EAN_GTIN := Line.StandardItemIdentifier;
+    CheckEqualsStr('LX-ID-07:InvoiceLines[0].StandardItemIdentifier:BT-157:warning', Hints(Inv, D), 'GTIN once');
+    { the GTIN field is written only without BT-157 }
+    Line.GlobalID_EAN_GTIN := '123456789';
+    CheckEqualsStr('LX-ID-07:InvoiceLines[0].StandardItemIdentifier:BT-157:warning', Hints(Inv, D),
+      'GTIN field not written');
+    Line.StandardItemIdentifier := '';
+    CheckEqualsStr('LX-ID-07:InvoiceLines[0].GlobalID_EAN_GTIN:BT-157:warning', Hints(Inv, D), 'GTIN field');
+    Check(Pos('not 8, 12, 13 or 14 digits', string(D[0].Message)) > 0, 'GTIN length: ' + string(D[0].Message));
+    { a value with a hidden character is shown masked }
+    Line.GlobalID_EAN_GTIN := With_('9638', [$202E]) + '5074';
+    CheckEqualsStr('LX-ID-01:InvoiceLines[0].GlobalID_EAN_GTIN:BT-157:warning; ' +
+      'LX-ID-07:InvoiceLines[0].GlobalID_EAN_GTIN:BT-157:warning', Hints(Inv, D), 'GTIN with bidi');
+    CheckEqualsInvoiceStr('9638<U+202E>5074', D[1].Found, 'GTIN shown masked');
+    Line.GlobalID_EAN_GTIN := '';
+    { a Leitweg-ID as item identifier }
+    Line.StandardItemIdentifierSchemeID := '0204';
+    Line.StandardItemIdentifier := '04011000-1234512345-35';
+    CheckEqualsStr('LX-ID-09:InvoiceLines[0].StandardItemIdentifier:BT-157:warning', Hints(Inv, D),
+      'Leitweg-ID as item identifier');
+    CheckEqualsInvoiceStr('06', D[0].Expected, 'item Leitweg-ID: expected');
+    Line.StandardItemIdentifierSchemeID := '0088';
+    Line.StandardItemIdentifier := '4000001000005';
+    CheckEqualsStr('LX-ID-08:InvoiceLines[0].StandardItemIdentifier:BT-157:warning', Hints(Inv, D), 'GLN for an item');
+    Inv.InvoiceLines.Clear;
+    { Leitweg-ID as electronic address }
+    Inv.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := '0204';
+    Inv.AccountingCustomerParty.ElectronicAddressSellerBuyer := '04011000-1234512345-06';
+    CheckEqualsStr('', Hints(Inv, D), 'valid Leitweg-ID');
+    Inv.AccountingCustomerParty.ElectronicAddressSellerBuyer := '04011000-1234512345-35';
+    CheckEqualsStr('LX-ID-09:AccountingCustomerParty.ElectronicAddressSellerBuyer:BT-49:warning', Hints(Inv, D),
+      'Leitweg-ID check digits');
+    CheckEqualsInvoiceStr('06', D[0].Expected, 'Leitweg: expected');
+    CheckEqualsInvoiceStr('35', D[0].Found, 'Leitweg: found');
+    Inv.AccountingCustomerParty.ElectronicAddressSellerBuyer := ' 99-92 ';
+    CheckEqualsStr('LX-ID-09:AccountingCustomerParty.ElectronicAddressSellerBuyer:BT-49:warning', Hints(Inv, D),
+      'Leitweg-ID with blanks');
+    Inv.AccountingCustomerParty.ElectronicAddressSellerBuyer := '17011000-X-76';
+    CheckEqualsStr('LX-ID-09:AccountingCustomerParty.ElectronicAddressSellerBuyer:BT-49:warning', Hints(Inv, D),
+      'Leitweg-ID state');
+    Check(Pos('starts with 17', string(D[0].Message)) > 0, 'state: ' + string(D[0].Message));
+    { BT-10: only when it looks like a Leitweg-ID }
+    Inv.AccountingCustomerParty.ElectronicAddressSellerBuyer := '991-33333TEST-33';
+    Inv.BuyerReference := 'PO-4711';
+    CheckEqualsStr('', Hints(Inv, D), 'other buyer reference');
+    Inv.BuyerReference := '17011000-X-76';
+    CheckEqualsStr('', Hints(Inv, D), 'buyer reference of another form');
+    Inv.BuyerReference := '01-12-23';
+    CheckEqualsStr('', Hints(Inv, D), 'a date as buyer reference');
+    Inv.BuyerReference := '05-2024-12';
+    CheckEqualsStr('', Hints(Inv, D), 'an order number as buyer reference');
+    Inv.BuyerReference := '991-33333TEST-34';
+    CheckEqualsStr('LX-ID-09:BuyerReference:BT-10:info', Hints(Inv, D), 'federation Leitweg-ID as BT-10');
+    Inv.BuyerReference := '04011000-1234512345-35';
+    CheckEqualsStr('LX-ID-09:BuyerReference:BT-10:warning', HintsAs(Inv, D, est_XRechnung), 'BT-10 for XRechnung');
+    CheckEqualsStr('LX-ID-09:BuyerReference:BT-10:info', Hints(Inv, D), 'BT-10 otherwise');
+    { BT-10 and BT-49 different Leitweg-IDs: an info; the same in other case:
+      none }
+    Inv.BuyerReference := '04011000-1234512345-06';
+    CheckEqualsStr('LX-ID-10:BuyerReference:BT-10:info', Hints(Inv, D), 'different Leitweg-IDs');
+    Inv.BuyerReference := '991-33333test-33';
+    CheckEqualsStr('', Hints(Inv, D), 'same Leitweg-ID');
+    { a valid Leitweg-ID of the federation without fine address differs too }
+    Inv.BuyerReference := '99-92';
+    CheckEqualsStr('LX-ID-10:BuyerReference:BT-10:info', Hints(Inv, D), 'different short Leitweg-ID');
+    Inv.BuyerReference := ' 99-92 ';
+    CheckEqualsStr('', Hints(Inv, D), 'BT-10 with blanks is no Leitweg-ID to compare');
+  finally
+    D.Free;
+    Inv.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('Advisory.Fields', TestFields);
   RegisterTest('Advisory.Characters', TestCharacters);
+  RegisterTest('Advisory.Schemes', TestSchemes);
 end;
 
 end.

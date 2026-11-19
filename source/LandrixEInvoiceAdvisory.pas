@@ -38,6 +38,18 @@
   itself is never changed; the finding shows it with the characters masked
   as <U+XXXX>.
 
+  The same family checks identifiers by their scheme (LX-ID-06 to
+  LX-ID-10): a GLN (0088) at a party, location or electronic address has
+  13 digits and a valid GS1 check digit (for Peppol BIS only the length
+  where PEPPOL-COMMON-R040 reported in the same run), a
+  global identifier without scheme counts as GLN as the writers write it,
+  a GTIN (0160) as item
+  identifier 8, 12, 13 or 14 digits and a valid check digit, a GTIN is no
+  party identifier and a GLN no item identifier, a Leitweg-ID (0204) and a
+  buyer reference (BT-10) that looks like one follow the format
+  specification 2.0.2, and a buyer reference that differs from the buyer's
+  Leitweg-ID gets an info.
+
   DE: Hinweispruefungen: eigene Hinweise der Bibliothek zu einer Rechnung,
   die kein Standard verlangt (Regelkennungen LX-..., siehe docs/rules.md).
   Sie entscheiden nie ueber ein Urteil: die Dokumentpruefung zeigt sie in
@@ -63,7 +75,19 @@
   SEPA-Lastschrift, eine IBAN), bekommt eine Warnung fuer
   jedes andere Zeichen ausserhalb von ASCII, z. B. einen kyrillischen
   Buchstaben, der wie ein lateinischer aussieht. Der Wert selbst wird nie
-  geaendert; der Befund zeigt ihn mit den Zeichen maskiert als <U+XXXX>. }
+  geaendert; der Befund zeigt ihn mit den Zeichen maskiert als <U+XXXX>.
+
+  Dieselbe Familie prueft Kennungen nach ihrem Schema (LX-ID-06 bis
+  LX-ID-10): eine GLN (0088) an einem Beteiligten, Ort oder einer
+  elektronischen Adresse hat 13 Ziffern und eine gueltige GS1-Pruefziffer
+  (bei Peppol BIS nur die Laenge, wo PEPPOL-COMMON-R040 im selben Lauf
+  gemeldet hat), eine globale Kennung ohne Schema zaehlt als GLN,
+  wie die Writer sie schreiben, eine GTIN (0160) als Artikelkennung 8, 12, 13 oder 14 Ziffern und
+  eine gueltige Pruefziffer, eine GTIN ist keine Kennung eines Beteiligten
+  und eine GLN keine Artikelkennung, eine Leitweg-ID (0204) und eine
+  Kaeuferreferenz (BT-10), die wie eine aussieht, folgen der
+  Formatspezifikation 2.0.2, und eine Kaeuferreferenz, die von der
+  Leitweg-ID des Kaeufers abweicht, bekommt einen Hinweis. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -95,20 +119,34 @@ const
     DE: Die technischen Familien, standardmaessig an. }
   LandrixEInvoiceAdvisoryTechnical = [eaf_Identifiers];
 
-{ Runs the advisory checks of AFamilies on AInvoice and adds a diagnostic
+{ Runs the advisory checks of AFamilies on AInvoice for ATarget (the target
+  read from the document, its Standard est_None when unknown; it decides
+  what PEPPOL-COMMON-R040 already checks and how strict BT-10 is) and adds a
+  diagnostic
   (edk_RuleViolation, severity info or warning, never error) per hint to
   ADiagnostics: RuleID, Path (the model path, e.g.
   InvoiceLines[0].SellersItemIdentification), Terms, Found (the value
-  with the characters masked, shortened around the first one) and
-  Message. Returns the number of hints.
-  DE: Fuehrt die Hinweispruefungen von AFamilies auf AInvoice aus und fuegt
+  with the characters masked, shortened around the first one, or the
+  wrong check digits), Expected (the right check digits) and Message.
+  AR040Reported: the rule check (LandrixEInvoiceCheckInvoice) of the same
+  invoice reported PEPPOL-COMMON-R040, so a wrong GLN check digit at the
+  places it checks is not repeated. Returns the number of hints.
+  DE: Fuehrt die Hinweispruefungen von AFamilies auf AInvoice fuer ATarget
+  aus (das aus dem Dokument gelesene Ziel, Standard est_None, wenn
+  unbekannt; es entscheidet, was PEPPOL-COMMON-R040 schon prueft und wie
+  streng BT-10 ist) und fuegt
   je Hinweis eine Meldung (edk_RuleViolation, Schwere Hinweis oder
   Warnung, nie Fehler) zu ADiagnostics hinzu: RuleID, Path (der
   Modellpfad, z. B. InvoiceLines[0].SellersItemIdentification), Terms,
-  Found (der Wert mit maskierten Zeichen, gekuerzt um das erste) und
-  Message. Liefert die Zahl der Hinweise. }
-function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; AFamilies: TLandrixEInvoiceAdvisoryFamilies;
-  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+  Found (der Wert mit maskierten Zeichen, gekuerzt um das erste, oder die
+  falschen Pruefziffern), Expected (die richtigen Pruefziffern) und
+  Message. AR040Reported: die Regelpruefung (LandrixEInvoiceCheckInvoice)
+  derselben Rechnung hat PEPPOL-COMMON-R040 gemeldet, eine falsche
+  GLN-Pruefziffer an den Stellen, die sie prueft, wird also nicht
+  wiederholt. Liefert die Zahl der Hinweise. }
+function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  AFamilies: TLandrixEInvoiceAdvisoryFamilies; ADiagnostics: TLandrixEInvoiceDiagnostics;
+  AR040Reported: Boolean = False): Integer;
 
 { Adds one line per text field the character checks look at to ALines:
   model path, ' = "', value, '"' (the form of the test helper DumpInvoice,
@@ -125,6 +163,7 @@ implementation
 uses
   SysUtils,
   LandrixEInvoiceCodes,
+  LandrixEInvoiceIdentifiers,
   LandrixEInvoiceRenderLabels;
 
 const
@@ -133,6 +172,11 @@ const
   RuleC1 = 'LX-ID-03';
   RuleTextHidden = 'LX-ID-04';
   RuleNotAscii = 'LX-ID-05';
+  RuleGln = 'LX-ID-06';
+  RuleGtin = 'LX-ID-07';
+  RuleWrongScheme = 'LX-ID-08';
+  RuleLeitweg = 'LX-ID-09';
+  RuleLeitwegDiffers = 'LX-ID-10';
   { UTF-16 units shown before and after the first character in Found }
   ExcerptContext = 30;
 
@@ -339,6 +383,30 @@ begin
     end;
 end;
 
+{ Adds a hint to ADiagnostics (nil: only counted in ACount); never an
+  error. }
+procedure AddHint(ADiagnostics: TLandrixEInvoiceDiagnostics; var ACount: Integer; const ARule, APath: string;
+  ASeverity: TLandrixEInvoiceDiagnosticSeverity; const AText: string; const AExpected,
+  AFound: TLandrixEInvoiceString);
+var
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  { a hint is never an error
+    DE: ein Hinweis ist nie ein Fehler }
+  if ASeverity = eds_Error then
+    ASeverity := eds_Warning;
+  Inc(ACount);
+  if ADiagnostics = nil then
+    Exit;
+  D := ADiagnostics.AddDiagnostic(edk_RuleViolation, TLandrixEInvoiceString(APath), 0, 0, 0,
+    TLandrixEInvoiceString(AText));
+  D.Severity := ASeverity;
+  D.RuleID := TLandrixEInvoiceString(ARule);
+  D.Terms := TermsOf(APath);
+  D.Expected := AExpected;
+  D.Found := AFound;
+end;
+
 { --- TFieldLister ------------------------------------------------------------ }
 
 procedure TFieldLister.Visit(const APath: string; const AValue: TLandrixEInvoiceString; AKind: TFieldKind);
@@ -352,28 +420,15 @@ procedure TCharacterChecker.Hint(const ARule, APath: string; const AValue: TLand
   ASeverity: TLandrixEInvoiceDiagnosticSeverity; const AWhat, AWhy: string; const AHit: TCharHit;
   AMask: TCharClasses);
 var
-  D: TLandrixEInvoiceDiagnostic;
   Text: string;
 begin
-  { a hint is never an error
-    DE: ein Hinweis ist nie ein Fehler }
-  if ASeverity = eds_Error then
-    ASeverity := eds_Warning;
-  Inc(FCount);
-  if FDiagnostics = nil then
-    Exit;
   { the position counts characters (a surrogate pair is one)
     DE: die Position zaehlt Zeichen (ein Ersatzpaar ist eines) }
   Text := AWhat + ' ' + CodePointText(AHit.CodePoint) + ' at character ' + IntToStr(AHit.Position);
   if AHit.Count > 1 then
     Text := Text + ' (' + IntToStr(AHit.Count) + ' in total)';
   Text := Text + AWhy;
-  D := FDiagnostics.AddDiagnostic(edk_RuleViolation, TLandrixEInvoiceString(APath), 0, 0, 0,
-    TLandrixEInvoiceString(Text));
-  D.Severity := ASeverity;
-  D.RuleID := TLandrixEInvoiceString(ARule);
-  D.Terms := TermsOf(APath);
-  D.Found := Masked(AValue, AHit.Index, AMask);
+  AddHint(FDiagnostics, FCount, ARule, APath, ASeverity, Text, '', Masked(AValue, AHit.Index, AMask));
 end;
 
 procedure TCharacterChecker.Visit(const APath: string; const AValue: TLandrixEInvoiceString; AKind: TFieldKind);
@@ -733,12 +788,312 @@ begin
   end;
 end;
 
+{ --- identifiers by their scheme ------------------------------------------- }
+
+type
+  TSchemeChecker = class(TObject)
+  private
+    FDiagnostics: TLandrixEInvoiceDiagnostics;
+    FCount: Integer;
+    FPeppol: Boolean;
+    FXRechnung: Boolean;
+    FR040Reported: Boolean;
+    procedure Gs1(const ARule, APath, AWhat: string; const AValue: TLandrixEInvoiceString;
+      const ALengths: array of Integer; const ALengthText: string; ACheckDigit: Boolean);
+    function Leitweg(const APath, AWhat: string; const AValue: TLandrixEInvoiceString;
+      ASeverity: TLandrixEInvoiceDiagnosticSeverity; AOnlyCheckDigits: Boolean): Boolean;
+    procedure Party(const APath: string; const AValue, AScheme: TLandrixEInvoiceString; ACoveredByPeppol: Boolean);
+    procedure ItemIdentifier(const APath: string; const AValue, AScheme: TLandrixEInvoiceString);
+    procedure Lines(AList: TLandrixInvoiceLines; const APath: string);
+    procedure AccountingParty(A: TLandrixInvoiceAccountingParty; const APath: string);
+    procedure OtherParty(A: TLandrixInvoiceParty; const APath: string; ACovered: Boolean);
+    procedure BuyerReference(A: TLandrixInvoice);
+  public
+    procedure Run(A: TLandrixInvoice);
+  end;
+
+function AsciiUpper(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+var
+  I: Integer;
+begin
+  Result := AValue;
+  for I := 1 to Length(Result) do
+    if (Result[I] >= 'a') and (Result[I] <= 'z') then
+      Result[I] := TLandrixEInvoiceChar(Ord(Result[I]) - 32);
+end;
+
+{ An identifier as a finding shows it: hidden characters and those outside
+  ASCII masked.
+  DE: Eine Kennung, wie ein Befund sie zeigt: verborgene Zeichen und solche
+  ausserhalb von ASCII maskiert. }
+function Shown(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+begin
+  if AValue = '' then
+    Result := ''
+  else
+    Result := Masked(AValue, 1, [cc_Bidi, cc_Invisible, cc_Space, cc_C1, cc_NonAscii]);
+end;
+
+{ A GS1 key (GLN, GTIN): one of ALengths digits and a valid check digit;
+  Expected and Found are the check digits. Without ACheckDigit only the
+  number of characters (digits and check digit are left to
+  PEPPOL-COMMON-R040).
+  DE: Ein GS1-Schluessel (GLN, GTIN): eine der Laengen ALengths in Ziffern
+  und eine gueltige Pruefziffer; Expected und Found sind die Pruefziffern.
+  Ohne ACheckDigit nur die Zahl der Zeichen (Ziffern und Pruefziffer
+  bleiben PEPPOL-COMMON-R040). }
+procedure TSchemeChecker.Gs1(const ARule, APath, AWhat: string; const AValue: TLandrixEInvoiceString;
+  const ALengths: array of Integer; const ALengthText: string; ACheckDigit: Boolean);
+var
+  I, Digit, Characters, Units: Integer;
+  Fits: Boolean;
+begin
+  { characters, a surrogate pair counts as one
+    DE: Zeichen, ein Ersatzpaar zaehlt als eines }
+  Characters := 0;
+  I := 1;
+  while I <= Length(AValue) do
+  begin
+    CodePointAt(AValue, I, Units);
+    Inc(I, Units);
+    Inc(Characters);
+  end;
+  Fits := False;
+  for I := Low(ALengths) to High(ALengths) do
+    if (ACheckDigit and LandrixEInvoiceIsDigits(AValue, ALengths[I])) or
+       (not ACheckDigit and (Characters = ALengths[I])) then
+      Fits := True;
+  if not Fits then
+  begin
+    AddHint(FDiagnostics, FCount, ARule, APath, eds_Warning, AWhat + ' is not ' + ALengthText + ' digits', '',
+      Shown(AValue));
+    Exit;
+  end;
+  if not ACheckDigit then
+    Exit;
+  Digit := LandrixEInvoiceGS1CheckDigit(AValue);
+  if Digit <> Ord(AValue[Length(AValue)]) - Ord('0') then
+    AddHint(FDiagnostics, FCount, ARule, APath, eds_Warning, AWhat + ' has a wrong GS1 check digit',
+      TLandrixEInvoiceString(IntToStr(Digit)), Copy(AValue, Length(AValue), 1));
+end;
+
+{ A Leitweg-ID, as it is (blanks make it invalid). AOnlyCheckDigits: report
+  only wrong check digits (BT-10 that looks like one). True if AValue is a
+  valid Leitweg-ID.
+  DE: Eine Leitweg-ID, wie sie ist (Leerraum macht sie ungueltig).
+  AOnlyCheckDigits: nur falsche Pruefziffern melden (BT-10, die wie eine
+  aussieht). True, wenn AValue eine gueltige Leitweg-ID ist. }
+function TSchemeChecker.Leitweg(const APath, AWhat: string; const AValue: TLandrixEInvoiceString;
+  ASeverity: TLandrixEInvoiceDiagnosticSeverity; AOnlyCheckDigits: Boolean): Boolean;
+var
+  Expected: TLandrixEInvoiceString;
+  Problem: TLandrixEInvoiceLeitwegProblem;
+  Coarse: Integer;
+begin
+  Problem := LandrixEInvoiceLeitwegIDProblem(AValue, Expected);
+  Result := Problem = elp_None;
+  if Result or (AOnlyCheckDigits and (Problem <> elp_CheckDigits)) then
+    Exit;
+  case Problem of
+    elp_Form:
+      AddHint(FDiagnostics, FCount, RuleLeitweg, APath, ASeverity, AWhat +
+        ' does not have the form coarse address, fine address (optional) and two check digits, separated by ' +
+        'hyphen-minus', '', Shown(AValue));
+    elp_CoarseLength:
+      begin
+        Coarse := Pos(TLandrixEInvoiceString('-'), AValue) - 1;
+        AddHint(FDiagnostics, FCount, RuleLeitweg, APath, ASeverity, AWhat + ' has a coarse address of ' +
+          IntToStr(Coarse) + ' digits, not 2, 3, 5, 8, 9 or 12', '', Shown(AValue));
+      end;
+    elp_State:
+      AddHint(FDiagnostics, FCount, RuleLeitweg, APath, ASeverity, AWhat + ' starts with ' +
+        string(Copy(AValue, 1, 2)) + ', which is no federal state (01 to 16) and not the federation (99)', '',
+        Shown(AValue));
+  else
+    AddHint(FDiagnostics, FCount, RuleLeitweg, APath, ASeverity, AWhat +
+      ' has wrong check digits (ISO/IEC 7064 MOD 97-10)', Expected, Copy(AValue, Length(AValue) - 1, 2));
+  end;
+end;
+
+{ An identifier of a party, location or electronic address with its
+  scheme. ACoveredByPeppol: PEPPOL-COMMON-R040 checks its check digit for
+  Peppol BIS (with the scheme as written); then LX-ID-06 leaves the check
+  digit to it when the rule check runs.
+  DE: Eine Kennung eines Beteiligten, Orts oder einer elektronischen
+  Adresse mit ihrem Schema. ACoveredByPeppol: PEPPOL-COMMON-R040 prueft
+  ihre Pruefziffer fuer Peppol BIS (mit dem Schema, wie geschrieben); dann
+  ueberlaesst LX-ID-06 ihr die Pruefziffer, wenn die Regelpruefung
+  laeuft. }
+procedure TSchemeChecker.Party(const APath: string; const AValue, AScheme: TLandrixEInvoiceString;
+  ACoveredByPeppol: Boolean);
+var
+  Value, Scheme: TLandrixEInvoiceString;
+begin
+  Value := LandrixEInvoiceNormalizeSpace(AValue);
+  Scheme := LandrixEInvoiceNormalizeSpace(AScheme);
+  if (Value = '') or (Scheme = '') then
+    Exit;
+  if Scheme = '0088' then
+    Gs1(RuleGln, APath, 'The GLN (scheme 0088)', Value, [13], '13',
+      not (FPeppol and FR040Reported and ACoveredByPeppol and (AScheme = '0088')))
+  else if Scheme = '0160' then
+    AddHint(FDiagnostics, FCount, RuleWrongScheme, APath, eds_Warning,
+      'A GTIN (scheme 0160) identifies a trade item, not a party, location or address', '', Shown(Value))
+  else if Scheme = '0204' then
+    Leitweg(APath, 'The Leitweg-ID (scheme 0204)', AValue, eds_Warning, False);
+end;
+
+{ An item identifier (BT-157) with its scheme.
+  DE: Eine Artikelkennung (BT-157) mit ihrem Schema. }
+procedure TSchemeChecker.ItemIdentifier(const APath: string; const AValue, AScheme: TLandrixEInvoiceString);
+var
+  Value, Scheme: TLandrixEInvoiceString;
+begin
+  Value := LandrixEInvoiceNormalizeSpace(AValue);
+  Scheme := LandrixEInvoiceNormalizeSpace(AScheme);
+  if Value = '' then
+    Exit;
+  if Scheme = '0160' then
+    Gs1(RuleGtin, APath, 'The GTIN (scheme 0160)', Value, [8, 12, 13, 14], '8, 12, 13 or 14', True)
+  else if Scheme = '0088' then
+    AddHint(FDiagnostics, FCount, RuleWrongScheme, APath, eds_Warning,
+      'A GLN (scheme 0088) identifies a party or location, not a trade item', '', Shown(Value))
+  else if Scheme = '0204' then
+    Leitweg(APath, 'The Leitweg-ID (scheme 0204)', AValue, eds_Warning, False);
+end;
+
+procedure TSchemeChecker.Lines(AList: TLandrixInvoiceLines; const APath: string);
+var
+  I: Integer;
+  L: TLandrixInvoiceLine;
+  Q: string;
+begin
+  for I := 0 to Integer(AList.Count) - 1 do
+  begin
+    L := AList[I];
+    Q := Item(APath, I);
+    ItemIdentifier(Q + '.StandardItemIdentifier', L.StandardItemIdentifier, L.StandardItemIdentifierSchemeID);
+    { the GTIN field is written only without BT-157
+      DE: das GTIN-Feld wird nur ohne BT-157 geschrieben }
+    if LandrixEInvoiceNormalizeSpace(L.StandardItemIdentifier) = '' then
+      ItemIdentifier(Q + '.GlobalID_EAN_GTIN', L.GlobalID_EAN_GTIN, '0160');
+    Lines(L.SubInvoiceLines, Q + '.SubInvoiceLines');
+  end;
+end;
+
+{ The global identifier without scheme is written with 0088 (GLN).
+  DE: Die globale Kennung ohne Schema wird mit 0088 (GLN) geschrieben. }
+procedure TSchemeChecker.AccountingParty(A: TLandrixInvoiceAccountingParty; const APath: string);
+var
+  Scheme: TLandrixEInvoiceString;
+begin
+  Scheme := A.GlobalIdentifierSellerBuyerSchemeID;
+  if LandrixEInvoiceNormalizeSpace(Scheme) = '' then
+    Scheme := '0088';
+  Party(APath + '.GlobalIdentifierSellerBuyer', A.GlobalIdentifierSellerBuyer, Scheme, True);
+  Party(APath + '.CompanyID', A.CompanyID, A.CompanyIDSchemeID, True);
+  Party(APath + '.ElectronicAddressSellerBuyer', A.ElectronicAddressSellerBuyer,
+    A.ElectronicAddressSellerBuyerSchemeID, True);
+end;
+
+procedure TSchemeChecker.OtherParty(A: TLandrixInvoiceParty; const APath: string; ACovered: Boolean);
+begin
+  Party(APath + '.Identifier', A.Identifier, A.IdentifierSchemeID, ACovered);
+  Party(APath + '.CompanyID', A.CompanyID, A.CompanyIDSchemeID, ACovered);
+end;
+
+{ True if a buyer reference looks like a Leitweg-ID: the form of one with
+  a coarse address of 8 or more digits, or of the federation (99...) with a
+  fine address; other references of that form (dates, order numbers) are
+  left alone.
+  DE: True, wenn eine Kaeuferreferenz wie eine Leitweg-ID aussieht: deren
+  Form mit einer Grobadressierung aus 8 oder mehr Ziffern, oder des Bundes
+  (99...) mit Feinadressierung; andere Referenzen dieser Form (Daten,
+  Bestellnummern) bleiben unbeachtet. }
+function LooksLikeLeitweg(const AValue: TLandrixEInvoiceString): Boolean;
+var
+  Expected: TLandrixEInvoiceString;
+  First, I, Hyphens: Integer;
+begin
+  Result := False;
+  if not (LandrixEInvoiceLeitwegIDProblem(AValue, Expected) in [elp_None, elp_CheckDigits]) then
+    Exit;
+  First := Pos(TLandrixEInvoiceString('-'), AValue);
+  Hyphens := 0;
+  for I := 1 to Length(AValue) do
+    if AValue[I] = '-' then
+      Inc(Hyphens);
+  Result := (First > 8) or ((Copy(AValue, 1, 2) = '99') and (Hyphens = 2));
+end;
+
+{ BT-10 when it looks like a Leitweg-ID (a warning for XRechnung, where it
+  usually is one, an info otherwise), and a valid one that differs from the
+  buyer's Leitweg-ID (BT-49, scheme 0204): the Peppol ID need not be the
+  Leitweg-ID (format specification 1.4), so only an info; Expected is the
+  buyer's Leitweg-ID, Found BT-10.
+  DE: BT-10, wenn sie wie eine Leitweg-ID aussieht (eine Warnung bei
+  XRechnung, wo sie meist eine ist, sonst ein Hinweis), und eine gueltige,
+  die von der Leitweg-ID des Kaeufers (BT-49, Schema 0204) abweicht: die
+  Peppol-ID muss nicht die Leitweg-ID sein (Formatspezifikation 1.4), daher
+  nur ein Hinweis; Expected ist die Leitweg-ID des Kaeufers, Found BT-10. }
+procedure TSchemeChecker.BuyerReference(A: TLandrixInvoice);
+var
+  Reference, Address: TLandrixEInvoiceString;
+  Expected: TLandrixEInvoiceString;
+  Severity: TLandrixEInvoiceDiagnosticSeverity;
+begin
+  Reference := LandrixEInvoiceNormalizeSpace(A.BuyerReference);
+  if LandrixEInvoiceLeitwegIDProblem(Reference, Expected) <> elp_None then
+  begin
+    if not LooksLikeLeitweg(Reference) then
+      Exit;
+    if FXRechnung then
+      Severity := eds_Warning
+    else
+      Severity := eds_Info;
+    Leitweg('BuyerReference', 'The buyer reference (BT-10) looks like a Leitweg-ID but', Reference, Severity, True);
+    Exit;
+  end;
+  { the comparison takes BT-10 as it is (blanks make it invalid)
+    DE: der Vergleich nimmt BT-10, wie sie ist (Leerraum macht sie
+    ungueltig) }
+  Reference := A.BuyerReference;
+  Address := A.AccountingCustomerParty.ElectronicAddressSellerBuyer;
+  if (LandrixEInvoiceNormalizeSpace(A.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID) = '0204') and
+     (LandrixEInvoiceLeitwegIDProblem(Reference, Expected) = elp_None) and
+     (LandrixEInvoiceLeitwegIDProblem(Address, Expected) = elp_None) and
+     (AsciiUpper(Address) <> AsciiUpper(Reference)) then
+    AddHint(FDiagnostics, FCount, RuleLeitwegDiffers, 'BuyerReference', eds_Info,
+      'The buyer reference (BT-10) and the electronic address of the buyer (BT-49, scheme 0204) are different ' +
+      'Leitweg-IDs; the Peppol ID need not be the Leitweg-ID (Leitweg-ID format specification 1.4), check it',
+      Address, Reference);
+end;
+
+procedure TSchemeChecker.Run(A: TLandrixInvoice);
+begin
+  AccountingParty(A.AccountingSupplierParty, 'AccountingSupplierParty');
+  AccountingParty(A.AccountingCustomerParty, 'AccountingCustomerParty');
+  { PEPPOL-COMMON-R040 covers the payee, not the tax representative and
+    the invoicee
+    DE: PEPPOL-COMMON-R040 deckt den Zahlungsempfaenger ab, nicht den
+    Steuervertreter und den Rechnungsempfaenger }
+  OtherParty(A.PayeeParty, 'PayeeParty', True);
+  OtherParty(A.TaxRepresentativeParty, 'TaxRepresentativeParty', False);
+  OtherParty(A.InvoiceeParty, 'InvoiceeParty', False);
+  Party('DeliveryInformation.LocationIdentifier', A.DeliveryInformation.LocationIdentifier,
+    A.DeliveryInformation.LocationIdentifierSchemeID, False);
+  BuyerReference(A);
+  Lines(A.InvoiceLines, 'InvoiceLines');
+end;
+
 { --- entry points ------------------------------------------------------------ }
 
-function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; AFamilies: TLandrixEInvoiceAdvisoryFamilies;
-  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  AFamilies: TLandrixEInvoiceAdvisoryFamilies; ADiagnostics: TLandrixEInvoiceDiagnostics;
+  AR040Reported: Boolean): Integer;
 var
   Checker: TCharacterChecker;
+  Schemes: TSchemeChecker;
 begin
   Result := 0;
   if (AInvoice = nil) or not (eaf_Identifiers in AFamilies) then
@@ -750,6 +1105,17 @@ begin
     Result := Checker.FCount;
   finally
     Checker.Free;
+  end;
+  Schemes := TSchemeChecker.Create;
+  try
+    Schemes.FDiagnostics := ADiagnostics;
+    Schemes.FPeppol := ATarget.Standard = est_PeppolBIS;
+    Schemes.FXRechnung := ATarget.Standard = est_XRechnung;
+    Schemes.FR040Reported := AR040Reported;
+    Schemes.Run(AInvoice);
+    Inc(Result, Schemes.FCount);
+  finally
+    Schemes.Free;
   end;
 end;
 

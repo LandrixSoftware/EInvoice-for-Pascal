@@ -19,9 +19,16 @@ Supported invoice standards are documented per release.
   info), C1 control characters in every field, and characters outside ASCII in identifiers whose
   scheme is ASCII (VAT identifiers, country and currency codes, GTIN, BIC, SEPA creditor identifier,
   the mandate reference of a SEPA direct debit, an IBAN), with the model path, the code point and the
-  value masked as `<U+XXXX>`; surrogate pairs count as one character.
+  value masked as `<U+XXXX>`; surrogate pairs count as one character. LX-ID-06 to LX-ID-10 check
+  identifiers by their scheme: GLN (0088, 13 digits and GS1 check digit; for Peppol BIS no second
+  report of PEPPOL-COMMON-R040), GTIN (0160 at BT-157 and the GTIN field: 8, 12, 13 or 14 digits and
+  check digit), a GTIN for a party or a GLN for an item, the Leitweg-ID (0204, format specification
+  2.0.2 with MOD 97-10 check digits, also BT-10 when it looks like one) and a buyer reference that
+  differs from the buyer's Leitweg-ID. Expected and found check digits are in `Expected` and `Found`.
+  `LandrixEInvoiceIdentifiers` has the new building blocks `LandrixEInvoiceGS1CheckDigit` and
+  `LandrixEInvoiceLeitwegIDProblem`.
 - `docs/rules.md` (and the German `docs/de/rules.md`) lists the library's own rule identifiers
-  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12, LX-ID-01 to LX-ID-05) with severity, scope and the version they came
+  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12, LX-ID-01 to LX-ID-10) with severity, scope and the version they came
   with, and how they are kept stable; `tools/check-forbidden.py` fails when the sources and the
   lists disagree. The warning that the PDF/A check stopped has its own identifier LX-PDF-12 instead
   of LX-PDF-01 (a broader condition gets a new number).

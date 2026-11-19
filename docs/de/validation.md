@@ -193,8 +193,9 @@ end.
   ist; zählt nicht für das Urteil), `evp_Advisory` (eigene Hinweise der Bibliothek, siehe unten).
 - Hinweisprüfungen (`Options.Advisory`, eine Menge von Familien; Vorgabe
   `LandrixEInvoiceAdvisoryTechnical`, `[]` schaltet sie ab): Hinweise zur gelesenen Rechnung, die kein
-  Standard verlangt, Regeln LX-... (bisher LX-ID-01 bis LX-ID-05, unsichtbare und täuschende Zeichen,
-  siehe [Regeln dieser Bibliothek](rules.md)). Sie sind Hinweise oder Warnungen, nie Fehler, zählen
+  Standard verlangt, Regeln LX-... (bisher LX-ID-01 bis LX-ID-10: unsichtbare und täuschende Zeichen
+  und Kennungen nach ihrem Schema wie GLN, GTIN und Leitweg-ID; siehe
+  [Regeln dieser Bibliothek](rules.md)). Sie sind Hinweise oder Warnungen, nie Fehler, zählen
   nie für das Urteil und werden getrennt gezählt (`advisory` im XML-Bericht). `evp_Advisory` ist
   `evr_Passed`, wenn sie liefen, `evr_Incomplete`, wenn sie abbrachen (mit einer Warnung), nie
   `evr_Failed`. Rechtliche und kontextabhängige Familien (deutsches Steuerrecht, Empfänger) laufen

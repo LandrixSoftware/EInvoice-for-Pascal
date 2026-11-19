@@ -403,13 +403,18 @@ type
     procedure RunModelCheck(ADoc: TLandrixEInvoiceDocument; AResult: TLandrixEInvoiceDocumentValidation);
     procedure RunAdvisory(ADoc: TLandrixEInvoiceDocument; AResult: TLandrixEInvoiceDocumentValidation);
   protected
-    { Runs the advisory checks of Options.Advisory on AInvoice into
-      ADiagnostics. An exception leaves evp_Advisory evr_Incomplete with a
-      warning; the verdict stays. Tests override it.
-      DE: Fuehrt die Hinweispruefungen von Options.Advisory auf AInvoice in
+    { Runs the advisory checks of Options.Advisory on AInvoice (read as
+      ATarget, Standard est_None when unknown; AR040Reported: the rule check
+      reported PEPPOL-COMMON-R040) into ADiagnostics. An
+      exception leaves evp_Advisory evr_Incomplete with a warning; the
+      verdict stays. Tests override it.
+      DE: Fuehrt die Hinweispruefungen von Options.Advisory auf AInvoice
+      (gelesen als ATarget, Standard est_None, wenn unbekannt;
+      AR040Reported: die Regelpruefung meldete PEPPOL-COMMON-R040) in
       ADiagnostics aus. Eine Ausnahme laesst evp_Advisory evr_Incomplete
       mit einer Warnung; das Urteil bleibt. Tests ueberschreiben sie. }
-    procedure Advise(AInvoice: TLandrixInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics); virtual;
+    procedure Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget; AR040Reported: Boolean;
+      ADiagnostics: TLandrixEInvoiceDiagnostics); virtual;
   public
     constructor Create;
     destructor Destroy; override;
@@ -1177,13 +1182,24 @@ procedure TLandrixEInvoiceDocumentValidator.RunAdvisory(ADoc: TLandrixEInvoiceDo
 var
   D: TLandrixEInvoiceDiagnostics;
   I: TLandrixEInvoiceListIndex;
-  Failure: Boolean;
+  Failure, R040: Boolean;
+  Target: TLandrixEInvoiceTarget;
+  J: Integer;
 begin
   D := TLandrixEInvoiceDiagnostics.Create;
   try
     Failure := False;
+    Target := ADoc.Info.Spec.Target;
+    if not ADoc.Info.SpecFound then
+      Target.Standard := est_None;
+    { what the rule check reported is not repeated
+      DE: was die Regelpruefung gemeldet hat, wird nicht wiederholt }
+    R040 := False;
+    for J := 0 to AResult.FindingCount - 1 do
+      if (AResult[J].Part = evp_ModelCheck) and (AResult[J].RuleID = 'PEPPOL-COMMON-R040') then
+        R040 := True;
     try
-      Advise(ADoc.Invoice, D);
+      Advise(ADoc.Invoice, Target, R040, D);
     except
       on E: Exception do
       begin
@@ -1206,10 +1222,10 @@ begin
   end;
 end;
 
-procedure TLandrixEInvoiceDocumentValidator.Advise(AInvoice: TLandrixInvoice;
-  ADiagnostics: TLandrixEInvoiceDiagnostics);
+procedure TLandrixEInvoiceDocumentValidator.Advise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  AR040Reported: Boolean; ADiagnostics: TLandrixEInvoiceDiagnostics);
 begin
-  LandrixEInvoiceAdvise(AInvoice, FOptions.Advisory, ADiagnostics);
+  LandrixEInvoiceAdvise(AInvoice, ATarget, FOptions.Advisory, ADiagnostics, AR040Reported);
 end;
 
 end.

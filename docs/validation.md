@@ -189,7 +189,8 @@ end.
   it does not count for the verdict), `evp_Advisory` (the library's own hints, see below).
 - Advisory checks (`Options.Advisory`, a set of families; default `LandrixEInvoiceAdvisoryTechnical`,
   `[]` turns them off): hints on the invoice as read that no standard demands, rules LX-... (so far
-  LX-ID-01 to LX-ID-05, invisible and deceptive characters, see [Rules of this library](rules.md)).
+  LX-ID-01 to LX-ID-10: invisible and deceptive characters, and identifiers by their scheme such as GLN,
+  GTIN and Leitweg-ID; see [Rules of this library](rules.md)).
   They are infos or warnings, never errors, never count for the verdict and are counted apart
   (`advisory` in the XML report). `evp_Advisory` is `evr_Passed` when they ran, `evr_Incomplete`
   when they stopped (with a warning), never `evr_Failed`. Legal and context-dependent families

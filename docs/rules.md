@@ -20,8 +20,8 @@ identifiers, all starting with `LX-`. This page lists every one of them.
   missing here or in the German list, when a list names an identifier the source does not have
   (unless it is marked retired), or when an identifier appears twice in a list.
 
-Families: `LX-CC` (checks of XRechnung-for-Delphi), `LX-PDF` (hybrid PDF), `LX-ID` (identifiers
-and characters; check digits planned). Reserved for planned checks: `LX-PL` (plausibility of dates
+Families: `LX-CC` (checks of XRechnung-for-Delphi), `LX-PDF` (hybrid PDF), `LX-ID` (identifiers,
+check digits and characters). Reserved for planned checks: `LX-PL` (plausibility of dates
 and payment), `LX-AR` (arithmetic where no official rule exists), `LX-AT` (attachments), `LX-DE`
 (German tax law).
 
@@ -78,7 +78,8 @@ error rejects the PDF anyway.
 
 ## LX-ID: identifiers and characters (advisory)
 
-Hints of the advisory checks (family `eaf_Identifiers`, on by default). They appear in the part
+Hints of the advisory checks (family `eaf_Identifiers`, on by default): characters (LX-ID-01 to
+LX-ID-05) and identifiers by their scheme (LX-ID-06 to LX-ID-10). They appear in the part
 `advisory` of a validation, which never counts for the verdict, and are at most warnings. The
 finding names the model path, the first character as `U+XXXX` with its position (counted in characters) and how many there
 are; `found` shows the value with the characters masked as `<U+XXXX>`. The value is never changed.
@@ -97,3 +98,8 @@ a SEPA payment (58, 59) or one that starts like an IBAN.
 | LX-ID-03 | warning | a C1 control character (U+0080 to U+009F) in any text field, usually a wrong character encoding | unreleased |
 | LX-ID-04 | info | a bidirectional control or invisible character in a name or free text, where it can be legitimate | unreleased |
 | LX-ID-05 | warning | another character outside ASCII in an ASCII identifier, e.g. a Cyrillic letter that looks like a Latin one | unreleased |
+| LX-ID-06 | warning | a GLN (scheme 0088; a global identifier without scheme counts as one) of a party, location or electronic address that is not 13 digits or has a wrong GS1 check digit (for Peppol BIS, where the rule check of the same run reported PEPPOL-COMMON-R040, only the length) | unreleased |
+| LX-ID-07 | warning | a GTIN (BT-157 with scheme 0160, or the GTIN field of a line without BT-157) that is not 8, 12, 13 or 14 digits or has a wrong GS1 check digit | unreleased |
+| LX-ID-08 | warning | a GTIN (scheme 0160) for a party, location or address, or a GLN (scheme 0088) for a trade item | unreleased |
+| LX-ID-09 | warning (BT-10 outside XRechnung: info) | a Leitweg-ID (scheme 0204) that does not follow the format specification 2.0.2 (form, coarse address of 2, 3, 5, 8, 9 or 12 digits starting with 01 to 16 or 99, check digits MOD 97-10), also as item identifier, or a buyer reference (BT-10) that looks like a Leitweg-ID (a coarse address of 8 or more digits, or 99... with a fine address) but has wrong check digits | unreleased |
+| LX-ID-10 | info | the buyer reference (BT-10) and the electronic address of the buyer (BT-49, scheme 0204) are different valid Leitweg-IDs; the Peppol ID need not be the Leitweg-ID (`expected`: BT-49, `found`: BT-10) | unreleased |

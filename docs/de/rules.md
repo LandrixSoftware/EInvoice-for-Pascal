@@ -21,8 +21,8 @@ eigene Kennungen, die alle mit `LX-` beginnen. Diese Seite führt jede davon auf
   Quelltext nicht hat (außer sie ist als aufgegeben markiert), oder wenn eine Kennung in einer
   Liste zweimal steht.
 
-Familien: `LX-CC` (Prüfungen von XRechnung-for-Delphi), `LX-PDF` (Hybrid-PDF), `LX-ID` (Kennungen
-und Zeichen; Prüfziffern geplant). Reserviert für geplante Prüfungen: `LX-PL` (Plausibilität von
+Familien: `LX-CC` (Prüfungen von XRechnung-for-Delphi), `LX-PDF` (Hybrid-PDF), `LX-ID` (Kennungen,
+Prüfziffern und Zeichen). Reserviert für geplante Prüfungen: `LX-PL` (Plausibilität von
 Daten und Zahlung), `LX-AR` (Rechnen, wo es keine offizielle Regel gibt), `LX-AT` (Anhänge),
 `LX-DE` (deutsches Steuerrecht).
 
@@ -80,7 +80,8 @@ gemeldet werden) und damit das Urteil, sofern nicht ein Fehler das PDF ohnehin a
 
 ## LX-ID: Kennungen und Zeichen (Hinweise)
 
-Hinweise der Hinweisprüfungen (Familie `eaf_Identifiers`, standardmäßig an). Sie erscheinen im
+Hinweise der Hinweisprüfungen (Familie `eaf_Identifiers`, standardmäßig an): Zeichen (LX-ID-01 bis
+LX-ID-05) und Kennungen nach ihrem Schema (LX-ID-06 bis LX-ID-10). Sie erscheinen im
 Teil `advisory` einer Validierung, der nie für das Urteil zählt, und sind höchstens Warnungen. Der
 Befund nennt den Modellpfad, das erste Zeichen als `U+XXXX` mit seiner Position (in Zeichen) und wie viele es
 sind; `found` zeigt den Wert mit den Zeichen maskiert als `<U+XXXX>`. Der Wert wird nie geändert.
@@ -99,3 +100,8 @@ SEPA-Zahlung (58, 59) oder eines, das wie eine IBAN beginnt.
 | LX-ID-03 | Warnung | ein C1-Steuerzeichen (U+0080 bis U+009F) in einem beliebigen Textfeld, meist eine falsche Zeichenkodierung | unveröffentlicht |
 | LX-ID-04 | Hinweis | ein bidirektionales Steuerzeichen oder unsichtbares Zeichen in einem Namen oder Freitext, wo es berechtigt sein kann | unveröffentlicht |
 | LX-ID-05 | Warnung | ein anderes Zeichen außerhalb von ASCII in einer ASCII-Kennung, z. B. ein kyrillischer Buchstabe, der wie ein lateinischer aussieht | unveröffentlicht |
+| LX-ID-06 | Warnung | eine GLN (Schema 0088; eine globale Kennung ohne Schema zählt als solche) eines Beteiligten, Orts oder einer elektronischen Adresse, die nicht 13 Ziffern hat oder eine falsche GS1-Prüfziffer (bei Peppol BIS, wo die Regelprüfung im selben Lauf PEPPOL-COMMON-R040 gemeldet hat, nur die Länge) | unveröffentlicht |
+| LX-ID-07 | Warnung | eine GTIN (BT-157 mit Schema 0160 oder das GTIN-Feld einer Position ohne BT-157), die nicht 8, 12, 13 oder 14 Ziffern hat oder eine falsche GS1-Prüfziffer | unveröffentlicht |
+| LX-ID-08 | Warnung | eine GTIN (Schema 0160) für einen Beteiligten, Ort oder eine Adresse, oder eine GLN (Schema 0088) für einen Artikel | unveröffentlicht |
+| LX-ID-09 | Warnung (BT-10 außerhalb von XRechnung: Hinweis) | eine Leitweg-ID (Schema 0204), die nicht der Formatspezifikation 2.0.2 folgt (Form, Grobadressierung aus 2, 3, 5, 8, 9 oder 12 Ziffern, beginnend mit 01 bis 16 oder 99, Prüfziffern MOD 97-10), auch als Artikelkennung, oder eine Käuferreferenz (BT-10), die wie eine Leitweg-ID aussieht (Grobadressierung aus 8 oder mehr Ziffern, oder 99... mit Feinadressierung), aber falsche Prüfziffern hat | unveröffentlicht |
+| LX-ID-10 | Hinweis | Käuferreferenz (BT-10) und elektronische Adresse des Käufers (BT-49, Schema 0204) sind verschiedene gültige Leitweg-IDs; die Peppol-ID muss nicht die Leitweg-ID sein (`expected`: BT-49, `found`: BT-10) | unveröffentlicht |
