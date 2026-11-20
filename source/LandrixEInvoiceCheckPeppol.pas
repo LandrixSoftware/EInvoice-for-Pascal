@@ -1175,9 +1175,9 @@ begin
   end;
 end;
 
-{ The rate as written (two decimals); EUnwritableNumber for NaN, infinite
-  and 1e23 and above.
-  DE: Der Satz, wie er geschrieben wird (zwei Nachkommastellen);
+{ The rate as written (2 to 4 decimals); EUnwritableNumber for NaN,
+  infinite and 1e23 and above.
+  DE: Der Satz, wie er geschrieben wird (2 bis 4 Nachkommastellen);
   EUnwritableNumber fuer NaN, unendlich und ab 1e23. }
 function PercentLexical(APercent: Double): TLandrixEInvoiceString;
 begin

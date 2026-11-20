@@ -76,8 +76,12 @@ procedure TestQuantity;
 begin
   CheckText('1.0000', LandrixEInvoiceQuantityToLexical(1), '1');
   CheckText('2.5000', LandrixEInvoiceQuantityToLexical(2.5), '2.5');
-  CheckText('0.3333', LandrixEInvoiceQuantityToLexical(Quot(1, 3)), 'one third');
-  CheckText('0.0000', LandrixEInvoiceQuantityToLexical(Quot(-1, 100000)), 'no negative zero');
+  CheckText('0.3333333333', LandrixEInvoiceQuantityToLexical(Quot(1, 3)), 'one third');
+  CheckText('-0.00001', LandrixEInvoiceQuantityToLexical(Quot(-1, 100000)), 'small negative quantity');
+  CheckText('0.00004', LandrixEInvoiceQuantityToLexical(Quot(4, 100000)), 'small quantity stays nonzero');
+  CheckText('0.0000', LandrixEInvoiceQuantityToLexical(Quot(-1, 100000) / 1000000), 'no negative zero');
+  CheckText('1.23456', LandrixEInvoiceQuantityToLexical(Quot(123456, 100000)), 'five decimals kept');
+  CheckText('0.3000', LandrixEInvoiceQuantityToLexical(Quot(1, 10) * 3), 'no float noise');
   CheckText('1.00', LandrixEInvoiceBaseQuantityToLexical(1), 'base quantity 1');
   CheckText('0.001', LandrixEInvoiceBaseQuantityToLexical(Quot(1, 1000)), 'base quantity 0.001');
   CheckText('1.50', LandrixEInvoiceBaseQuantityToLexical(1.5), 'base quantity 1.5');
@@ -88,7 +92,10 @@ procedure TestPercent;
 begin
   CheckText('19.00', LandrixEInvoicePercentToLexical(19), '19');
   CheckText('7.50', LandrixEInvoicePercentToLexical(7.5), '7.5');
-  CheckText('2.68', LandrixEInvoicePercentToLexical(Quot(2675, 1000)), '2.675 as written');
+  CheckText('2.675', LandrixEInvoicePercentToLexical(Quot(2675, 1000)), '2.675 as written');
+  CheckText('7.126', LandrixEInvoicePercentToLexical(Quot(7126, 1000)), 'three decimals');
+  CheckText('0.0001', LandrixEInvoicePercentToLexical(Quot(1, 10000)), 'four decimals');
+  CheckText('7.13', LandrixEInvoicePercentToLexical(Quot(712999, 100000)), 'rounded to four decimals');
   CheckText('1.500', LandrixEInvoiceDecimalToLexical(1.5, 3), 'decimal with 3 places');
 end;
 

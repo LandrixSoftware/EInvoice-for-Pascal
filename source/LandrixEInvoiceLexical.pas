@@ -22,10 +22,12 @@
   - amounts (e.g. BT-106 to BT-115, BT-131): exactly 2 decimals;
   - prices (BT-146, BT-148): 2 decimals if the value has no more,
     otherwise 4;
-  - quantities (BT-129): exactly 4 decimals;
+  - quantities (BT-129): at least 4 decimals, more when the value has
+    them (up to 10), e.g. 1.23456 stays 1.23456;
   - base quantities (BT-149): up to 6 decimals, trailing zeros removed
     down to 2 (0.001 stays 0.001);
-  - percentages (BT-96, BT-119, BT-152): exactly 2 decimals;
+  - percentages (BT-96, BT-119, BT-152): at least 2 decimals, more only
+    when needed (up to 4);
   - dates: UBL xs:date YYYY-MM-DD, CII format 102 YYYYMMDD.
   These forms always meet the decimal limits of EN 16931 (BR-DEC) for the
   written document; the rule check does not test them (a document as read
@@ -45,10 +47,12 @@
   - Betraege (z. B. BT-106 bis BT-115, BT-131): genau 2 Nachkommastellen;
   - Preise (BT-146, BT-148): 2 Nachkommastellen, wenn der Wert nicht mehr
     hat, sonst 4;
-  - Mengen (BT-129): genau 4 Nachkommastellen;
+  - Mengen (BT-129): mindestens 4 Nachkommastellen, mehr, wenn der Wert
+    sie hat (bis 10), z. B. bleibt 1.23456 1.23456;
   - Basismengen (BT-149): bis zu 6 Nachkommastellen, Nullen am Ende bis auf
     2 gestrichen (0.001 bleibt 0.001);
-  - Prozentsaetze (BT-96, BT-119, BT-152): genau 2 Nachkommastellen;
+  - Prozentsaetze (BT-96, BT-119, BT-152): mindestens 2 Nachkommastellen,
+    mehr nur bei Bedarf (bis 4);
   - Datumswerte: UBL xs:date JJJJ-MM-TT, CII Format 102 JJJJMMTT.
   Diese Formen halten die Stellengrenzen der EN 16931 (BR-DEC) fuer das
   geschriebene Dokument immer ein; die Regelpruefung testet sie nicht (ein
@@ -87,8 +91,12 @@ function LandrixEInvoiceAmountToLexical(AValue: Currency): TLandrixEInvoiceStrin
   '0.01146'. }
 function LandrixEInvoicePriceToLexical(AValue: Double): TLandrixEInvoiceString;
 
-{ Quantity with exactly 4 decimals, e.g. 1 -> '1.0000'.
-  DE: Menge mit genau 4 Nachkommastellen, z. B. 1 -> '1.0000'. }
+{ Quantity with at least 4 decimals and up to 10, trailing zeros removed
+  down to 4, e.g. 1 -> '1.0000', 1.23456 -> '1.23456', 1/3 ->
+  '0.3333333333'.
+  DE: Menge mit mindestens 4 und bis zu 10 Nachkommastellen, Nullen am
+  Ende bis auf 4 gestrichen, z. B. 1 -> '1.0000', 1.23456 -> '1.23456',
+  1/3 -> '0.3333333333'. }
 function LandrixEInvoiceQuantityToLexical(AValue: Double): TLandrixEInvoiceString;
 
 { Base quantity with up to 6 decimals and at least 2, e.g. 1 -> '1.00',
@@ -97,8 +105,10 @@ function LandrixEInvoiceQuantityToLexical(AValue: Double): TLandrixEInvoiceStrin
   1 -> '1.00', 0.001 -> '0.001'. }
 function LandrixEInvoiceBaseQuantityToLexical(AValue: Double): TLandrixEInvoiceString;
 
-{ Percentage with exactly 2 decimals, e.g. 19 -> '19.00'.
-  DE: Prozentsatz mit genau 2 Nachkommastellen, z. B. 19 -> '19.00'. }
+{ Percentage with at least 2 decimals and up to 4, trailing zeros removed
+  down to 2, e.g. 19 -> '19.00', 7.126 -> '7.126'.
+  DE: Prozentsatz mit mindestens 2 und bis zu 4 Nachkommastellen, Nullen am
+  Ende bis auf 2 gestrichen, z. B. 19 -> '19.00', 7.126 -> '7.126'. }
 function LandrixEInvoicePercentToLexical(AValue: Double): TLandrixEInvoiceString;
 
 { Decimal number with exactly ADecimals (0..18) decimals, for values
@@ -145,6 +155,15 @@ function LandrixEInvoiceTryUBLToDate(const AText: TLandrixEInvoiceString;
 function LandrixEInvoiceTryCIIToDate(const AText, AFormat: TLandrixEInvoiceString;
   out AValue: TDateTime): Boolean;
 
+{ Reads an xs:boolean ('true', 'false', '1', '0'); white space around the
+  value is ignored (whiteSpace collapse). False, with AValue False, for any
+  other text.
+  DE: Liest ein xs:boolean ('true', 'false', '1', '0'); Leerraum um den Wert
+  wird ignoriert (whiteSpace collapse). False, mit AValue False, fuer jeden
+  anderen Text. }
+function LandrixEInvoiceTryLexicalToBoolean(const AText: TLandrixEInvoiceString;
+  out AValue: Boolean): Boolean;
+
 { True if AText is empty or consists of XML white space only (blank, tab,
   CR, LF), i.e. normalize-space(AText) = '' as in the Schematron rules. Such
   a value counts as absent: it is not written and fails a required check.
@@ -188,7 +207,7 @@ end;
 
 function LandrixEInvoiceQuantityToLexical(AValue: Double): TLandrixEInvoiceString;
 begin
-  Result := Text(LandrixXmlFormatDouble(AValue, 4));
+  Result := Text(LandrixXmlFormatDoubleTrim(AValue, 4, 10));
 end;
 
 function LandrixEInvoiceBaseQuantityToLexical(AValue: Double): TLandrixEInvoiceString;
@@ -198,7 +217,7 @@ end;
 
 function LandrixEInvoicePercentToLexical(AValue: Double): TLandrixEInvoiceString;
 begin
-  Result := Text(LandrixXmlFormatDouble(AValue, 2));
+  Result := Text(LandrixXmlFormatDoubleTrim(AValue, 2, 4));
 end;
 
 function LandrixEInvoiceDecimalToLexical(AValue: Double; ADecimals: Integer): TLandrixEInvoiceString;
@@ -256,6 +275,28 @@ begin
     LandrixXmlTryParseCiiDate(Utf8(AText), AValue);
   if not Result then
     AValue := 0;
+end;
+
+function IsXmlSpace(C: WideChar): Boolean;
+begin
+  Result := (C = ' ') or (C = #9) or (C = #10) or (C = #13);
+end;
+
+function LandrixEInvoiceTryLexicalToBoolean(const AText: TLandrixEInvoiceString;
+  out AValue: Boolean): Boolean;
+var
+  First, Last: Integer;
+  S: TLandrixEInvoiceString;
+begin
+  First := 1;
+  Last := Length(AText);
+  while (First <= Last) and IsXmlSpace(AText[First]) do
+    Inc(First);
+  while (Last >= First) and IsXmlSpace(AText[Last]) do
+    Dec(Last);
+  S := Copy(AText, First, Last - First + 1);
+  AValue := (S = 'true') or (S = '1');
+  Result := AValue or (S = 'false') or (S = '0');
 end;
 
 function LandrixEInvoiceIsBlank(const AText: TLandrixEInvoiceString): Boolean;

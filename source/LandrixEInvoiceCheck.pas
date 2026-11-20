@@ -2028,9 +2028,9 @@ begin
   Result := LandrixEInvoicePaymentTermsText(AInvoice);
 end;
 
-{ The rate as written (two decimals), exact; EUnwritableNumber for a rate
-  the writers cannot format.
-  DE: Der Satz, wie er geschrieben wird (zwei Nachkommastellen), genau;
+{ The rate as written (2 to 4 decimals), exact; EUnwritableNumber for a
+  rate the writers cannot format.
+  DE: Der Satz, wie er geschrieben wird (2 bis 4 Nachkommastellen), genau;
   EUnwritableNumber fuer einen Satz, den die Writer nicht formatieren
   koennen. }
 function RateExact(AValue: Double): TExact;
@@ -2225,13 +2225,13 @@ end;
 { BR-CO-17 for one VAT breakdown: with a rate that rounds to 0 the tax
   amount rounds to 0; otherwise it lies within 1 of the taxable amount x
   rate / 100 rounded to cents (XPath round: half up), strictly in UBL,
-  inclusively in CII. The rate as written (two decimals), exact for any
-  size.
+  inclusively in CII. The rate as written (2 to 4 decimals), exact for
+  any size.
   DE: BR-CO-17 fuer eine Steueraufschluesselung: bei einem Satz, der auf 0
   rundet, rundet der Steuerbetrag auf 0; sonst liegt er innerhalb von 1
   um Bemessungsgrundlage x Satz / 100, auf Cent gerundet (XPath round:
   halb aufwaerts), in UBL echt, in CII einschliesslich. Der Satz, wie er
-  geschrieben wird (zwei Nachkommastellen), genau fuer jede Groesse. }
+  geschrieben wird (2 bis 4 Nachkommastellen), genau fuer jede Groesse. }
 function TaxAmountWrong(ATax: TLandrixInvoiceTaxAmount; AStrict: Boolean; const APath: TLandrixEInvoiceString;
   var ADetail: TRuleDetail): Boolean;
 var
@@ -2493,11 +2493,11 @@ type
 
   { One VAT category as written: of an invoice line, a document level
     allowance or charge, or a VAT breakdown; amounts in cents, the rate
-    exact as written (two decimals, any size).
+    exact as written (2 to 4 decimals, any size).
     DE: Eine Umsatzsteuerkategorie, wie sie geschrieben wird: einer
     Rechnungsposition, eines Nachlasses oder Zuschlags der Dokumentebene
     oder einer Steueraufschluesselung; Betraege in Cent, der Satz genau so,
-    wie er geschrieben wird (zwei Nachkommastellen, beliebig gross). }
+    wie er geschrieben wird (2 bis 4 Nachkommastellen, beliebig gross). }
   TTaxUse = record
     Kind: TTaxUseKind;
     Code: TLandrixEInvoiceString;
@@ -3253,18 +3253,19 @@ end;
 
 { BR-CO-25 (Factur-X EXTENDED, the only target with the rule, where the
   mapper writes structured payment terms): a due date, the net note or a
-  cash discount (which always has a due date).
+  cash discount (which has a due date when the issue date is set).
   DE: BR-CO-25 (Factur-X EXTENDED, das einzige Ziel mit der Regel, wo der
   Mapper strukturierte Zahlungsbedingungen schreibt): ein
-  Faelligkeitsdatum, der Nettohinweis oder ein Skonto (das immer eine
-  Faelligkeit hat). }
+  Faelligkeitsdatum, der Nettohinweis oder ein Skonto (das eine
+  Faelligkeit hat, wenn das Rechnungsdatum gesetzt ist). }
 function PaymentTermsMissing(AInvoice: TLandrixInvoice): Boolean;
 begin
   if Cents(AInvoice.PayableAmount) <= 0 then
     Result := False
   else
     Result := not (AInvoice.InvoiceDueDate > 0) and not Present(AInvoice.PaymentTermNetNote) and
-      not (AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3]);
+      not ((AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3]) and
+        (AInvoice.InvoiceIssueDate > 0));
 end;
 
 { BR-CO-26: a seller identifier as written (not in Factur-X MINIMUM, which
@@ -3955,17 +3956,17 @@ begin
 end;
 
 { PEPPOL-EN16931-R040 to R042 for one allowance or charge, as written: the
-  percentage with 4 decimals (UBL line level: 2); the base amount on
+  percentage with 4 decimals; the base amount on
   document level when it is not 0, on line level also as 0 next to a
   percentage. R040: amount = base amount x percentage / 100 within the
   slack.
   DE: PEPPOL-EN16931-R040 bis R042 fuer einen Nachlass oder Zuschlag, wie
-  geschrieben: der Prozentsatz mit 4 Nachkommastellen (UBL-Positionsebene:
-  2); der Grundbetrag auf Dokumentebene, wenn er nicht 0 ist, auf
+  geschrieben: der Prozentsatz mit 4 Nachkommastellen; der Grundbetrag auf
+  Dokumentebene, wenn er nicht 0 ist, auf
   Positionsebene neben einem Prozentsatz auch als 0. R040: Betrag =
   Grundbetrag x Prozentsatz / 100 innerhalb der Toleranz. }
 function PeppolAllowanceViolated(AIndex: TCheckRuleIndex; AItem: TLandrixInvoiceAllowanceCharge;
-  AOnLine: Boolean; APercentDecimals: Integer; const ASlack: TExact; const APath: TLandrixEInvoiceString;
+  AOnLine: Boolean; const ASlack: TExact; const APath: TLandrixEInvoiceString;
   var ADetail: TRuleDetail): Boolean;
 var
   HasPercent, HasBase: Boolean;
@@ -3979,8 +3980,7 @@ begin
     cr_PeppolR040:
       if HasPercent and HasBase then
       begin
-        Percent := ExactOf(LandrixEInvoiceDecimalToLexical(Writable(AItem.MultiplierFactorNumeric),
-          APercentDecimals));
+        Percent := ExactOf(LandrixEInvoiceDecimalToLexical(Writable(AItem.MultiplierFactorNumeric), 4));
         Expected := ExactDiv(ExactMul(AmountExact(AItem.BaseAmount), Percent), ExactOf('100'));
         Result := not WithinSlack(AmountExact(AItem.Amount), Expected, ASlack);
         if Result then
@@ -4018,8 +4018,7 @@ begin
 end;
 
 function PeppolLineAllowancesViolated(AIndex: TCheckRuleIndex; ALines: TLandrixInvoiceLines; ASubLines: Boolean;
-  APercentDecimals: Integer; const ASlack: TExact; const APath: TLandrixEInvoiceString;
-  var ADetail: TRuleDetail): Boolean;
+  const ASlack: TExact; const APath: TLandrixEInvoiceString; var ADetail: TRuleDetail): Boolean;
 var
   I, J: TLandrixEInvoiceListIndex;
   Line: TLandrixEInvoiceString;
@@ -4029,10 +4028,10 @@ begin
   begin
     Line := APath + '[' + TLandrixEInvoiceString(IntToStr(I)) + ']';
     for J := 0 to ALines[I].AllowanceCharges.Count - 1 do
-      if PeppolAllowanceViolated(AIndex, ALines[I].AllowanceCharges[J], True, APercentDecimals, ASlack,
+      if PeppolAllowanceViolated(AIndex, ALines[I].AllowanceCharges[J], True, ASlack,
          Line + '.AllowanceCharges[' + TLandrixEInvoiceString(IntToStr(J)) + ']', ADetail) then
         Exit;
-    if ASubLines and PeppolLineAllowancesViolated(AIndex, ALines[I].SubInvoiceLines, True, APercentDecimals,
+    if ASubLines and PeppolLineAllowancesViolated(AIndex, ALines[I].SubInvoiceLines, True,
        ASlack, Line + '.SubInvoiceLines', ADetail) then
       Exit;
   end;
@@ -4058,21 +4057,16 @@ var
   I: TLandrixEInvoiceListIndex;
   Slack: TExact;
   IsCII: Boolean;
-  Decimals: Integer;
 begin
   Result := True;
   Slack := PeppolSlack(AInvoice, ASpec);
   for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
-    if PeppolAllowanceViolated(AIndex, AInvoice.AllowanceCharges[I], False, 4, Slack,
+    if PeppolAllowanceViolated(AIndex, AInvoice.AllowanceCharges[I], False, Slack,
        'AllowanceCharges[' + TLandrixEInvoiceString(IntToStr(I)) + ']', ADetail) then
       Exit;
   IsCII := ASpec.Target.Syntax = esy_CII;
-  if IsCII then
-    Decimals := 4
-  else
-    Decimals := 2;
   Result := PeppolLineAllowancesViolated(AIndex, AInvoice.InvoiceLines, IsCII and SubLinesWritten(AInvoice, ASpec),
-    Decimals, Slack, 'InvoiceLines', ADetail);
+    Slack, 'InvoiceLines', ADetail);
 end;
 
 { The VAT accounting currency (BT-6) is written when it differs from the

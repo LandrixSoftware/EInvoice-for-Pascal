@@ -139,8 +139,8 @@ function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoice
   CalculateTotals). Both compute everything first and change AInvoice only
   when there is no error; they return the number of errors, with the
   reasons in ADiagnostics. They compute exactly with the numbers as the
-  writers write them (quantity 4 decimals, price 2 or 4, base quantity up
-  to 6, rates 2) and round amounts to cents half away from zero, as the
+  writers write them (quantity 4 to 10 decimals, price 2 or 4, base
+  quantity up to 6, rates 2 to 4) and round amounts to cents half away from zero, as the
   writers round; an amount above 9e14 or a sum beyond Currency is an
   error.
   LandrixEInvoiceCalculateLineAmounts sets BT-131 of every line: quantity x
@@ -159,8 +159,8 @@ function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoice
   CalculateTotals). Beide rechnen zuerst alles aus und aendern AInvoice nur,
   wenn kein Fehler auftritt; sie liefern die Anzahl der Fehler, die Gruende
   stehen in ADiagnostics. Sie rechnen genau mit den Zahlen, wie die Writer
-  sie schreiben (Menge 4 Nachkommastellen, Preis 2 oder 4, Basismenge bis
-  6, Saetze 2), und runden Betraege halb weg von null auf Cent, wie die
+  sie schreiben (Menge 4 bis 10 Nachkommastellen, Preis 2 oder 4,
+  Basismenge bis 6, Saetze 2 bis 4), und runden Betraege halb weg von null auf Cent, wie die
   Writer runden; ein Betrag ueber 9e14 oder eine Summe jenseits von
   Currency ist ein Fehler.
   LandrixEInvoiceCalculateLineAmounts setzt BT-131 jeder Position: Menge x
@@ -685,10 +685,10 @@ begin
   Result := True;
 end;
 
-{ The rate of a category as written (two decimals): category O has no rate
+{ The rate of a category as written (2 to 4 decimals): category O has no rate
   (BR-O-05, the writers omit it) and counts with 0 (BR-O-09). '' if the
   rate cannot be written.
-  DE: Der Satz einer Kategorie, wie geschrieben (zwei Nachkommastellen):
+  DE: Der Satz einer Kategorie, wie geschrieben (2 bis 4 Nachkommastellen):
   Kategorie O hat keinen Satz (BR-O-05, die Writer lassen ihn weg) und
   zaehlt mit 0 (BR-O-09). '', wenn der Satz nicht geschrieben werden kann. }
 function RateTextOf(ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; ARate: Double): TLandrixEInvoiceString;

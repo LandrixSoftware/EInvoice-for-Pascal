@@ -91,12 +91,12 @@ TLandrixEInvoice.CalculateTotals(Invoice);        // BG-23 and BG-22
 
 - `CalculateLineAmounts`: quantity x net price / base quantity (0 counts as 1), rounded to cents
   half away from zero, minus line allowances, plus line charges. It computes exactly with the
-  values as they are written (quantity with 4 decimals, price with 2 or 4, base quantity with up
-  to 6), so the amount matches what a validator recomputes from the XML. A group (a line with sub
+  values as they are written (quantity with 4 to 10 decimals, price with 2 or 4, base quantity
+  with up to 6), so the amount matches what a validator recomputes from the XML. A group (a line with sub
   lines) gets the sum of its DETAIL and GROUP sub lines. Skip this call if your line amounts
   come from elsewhere.
-- `CalculateTotals`: the VAT breakdown grouped by VAT category and rate as written, with two
-  decimals (the tax of each group rounded once on its taxable amount; category O counts without
+- `CalculateTotals`: the VAT breakdown grouped by VAT category and rate as written, with 2 to
+  4 decimals (the tax of each group rounded once on its taxable amount; category O counts without
   a rate; existing entries keep their exemption reasons and take the one of the lines when they
   have none, missing ones are added, unused ones removed) and the document totals BT-106 to
   BT-110, BT-112 and BT-115. An invoice without lines (MINIMUM, BASIC WL) is an error.

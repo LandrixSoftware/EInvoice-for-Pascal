@@ -255,20 +255,23 @@ begin
     Line := AddLine(Invoice, '1', 1, Quot(84428850, 1) + Quot(335, 1000), idtfcc_S_StandardRate, 19);
     CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'large half cent');
     CheckAmount(Cur(844288503400), Line.LineAmount, '84428850.335 -> .34');
-    { the quantity counts with the 4 decimals written: 1.0000 x 1000 }
+    { the quantity counts as written (up to 10 decimals): 1.00004 x 1000 }
     Line.Quantity := Quot(100004, 100000);
     Line.NetPriceAmount := 1000;
     CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'quantity');
-    CheckAmount(1000, Line.LineAmount, 'quantity 1.00004 is written 1.0000');
+    CheckAmount(Cur(10000400), Line.LineAmount, 'quantity 1.00004 is written as is');
+    Line.Quantity := Quot(1, 3);
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'quantity 1/3');
+    CheckAmount(Cur(3333300), Line.LineAmount, 'quantity 1/3 is written 0.3333333333');
 
-    { rates with more than two decimals group as written }
+    { rates with more than four decimals group as written }
     Line.Quantity := 1;
     Line.NetPriceAmount := 100;
-    Line.TaxPercent := Quot(19001, 1000);
-    AddLine(Invoice, '2', 1, 100, idtfcc_S_StandardRate, Quot(19002, 1000));
+    Line.TaxPercent := Quot(1900001, 100000);
+    AddLine(Invoice, '2', 1, 100, idtfcc_S_StandardRate, Quot(1900002, 100000));
     CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'lines');
     CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice), 'rates');
-    CheckEquals(1, Integer(Invoice.TaxAmountSubtotals.Count), '19.001 and 19.002 are both 19.00');
+    CheckEquals(1, Integer(Invoice.TaxAmountSubtotals.Count), '19.00001 and 19.00002 are both 19.00');
     CheckAmount(38, Invoice.TaxAmountSubtotals[0].TaxAmount, '19 % of 200');
 
     { category O: a rate left on the line does not count (BR-O-09) }

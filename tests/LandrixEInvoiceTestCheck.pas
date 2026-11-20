@@ -2539,8 +2539,8 @@ begin
 end;
 
 { PEPPOL-EN16931-R040 and R120 compare exactly within 0.02 (XRechnung: 0.5
-  for HUF) on the values as written: the percentage with 4 decimals, on UBL
-  line level with 2; R120 divides the price by the base quantity as Saxon
+  for HUF) on the values as written: the percentage with 4 decimals; R120
+  divides the price by the base quantity as Saxon
   does (18 decimals, rounded half down) and is a warning in XRechnung, an
   error in Peppol. R055 counts 0 for both signs in UBL and as positive in CII; R054
   in UBL also counts a VAT total without breakdown. UBL checks R120 on
@@ -2583,10 +2583,10 @@ begin
     Item.MultiplierFactorNumeric := Thousandths(10004);
     Item.BaseAmount := 1000;
     Item.Amount := 100;
-    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: UBL writes the line percentage as 10.00');
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: UBL writes the line percentage as 10.0040');
     Check(not RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R040'), 'R040: CII writes 10.0040');
     Item.Amount := CentsValue(10004);
-    Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: UBL 100.04');
+    Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R040'), 'R040: UBL 100.04');
     Check(RuleHolds(Invoice, tk_XRCII, 'PEPPOL-EN16931-R040'), 'R040: CII 100.04');
     Item.BaseAmount := 0;
     Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R041'), 'R041: line base amount written as 0');

@@ -204,7 +204,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..37] of TLandrixEInvoiceRule = (
+  Rules: array[0..36] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules. Where the level is not
       erl_Allowed they are written flat (LandrixEInvoiceSubLines). }
@@ -285,9 +285,6 @@ const
     (Key: LandrixEInvoiceRuleBuyerReferencePlaceholder; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-10';
      Source: 'placeholder only for XRechnung and Peppol'),
-    (Key: LandrixEInvoiceRuleCreditNoteDueDate; Standards: [est_XRechnung]; Syntaxes: AnySyntax;
-     Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-9';
-     Source: 'XRechnung credit note without due date'),
     (Key: LandrixEInvoiceRuleCreditNoteDueDate; Standards: AnyStandard; Syntaxes: [esy_UBL];
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-9';
      Source: 'UBL CreditNote has no cbc:DueDate'),

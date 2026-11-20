@@ -34,7 +34,6 @@ ubl-inv-contact-tests-*.xml	missed BR-DE-23-b
 *-br-de-23-test-bg-17-with-bg-18-*-identity.xml	extra BR-DE-19
 ubl-inv-contact-tests-*.xml	extra BR-DE-19
 *-br-de-24-test-bg-18-with-bg-17-*-identity.xml	extra BR-51
-cii-br-de-24-test-bg-18-with-bg-19-bt-91-911-identity.xml	extra BR-51
 ubl-*-br-de-25-test-bg-19-with-bg-18-*-identity.xml	extra BR-DE-20
 
 # Blank text counts as absent (normalize-space): an empty IBAN is no
@@ -55,12 +54,10 @@ cii-peppol-en16931-r020-1037-remove.xml	missed BR-62
 # cannot fail in the output.
 cii-peppol-en16931-r005-1021-code-EUR.xml	missed BR-53
 
-# Contradicting currencies: without BT-110 the reader takes the only VAT total (in BT-6) as
-# BT-110, and a VAT total in another currency than BT-5 is read as BT-6; the output would lack
-# BT-111.
-cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-53
+# Contradicting currencies: without BT-110 the CII reader keeps the only VAT total (in BT-6) as
+# BT-111; the output writes BT-110 as 0, which does not match the breakdown (BR-CO-14). In UBL
+# a VAT total in another currency than BT-5 is read as BT-6.
 cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-CO-14
-cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-DEC-15
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	missed BR-CO-15
 
 # Two VAT totals with breakdown in the invoice currency (PEPPOL-EN16931-R053 tests): the model
@@ -151,14 +148,12 @@ cii-peppol-en16931-r044-116[12]-code-*.xml	extra PEPPOL-EN16931-R046
 # PEPPOL-EN16931-R053 to R055: the model holds one VAT total per currency, and the writers
 # always write BT-110 (in UBL with the breakdown); a second total in the same currency is lost.
 # Without BT-6 the readers take the currency of a VAT total that differs from BT-5 as BT-6
-# (BR-DEX-14 tests, the CII test without BT-110), so the output lacks BT-111.
+# (BR-DEX-14 tests), so the output lacks BT-111.
 *-peppol-en16931-r053-2-*-identity.xml	missed PEPPOL-EN16931-R053
 *-peppol-en16931-r054-2-*-identity.xml	missed PEPPOL-EN16931-R054
 ubl-*-peppol-en16931-r053-2-*-remove.xml	missed PEPPOL-EN16931-R054
 ubl-cn-peppol-en16931-r053-1-750-remove.xml	extra PEPPOL-EN16931-R054
 ubl-inv-peppol-en16931-r053-1-423-remove.xml	extra PEPPOL-EN16931-R054
-cii-peppol-en16931-r053-1-1177-remove.xml	extra PEPPOL-EN16931-R054
-cii-peppol-en16931-r053-1-1177-remove.xml	extra PEPPOL-EN16931-R055
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra PEPPOL-EN16931-R054
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra PEPPOL-EN16931-R055
 

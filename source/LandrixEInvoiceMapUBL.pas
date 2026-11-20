@@ -429,6 +429,16 @@ begin
     ADate.SetValue(AValue);
 end;
 
+{ An xs:boolean indicator; the schema collapses white space around it, and
+  text that is no boolean (reported by the reader) counts as false.
+  DE: Ein xs:boolean-Kennzeichen; das Schema ignoriert Leerraum darum, und
+  Text, der kein Boolean ist (vom Leser gemeldet), gilt als false. }
+function IsTrue(const AText: TLandrixEInvoiceString): Boolean;
+begin
+  if not LandrixEInvoiceTryLexicalToBoolean(AText, Result) then
+    Result := False;
+end;
+
 function BoolText(AValue: Boolean): TLandrixEInvoiceString;
 begin
   if AValue then
@@ -888,6 +898,9 @@ begin
     if DateSet(Reference.IssueDate) then
       Billing.InvoiceDocumentReference.IssueDate := LandrixEInvoiceDateToUBL(Reference.IssueDate);
   end;
+  if not Present(FInvoice.DeliveryReceiptNumber) and DateSet(FInvoice.DeliveryReceiptDate) then
+    Report(edk_NotAllowed, FDoc.Path + '/cac:DespatchDocumentReference',
+      'despatch advice date left out: no despatch advice number (BT-16)', eds_Warning);
   if Present(FInvoice.DeliveryReceiptNumber) then
   begin
     FDoc.DespatchDocumentReference.Add.ID.Value := FInvoice.DeliveryReceiptNumber;
@@ -1568,7 +1581,7 @@ begin
     if Present(Item.Reason) then
       Charge.AllowanceChargeReason.Add(Txt(Item.Reason));
     if Item.MultiplierFactorNumeric <> 0 then
-      Charge.MultiplierFactorNumeric := LandrixEInvoiceDecimalToLexical(Item.MultiplierFactorNumeric, 2);
+      Charge.MultiplierFactorNumeric := LandrixEInvoicePercentToLexical(Item.MultiplierFactorNumeric);
     { BT-137 also without BT-138, as on document level
       DE: BT-137 auch ohne BT-138, wie auf Dokumentebene }
     if (Item.MultiplierFactorNumeric <> 0) or (Item.BaseAmount <> 0) then
@@ -1687,6 +1700,9 @@ begin
     APrice.BaseQuantity.UnitCode := Code(LandrixEInvoiceUnitCodeToStr(ALine.BaseQuantityUnitCode),
       ALine.BaseQuantityUnitCodeOther, APath + '/cbc:BaseQuantity/@unitCode');
   end;
+  if (ALine.GrossPriceAmount = 0) and (ALine.DiscountOnTheGrossPrice <> 0) then
+    Report(edk_NotAllowed, APath + '/cac:AllowanceCharge', 'discount on the gross price (BT-147) of line ' +
+      ALine.ID + ' left out: no gross price (BT-148)', eds_Warning);
   if ALine.GrossPriceAmount <> 0 then
   begin
     Discount := APrice.AllowanceCharge.Add;
@@ -2595,7 +2611,7 @@ var
   Category: TLandrixUBLTaxCategory;
   Taken: array[0..6] of string;
 begin
-  AItem.ChargeIndicator := (ACharge.ChargeIndicator = 'true') or (ACharge.ChargeIndicator = '1');
+  AItem.ChargeIndicator := IsTrue(ACharge.ChargeIndicator);
   ReadReason(AItem, ACharge.AllowanceChargeReasonCode, APath + '/cbc:AllowanceChargeReasonCode');
   AItem.Reason := FirstText(ACharge.AllowanceChargeReason, APath + '/cbc:AllowanceChargeReason');
   AItem.MultiplierFactorNumeric := Decimal(ACharge.MultiplierFactorNumeric, APath + '/cbc:MultiplierFactorNumeric');
@@ -2890,7 +2906,7 @@ begin
   if APrice.AllowanceCharge.Count > 0 then
   begin
     Discount := APrice.AllowanceCharge[0];
-    if (Discount.ChargeIndicator = 'true') or (Discount.ChargeIndicator = '1') then
+    if IsTrue(Discount.ChargeIndicator) then
       NotMapped(APath + '/cac:AllowanceCharge', 'charge on the price')
     else
     begin

@@ -1485,6 +1485,182 @@ begin
   end;
 end;
 
+{ The corrections of the review: indicators with white space, group lines
+  without quantity, the buyer tax number in Factur-X, accounts and BIC by
+  the payment code, mandate references of later terms, discount periods in
+  other units, VAT totals in the accounting currency, the currency of a
+  third-party payment. }
+procedure TestReviewCases;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  CII: TLandrixCIIInvoice;
+  Item: TLandrixInvoiceAllowanceCharge;
+  Line, Sub: TLandrixInvoiceLine;
+  Payment: TLandrixInvoicePaymentType;
+  Prepaid: TLandrixInvoicePrepaidPayment;
+  Xml: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  CII := nil;
+  try
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), Spec), 'spec');
+
+    { udt:Indicator is an xs:boolean: white space around it is collapsed }
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Item := Invoice.AllowanceCharges.AddAllowanceCharge;
+    Item.ChargeIndicator := True;
+    Item.Amount := 10;
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    CII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeAllowanceCharge[0].ChargeIndicator :=
+      ' true ';
+    LandrixEInvoiceCIIToInvoice(CII, Back, D);
+    FreeAndNil(CII);
+    Check(Back.AllowanceCharges[0].ChargeIndicator, 'charge with blanks around true');
+
+    { a group line without quantity stays without (BR-FXEXT-BR-22) }
+    Invoice.Clear;
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Line := Invoice.InvoiceLines.AddInvoiceLine;
+    Line.ID := '1';
+    Line.Name := 'Group';
+    Sub := Line.SubInvoiceLines.AddInvoiceLine;
+    Sub.ID := '1.1';
+    Sub.Name := 'Detail';
+    Sub.Quantity := 1;
+    Sub.UnitCode := iuc_one;
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, nil);
+    CheckEquals(1, Occurrences('<ram:BilledQuantity', Xml), 'only the detail line has a quantity');
+    CheckEquals(1, Occurrences('<ram:BilledQuantity unitCode="C62">1.0000</ram:BilledQuantity>', Xml),
+      'the detail line keeps its quantity');
+
+    { Factur-X allows the buyer tax registration with scheme VA only }
+    Invoice.Clear;
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.AccountingCustomerParty.VATCompanyNumber := '201/113/40209';
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931), D, nil);
+    CheckEquals(0, Occurrences('schemeID="FC"', Xml), 'no FC for the buyer in Factur-X');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:BuyerTradeParty/ram:SpecifiedTaxRegistration'),
+      'buyer tax number reported');
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil);
+    CheckEquals(1, Occurrences('schemeID="FC"', Xml), 'XRechnung keeps FC');
+
+    { a card payment has no BIC: written nowhere, so reported both ways }
+    Invoice.Clear;
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_CreditCard;
+    Payment.FinancialAccount := '123456';
+    Payment.FinancialInstitutionBranch := 'MARKDEF1860';
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, nil);
+    CheckEquals(0, Occurrences('BICID', Xml), 'no BIC with a card');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:PayeeSpecifiedCreditorFinancialInstitution'),
+      'BIC with a card reported on writing');
+    Payment.FinancialInstitutionBranch := '';
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    CII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementPaymentMeans[0].
+      PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := 'MARKDEF1860';
+    Back.Clear;
+    D.Clear;
+    LandrixEInvoiceCIIToInvoice(CII, Back, D);
+    FreeAndNil(CII);
+    CheckEqualsInvoiceStr('', Back.PaymentTypes[0].FinancialInstitutionBranch, 'no BIC read with a card');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:PayeeSpecifiedCreditorFinancialInstitution'),
+      'BIC with a card reported on reading');
+
+    { a credit transfer takes the payee account, not the debited one }
+    Payment.PaymentMeansCode := ipmc_SEPACreditTransfer;
+    Payment.FinancialAccount := 'DE02120300000000202051';
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    CII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementPaymentMeans[0].
+      PayerPartyDebtorFinancialAccount.IBANID.Value := 'DE21860000000086001055';
+    Back.Clear;
+    D.Clear;
+    LandrixEInvoiceCIIToInvoice(CII, Back, D);
+    FreeAndNil(CII);
+    CheckEqualsInvoiceStr('DE02120300000000202051', Back.PaymentTypes[0].FinancialAccount,
+      'payee account of a credit transfer');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:PayerPartyDebtorFinancialAccount'), 'debited account reported');
+
+    { a net term after a discount term does not replace its mandate }
+    ReadInvoiceXml(PaymentTermsXml('20261111',
+      StringReplace(DiscountTermXml('20261111', '10', 'DAY', '20261121'),
+        '</ram:DueDateDateTime><ram:ApplicableTradePaymentDiscountTerms>',
+        '</ram:DueDateDateTime><ram:DirectDebitMandateID>M-A</ram:DirectDebitMandateID>' +
+        '<ram:ApplicableTradePaymentDiscountTerms>', []) +
+      StringReplace(NetTermXml('20261218'), '</ram:DueDateDateTime>',
+        '</ram:DueDateDateTime><ram:DirectDebitMandateID>M-B</ram:DirectDebitMandateID>', [])), Invoice, D);
+    CheckEqualsInvoiceStr('M-A', Invoice.PaymentMandateID, 'first mandate kept');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:DirectDebitMandateID'), 'second mandate reported');
+
+    { a discount period in weeks counts 7 days each; months are reported }
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '2', 'WEE', '20261125')), Invoice, D);
+    CheckEquals(14, Invoice.PaymentTermCashDiscount1Days, 'two weeks');
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '1', 'MON', '20261211')), Invoice, D);
+    CheckEquals(30, Invoice.PaymentTermCashDiscount1Days, 'one month: the days come from the due date');
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:BasisPeriodMeasure'), 'months reported');
+    ReadInvoiceXml(PaymentTermsXml('20261111', '<ram:SpecifiedTradePaymentTerms>' +
+      '<ram:ApplicableTradePaymentDiscountTerms><ram:BasisDateTime><udt:DateTimeString format="102">20261111' +
+      '</udt:DateTimeString></ram:BasisDateTime><ram:CalculationPercent>2</ram:CalculationPercent>' +
+      '</ram:ApplicableTradePaymentDiscountTerms></ram:SpecifiedTradePaymentTerms>'), Invoice, D);
+    CheckEquals(1, CountKind(D, edk_NotMapped, '/ram:BasisDateTime'), 'basis date without period reported');
+
+    { the only VAT total in the accounting currency is BT-111, not BT-110 }
+    Xml := StringReplace(PaymentTermsXml('20261111', ''), '<ram:InvoiceCurrencyCode>EUR',
+      '<ram:TaxCurrencyCode>SEK</ram:TaxCurrencyCode><ram:InvoiceCurrencyCode>EUR', []);
+    Xml := StringReplace(Xml, '<ram:DuePayableAmount>',
+      '<ram:TaxTotalAmount currencyID="SEK">5.00</ram:TaxTotalAmount><ram:DuePayableAmount>', []);
+    ReadInvoiceXml(Xml, Invoice, D);
+    Check(Invoice.TaxAmountTotal = 0, 'no BT-110');
+    Check(Invoice.TaxAmountTotalInTaxCurrency.HasValue and (Invoice.TaxAmountTotalInTaxCurrency.Value = 5),
+      'BT-111');
+    CheckEquals(1, CountKind(D, edk_MissingElement, '/ram:TaxTotalAmount'), 'BT-110 missing');
+
+    { MINIMUM has no BT-6, so BT-111 is left out }
+    Invoice.Clear;
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Invoice.TaxCurrencyCode := 'SEK';
+    Invoice.TaxAmountTotalInTaxCurrency.SetValue(1.5);
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Minimum), D, nil);
+    CheckEquals(0, Occurrences('currencyID="SEK"', Xml), 'no BT-111 in MINIMUM');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:TaxTotalAmount'), 'BT-111 reported');
+
+    { a third-party payment keeps its currency on reading; CII cannot write it }
+    Invoice.Clear;
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    Prepaid := Invoice.PrepaidPayments.AddPrepaidPayment;
+    Prepaid.ID := 'Fee';
+    Prepaid.PaidAmount := 10;
+    Prepaid.PaidAmountCurrencyID := 'USD';
+    D.Clear;
+    Xml := MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, nil);
+    CheckEquals(0, Occurrences('USD', Xml), 'no currency at the adjustment');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ActualAmount/@currencyID'), 'currency reported');
+    CII := LandrixEInvoiceInvoiceToCII(Invoice, Spec, D);
+    CII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedFinancialAdjustment[0].
+      ActualAmount.CurrencyID := 'USD';
+    Back.Clear;
+    D.Clear;
+    LandrixEInvoiceCIIToInvoice(CII, Back, D);
+    FreeAndNil(CII);
+    CheckEqualsInvoiceStr('USD', Back.PrepaidPayments[0].PaidAmountCurrencyID, 'currency read');
+    CheckEquals(0, CountKind(D, edk_NotMapped, '/@currencyID'), 'currency kept, not reported');
+  finally
+    CII.Free;
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('MapCII.GoldenWrite', TestGoldenWrite);
@@ -1509,6 +1685,7 @@ begin
   RegisterTest('MapCII.PaymentTermsNetDueBesideDiscount', TestPaymentTermsNetDueBesideDiscount);
   RegisterTest('MapCII.TaxPointDateWrite', TestTaxPointDateWrite);
   RegisterTest('MapCII.TaxPointDateRead', TestTaxPointDateRead);
+  RegisterTest('MapCII.ReviewCases', TestReviewCases);
 end;
 
 end.

@@ -128,7 +128,8 @@ type
       const APath: TLandrixEInvoiceString);
     procedure MapLineAgreement(ALine: TLandrixInvoiceLine; AAgreement: TLandrixCIILineTradeAgreement;
       const APath: TLandrixEInvoiceString);
-    procedure MapLineDelivery(ALine: TLandrixInvoiceLine; ADelivery: TLandrixCIILineTradeDelivery;
+    procedure MapLineDelivery(ALine: TLandrixInvoiceLine; AStatus: TLandrixInvoiceLineStatusReasonCode;
+      ADelivery: TLandrixCIILineTradeDelivery;
       const APath: TLandrixEInvoiceString);
     procedure MapLineSettlement(ALine: TLandrixInvoiceLine; AStatus: TLandrixInvoiceLineStatusReasonCode;
       ASettlement: TLandrixCIILineTradeSettlement; const APath: TLandrixEInvoiceString);
@@ -240,6 +241,25 @@ function CIIPrice(AValue: Double): TLandrixCIIAmount;
 begin
   Result.Value := LandrixEInvoicePriceToLexical(AValue);
   Result.CurrencyID := '';
+end;
+
+{ True if both texts are the same decimal number ('10' and '10.00').
+  DE: True, wenn beide Texte dieselbe Dezimalzahl sind ('10' und '10.00'). }
+function SameNumber(const A, B: TLandrixEInvoiceString): Boolean;
+var
+  X, Y: Double;
+begin
+  Result := LandrixEInvoiceTryLexicalToDouble(A, X) and LandrixEInvoiceTryLexicalToDouble(B, Y) and (X = Y);
+end;
+
+{ An xs:boolean indicator; the schema collapses white space around it, and
+  text that is no boolean (reported by the reader) counts as false.
+  DE: Ein xs:boolean-Kennzeichen; das Schema ignoriert Leerraum darum, und
+  Text, der kein Boolean ist (vom Leser gemeldet), gilt als false. }
+function IsTrue(const AText: TLandrixEInvoiceString): Boolean;
+begin
+  if not LandrixEInvoiceTryLexicalToBoolean(AText, Result) then
+    Result := False;
 end;
 
 function BoolText(AValue: Boolean): TLandrixEInvoiceString;
@@ -592,7 +612,7 @@ begin
     Item.AssociatedDocumentLineDocument.IncludedNote.Add.Content := Txt(ALine.Note);
   MapLineProduct(ALine, Item.SpecifiedTradeProduct, APath + '/ram:SpecifiedTradeProduct');
   MapLineAgreement(ALine, Item.SpecifiedLineTradeAgreement, APath + '/ram:SpecifiedLineTradeAgreement');
-  MapLineDelivery(ALine, Item.SpecifiedLineTradeDelivery, APath + '/ram:SpecifiedLineTradeDelivery');
+  MapLineDelivery(ALine, Status, Item.SpecifiedLineTradeDelivery, APath + '/ram:SpecifiedLineTradeDelivery');
   MapLineSettlement(ALine, Status, Item.SpecifiedLineTradeSettlement, APath + '/ram:SpecifiedLineTradeSettlement');
   if ALine.SubInvoiceLines.Count = 0 then
     Exit;
@@ -691,6 +711,9 @@ begin
     BaseQuantity.UnitCode := Code(LandrixEInvoiceUnitCodeToStr(ALine.BaseQuantityUnitCode),
       ALine.BaseQuantityUnitCodeOther, APath + '/ram:NetPriceProductTradePrice/ram:BasisQuantity');
   end;
+  if (ALine.GrossPriceAmount = 0) and (ALine.DiscountOnTheGrossPrice <> 0) then
+    Report(edk_NotAllowed, APath + '/ram:GrossPriceProductTradePrice', 'discount on the gross price (BT-147) of line ' +
+      ALine.ID + ' left out: no gross price (BT-148)', eds_Warning);
   if ALine.GrossPriceAmount <> 0 then
   begin
     AAgreement.GrossPriceProductTradePrice.ChargeAmount := CIIPrice(ALine.GrossPriceAmount);
@@ -707,15 +730,30 @@ begin
 end;
 
 { BT-129/BT-130 invoiced quantity; EXTENDED only: BT-X-85 delivery date and
-  BG-X-83 delivery note (BT-X-92 to BT-X-94).
+  BG-X-83 delivery note (BT-X-92 to BT-X-94). Group and information lines
+  of Factur-X EXTENDED may stay without quantity (BR-FXEXT-BR-22 and -23
+  apply to detail lines only; XRechnung keeps BR-22 for every line). The line and date of a delivery note are written
+  with its number only.
   DE: BT-129/BT-130 berechnete Menge; nur EXTENDED: BT-X-85 Lieferdatum und
-  BG-X-83 Lieferschein (BT-X-92 bis BT-X-94). }
-procedure TCIIWriteMapper.MapLineDelivery(ALine: TLandrixInvoiceLine; ADelivery: TLandrixCIILineTradeDelivery;
-  const APath: TLandrixEInvoiceString);
+  BG-X-83 Lieferschein (BT-X-92 bis BT-X-94). Gruppen- und
+  Informationspositionen in Factur-X EXTENDED duerfen ohne Menge bleiben
+  (BR-FXEXT-BR-22 und -23 gelten nur fuer Detailpositionen; XRechnung
+  behaelt BR-22 fuer jede Position). Position und
+  Datum eines Lieferscheins werden nur mit seiner Nummer geschrieben. }
+procedure TCIIWriteMapper.MapLineDelivery(ALine: TLandrixInvoiceLine; AStatus: TLandrixInvoiceLineStatusReasonCode;
+  ADelivery: TLandrixCIILineTradeDelivery; const APath: TLandrixEInvoiceString);
 begin
-  ADelivery.BilledQuantity.Value := LandrixEInvoiceQuantityToLexical(ALine.Quantity);
-  ADelivery.BilledQuantity.UnitCode := Code(LandrixEInvoiceUnitCodeToStr(ALine.UnitCode), ALine.UnitCodeOther,
-    APath + '/ram:BilledQuantity');
+  if not ((FSpec.Target.Standard = est_FacturX) and (AStatus in [ilsrc_Group, ilsrc_Information]) and
+     (ALine.Quantity = 0) and (ALine.UnitCode = iuc_None) and Blank(ALine.UnitCodeOther) and
+     (LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleLineSubLines) <> erl_Forbidden)) then
+  begin
+    ADelivery.BilledQuantity.Value := LandrixEInvoiceQuantityToLexical(ALine.Quantity);
+    ADelivery.BilledQuantity.UnitCode := Code(LandrixEInvoiceUnitCodeToStr(ALine.UnitCode), ALine.UnitCodeOther,
+      APath + '/ram:BilledQuantity');
+  end;
+  if not Present(ALine.DeliveryNoteNumber) and (DateSet(ALine.DeliveryNoteDate) or Present(ALine.DeliveryNoteLineID)) then
+    Report(edk_NotAllowed, APath + '/ram:DeliveryNoteReferencedDocument', 'delivery note line and date of line ' +
+      ALine.ID + ' left out: no delivery note number (BT-X-92)', eds_Warning);
   if not (DateSet(ALine.ActualDeliveryDate) or Present(ALine.DeliveryNoteNumber)) then
     Exit;
   if not Permit(LandrixEInvoiceRuleLineDelivery, APath, 'delivery data of line ' + ALine.ID) then
@@ -938,8 +976,14 @@ begin
   MapContact(Party, Target, Agreement + '/ram:BuyerTradeParty');
   MapAddress(Party.Address, Target.PostalTradeAddress);
   MapElectronicAddress(Party, Target, Agreement + '/ram:BuyerTradeParty');
+  { Factur-X allows only 'VA' for the buyer (FX-SCH-A-000703 and the code
+    lists of the other profiles). DE: Factur-X erlaubt fuer den Kaeufer nur
+    'VA' (FX-SCH-A-000703 und die Codelisten der anderen Profile). }
   if Present(Party.VATCompanyID) then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyID, 'VA')
+  else if Present(Party.VATCompanyNumber) and (FSpec.Target.Standard = est_FacturX) then
+    Report(edk_NotAllowed, Agreement + '/ram:BuyerTradeParty/ram:SpecifiedTaxRegistration',
+      'buyer tax registration number left out: Factur-X allows the scheme VA only', eds_Warning)
   else if Present(Party.VATCompanyNumber) then
     Target.SpecifiedTaxRegistration.Add.ID := CIIID(Party.VATCompanyNumber, 'FC');
 end;
@@ -1154,6 +1198,13 @@ begin
     MapAddress(Info.Address, Target.ShipToTradeParty.PostalTradeAddress);
   if DateSet(Info.ActualDeliveryDate) then
     Target.ActualDeliverySupplyChainEvent.OccurrenceDateTime := CIIDate(Info.ActualDeliveryDate);
+  { a date needs its number (FX-SCH-A-000450, FX-SCH-A-000787) }
+  if not Present(FInvoice.DeliveryReceiptNumber) and DateSet(FInvoice.DeliveryReceiptDate) then
+    Report(edk_NotAllowed, Delivery + '/ram:DespatchAdviceReferencedDocument',
+      'despatch advice date left out: no despatch advice number (BT-16)', eds_Warning);
+  if not Present(FInvoice.DeliveryReceiptNumberExtended) and DateSet(FInvoice.DeliveryReceiptDateExtended) then
+    Report(edk_NotAllowed, Delivery + '/ram:DeliveryNoteReferencedDocument',
+      'delivery note date left out: no delivery note number', eds_Warning);
   if Present(FInvoice.DeliveryReceiptNumber) then
   begin
     Target.DespatchAdviceReferencedDocument.IssuerAssignedID.Value := FInvoice.DeliveryReceiptNumber;
@@ -1297,7 +1348,11 @@ begin
       Lastschrift wird es auch ohne Konto geschrieben (ZUGFeRD-Beispiel X01) }
     if not IsCardPayment(Payment) and
        (Present(Payment.FinancialAccount) or IsDirectDebit(Payment)) then
-      Target.PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := Payment.FinancialInstitutionBranch;
+      Target.PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := Payment.FinancialInstitutionBranch
+    else if Present(Payment.FinancialInstitutionBranch) then
+      Report(edk_NotAllowed, Settlement + '/ram:SpecifiedTradeSettlementPaymentMeans' +
+        '/ram:PayeeSpecifiedCreditorFinancialInstitution',
+        'BIC (BT-86) left out: it belongs to the payee account, which is not written', eds_Warning);
     if Blank(Payment.FinancialAccount) then
       Continue;
     if IsDirectDebit(Payment) then
@@ -1435,12 +1490,12 @@ end;
 
 { BT-20 payment terms as one text (EN 16931 allows one payment term): the
   net note without '#', or the cash discounts in the German #SKONTO# form
-  (XRechnung), BT-9 due date (not on an XRechnung credit note), BT-89
+  (XRechnung), BT-9 due date, BT-89
   mandate.
   DE: BT-20 Zahlungsbedingungen als ein Text (EN 16931 erlaubt eine
   Zahlungsbedingung): der Nettohinweis ohne '#' oder die Skonti in der
-  deutschen #SKONTO#-Form (XRechnung), BT-9 Faelligkeitsdatum (nicht auf
-  einer XRechnung-Gutschrift), BT-89 Mandatsreferenz. }
+  deutschen #SKONTO#-Form (XRechnung), BT-9 Faelligkeitsdatum, BT-89
+  Mandatsreferenz. }
 procedure TCIIWriteMapper.MapPaymentTerms;
 var
   Terms: TLandrixCIITradePaymentTerms;
@@ -1451,14 +1506,7 @@ begin
   Terms := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradePaymentTerms.Add;
   Terms.Description := Txt(LandrixEInvoicePaymentTermsText(FInvoice));
   if DateSet(FInvoice.InvoiceDueDate) then
-  begin
-    if (FInvoice.InvoiceTypeCode = itc_CreditNote) and
-       (LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleCreditNoteDueDate) = erl_Forbidden) then
-      Report(edk_NotAllowed, Settlement + '/ram:SpecifiedTradePaymentTerms/ram:DueDateDateTime',
-        'due date (BT-9) left out on a credit note', eds_Warning)
-    else
-      Terms.DueDateDateTime := CIIDate(FInvoice.InvoiceDueDate);
-  end;
+    Terms.DueDateDateTime := CIIDate(FInvoice.InvoiceDueDate);
   Terms.DirectDebitMandateID.Value := FInvoice.PaymentMandateID;
   if Terms.IsEmpty then
     FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradePaymentTerms.Delete(
@@ -1526,8 +1574,16 @@ begin
     end;
     Terms := FCII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradePaymentTerms.Add;
     Terms.Description := Txt(Note);
-    Terms.DueDateDateTime := CIIDate(FInvoice.InvoiceIssueDate + Days);
-    Terms.ApplicableTradePaymentDiscountTerms.BasisDateTime := CIIDate(FInvoice.InvoiceIssueDate);
+    { the dates count from the issue date; without it only the period
+      DE: die Daten zaehlen ab Rechnungsdatum; ohne es nur die Frist }
+    if DateSet(FInvoice.InvoiceIssueDate) then
+    begin
+      Terms.DueDateDateTime := CIIDate(FInvoice.InvoiceIssueDate + Days);
+      Terms.ApplicableTradePaymentDiscountTerms.BasisDateTime := CIIDate(FInvoice.InvoiceIssueDate);
+    end
+    else
+      Report(edk_NotAllowed, Settlement + '/ram:SpecifiedTradePaymentTerms/ram:DueDateDateTime',
+        'due and basis date of cash discount ' + IntText(K) + ' left out: no issue date (BT-2)', eds_Warning);
     Terms.ApplicableTradePaymentDiscountTerms.BasisPeriodMeasure.Value := IntText(Days);
     Terms.ApplicableTradePaymentDiscountTerms.BasisPeriodMeasure.UnitCode := 'DAY';
     if Base <> 0 then
@@ -1568,7 +1624,17 @@ begin
   TaxTotal := CIIAmount(FInvoice.TaxAmountTotal);
   TaxTotal.CurrencyID := FInvoice.InvoiceCurrencyCode;
   Sum.TaxTotalAmount.Add(TaxTotal);
-  if Present(FInvoice.TaxCurrencyCode) and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
+  if Present(FInvoice.TaxCurrencyCode) and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) and
+     not LandrixEInvoiceCIIAllowed(Settlement + '/ram:TaxCurrencyCode', FSpec.Target.Profile) then
+  begin
+    { MINIMUM has no BT-6: a total in it would match no declared currency
+      DE: MINIMUM kennt kein BT-6: eine Summe darin passte zu keiner
+      angegebenen Waehrung }
+    if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
+      Report(edk_NotAllowed, Path, 'VAT total in the accounting currency (BT-111) left out: the profile has no ' +
+        'VAT accounting currency (BT-6)', eds_Warning);
+  end
+  else if Present(FInvoice.TaxCurrencyCode) and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) then
   begin
     if FInvoice.TaxAmountTotalInTaxCurrency.HasValue then
     begin
@@ -1669,6 +1735,12 @@ begin
     else
       Target.Reason := Payment.ID;
     Target.ActualAmount := CIIAmount(Payment.PaidAmount);
+    { Factur-X marks @currencyID of the adjustment as not used
+      DE: Factur-X kennzeichnet @currencyID der Korrektur als nicht benutzt }
+    if Present(Payment.PaidAmountCurrencyID) and (Payment.PaidAmountCurrencyID <> FInvoice.InvoiceCurrencyCode) then
+      Report(edk_NotAllowed, Settlement + '/ram:SpecifiedFinancialAdjustment/ram:ActualAmount/@currencyID',
+        'currency ' + Payment.PaidAmountCurrencyID + ' of a third-party payment left out: CII writes the amount ' +
+        'in the invoice currency', eds_Warning);
   end;
 end;
 
@@ -1945,12 +2017,11 @@ end;
 procedure TCIIReadMapper.ReadContext;
 var
   Context: TLandrixCIIExchangedDocumentContext;
+  Value: Boolean;
 begin
   Context := FCII.ExchangedDocumentContext;
-  if (Context.TestIndicator = 'true') or (Context.TestIndicator = '1') then
-    FInvoice.TestIndicator.SetValue(True)
-  else if (Context.TestIndicator = 'false') or (Context.TestIndicator = '0') then
-    FInvoice.TestIndicator.SetValue(False)
+  if LandrixEInvoiceTryLexicalToBoolean(Context.TestIndicator, Value) then
+    FInvoice.TestIndicator.SetValue(Value)
   else if Context.TestIndicator <> '' then
     Report(edk_ConversionFailed, Root + '/rsm:ExchangedDocumentContext/ram:TestIndicator',
       'indicator "' + Context.TestIndicator + '" not converted; not set', eds_Error);
@@ -2137,6 +2208,7 @@ procedure TCIIReadMapper.ReadLineAgreement(ALine: TLandrixInvoiceLine; AAgreemen
 var
   Gross, Net: TLandrixCIITradePrice;
   Discount: TLandrixCIITradeAllowanceCharge;
+  Same: Boolean;
 begin
   ALine.OrderNumber := IDValue(AAgreement.BuyerOrderReferencedDocument.IssuerAssignedID,
     APath + '/ram:BuyerOrderReferencedDocument/ram:IssuerAssignedID');
@@ -2165,7 +2237,7 @@ begin
     if Gross.AppliedTradeAllowanceCharge.Count > 0 then
     begin
       Discount := Gross.AppliedTradeAllowanceCharge[0];
-      if (Discount.ChargeIndicator = 'true') or (Discount.ChargeIndicator = '1') then
+      if IsTrue(Discount.ChargeIndicator) then
         NotMapped(APath + '/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge',
           'charge on the gross price')
       else
@@ -2187,10 +2259,19 @@ begin
       ReadUnit(Gross.BasisQuantity.UnitCode, APath + '/ram:GrossPriceProductTradePrice/ram:BasisQuantity/@unitCode',
         ALine.BaseQuantityUnitCode, ALine.BaseQuantityUnitCodeOther);
     end
-    else if (Gross.BasisQuantity.Value <> '') and ((Gross.BasisQuantity.Value <> Net.BasisQuantity.Value) or
-       (Gross.BasisQuantity.UnitCode <> Net.BasisQuantity.UnitCode)) then
-      NotMapped(APath + '/ram:GrossPriceProductTradePrice/ram:BasisQuantity',
-        'base quantity of the gross price that differs from the net price');
+    else if Gross.BasisQuantity.Value <> '' then
+    begin
+      { the same quantity may give its unit at the gross price only
+        DE: dieselbe Menge darf ihre Einheit nur am Bruttopreis angeben }
+      Same := SameNumber(Gross.BasisQuantity.Value, Net.BasisQuantity.Value);
+      if Same and (Net.BasisQuantity.UnitCode = '') and (Gross.BasisQuantity.UnitCode <> '') then
+        ReadUnit(Gross.BasisQuantity.UnitCode, APath + '/ram:GrossPriceProductTradePrice/ram:BasisQuantity/@unitCode',
+          ALine.BaseQuantityUnitCode, ALine.BaseQuantityUnitCodeOther)
+      else if not Same or ((Gross.BasisQuantity.UnitCode <> '') and
+         (Gross.BasisQuantity.UnitCode <> Net.BasisQuantity.UnitCode)) then
+        NotMapped(APath + '/ram:GrossPriceProductTradePrice/ram:BasisQuantity',
+          'base quantity of the gross price that differs from the net price');
+    end;
     Gross.ListFilledChildren(FFilled);
     Rest(APath + '/ram:GrossPriceProductTradePrice', ['ram:ChargeAmount', 'ram:BasisQuantity',
       'ram:AppliedTradeAllowanceCharge']);
@@ -2228,7 +2309,7 @@ procedure TCIIReadMapper.ReadAllowanceCharge(AItem: TLandrixInvoiceAllowanceChar
 var
   Tax: TLandrixCIITradeTax;
 begin
-  AItem.ChargeIndicator := (ACharge.ChargeIndicator = 'true') or (ACharge.ChargeIndicator = '1');
+  AItem.ChargeIndicator := IsTrue(ACharge.ChargeIndicator);
   AItem.MultiplierFactorNumeric := Decimal(ACharge.CalculationPercent, APath + '/ram:CalculationPercent');
   AItem.BaseAmount := Amount(ACharge.BasisAmount, APath + '/ram:BasisAmount');
   AItem.Amount := Amount(ACharge.ActualAmount, APath + '/ram:ActualAmount');
@@ -2705,12 +2786,85 @@ begin
     'ram:ReceivingAdviceReferencedDocument', 'ram:DeliveryNoteReferencedDocument']);
 end;
 
+{ The model holds one account per payment means; which one is decided by
+  the code as written: the debited account (BT-91) for a direct debit (49,
+  59), the card (BG-18) for a card payment (48, 54, 55), the payee account
+  (BG-17) otherwise. Any other account is reported, as is a BIC (BT-86)
+  next to a card, which the writer cannot write.
+  DE: Das Modell haelt ein Konto je Zahlungsart; welches, entscheidet der
+  geschriebene Code: das belastete Konto (BT-91) bei einer Lastschrift
+  (49, 59), die Karte (BG-18) bei einer Kartenzahlung (48, 54, 55), sonst
+  das Konto des Zahlungsempfaengers (BG-17). Jedes andere Konto wird
+  gemeldet, ebenso eine BIC (BT-86) neben einer Karte, die der Writer
+  nicht schreiben kann. }
 procedure TCIIReadMapper.ReadPaymentMeans(ASettlement: TLandrixCIIHeaderTradeSettlement);
 var
   I: TLandrixEInvoiceListIndex;
   Source: TLandrixCIITradeSettlementPaymentMeans;
   Payment: TLandrixInvoicePaymentType;
   Path: TLandrixEInvoiceString;
+  DirectDebit, Card: Boolean;
+
+  procedure ReadDebtor;
+  begin
+    if Source.PayerPartyDebtorFinancialAccount.IsEmpty then
+      Exit;
+    if not DirectDebit then
+      NotMapped(Path + '/ram:PayerPartyDebtorFinancialAccount', 'debited account without a direct debit')
+    else
+    begin
+      Payment.FinancialAccount := IDValue(Source.PayerPartyDebtorFinancialAccount.IBANID,
+        Path + '/ram:PayerPartyDebtorFinancialAccount/ram:IBANID');
+      Source.PayerPartyDebtorFinancialAccount.ListFilledChildren(FFilled);
+      Rest(Path + '/ram:PayerPartyDebtorFinancialAccount', ['ram:IBANID']);
+    end;
+  end;
+
+  procedure ReadCard;
+  begin
+    if Source.ApplicableTradeSettlementFinancialCard.IsEmpty then
+      Exit;
+    if not Card then
+      NotMapped(Path + '/ram:ApplicableTradeSettlementFinancialCard', 'card without a card payment')
+    else
+    begin
+      Payment.FinancialAccount := IDValue(Source.ApplicableTradeSettlementFinancialCard.ID,
+        Path + '/ram:ApplicableTradeSettlementFinancialCard/ram:ID');
+      Payment.FinancialAccountName := Source.ApplicableTradeSettlementFinancialCard.CardholderName;
+      Source.ApplicableTradeSettlementFinancialCard.ListFilledChildren(FFilled);
+      Rest(Path + '/ram:ApplicableTradeSettlementFinancialCard', ['ram:ID', 'ram:CardholderName']);
+    end;
+  end;
+
+  procedure ReadCreditor;
+  begin
+    if Source.PayeePartyCreditorFinancialAccount.IsEmpty then
+      Exit;
+    if DirectDebit then
+      NotMapped(Path + '/ram:PayeePartyCreditorFinancialAccount', 'credit transfer account with a direct debit')
+    else if Card then
+      NotMapped(Path + '/ram:PayeePartyCreditorFinancialAccount', 'credit transfer account with a card payment')
+    else
+    begin
+      { BT-84 is the IBAN or, without one, the proprietary identifier
+        DE: BT-84 ist die IBAN oder, ohne IBAN, die proprietaere Kennung }
+      Payment.FinancialAccountName := Source.PayeePartyCreditorFinancialAccount.AccountName;
+      Source.PayeePartyCreditorFinancialAccount.ListFilledChildren(FFilled);
+      if Source.PayeePartyCreditorFinancialAccount.IBANID.Value <> '' then
+      begin
+        Payment.FinancialAccount := IDValue(Source.PayeePartyCreditorFinancialAccount.IBANID,
+          Path + '/ram:PayeePartyCreditorFinancialAccount/ram:IBANID');
+        Rest(Path + '/ram:PayeePartyCreditorFinancialAccount', ['ram:IBANID', 'ram:AccountName']);
+      end
+      else
+      begin
+        Payment.FinancialAccount := IDValue(Source.PayeePartyCreditorFinancialAccount.ProprietaryID,
+          Path + '/ram:PayeePartyCreditorFinancialAccount/ram:ProprietaryID');
+        Rest(Path + '/ram:PayeePartyCreditorFinancialAccount', ['ram:ProprietaryID', 'ram:AccountName']);
+      end;
+    end;
+  end;
+
 begin
   Path := Settlement + '/ram:SpecifiedTradeSettlementPaymentMeans';
   for I := 0 to ASettlement.SpecifiedTradeSettlementPaymentMeans.Count - 1 do
@@ -2723,61 +2877,20 @@ begin
       UnknownCode(Source.TypeCode, Path + '/ram:TypeCode', Payment.PaymentMeansCodeOther);
     end;
     Payment.PaymentMeansInformation := Source.Information;
-    if not Source.PayerPartyDebtorFinancialAccount.IsEmpty then
+    DirectDebit := IsDirectDebit(Payment);
+    Card := IsCardPayment(Payment);
+    ReadDebtor;
+    ReadCard;
+    ReadCreditor;
+    if Card and not Source.PayeeSpecifiedCreditorFinancialInstitution.IsEmpty then
+      NotMapped(Path + '/ram:PayeeSpecifiedCreditorFinancialInstitution', 'BIC with a card payment')
+    else
     begin
-      Payment.FinancialAccount := IDValue(Source.PayerPartyDebtorFinancialAccount.IBANID,
-        Path + '/ram:PayerPartyDebtorFinancialAccount/ram:IBANID');
-      Source.PayerPartyDebtorFinancialAccount.ListFilledChildren(FFilled);
-      Rest(Path + '/ram:PayerPartyDebtorFinancialAccount', ['ram:IBANID']);
+      Payment.FinancialInstitutionBranch := IDValue(Source.PayeeSpecifiedCreditorFinancialInstitution.BICID,
+        Path + '/ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID');
+      Source.PayeeSpecifiedCreditorFinancialInstitution.ListFilledChildren(FFilled);
+      Rest(Path + '/ram:PayeeSpecifiedCreditorFinancialInstitution', ['ram:BICID']);
     end;
-    if not Source.ApplicableTradeSettlementFinancialCard.IsEmpty then
-    begin
-      if Payment.FinancialAccount <> '' then
-        NotMapped(Path + '/ram:ApplicableTradeSettlementFinancialCard', 'second account of one payment means')
-      else
-      begin
-        Payment.FinancialAccount := IDValue(Source.ApplicableTradeSettlementFinancialCard.ID,
-          Path + '/ram:ApplicableTradeSettlementFinancialCard/ram:ID');
-        Payment.FinancialAccountName := Source.ApplicableTradeSettlementFinancialCard.CardholderName;
-        Source.ApplicableTradeSettlementFinancialCard.ListFilledChildren(FFilled);
-        Rest(Path + '/ram:ApplicableTradeSettlementFinancialCard', ['ram:ID', 'ram:CardholderName']);
-      end;
-    end;
-    if not Source.PayeePartyCreditorFinancialAccount.IsEmpty then
-    begin
-      { With a direct debit (49, 59) the model's account is the debited
-        account (BT-91); a credit transfer account (BG-17) is reported.
-        DE: Bei einer Lastschrift (49, 59) ist das Konto des Modells das
-        belastete Konto (BT-91); ein Ueberweisungskonto (BG-17) wird
-        gemeldet. }
-      if IsDirectDebit(Payment) then
-        NotMapped(Path + '/ram:PayeePartyCreditorFinancialAccount', 'credit transfer account with a direct debit')
-      else if Payment.FinancialAccount <> '' then
-        NotMapped(Path + '/ram:PayeePartyCreditorFinancialAccount', 'second account of one payment means')
-      else
-      begin
-        { BT-84 is the IBAN or, without one, the proprietary identifier
-          DE: BT-84 ist die IBAN oder, ohne IBAN, die proprietaere Kennung }
-        Payment.FinancialAccountName := Source.PayeePartyCreditorFinancialAccount.AccountName;
-        Source.PayeePartyCreditorFinancialAccount.ListFilledChildren(FFilled);
-        if Source.PayeePartyCreditorFinancialAccount.IBANID.Value <> '' then
-        begin
-          Payment.FinancialAccount := IDValue(Source.PayeePartyCreditorFinancialAccount.IBANID,
-            Path + '/ram:PayeePartyCreditorFinancialAccount/ram:IBANID');
-          Rest(Path + '/ram:PayeePartyCreditorFinancialAccount', ['ram:IBANID', 'ram:AccountName']);
-        end
-        else
-        begin
-          Payment.FinancialAccount := IDValue(Source.PayeePartyCreditorFinancialAccount.ProprietaryID,
-            Path + '/ram:PayeePartyCreditorFinancialAccount/ram:ProprietaryID');
-          Rest(Path + '/ram:PayeePartyCreditorFinancialAccount', ['ram:ProprietaryID', 'ram:AccountName']);
-        end;
-      end;
-    end;
-    Payment.FinancialInstitutionBranch := IDValue(Source.PayeeSpecifiedCreditorFinancialInstitution.BICID,
-      Path + '/ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID');
-    Source.PayeeSpecifiedCreditorFinancialInstitution.ListFilledChildren(FFilled);
-    Rest(Path + '/ram:PayeeSpecifiedCreditorFinancialInstitution', ['ram:BICID']);
     Source.ListFilledChildren(FFilled);
     Rest(Path, ['ram:TypeCode', 'ram:Information', 'ram:ApplicableTradeSettlementFinancialCard',
       'ram:PayerPartyDebtorFinancialAccount', 'ram:PayeePartyCreditorFinancialAccount',
@@ -2814,7 +2927,8 @@ var
   Base, Actual: Currency;
   Basis, Due, PeriodEnd: TDateTime;
   TermDues: array of TDateTime;
-  NetFound: Boolean;
+  NetFound, InDays: Boolean;
+  PeriodUnit: TLandrixEInvoiceString;
 begin
   Terms := ASettlement.SpecifiedTradePaymentTerms;
   Path := Settlement + '/ram:SpecifiedTradePaymentTerms';
@@ -2850,7 +2964,12 @@ begin
       FInvoice.PaymentTermNetNote := Term.Description;
       FInvoice.InvoiceDueDate := Date(Term.DueDateDateTime, Path + '/ram:DueDateDateTime');
       if (I > 0) and (Term.DirectDebitMandateID.Value <> '') then
-        FInvoice.PaymentMandateID := IDValue(Term.DirectDebitMandateID, Path + '/ram:DirectDebitMandateID');
+      begin
+        if FInvoice.PaymentMandateID = '' then
+          FInvoice.PaymentMandateID := IDValue(Term.DirectDebitMandateID, Path + '/ram:DirectDebitMandateID')
+        else if Term.DirectDebitMandateID.Value <> FInvoice.PaymentMandateID then
+          NotMapped(Path + '/ram:DirectDebitMandateID', 'second mandate reference');
+      end;
       Term.ListFilledChildren(FFilled);
       Rest(Path, ['ram:Description', 'ram:DueDateDateTime', 'ram:DirectDebitMandateID']);
       Continue;
@@ -2861,11 +2980,24 @@ begin
       NotMapped(Path, 'fourth cash discount');
       Continue;
     end;
-    { the invoice model counts discount days from the issue date }
+    { the invoice model counts discount days from the issue date; a period
+      in weeks counts 7 days each, one in other units (months, years) has
+      no fixed number of days and is reported
+      DE: das Rechnungsmodell zaehlt Skontotage ab Rechnungsdatum; eine
+      Frist in Wochen zaehlt je 7 Tage, eine in anderen Einheiten (Monate,
+      Jahre) hat keine feste Zahl von Tagen und wird gemeldet }
     Days := 0;
-    if Discount.BasisPeriodMeasure.Value <> '' then
+    PeriodUnit := Discount.BasisPeriodMeasure.UnitCode;
+    InDays := (PeriodUnit = '') or (PeriodUnit = 'DAY') or (PeriodUnit = 'WEE');
+    if (Discount.BasisPeriodMeasure.Value <> '') and not InDays then
+      NotMapped(Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure',
+        'cash discount period in unit ' + PeriodUnit);
+    if (Discount.BasisPeriodMeasure.Value <> '') and InDays then
     begin
       Days := Integer(Trunc(Decimal(Discount.BasisPeriodMeasure.Value, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure')));
+      if PeriodUnit = 'WEE' then
+        Days := Integer(Trunc(Decimal(Discount.BasisPeriodMeasure.Value,
+          Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure') * 7));
       Basis := Date(Discount.BasisDateTime, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime');
       PeriodEnd := 0;
       if LandrixEInvoiceTryLexicalToDouble(Discount.BasisPeriodMeasure.Value, Period) and (Period >= 0) then
@@ -2878,8 +3010,7 @@ begin
       end;
       if (Basis > 0) and (FInvoice.InvoiceIssueDate > 0) then
         Days := Days + Integer(Trunc(Basis) - Trunc(FInvoice.InvoiceIssueDate));
-      if (PeriodEnd > 0) and (Term.DueDateDateTime.Value <> '') and
-         ((Discount.BasisPeriodMeasure.UnitCode = '') or (Discount.BasisPeriodMeasure.UnitCode = 'DAY')) then
+      if (PeriodEnd > 0) and (Term.DueDateDateTime.Value <> '') then
       begin
         Due := Date(Term.DueDateDateTime, Path + '/ram:DueDateDateTime');
         if (Due > 0) and (Trunc(Due) <> PeriodEnd) then
@@ -2894,7 +3025,10 @@ begin
       Basis := Date(Term.DueDateDateTime, Path + '/ram:DueDateDateTime');
       if Basis > 0 then
         Days := Integer(Trunc(Basis) - Trunc(FInvoice.InvoiceIssueDate));
-    end;
+    end
+    else if Discount.BasisDateTime.Value <> '' then
+      NotMapped(Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime',
+        'basis date of a cash discount without period in days or due date');
     if (I > 0) and (Term.DirectDebitMandateID.Value <> '') then
     begin
       if FInvoice.PaymentMandateID = '' then
@@ -2965,16 +3099,23 @@ begin
   FInvoice.ChargeTotalAmount := Amount(Sum.ChargeTotalAmount, Path + '/ram:ChargeTotalAmount');
   FInvoice.AllowanceTotalAmount := Amount(Sum.AllowanceTotalAmount, Path + '/ram:AllowanceTotalAmount');
   FInvoice.TaxExclusiveAmount := Amount(Sum.TaxBasisTotalAmount, Path + '/ram:TaxBasisTotalAmount');
-  { BT-110 is the total in the invoice currency (else the first); without
-    BT-6 the VAT accounting currency is its currency; the first other
-    total in the differing BT-6 is BT-111 }
+  { BT-110 is the total in the invoice currency (else the first, unless it
+    is in the differing BT-6); without BT-6 the VAT accounting currency is
+    its currency; the first other total in the differing BT-6 is BT-111 }
   Chosen := -1;
   for I := 0 to Sum.TaxTotalAmount.Count - 1 do
     if (Chosen < 0) and ((Sum.TaxTotalAmount[I].CurrencyID = '') or
        (Sum.TaxTotalAmount[I].CurrencyID = FInvoice.InvoiceCurrencyCode)) then
       Chosen := I;
   if (Chosen < 0) and (Sum.TaxTotalAmount.Count > 0) then
-    Chosen := 0;
+  begin
+    if (FInvoice.TaxCurrencyCode <> '') and (FInvoice.TaxCurrencyCode <> FInvoice.InvoiceCurrencyCode) and
+       (Sum.TaxTotalAmount[0].CurrencyID = FInvoice.TaxCurrencyCode) then
+      Report(edk_MissingElement, Path + '/ram:TaxTotalAmount', 'VAT total in the invoice currency ' +
+        FInvoice.InvoiceCurrencyCode + ' (BT-110) is missing', eds_Warning)
+    else
+      Chosen := 0;
+  end;
   for I := 0 to Sum.TaxTotalAmount.Count - 1 do
     if I <> Chosen then
     begin
@@ -3025,6 +3166,7 @@ var
   Subtotal: TLandrixInvoiceTaxAmount;
   Reference: TLandrixInvoicePrecedingInvoiceReference;
   Payment: TLandrixInvoicePrepaidPayment;
+  PaidAmount: TLandrixCIIAmount;
   PointDate: TDateTime;
   PointCode, FirstPointDate, FirstPointCode: TLandrixEInvoiceString;
 begin
@@ -3108,8 +3250,11 @@ begin
   begin
     Payment := FInvoice.PrepaidPayments.AddPrepaidPayment;
     Payment.InstructionID := Source.SpecifiedFinancialAdjustment[I].Reason;
-    Payment.PaidAmount := Amount(Source.SpecifiedFinancialAdjustment[I].ActualAmount,
-      Settlement + '/ram:SpecifiedFinancialAdjustment/ram:ActualAmount');
+    { a third-party payment keeps its own currency, as in UBL }
+    PaidAmount := Source.SpecifiedFinancialAdjustment[I].ActualAmount;
+    Payment.PaidAmountCurrencyID := PaidAmount.CurrencyID;
+    PaidAmount.CurrencyID := '';
+    Payment.PaidAmount := Amount(PaidAmount, Settlement + '/ram:SpecifiedFinancialAdjustment/ram:ActualAmount');
     Source.SpecifiedFinancialAdjustment[I].ListFilledChildren(FFilled);
     Rest(Settlement + '/ram:SpecifiedFinancialAdjustment', ['ram:Reason', 'ram:ActualAmount']);
   end;
