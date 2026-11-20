@@ -152,6 +152,7 @@ uses
   LandrixXmlXPath,
   LandrixXmlXPathEval,
   LandrixXmlXslt,
+  LandrixEInvoiceReportHtml,
   LandrixEInvoiceKositReportInput;
 
 const
@@ -351,6 +352,7 @@ var
   I: Integer;
   W: TLandrixXmlWriter;
   Xml: TLandrixXmlUtf8;
+  Sanitized: Boolean;
 begin
   Result := nil;
   for I := 0 to AResult.MessageCount - 1 do
@@ -358,7 +360,9 @@ begin
     begin
       W := TLandrixXmlWriter.Create;
       try
-        W.ElementNsUtf8(InputNs, 'in', 'error-message', LandrixEInvoiceStringToUtf8(AResult.Messages[I].Text));
+        Sanitized := False;
+        W.ElementNsUtf8(InputNs, 'in', 'error-message',
+          LandrixEInvoiceStringToUtf8(LandrixEInvoiceReportSanitize(AResult.Messages[I].Text, Sanitized)));
         W.EndDocument;
         Xml := W.AsUtf8;
       finally

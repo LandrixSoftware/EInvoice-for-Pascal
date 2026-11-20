@@ -418,8 +418,11 @@ function LandrixEInvoiceValidationLevelText(ALevel: TLandrixEInvoiceValidationLe
   DE: Schreibt die Elemente von AXml (UTF-8, wie ScenarioXml, ResourceXml
   oder Svrl sie halten) in AWriter, an seiner aktuellen Stelle; Namensraeume
   werden deklariert, wo noetig. Kommentare und Verarbeitungsanweisungen
-  entfallen. Loest ELandrixXmlError aus, wenn AXml nicht wohlgeformt ist. }
-procedure LandrixEInvoiceWriteXmlFragment(const AXml: TLandrixXmlUtf8; AWriter: TLandrixXmlWriter);
+  entfallen. Loest ELandrixXmlError aus, wenn AXml nicht wohlgeformt ist.
+  ASkipSuppressedRules: svrl:suppressed-rule wird ausgelassen (der
+  KoSIT-Berichtseingang erlaubt es nicht). }
+procedure LandrixEInvoiceWriteXmlFragment(const AXml: TLandrixXmlUtf8; AWriter: TLandrixXmlWriter;
+  ASkipSuppressedRules: Boolean = False);
 
 implementation
 
@@ -487,7 +490,8 @@ end;
   acceptMatch (xs:string) wird der Text getrimmt, jeder andere Text
   (xs:token, xs:anyURI) getrimmt und Folgen von Leerraum zu einem
   Leerzeichen. }
-procedure CopyElement(AReader: TLandrixXmlReader; AWriter: TLandrixXmlWriter; ANormalize: Boolean = False);
+procedure CopyElement(AReader: TLandrixXmlReader; AWriter: TLandrixXmlWriter; ANormalize: Boolean = False;
+  ASkipSuppressedRules: Boolean = False);
 var
   Level, I, Colon: Integer;
   Name, Prefix, Pending, Current: TLandrixXmlUtf8;
@@ -560,6 +564,13 @@ begin
   repeat
     case AReader.TokenType of
       xttStartElement:
+        if ASkipSuppressedRules and (Level > 0) and (AReader.LocalNameUtf8 = 'suppressed-rule') and
+           (AReader.NamespaceUriUtf8 = 'http://purl.oclc.org/dsdl/svrl') then
+        begin
+          Flush;
+          AReader.Skip;
+        end
+        else
         begin
           Flush;
           AWriter.StartElementNs(AReader.NamespaceUriUtf8, AReader.PrefixUtf8, AReader.LocalNameUtf8, True);
@@ -610,7 +621,8 @@ begin
   until not AReader.Read;
 end;
 
-procedure LandrixEInvoiceWriteXmlFragment(const AXml: TLandrixXmlUtf8; AWriter: TLandrixXmlWriter);
+procedure LandrixEInvoiceWriteXmlFragment(const AXml: TLandrixXmlUtf8; AWriter: TLandrixXmlWriter;
+  ASkipSuppressedRules: Boolean);
 var
   Reader: TLandrixXmlReader;
 begin
@@ -619,7 +631,7 @@ begin
     Reader.LoadFromUtf8(AXml);
     while Reader.Read do
       if Reader.TokenType = xttStartElement then
-        CopyElement(Reader, AWriter);
+        CopyElement(Reader, AWriter, False, ASkipSuppressedRules);
   finally
     Reader.Free;
   end;
@@ -888,6 +900,14 @@ begin
   FRuleFiles := TStringList.Create;
   FSchemas := TStringList.Create;
   FRules := TStringList.Create;
+  { file names may differ only in case (Linux, macOS with a case-sensitive
+    volume); on Windows another spelling only loads twice
+    DE: Dateinamen koennen sich nur in der Schreibweise unterscheiden
+    (Linux, macOS mit Gross-/Kleinschreibung); unter Windows laedt eine
+    andere Schreibweise nur doppelt }
+  FRuleFiles.CaseSensitive := True;
+  FSchemas.CaseSensitive := True;
+  FRules.CaseSensitive := True;
 end;
 
 destructor TLandrixEInvoiceValidator.Destroy;
@@ -972,6 +992,10 @@ begin
       Child := FirstChild(Node, 'validateWithXmlSchema');
       if Child = nil then
         ConfigError('scenario ' + string(Scenario.FName) + ' without XML schema');
+      { the validator loads one schema per scenario
+        DE: der Validator laedt ein Schema je Szenario }
+      if (FirstChild(Child, 'resource') <> nil) and (NextSibling(FirstChild(Child, 'resource'), 'resource') <> nil) then
+        ConfigError('scenario ' + string(Scenario.FName) + ' with several XML schema resources');
       Scenario.FSchemaFile := ResourceLocation(Child, Dir);
       Child := FirstChild(Node, 'validateWithSchematron');
       while Child <> nil do
@@ -1324,185 +1348,205 @@ begin
     end;
   end;
   AResult.AddStep(evs_Wellformedness, '');
-  Tree := TLandrixXmlXPathTree.Create;
+  { an exception (a setup error) leaves no acceptance behind: the verdict
+    of the finally block below is taken back }
   try
-    { well-formedness: a document that does not load matches no scenario }
+    Tree := TLandrixXmlXPathTree.Create;
     try
-      if AData = nil then
-        Tree.LoadFromFile(AFileName)
-      else
-      begin
-        Reader := TLandrixXmlReader.Create;
-        try
-          Reader.LoadFromBuffer(AData.Memory^, Integer(AData.Size));
-          Tree.LoadFromReader(Reader);
-        finally
-          Reader.Free;
-        end;
-        { the bytes of a file read once keep its URI (document-uri()) }
-        if AFileName <> '' then
-          Tree.BaseUri := LandrixXmlFileUri(AFileName);
-      end;
-    except
-      on E: ELandrixXmlError do
-      begin
-        Msg := AResult.Add(evs_Wellformedness, 0, 'generic-error', evl_Error);
-        Msg.FLine := E.Line;
-        Msg.FColumn := E.Column;
-        Msg.FText := TLandrixEInvoiceString(E.Message);
-        Exit;
-      end;
-    end;
-    AResult.FMatchCount := MatchScenarios(Self, Tree, Scenario);
-    { as KoSIT: none or several matching scenarios mean no scenario }
-    if AResult.FMatchCount <> 1 then
-      Scenario := nil;
-    if Scenario = nil then
-      Exit;
-    AResult.FScenarioName := Scenario.FName;
-    AResult.FScenarioXml := Scenario.FScenarioXml;
-    AResult.FReportFile := Scenario.FReportFile;
-    AResult.AddStep(evs_XmlSchema, Scenario.FSchemaResourceXml);
-
-    XsdValidator := TLandrixXmlXsdValidator.Create(TLandrixXmlXsdSchemaSet(SchemaOf(Scenario.FSchemaFile)));
-    try
-      { a crafted document can produce an error per element: keep at most
-        10000 and say that the list was cut }
-      XsdValidator.MaxErrors := 10000;
-      if AData = nil then
-        XsdValidator.ValidateFile(AFileName)
-      else
-      begin
-        Reader := TLandrixXmlReader.Create;
-        try
-          Reader.LoadFromBuffer(AData.Memory^, Integer(AData.Size));
-          XsdValidator.ValidateReader(Reader);
-        finally
-          Reader.Free;
-        end;
-      end;
-      for I := 0 to XsdValidator.ErrorCount - 1 do
-      begin
-        XsdError := XsdValidator.Errors[I];
-        if Copy(XsdError.Code, 1, 4) = 'cvc-' then
-          Code := TLandrixEInvoiceString(XsdError.Code)
+      { well-formedness: a document that does not load matches no scenario }
+      try
+        if AData = nil then
+          Tree.LoadFromFile(AFileName)
         else
-          Code := 'generic-error';
-        Msg := AResult.Add(evs_XmlSchema, 0, Code, evl_Error);
-        Msg.FLine := XsdError.Line;
-        Msg.FColumn := XsdError.Column;
-        Msg.FText := TLandrixEInvoiceString(XsdError.Message);
+        begin
+          Reader := TLandrixXmlReader.Create;
+          try
+            Reader.LoadFromBuffer(AData.Memory^, Integer(AData.Size));
+            Tree.LoadFromReader(Reader);
+          finally
+            Reader.Free;
+          end;
+          { the bytes of a file read once keep its URI (document-uri()) }
+          if AFileName <> '' then
+            Tree.BaseUri := LandrixXmlFileUri(AFileName);
+        end;
+      except
+        on E: ELandrixXmlError do
+        begin
+          Msg := AResult.Add(evs_Wellformedness, 0, 'generic-error', evl_Error);
+          Msg.FLine := E.Line;
+          Msg.FColumn := E.Column;
+          Msg.FText := TLandrixEInvoiceString(E.Message);
+          Exit;
+        end;
+        { a file that cannot be opened or read }
+        on E: EStreamError do
+        begin
+          Msg := AResult.Add(evs_Wellformedness, 0, 'generic-error', evl_Error);
+          Msg.FText := TLandrixEInvoiceString(E.Message);
+          Exit;
+        end;
+        on E: EInOutError do
+        begin
+          Msg := AResult.Add(evs_Wellformedness, 0, 'generic-error', evl_Error);
+          Msg.FText := TLandrixEInvoiceString(E.Message);
+          Exit;
+        end;
       end;
-      if XsdValidator.Truncated then
-      begin
-        Msg := AResult.Add(evs_XmlSchema, 0, 'generic-error', evl_Error);
-        TruncMsg := Msg;
-        Msg.FText := 'more than ' + TLandrixEInvoiceString(IntToStr(XsdValidator.MaxErrors)) +
-          ' schema errors; the rest is not listed';
-      end;
-      AResult.FXmlSchemaValid := XsdValidator.ErrorCount = 0;
-    finally
-      XsdValidator.Free;
-    end;
+      AResult.FMatchCount := MatchScenarios(Self, Tree, Scenario);
+      { as KoSIT: none or several matching scenarios mean no scenario }
+      if AResult.FMatchCount <> 1 then
+        Scenario := nil;
+      if Scenario = nil then
+        Exit;
+      AResult.FScenarioName := Scenario.FName;
+      AResult.FScenarioXml := Scenario.FScenarioXml;
+      AResult.FReportFile := Scenario.FReportFile;
+      AResult.AddStep(evs_XmlSchema, Scenario.FSchemaResourceXml);
 
-    { the Schematron steps run only on a schema-valid document }
-    if AResult.FXmlSchemaValid then
-      for I := 0 to Scenario.SchematronCount - 1 do
-      begin
-        SchValidator := TLandrixXmlSchematronValidator.Create(TLandrixXmlSchematronRules(
-          RulesOf(Scenario.SchematronFiles[I])));
-        Step := AResult.AddStep(evs_Schematron, Scenario.FSchematronResourceXml[I]);
-        try
-          SchValidator.AbortOnDynamicError := True;
-          SchValidator.ValidateTree(Tree);
-          HasDynamicError := SchValidator.Incomplete;
-          ErrorText := '';
-          for K := 0 to SchValidator.ResultCount - 1 do
-            if SchValidator.Results[K].Kind = xsrDynamicError then
-            begin
-              HasDynamicError := True;
-              if ErrorText = '' then
-                ErrorText := U(SchValidator.Results[K].Message);
-            end;
-          if HasDynamicError then
-          begin
-            { as KoSIT: the step's XSLT fails, a processing error without
-              messages of the step }
-            Step.FProcessingError := TLandrixEInvoiceString(ExtractFileName(Scenario.SchematronFiles[I])) + ': ' +
-              ErrorText;
-            if AResult.FProcessingError = '' then
-              AResult.FProcessingError := Step.FProcessingError;
-          end
+      XsdValidator := TLandrixXmlXsdValidator.Create(TLandrixXmlXsdSchemaSet(SchemaOf(Scenario.FSchemaFile)));
+      try
+        { a crafted document can produce an error per element: keep at most
+          10000 and say that the list was cut }
+        XsdValidator.MaxErrors := 10000;
+        if AData = nil then
+          XsdValidator.ValidateFile(AFileName)
+        else
+        begin
+          Reader := TLandrixXmlReader.Create;
+          try
+            Reader.LoadFromBuffer(AData.Memory^, Integer(AData.Size));
+            XsdValidator.ValidateReader(Reader);
+          finally
+            Reader.Free;
+          end;
+        end;
+        for I := 0 to XsdValidator.ErrorCount - 1 do
+        begin
+          XsdError := XsdValidator.Errors[I];
+          if Copy(XsdError.Code, 1, 4) = 'cvc-' then
+            Code := TLandrixEInvoiceString(XsdError.Code)
           else
-          begin
-            if FKeepSvrl then
+            Code := 'generic-error';
+          Msg := AResult.Add(evs_XmlSchema, 0, Code, evl_Error);
+          Msg.FLine := XsdError.Line;
+          Msg.FColumn := XsdError.Column;
+          Msg.FText := TLandrixEInvoiceString(XsdError.Message);
+        end;
+        if XsdValidator.Truncated then
+        begin
+          Msg := AResult.Add(evs_XmlSchema, 0, 'generic-error', evl_Error);
+          TruncMsg := Msg;
+          Msg.FText := 'more than ' + TLandrixEInvoiceString(IntToStr(XsdValidator.MaxErrors)) +
+            ' schema errors; the rest is not listed';
+        end;
+        AResult.FXmlSchemaValid := XsdValidator.ErrorCount = 0;
+      finally
+        XsdValidator.Free;
+      end;
+
+      { the Schematron steps run only on a schema-valid document }
+      if AResult.FXmlSchemaValid then
+        for I := 0 to Scenario.SchematronCount - 1 do
+        begin
+          SchValidator := TLandrixXmlSchematronValidator.Create(TLandrixXmlSchematronRules(
+            RulesOf(Scenario.SchematronFiles[I])));
+          Step := AResult.AddStep(evs_Schematron, Scenario.FSchematronResourceXml[I]);
+          try
+            SchValidator.AbortOnDynamicError := True;
+            SchValidator.ValidateTree(Tree);
+            HasDynamicError := SchValidator.Incomplete;
+            ErrorText := '';
+            for K := 0 to SchValidator.ResultCount - 1 do
+              if SchValidator.Results[K].Kind = xsrDynamicError then
+              begin
+                HasDynamicError := True;
+                if ErrorText = '' then
+                  ErrorText := U(SchValidator.Results[K].Message);
+              end;
+            if HasDynamicError then
             begin
-              SchValidator.SvrlPreserveWhitespace := True;
-              if AFileName <> '' then
-                SchValidator.DocumentUri := LandrixXmlFileUri(AFileName);
-              SvrlWriter := TLandrixXmlWriter.Create;
-              try
-                SvrlWriter.WriteDeclaration := False;
-                SchValidator.SaveSvrlToWriter(SvrlWriter);
-                SvrlWriter.EndDocument;
-                Step.FSvrl := SvrlWriter.AsUtf8;
-              finally
-                SvrlWriter.Free;
+              { as KoSIT: the step's XSLT fails, a processing error without
+                messages of the step }
+              Step.FProcessingError := TLandrixEInvoiceString(ExtractFileName(Scenario.SchematronFiles[I])) + ': ' +
+                ErrorText;
+              if AResult.FProcessingError = '' then
+                AResult.FProcessingError := Step.FProcessingError;
+            end
+            else
+            begin
+              if FKeepSvrl then
+              begin
+                SchValidator.SvrlPreserveWhitespace := True;
+                if AFileName <> '' then
+                  SchValidator.DocumentUri := LandrixXmlFileUri(AFileName);
+                SvrlWriter := TLandrixXmlWriter.Create;
+                try
+                  SvrlWriter.WriteDeclaration := False;
+                  SchValidator.SaveSvrlToWriter(SvrlWriter);
+                  SvrlWriter.EndDocument;
+                  Step.FSvrl := SvrlWriter.AsUtf8;
+                finally
+                  SvrlWriter.Free;
+                end;
+              end;
+              for K := 0 to SchValidator.ResultCount - 1 do
+              begin
+                SchResult := SchValidator.Results[K];
+                if SchResult.Id = '' then
+                  Code := 'UNSPECIFIC'
+                else
+                  Code := U(SchResult.Id);
+                Msg := AResult.Add(evs_Schematron, I + 1, Code, SchematronLevel(SchResult.Flag, SchResult.Role));
+                Msg.FFlag := U(SchResult.Flag);
+                Msg.FRole := U(SchResult.Role);
+                Msg.FLocation := U(SchResult.Location);
+                Msg.FText := U(SchResult.Message);
+                Msg.FFailedAssert := SchResult.Kind = xsrFailedAssert;
               end;
             end;
-            for K := 0 to SchValidator.ResultCount - 1 do
-            begin
-              SchResult := SchValidator.Results[K];
-              if SchResult.Id = '' then
-                Code := 'UNSPECIFIC'
-              else
-                Code := U(SchResult.Id);
-              Msg := AResult.Add(evs_Schematron, I + 1, Code, SchematronLevel(SchResult.Flag, SchResult.Role));
-              Msg.FFlag := U(SchResult.Flag);
-              Msg.FRole := U(SchResult.Role);
-              Msg.FLocation := U(SchResult.Location);
-              Msg.FText := U(SchResult.Message);
-              Msg.FFailedAssert := SchResult.Kind = xsrFailedAssert;
-            end;
+          finally
+            SchValidator.Free;
           end;
-        finally
-          SchValidator.Free;
         end;
-      end;
-  finally
-    Tree.Free;
-    { customLevel, then the assessment of default-report.xsl }
-    if Scenario <> nil then
-      for I := 0 to AResult.MessageCount - 1 do
+    finally
+      Tree.Free;
+      { customLevel, then the assessment of default-report.xsl }
+      if Scenario <> nil then
+        for I := 0 to AResult.MessageCount - 1 do
+        begin
+          Msg := AResult.Messages[I];
+          if Scenario.CustomLevel(Msg.FCode, Level) then
+            Msg.FEffectiveLevel := Level;
+        end;
+      { errors beyond the cut were not seen: a customLevel must not turn the
+        cut list into an acceptance }
+      if TruncMsg <> nil then
+        TruncMsg.FEffectiveLevel := evl_Error;
+      AResult.FAccepted := (Scenario <> nil) and (AResult.FProcessingError = '');
+      if AResult.FAccepted and Scenario.FHasAcceptMatch then
       begin
-        Msg := AResult.Messages[I];
-        if Scenario.CustomLevel(Msg.FCode, Level) then
-          Msg.FEffectiveLevel := Level;
+        if Pos('fallback', LowerCase(string(Scenario.FName))) > 0 then
+          AResult.FAccepted := False;
+        for I := 0 to AResult.MessageCount - 1 do
+          if AResult.Messages[I].FEffectiveLevel = evl_Error then
+            AResult.FAccepted := False;
+      end
+      else if AResult.FAccepted then
+      begin
+        { as KoSIT without acceptMatch: schema-valid and no failed assert.
+          DE: wie KoSIT ohne acceptMatch: schemagueltig und kein
+          fehlgeschlagenes assert. }
+        if not AResult.FXmlSchemaValid then
+          AResult.FAccepted := False;
+        for I := 0 to AResult.MessageCount - 1 do
+          if AResult.Messages[I].FFailedAssert then
+            AResult.FAccepted := False;
       end;
-    { errors beyond the cut were not seen: a customLevel must not turn the
-      cut list into an acceptance }
-    if TruncMsg <> nil then
-      TruncMsg.FEffectiveLevel := evl_Error;
-    AResult.FAccepted := (Scenario <> nil) and (AResult.FProcessingError = '');
-    if AResult.FAccepted and Scenario.FHasAcceptMatch then
-    begin
-      if Pos('fallback', LowerCase(string(Scenario.FName))) > 0 then
-        AResult.FAccepted := False;
-      for I := 0 to AResult.MessageCount - 1 do
-        if AResult.Messages[I].FEffectiveLevel = evl_Error then
-          AResult.FAccepted := False;
-    end
-    else if AResult.FAccepted then
-    begin
-      { as KoSIT without acceptMatch: schema-valid and no failed assert.
-        DE: wie KoSIT ohne acceptMatch: schemagueltig und kein
-        fehlgeschlagenes assert. }
-      if not AResult.FXmlSchemaValid then
-        AResult.FAccepted := False;
-      for I := 0 to AResult.MessageCount - 1 do
-        if AResult.Messages[I].FFailedAssert then
-          AResult.FAccepted := False;
     end;
+  except
+    AResult.FAccepted := False;
+    raise;
   end;
   Result := AResult.FAccepted;
 end;

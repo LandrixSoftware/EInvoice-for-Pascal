@@ -130,6 +130,8 @@ var
   W: TLandrixEInvoiceKositReportInputWriter;
   S: TMemoryStream;
   Xml: TLandrixXmlUtf8;
+  FileName: string;
+  L: TStringList;
 begin
   V := NewValidator(True);
   R := TLandrixEInvoiceValidationResult.Create;
@@ -165,6 +167,24 @@ begin
       FailNotRaised('ELandrixEInvoiceError');
     except
       on ELandrixEInvoiceError do ;
+    end;
+    { a SaveToFile that fails leaves an existing file as it was }
+    FileName := ChangeFileExt(ParamStr(0), '-report-input.xml');
+    L := TStringList.Create;
+    try
+      L.Text := 'old';
+      L.SaveToFile(FileName);
+      try
+        W.SaveToFile(R, FileName);
+        FailNotRaised('ELandrixEInvoiceError');
+      except
+        on ELandrixEInvoiceError do ;
+      end;
+      L.LoadFromFile(FileName);
+      CheckEqualsStr('old', Trim(L.Text), 'existing file kept');
+    finally
+      L.Free;
+      DeleteFile(FileName);
     end;
   finally
     S.Free;

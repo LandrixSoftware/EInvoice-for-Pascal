@@ -162,7 +162,8 @@ var
   Clean, Escaped: TLandrixEInvoiceString;
   Utf8: TLandrixXmlUtf8;
   Rep: AnsiString;
-  I, J, K, N: Integer;
+  I, J, K: Integer;
+  N: Int64;
 begin
   Clean := LandrixEInvoiceReportSanitize(S, FSanitized);
   { the length first, then one string: appending per character would copy
@@ -176,12 +177,16 @@ begin
     else
       Inc(N, Length(Rep));
   end;
+  { the escaped text (UTF-16) and its UTF-8 (at most 3 bytes per unit)
+    must fit a string }
+  if N > MaxInt div 3 then
+    raise ELandrixEInvoiceError.Create('HTML report: text too long');
   if N = Length(Clean) then
     Escaped := Clean
   else
   begin
     Escaped := '';
-    SetLength(Escaped, N);
+    SetLength(Escaped, Integer(N));
     J := 1;
     for I := 1 to Length(Clean) do
     begin

@@ -85,7 +85,8 @@ implementation
 uses
   SysUtils,
   LandrixXmlBase,
-  LandrixXmlWriter;
+  LandrixXmlWriter,
+  LandrixEInvoiceReportHtml;
 
 const
   InputNs = 'http://www.xoev.de/de/validator/framework/1/createreportinput';
@@ -97,9 +98,15 @@ begin
   FEngineName := 'EInvoice-for-Pascal ' + LandrixEInvoiceVersion;
 end;
 
+{ Characters outside XML 1.0 (a control character in a file name or a
+  message) become U+FFFD, as in the validation report; the writer would
+  refuse them. }
 function Utf8(const S: TLandrixEInvoiceString): TLandrixXmlUtf8;
+var
+  Sanitized: Boolean;
 begin
-  Result := LandrixEInvoiceStringToUtf8(S);
+  Sanitized := False;
+  Result := LandrixEInvoiceStringToUtf8(LandrixEInvoiceReportSanitize(S, Sanitized));
 end;
 
 { An in:xmlSyntaxError for a message of the well-formedness or XML schema
@@ -190,7 +197,11 @@ begin
             W.StartElementNs(InputNs, 'in', 'validationResultsSchematron');
             LandrixEInvoiceWriteXmlFragment(Step.ResourceXml, W);
             W.StartElementNs(InputNs, 'in', 'results');
-            LandrixEInvoiceWriteXmlFragment(Step.Svrl, W);
+            { without svrl:suppressed-rule, which the SVRL schema of KoSIT
+              does not allow there
+              DE: ohne svrl:suppressed-rule, das das SVRL-Schema von KoSIT
+              dort nicht erlaubt }
+            LandrixEInvoiceWriteXmlFragment(Step.Svrl, W, True);
             W.EndElement;
             W.EndElement;
           end;
@@ -227,13 +238,16 @@ end;
 procedure TLandrixEInvoiceKositReportInputWriter.SaveToFile(AResult: TLandrixEInvoiceValidationResult;
   const AFileName: string);
 var
-  F: TFileStream;
+  M: TMemoryStream;
 begin
-  F := TFileStream.Create(AFileName, fmCreate);
+  { in memory first: an error while building the input leaves an
+    existing file as it was }
+  M := TMemoryStream.Create;
   try
-    WriteToStream(AResult, F);
+    WriteToStream(AResult, M);
+    M.SaveToFile(AFileName);
   finally
-    F.Free;
+    M.Free;
   end;
 end;
 

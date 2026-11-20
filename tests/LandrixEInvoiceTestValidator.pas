@@ -379,6 +379,9 @@ begin
     end;
     Check(not V.ValidateStream(nil, R), 'no stream rejected');
     Check((R.MessageCount = 1) and (R[0].Step = evs_Wellformedness), 'no stream: well-formedness');
+    { a file that cannot be read: not well-formed, no exception }
+    Check(not V.Validate(DataDir + 'no-such-file.xml', R), 'missing file rejected');
+    Check((R.MessageCount = 1) and (R[0].Step = evs_Wellformedness), 'missing file: well-formedness');
   finally
     FromStream.Free;
     FromFile.Free;
@@ -856,6 +859,10 @@ begin
     finally
       S.Free;
     end;
+    { the result's own XML validated into the same result }
+    R.InvoiceXml.Position := 0;
+    CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateStream(R.InvoiceXml, R)), 'doc-a-13 own stream verdict');
+    CheckEqualsStr(FromFile, Findings(R), 'doc-a-13 own stream findings');
     { not well-formed: KoSIT says so, reading does not run }
     CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateFile(DataDir + 'doc-broken.xml', R)), 'broken verdict');
     CheckStatus(R, evr_NotRun, evr_Failed, evr_NotRun, 'broken');

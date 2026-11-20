@@ -155,7 +155,8 @@ end.
   moment inherits the reduced precision. Parallel validation has not been tested yet.
 - A missing rule file or a schema that does not load raises `ELandrixEInvoiceError`: a problem of
   the setup, not of the document. A configuration this library cannot run (another
-  `acceptMatch`, a scenario without a match expression) is refused by `LoadConfiguration`.
+  `acceptMatch`, a scenario without a match expression or with several XML schema resources) is
+  refused by `LoadConfiguration`.
 - The validators belong to you: free them after the document validator, never while they are
   registered.
 - Choice: a configuration is a candidate when exactly one of its scenarios matches the document
@@ -278,7 +279,10 @@ end;
   writes them). Until KoSIT updates its Peppol BIS configuration, the text of a failed
   PEPPOL-EN16931-P0112 differs as well (see the Peppol exception at the top).
 - `Report.Accepted` is the assessment of the report stylesheet. For Peppol BIS it can recommend to
-  accept a document with only warnings, which the validator rejects (see above).
+  accept a document with only warnings, which the validator rejects (see above). For a scenario
+  with `acceptMatch` the verdict of `Validate` follows the assessment of KoSIT's default report
+  stylesheet (`customLevel`, then errors); with a report stylesheet of your own, `Report.Accepted`
+  is the one that counts there.
 - `TLandrixEInvoiceValidator.Validate` gives the lower-level result; `CreateReport(Result,
   DocumentStream)` takes it with the document.
 

@@ -158,8 +158,8 @@ end.
   erbt die verringerte Genauigkeit. Paralleles Prüfen ist noch nicht getestet.
 - Eine fehlende Regeldatei oder ein Schema, das nicht lädt, löst `ELandrixEInvoiceError` aus: ein
   Problem der Einrichtung, nicht des Dokuments. Eine Konfiguration, die diese Bibliothek nicht
-  ausführen kann (anderes `acceptMatch`, Szenario ohne match-Ausdruck), lehnt
-  `LoadConfiguration` ab.
+  ausführen kann (anderes `acceptMatch`, Szenario ohne match-Ausdruck oder mit mehreren
+  XML-Schema-Ressourcen), lehnt `LoadConfiguration` ab.
 - Die Validatoren gehören dem Aufrufer: nach dem Dokumentvalidator freigeben, nie solange sie
   registriert sind.
 - Wahl: Eine Konfiguration ist Kandidat, wenn genau eines ihrer Szenarien zum Dokument passt (bei
@@ -286,7 +286,10 @@ end;
   sie schreibt). Bis KoSIT seine Peppol-BIS-Konfiguration aktualisiert, weicht auch der Text einer
   fehlgeschlagenen PEPPOL-EN16931-P0112 ab (siehe die Peppol-Ausnahme oben).
 - `Report.Accepted` ist die Bewertung des Bericht-Stylesheets. Bei Peppol BIS kann es die Annahme
-  eines Dokuments mit nur Warnungen empfehlen, das der Validator ablehnt (siehe oben).
+  eines Dokuments mit nur Warnungen empfehlen, das der Validator ablehnt (siehe oben). Bei einem
+  Szenario mit `acceptMatch` folgt das Urteil von `Validate` der Bewertung des
+  Standard-Bericht-Stylesheets von KoSIT (`customLevel`, dann Fehler); mit einem eigenen
+  Bericht-Stylesheet zählt dort `Report.Accepted`.
 - `TLandrixEInvoiceValidator.Validate` liefert das Ergebnis der unteren Ebene; `CreateReport(Result,
   DocumentStream)` nimmt es mit dem Dokument.
 

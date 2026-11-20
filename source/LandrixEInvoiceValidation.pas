@@ -780,88 +780,104 @@ end;
 function TLandrixEInvoiceDocumentValidator.ValidateStream(AStream: TStream;
   AResult: TLandrixEInvoiceDocumentValidation): TLandrixEInvoiceVerdict;
 var
-  Data, Head: TMemoryStream;
+  Data, Head, Own: TMemoryStream;
   Count, Start: Int64;
   WellFormed, IsPdf: Boolean;
   KositEnd: Integer;
 begin
-  AResult.Clear;
-  Count := 0;
-  if AStream <> nil then
-    Count := AStream.Size - AStream.Position;
-  if (AStream = nil) or (Count > MaxInt) then
-  begin
-    { no stream or more than 2 GB: the engine reports it without reading
-      (a registered configuration too, without a choice) }
-    if FOptions.Configuration <> nil then
+  { the stream of the result itself (InvoiceXml) is copied before Clear
+    frees it; a stream at its end stays empty }
+  Own := nil;
+  try
+    if (AStream <> nil) and ((AStream = AResult.FXml) or ((AResult.FPdf <> nil) and (AStream = AResult.FPdf.Invoice))) then
     begin
-      AResult.FConfigurationChoice := ecc_Fixed;
-      RunKosit(FOptions.Configuration, AStream, AResult, WellFormed);
-    end
-    else if FOptions.ConfigurationCount > 0 then
+      Own := TMemoryStream.Create;
+      { CopyFrom with 0 copies the whole stream }
+      if AStream.Size > AStream.Position then
+        Own.CopyFrom(AStream, AStream.Size - AStream.Position);
+      Own.Position := 0;
+      AStream := Own;
+    end;
+    AResult.Clear;
+    Count := 0;
+    if AStream <> nil then
+      Count := AStream.Size - AStream.Position;
+    if (AStream = nil) or (Count > MaxInt) then
     begin
-      RunKosit(TLandrixEInvoiceValidator(FOptions.FConfigurations[0]), AStream, AResult, WellFormed);
-      AResult.FConfigurationName := '';
-    end
-    else
-    begin
-      if AStream = nil then
-        AResult.AddFinding(evp_Read, '', eds_Error, '', 0, 0, 'No document (no stream)')
+      { no stream or more than 2 GB: the engine reports it without reading
+        (a registered configuration too, without a choice) }
+      if FOptions.Configuration <> nil then
+      begin
+        AResult.FConfigurationChoice := ecc_Fixed;
+        RunKosit(FOptions.Configuration, AStream, AResult, WellFormed);
+      end
+      else if FOptions.ConfigurationCount > 0 then
+      begin
+        RunKosit(TLandrixEInvoiceValidator(FOptions.FConfigurations[0]), AStream, AResult, WellFormed);
+        AResult.FConfigurationName := '';
+      end
       else
-        AResult.AddFinding(evp_Read, '', eds_Error, '', 0, 0, 'The document is larger than 2 GB');
-      AResult.FStatus[evp_Read] := evr_Failed;
-    end;
-    Result := AResult.FVerdict;
-    Exit;
-  end;
-  { a PDF above the reader's limit is rejected by its size: hand the stream
-    to the checker without copying it }
-  if Count > LandrixEInvoicePdfMaxFileSize then
-  begin
-    Start := AStream.Position;
-    Head := TMemoryStream.Create;
-    try
-      Head.CopyFrom(AStream, 1100);
-      AStream.Position := Start;
-      Head.Position := 0;
-      IsPdf := IsPdfData(Head);
-    finally
-      Head.Free;
-    end;
-    if IsPdf then
-    begin
-      ValidatePdf(AStream, AResult);
+      begin
+        if AStream = nil then
+          AResult.AddFinding(evp_Read, '', eds_Error, '', 0, 0, 'No document (no stream)')
+        else
+          AResult.AddFinding(evp_Read, '', eds_Error, '', 0, 0, 'The document is larger than 2 GB');
+        AResult.FStatus[evp_Read] := evr_Failed;
+      end;
       Result := AResult.FVerdict;
       Exit;
     end;
-  end;
-  Data := TMemoryStream.Create;
-  try
-    { CopyFrom with 0 copies the whole stream: only when bytes are left }
-    if Count > 0 then
-      Data.CopyFrom(AStream, Count);
-    Data.Position := 0;
-    AResult.FDocumentSha256 := StreamSha256(Data);
-    if IsPdfData(Data) then
-      ValidatePdf(Data, AResult)
-    else
+    { a PDF above the reader's limit is rejected by its size: hand the stream
+      to the checker without copying it }
+    if Count > LandrixEInvoicePdfMaxFileSize then
     begin
-      { XML: the KoSIT run decides; without it there is no verdict }
-      RunChosen(Data, AResult, WellFormed);
-      KositEnd := AResult.FindingCount;
-      if WellFormed then
-      begin
-        ReadAndCheck(Data, AResult, nil);
-        CheckKind(AResult, KositEnd);
+      Start := AStream.Position;
+      Head := TMemoryStream.Create;
+      try
+        Head.CopyFrom(AStream, 1100);
+        AStream.Position := Start;
+        Head.Position := 0;
+        IsPdf := IsPdfData(Head);
+      finally
+        Head.Free;
       end;
-      { the result keeps the checked XML }
-      AResult.FXml := Data;
-      Data := nil;
+      if IsPdf then
+      begin
+        ValidatePdf(AStream, AResult);
+        Result := AResult.FVerdict;
+        Exit;
+      end;
     end;
+    Data := TMemoryStream.Create;
+    try
+      { CopyFrom with 0 copies the whole stream: only when bytes are left }
+      if Count > 0 then
+        Data.CopyFrom(AStream, Count);
+      Data.Position := 0;
+      AResult.FDocumentSha256 := StreamSha256(Data);
+      if IsPdfData(Data) then
+        ValidatePdf(Data, AResult)
+      else
+      begin
+        { XML: the KoSIT run decides; without it there is no verdict }
+        RunChosen(Data, AResult, WellFormed);
+        KositEnd := AResult.FindingCount;
+        if WellFormed then
+        begin
+          ReadAndCheck(Data, AResult, nil);
+          CheckKind(AResult, KositEnd);
+        end;
+        { the result keeps the checked XML }
+        AResult.FXml := Data;
+        Data := nil;
+      end;
+    finally
+      Data.Free;
+    end;
+    Result := AResult.FVerdict;
   finally
-    Data.Free;
+    Own.Free;
   end;
-  Result := AResult.FVerdict;
 end;
 
 { Runs the configuration on AData (nil or more than 2 GB: the engine
