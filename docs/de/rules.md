@@ -15,16 +15,16 @@ eigene Kennungen, die alle mit `LX-` beginnen. Diese Seite führt jede davon auf
 - Eine Regel, deren Bedingung weiter wird, bekommt eine neue Nummer.
 - Das Präfix sagt nichts über das Urteil: Das entscheidet, wo ein Befund erscheint (siehe
   [Validieren](validation.md)). LX-PDF-Fehler zählen für das Urteil über ein Hybrid-PDF,
-  LX-CC-Regeln laufen nur auf Anfrage, LX-ID- und LX-PL-Hinweise zählen nie.
+  LX-CC-Regeln laufen nur auf Anfrage, LX-ID-, LX-PL- und LX-DE-Hinweise zählen nie.
 - `python tools/check-forbidden.py` (ohne Argumente) schlägt an, wenn eine Kennung aus dem
   Quelltext hier oder in der englischen Liste fehlt, wenn eine Liste eine Kennung nennt, die der
   Quelltext nicht hat (außer sie ist als aufgegeben markiert), oder wenn eine Kennung in einer
   Liste zweimal steht.
 
 Familien: `LX-CC` (Prüfungen von XRechnung-for-Delphi), `LX-PDF` (Hybrid-PDF), `LX-ID` (Kennungen,
-Prüfziffern und Zeichen), `LX-PL` (Plausibilität von Daten und Zahlung). Reserviert für geplante
-Prüfungen: `LX-AR` (Rechnen, wo es keine offizielle Regel gibt), `LX-AT` (Anhänge),
-`LX-DE` (deutsches Steuerrecht).
+Prüfziffern und Zeichen), `LX-PL` (Plausibilität von Daten und Zahlung), `LX-DE` (deutsches
+Steuerrecht). Reserviert für geplante Prüfungen: `LX-AR` (Rechnen, wo es keine offizielle Regel
+gibt), `LX-AT` (Anhänge).
 
 ## LX-CC: Prüfungen von XRechnung-for-Delphi
 
@@ -53,7 +53,7 @@ sie einzeln ab. Schweregrad: Fehler.
 Befunde des PDF-Prüfers zu dem, was die BR-HYBRID-Regeln nicht nennen. Wo sie in einer
 Validierung erscheinen:
 
-- `pdfEmbedding`: LX-PDF-01 bis LX-PDF-07, LX-PDF-09, LX-PDF-10 und LX-PDF-08 für eine Grenze
+- `pdfEmbedding`: LX-PDF-01 bis LX-PDF-07, LX-PDF-09, LX-PDF-10, LX-PDF-13 und LX-PDF-08 für eine Grenze
   außerhalb der XMP-Metadaten;
 - `pdfMetadata`: LX-PDF-11 und LX-PDF-08 für eine Grenze in den XMP-Metadaten;
 - `pdfA`: LX-PDF-12; dieser Teil zählt nicht für das Urteil.
@@ -77,6 +77,7 @@ gemeldet werden) und damit das Urteil, sofern nicht ein Fehler das PDF ohnehin a
 | LX-PDF-10 | Fehler | die eingebettete Rechnung ist UBL, keine CII-Rechnung eines ZUGFeRD-Profils | 0.9.0-beta.1 |
 | LX-PDF-11 | Fehler | die XMP-Metadaten fehlen, lassen sich nicht dekodieren, sind nicht wohlgeformt oder haben kein `rdf:RDF` mit `rdf:Description` | 0.9.0-beta.1 |
 | LX-PDF-12 | Warnung | die PDF/A-Prüfung brach ab, bevor sie vollständig war | unveröffentlicht |
+| LX-PDF-13 | Warnung | die Datei hat Bytes vor `%PDF-` (höchstens 1024, die PDF-Leser hinnehmen; ISO 32000-2, 7.5.2 verlangt den Kopf zuerst); auch bei einer PDF/A-4-Angabe, die die PDF/A-Prüfung nicht abdeckt, und wenn das PDF nicht lesbar ist | unveröffentlicht |
 
 ## LX-ID: Kennungen und Zeichen (Hinweise)
 
@@ -119,3 +120,13 @@ Regel in Klammern).
 | LX-PL-03 | Warnung | der Zahlungsdienstleister (BT-86) besteht aus Buchstaben und Ziffern mit mindestens einem Buchstaben, ist aber kein BIC: nicht acht oder elf Zeichen in der Form von ISO 9362 (Präfix aus vier Buchstaben oder Ziffern, Ländercode, Ort, optionale Filiale) in Großbuchstaben, oder ein Ländercode, der kein ISO-3166-Land ist (XK erlaubt, XI nicht); nationale Bankleitzahlen, Clearing-Kennungen wie SE:BANKGIRO und indische IFSC bleiben unbeachtet | unveröffentlicht |
 | LX-PL-04 | Hinweis | der Kontoinhaber (BT-85) einer Überweisung (30, 58) ist nicht der Verkäufer (BT-27, BT-28; keiner der Namen enthält den anderen, verglichen in Großbuchstaben mit Umlauten als AE, OE, UE und ß als SS; kein Hinweis, wenn ein Name Zeichen außerhalb von Latin-1 hat), und kein Zahlungsempfänger (BG-10: Name, Kennung oder Registernummer) ist genannt | unveröffentlicht |
 | LX-PL-05 | Warnung | eine SEPA-Lastschrift (59) ohne Mandatsreferenz (BT-89), Gläubiger-Identifikationsnummer (BT-90; bei UBL auch als Kennung des Zahlungsempfängers oder globale Kennung des Verkäufers mit Schema SEPA) oder belastetes Konto (BT-91); auch mit dem Code der Zahlungsart als anderem Text; nicht nach BR-DE-25-a oder DE-R-025-1 (Mandat, Konto; bei CII auch die Gläubiger-ID), BR-DE-30, BR-DE-31, DE-R-030, DE-R-031, PEPPOL-EN16931-R061 | unveröffentlicht |
+
+## LX-DE: deutsches Steuerrecht (Hinweise)
+
+Hinweise der Hinweisprüfungen (Familie `eaf_German`, rechtlich, nur auf Anforderung: nicht in
+`LandrixEInvoiceAdvisoryTechnical`), im Teil `advisory`. Sie beraten; ob ein Dokument eine Rechnung
+im Sinne des UStG ist, sagen sie nicht.
+
+| Kennung | Schweregrad | Befund | Seit |
+|---|---|---|---|
+| LX-DE-01 | Warnung | Verkäufer und Käufer sind in Deutschland (BT-40, BT-55), und das Profil (BT-24) ist MINIMUM oder BASIC WL, nach dem BMF (Schreiben vom 15. Oktober 2025) kein zulässiges E-Rechnungsformat; auch für reines XML; nicht bei einem hybriden PDF, für das BR-HYBRID-DE-01 oder BR-HYBRID-DE-02 es gemeldet hat | unveröffentlicht |

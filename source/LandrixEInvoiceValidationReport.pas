@@ -150,6 +150,7 @@ begin
   TokenAttribute(W, 'syntax', SyntaxNames[Info.Syntax]);
   TextAttribute(W, 'customizationId', Info.CustomizationID, Sanitized);
   TextAttribute(W, 'profileId', Info.ProfileID, Sanitized);
+  TokenAttribute(W, 'sha256', LandrixEInvoiceStringToUtf8(AResult.DocumentSha256));
   SanitizedAttribute(W, Sanitized);
   { the specification the library assigns to BT-24; ExactVersion is the
     release the library is built for, not the one of the sender
@@ -199,7 +200,8 @@ begin
   W.EndElement;
 end;
 
-procedure WritePdf(W: TLandrixXmlWriter; APdf: TLandrixEInvoicePdfCheckResult);
+procedure WritePdf(W: TLandrixXmlWriter; APdf: TLandrixEInvoicePdfCheckResult;
+  const AInvoiceSha256: TLandrixEInvoiceString);
 var
   Sanitized: Boolean;
 begin
@@ -224,6 +226,7 @@ begin
   TextAttribute(W, 'xmpConformanceLevel', APdf.XmpConformanceLevel, Sanitized);
   TextAttribute(W, 'xmpPdfaPart', APdf.PdfAPart, Sanitized);
   TextAttribute(W, 'xmpPdfaConformance', APdf.PdfAConformance, Sanitized);
+  TokenAttribute(W, 'invoiceSha256', LandrixEInvoiceStringToUtf8(AInvoiceSha256));
   SanitizedAttribute(W, Sanitized);
   W.EndElement;
 end;
@@ -325,7 +328,7 @@ begin
     W.ElementUtf8('verdict', VerdictNames[AResult.Verdict]);
     WriteParts(W, AResult);
     if AResult.Pdf <> nil then
-      WritePdf(W, AResult.Pdf);
+      WritePdf(W, AResult.Pdf, AResult.InvoiceSha256);
     WriteFindings(W, AResult);
     W.EndElement;
     W.EndElement;

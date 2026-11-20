@@ -8,6 +8,10 @@ Supported invoice standards are documented per release.
 ## [Unreleased]
 
 ### Added
+- The document validation takes a file with up to 1024 bytes before `%PDF-` as a PDF, as PDF readers do
+  (unless it starts like XML), and reports the bytes as LX-PDF-13 (warning, `pdfEmbedding`), also for a
+  PDF/A-4 claim and when the PDF cannot be read; before, such a file went the XML way. `IsPdfStream`
+  is unchanged, so `TLandrixEInvoice.LoadFromStream` and the Workbench still read such a file as XML.
 - Advisory checks: internal unit `LandrixEInvoiceAdvisory` (`LandrixEInvoiceAdvise`, families
   `TLandrixEInvoiceAdvisoryFamilies`, default `LandrixEInvoiceAdvisoryTechnical`). The document
   validation runs them on the invoice as read (`Options.Advisory`) and shows their hints in the new
@@ -31,10 +35,12 @@ Supported invoice standards are documented per release.
   (`LandrixEInvoiceIBANCheckDigits`; no length per country, the IBAN registry of SWIFT may not be copied for
   profit), a BIC of wrong form, an account holder who is not the seller
   without a payee (info) and a SEPA direct debit without mandate reference, creditor identifier or
-  debited account. `LandrixEInvoiceAdvise` takes the rule identifiers the rule check reported and
+  debited account. A third family `eaf_German` (LX-DE, legal, only on request) reports MINIMUM or
+  BASIC WL between German parties also for plain XML (LX-DE-01: no permitted e-invoice format
+  according to the BMF). `LandrixEInvoiceAdvise` takes the rule identifiers the rule check reported and
   does not repeat them.
 - `docs/rules.md` (and the German `docs/de/rules.md`) lists the library's own rule identifiers
-  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-12, LX-ID-01 to LX-ID-10, LX-PL-01 to LX-PL-05) with severity, scope and the version they came
+  (LX-CC-01 to LX-CC-12, LX-PDF-01 to LX-PDF-13, LX-ID-01 to LX-ID-10, LX-PL-01 to LX-PL-05, LX-DE-01) with severity, scope and the version they came
   with, and how they are kept stable; `tools/check-forbidden.py` fails when the sources and the
   lists disagree. The warning that the PDF/A check stopped has its own identifier LX-PDF-12 instead
   of LX-PDF-01 (a broader condition gets a new number).
@@ -201,7 +207,9 @@ Supported invoice standards are documented per release.
   (version 1.0 had the terms in `location`). Standard, profile, hybrid kind and the configuration
   choice and kind are open lists (a consumer treats an unknown value as "other"); verdict, status,
   severity and part stay closed. The element `recipient` and the attribute `finding/@recipient` are
-  reserved for recipient profiles and not written yet.
+  reserved for recipient profiles and not written yet. `document/@sha256` and `pdf/@invoiceSha256`
+  hold the SHA-256 of the validated bytes and of the embedded invoice (`DocumentSha256`,
+  `InvoiceSha256` of `TLandrixEInvoiceDocumentValidation`).
 - Commercial license: a German version, which prevails; the price is 950 EUR per company; one commercial
   license covers EInvoice-for-Pascal and XRechnung-for-Delphi together.
 - Peppol rules: the Peppol Schematron 3.0.22 (OpenPEPPOL October 2026 hotfix, RFC-607) replaces 3.0.21.

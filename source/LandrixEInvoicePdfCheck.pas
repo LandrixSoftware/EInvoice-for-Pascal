@@ -1853,6 +1853,21 @@ begin
   D.RuleID := ARule;
 end;
 
+{ ISO 32000-2, 7.5.2: the header is the first line of the file; readers
+  accept up to 1024 bytes before it (the PDF/A check reports it as
+  6.1.2-1, but not for a PDF/A-4 claim and not for the verdict). Reported
+  as soon as the header is found, also when the PDF cannot be read.
+  DE: ISO 32000-2, 7.5.2: der Kopf ist die erste Zeile der Datei; Leser
+  nehmen bis zu 1024 Bytes davor hin (die PDF/A-Pruefung meldet das als
+  6.1.2-1, aber nicht bei PDF/A-4 und nicht fuer das Urteil). Gemeldet,
+  sobald der Kopf gefunden ist, auch wenn das PDF nicht lesbar ist. }
+procedure AddHeaderOffset(AResult: TLandrixEInvoicePdfCheckResult; AHeaderPos: Integer);
+begin
+  if AHeaderPos > 0 then
+    AddFinding(AResult, 'LX-PDF-13', eds_Warning,
+      TLandrixEInvoiceString('The file has ' + IntToStr(AHeaderPos) + ' bytes before %PDF-; the header must start the file'));
+end;
+
 procedure AddFindingAt(AResult: TLandrixEInvoicePdfCheckResult; const ARule: TLandrixEInvoiceString;
   ASeverity: TLandrixEInvoiceDiagnosticSeverity; const APath, AMessage: TLandrixEInvoiceString);
 var
@@ -1964,6 +1979,7 @@ begin
     try
       if not Doc.Load(AStream, Err) then
       begin
+        AddHeaderOffset(AResult, Doc.HeaderPos);
         AddFinding(AResult, RuleUnreadable, eds_Error, ToText('PDF not readable: ' + Err));
         Result := 1;
         Exit;
@@ -1973,11 +1989,13 @@ begin
       begin
         if E is EOutOfMemory then
           raise;
+        AddHeaderOffset(AResult, Doc.HeaderPos);
         AddFinding(AResult, RuleUnreadable, eds_Error, ToText('PDF not readable: ' + E.Message));
         Result := 1;
         Exit;
       end;
     end;
+    AddHeaderOffset(AResult, Doc.HeaderPos);
     if Doc.HeaderPos + 8 <= Length(Doc.Buf) then
       AResult.PdfVersion := AnsiToText(LandrixEInvoicePdfBytesToAnsi(Doc.Buf, Doc.HeaderPos + 5, 3));
     if Doc.CryptError <> '' then

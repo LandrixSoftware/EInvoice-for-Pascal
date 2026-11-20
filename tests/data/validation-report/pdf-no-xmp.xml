@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <validationReport xmlns="urn:landrix:einvoice:validation-report:2" version="2.0">
   <generator name="EInvoice-for-Pascal" version="@VERSION@"/>
-  <document name="invoice.pdf" source="pdf" rootName="CrossIndustryInvoice" syntax="cii" customizationId="urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" profileId="urn:fdc:peppol.eu:2017:poacc:billing:01:1.0">
+  <document name="invoice.pdf" source="pdf" rootName="CrossIndustryInvoice" syntax="cii" customizationId="urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" profileId="urn:fdc:peppol.eu:2017:poacc:billing:01:1.0" sha256="1a737ddc172dfefcc9d4a419c38dbe2e7727140d4453ac160cebf4c3e7644caa">
     <specification standard="xrechnung" syntax="cii" version="3.0" libraryRelease="3.0.2"/>
     <verdict>rejected</verdict>
     <parts>
@@ -13,7 +13,7 @@
       <part name="pdfA" status="failed"/>
       <part name="advisory" status="passed"/>
     </parts>
-    <pdf hybridKind="xrechnung" factsChecked="true" profile="xrechnung" pdfVersion="1.7" invoiceFileName="xrechnung.xml" invoicePath="/Root/Names/EmbeddedFiles/Names[1]" relationship="Alternative"/>
+    <pdf hybridKind="xrechnung" factsChecked="true" profile="xrechnung" pdfVersion="1.7" invoiceFileName="xrechnung.xml" invoicePath="/Root/Names/EmbeddedFiles/Names[1]" relationship="Alternative" invoiceSha256="d4a183d3d1e935ad777635e7fd0924406e22bcb4b80eba5c897b8c0cfa45d219"/>
     <findings errors="2" warnings="0" infos="0" predicted="1" advisory="0">
       <finding part="pdfMetadata" rule="LX-PDF-11" severity="error">
         <location>/Root/Metadata</location>

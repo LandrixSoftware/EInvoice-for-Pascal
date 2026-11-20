@@ -1078,6 +1078,28 @@ begin
     CheckPdfStatus(R, evr_Incomplete, evr_Passed, evr_Incomplete, 'no invoice');
     CheckStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'no invoice');
     CheckEqualsStr('read::error', Findings(R), 'no invoice findings');
+    { bytes before %PDF-: still a PDF (LX-PDF-13), PDF/A 6.1.2-1 shown; the
+      offsets of the table now miss by the preamble, so the objects are
+      found by a scan (LX-PDF-02, incomplete) }
+    CheckEquals(Ord(ev_Incomplete), Ord(ValidateBytes(DV, 'MIME junk'#13#10 + XRechnungPdf(True, True), R)),
+      'preamble verdict');
+    Check(R.Pdf <> nil, 'preamble: PDF result');
+    CheckEqualsStr('pdf:LX-PDF-13:warning pdf:LX-PDF-02:warning pdfa:PDFA-6.1.2-1:error', Findings(R),
+      'preamble findings');
+    { the window: 1024 bytes before %PDF- still a PDF, 1025 not }
+    ValidateBytes(DV, StringOfChar(AnsiChar('x'), 1024) + XRechnungPdf(True, True), R);
+    Check(R.Pdf <> nil, '1024 bytes before: PDF result');
+    Check(Pos('pdf:LX-PDF-13:warning', Findings(R)) = 1, '1024 bytes before: ' + Findings(R));
+    ValidateBytes(DV, StringOfChar(AnsiChar('x'), 1025) + XRechnungPdf(True, True), R);
+    Check(R.Pdf = nil, '1025 bytes before: XML');
+    { a preamble before a PDF that cannot be read: LX-PDF-13 still }
+    ValidateBytes(DV, 'junk%PDF-1.7'#10'junk', R);
+    CheckEqualsStr('pdf:LX-PDF-13:warning pdf:LX-PDF-01:error', Findings(R), 'preamble, broken PDF findings');
+    { XML that names %PDF- early stays XML, also in UTF-16 }
+    ValidateBytes(DV, '<?xml version="1.0"?><!-- %PDF-1.7 --><a/>', R);
+    Check(R.Pdf = nil, 'XML naming %PDF-: no PDF result');
+    ValidateBytes(DV, #$FF#$FE'<'#0'!'#0'-'#0'-'#0'%PDF-'#0, R);
+    Check(R.Pdf = nil, 'UTF-16 XML with %PDF- bytes: no PDF result');
     { a PDF that cannot be read: rejected, nothing else runs }
     CheckEquals(Ord(ev_Rejected), Ord(ValidateBytes(DV, '%PDF-1.7'#10'junk', R)), 'broken PDF verdict');
     CheckPdfStatus(R, evr_Failed, evr_NotRun, evr_NotRun, 'broken PDF');
@@ -1087,6 +1109,29 @@ begin
     ValidateBytes(DV, InvoiceBytes(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), True), R);
     Check(R.Pdf = nil, 'XML: no PDF result');
     CheckEquals(Ord(evr_NotRun), Ord(R.Status[evp_PdfEmbedding]), 'XML: no embedding');
+    { SHA-256 of the validated bytes (FIPS 180-4 example "abc"); for XML the
+      invoice is the document }
+    ValidateBytes(DV, 'abc', R);
+    CheckEqualsStr('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad', string(R.DocumentSha256),
+      'document SHA-256');
+    CheckEqualsStr(string(R.DocumentSha256), string(R.InvoiceSha256), 'XML: invoice SHA-256');
+    DV.ValidateStream(nil, R);
+    CheckEqualsStr('', string(R.DocumentSha256), 'no stream: no SHA-256');
+    CheckEqualsStr('', string(R.InvoiceSha256), 'no stream: no invoice SHA-256');
+    { from the position of the stream; at its end the hash of no bytes }
+    S := TMemoryStream.Create;
+    try
+      S.WriteBuffer(PAnsiChar(AnsiString('junkabc'))^, 7);
+      S.Position := 4;
+      DV.ValidateStream(S, R);
+      CheckEqualsStr('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad', string(R.DocumentSha256),
+        'SHA-256 from the position');
+      DV.ValidateStream(S, R);
+      CheckEqualsStr('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', string(R.DocumentSha256),
+        'SHA-256 at the end');
+    finally
+      S.Free;
+    end;
 
     { with the test configuration: KoSIT finds no scenario, the PDF findings
       come first }
@@ -1982,6 +2027,15 @@ begin
   R := TLandrixEInvoiceDocumentValidation.Create;
   try
     Check(DV.Options.Advisory = LandrixEInvoiceAdvisoryTechnical, 'technical families by default');
+    { German tax law on request: BASIC WL between German parties as XML gets
+      LX-DE-01, as hybrid PDF BR-HYBRID-DE-02 says it and LX-DE-01 stays out }
+    Off.Options.Advisory := [eaf_German];
+    ValidateBytes(Off, InvoiceBytes(TLandrixEInvoiceTargets.FacturX('1.09', epr_BasicWL), True), R);
+    CheckEqualsStr('hint:LX-DE-01:warning', Findings(R), 'LX-DE-01 for XML: ' + Findings(R));
+    ValidateBytes(Off, BuildHybridPdf('factur-x.xml', InvoiceBytes(TLandrixEInvoiceTargets.FacturX('1.09',
+      epr_BasicWL), True), TLandrixEInvoiceTargets.FacturX('1.09', epr_BasicWL), True), R);
+    Check(Pos('BR-HYBRID-DE-02', Findings(R)) > 0, 'BR-HYBRID-DE-02 for the PDF: ' + Findings(R));
+    Check(Pos('LX-DE-01', Findings(R)) = 0, 'no LX-DE-01 for the PDF: ' + Findings(R));
     Off.Options.Advisory := [];
     Expected[0] := ev_Incomplete;
     Expected[1] := ev_Accepted;

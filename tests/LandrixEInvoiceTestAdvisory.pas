@@ -687,8 +687,56 @@ begin
   end;
 end;
 
+{ German tax law (LX-DE), only on request: MINIMUM and BASIC WL between
+  German parties. }
+procedure TestGerman;
+var
+  Inv: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Target: TLandrixEInvoiceTarget;
+  Reported: TStringList;
+begin
+  Inv := TLandrixInvoice.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Reported := TStringList.Create;
+  try
+    Check(not (eaf_German in LandrixEInvoiceAdvisoryTechnical), 'German tax law is not technical');
+    Target := NoTarget;
+    Target.Standard := est_FacturX;
+    Target.Profile := epr_Minimum;
+    Inv.AccountingSupplierParty.Address.CountryCode := 'DE';
+    Inv.AccountingCustomerParty.Address.CountryCode := 'DE';
+    CheckEquals(1, LandrixEInvoiceAdvise(Inv, Target, [eaf_German], D), 'MINIMUM');
+    CheckEqualsInvoiceStr('LX-DE-01', D[0].RuleID, 'MINIMUM: rule');
+    CheckEqualsInvoiceStr('BT-24', D[0].Terms, 'MINIMUM: terms');
+    Check(D[0].Severity = eds_Warning, 'MINIMUM: warning');
+    Check(Pos('MINIMUM is no permitted', string(D[0].Message)) > 0, 'MINIMUM: ' + string(D[0].Message));
+    D.Clear;
+    CheckEquals(0, LandrixEInvoiceAdvise(Inv, Target, LandrixEInvoiceAdvisoryTechnical, D), 'not by default');
+    Target.Profile := epr_BasicWL;
+    CheckEquals(1, LandrixEInvoiceAdvise(Inv, Target, [eaf_German], D), 'BASIC WL');
+    Check(Pos('BASIC WL is no permitted', string(D[0].Message)) > 0, 'BASIC WL: ' + string(D[0].Message));
+    Reported.Add('BR-HYBRID-DE-02');
+    CheckEquals(0, LandrixEInvoiceAdvise(Inv, Target, [eaf_German], nil, Reported), 'after BR-HYBRID-DE-02');
+    Reported.Clear;
+    Reported.Add('BR-HYBRID-DE-01');
+    Target.Profile := epr_Minimum;
+    CheckEquals(0, LandrixEInvoiceAdvise(Inv, Target, [eaf_German], nil, Reported), 'after BR-HYBRID-DE-01');
+    Target.Profile := epr_Basic;
+    CheckEquals(0, LandrixEInvoiceAdvise(Inv, Target, [eaf_German], nil), 'BASIC');
+    Target.Profile := epr_Minimum;
+    Inv.AccountingCustomerParty.Address.CountryCode := 'AT';
+    CheckEquals(0, LandrixEInvoiceAdvise(Inv, Target, [eaf_German], nil), 'buyer in Austria');
+  finally
+    Reported.Free;
+    D.Free;
+    Inv.Free;
+  end;
+end;
+
 procedure Register;
 begin
+  RegisterTest('Advisory.German', TestGerman);
   RegisterTest('Advisory.Fields', TestFields);
   RegisterTest('Advisory.Plausibility', TestPlausibility);
   RegisterTest('Advisory.Characters', TestCharacters);

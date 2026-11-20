@@ -15,15 +15,15 @@ identifiers, all starting with `LX-`. This page lists every one of them.
 - A rule whose condition becomes broader gets a new number.
 - The prefix says nothing about the verdict: where a finding appears decides that (see
   [Validating](validation.md)). LX-PDF errors count for the verdict of a hybrid PDF, LX-CC rules run
-  only when asked for, LX-ID and LX-PL hints never count.
+  only when asked for, LX-ID, LX-PL and LX-DE hints never count.
 - `python tools/check-forbidden.py` (without arguments) fails when an identifier of the source is
   missing here or in the German list, when a list names an identifier the source does not have
   (unless it is marked retired), or when an identifier appears twice in a list.
 
 Families: `LX-CC` (checks of XRechnung-for-Delphi), `LX-PDF` (hybrid PDF), `LX-ID` (identifiers,
-check digits and characters), `LX-PL` (plausibility of dates and payment). Reserved for planned
-checks: `LX-AR` (arithmetic where no official rule exists), `LX-AT` (attachments), `LX-DE`
-(German tax law).
+check digits and characters), `LX-PL` (plausibility of dates and payment), `LX-DE` (German tax
+law). Reserved for planned checks: `LX-AR` (arithmetic where no official rule exists), `LX-AT`
+(attachments).
 
 ## LX-CC: checks of XRechnung-for-Delphi
 
@@ -51,7 +51,7 @@ them; `LandrixEInvoiceCheckRule` and the compatibility layer ask them one by one
 Findings of the PDF checker for what the BR-HYBRID rules do not name. Where they appear in a
 validation:
 
-- `pdfEmbedding`: LX-PDF-01 to LX-PDF-07, LX-PDF-09, LX-PDF-10, and LX-PDF-08 for a limit outside
+- `pdfEmbedding`: LX-PDF-01 to LX-PDF-07, LX-PDF-09, LX-PDF-10, LX-PDF-13, and LX-PDF-08 for a limit outside
   the XMP metadata;
 - `pdfMetadata`: LX-PDF-11, and LX-PDF-08 for a limit in the XMP metadata;
 - `pdfA`: LX-PDF-12; this part does not count for the verdict.
@@ -75,6 +75,7 @@ error rejects the PDF anyway.
 | LX-PDF-10 | error | the embedded invoice is UBL, not a CII invoice of a ZUGFeRD profile | 0.9.0-beta.1 |
 | LX-PDF-11 | error | the XMP metadata is missing, cannot be decoded, is not well-formed or has no `rdf:RDF` with `rdf:Description` | 0.9.0-beta.1 |
 | LX-PDF-12 | warning | the PDF/A check stopped before it was complete | unreleased |
+| LX-PDF-13 | warning | the file has bytes before `%PDF-` (at most 1024, which PDF readers accept; ISO 32000-2, 7.5.2 wants the header first); also for a PDF/A-4 claim, which the PDF/A check does not cover, and when the PDF cannot be read | unreleased |
 
 ## LX-ID: identifiers and characters (advisory)
 
@@ -117,3 +118,13 @@ brackets).
 | LX-PL-03 | warning | the payment service provider (BT-86) consists of letters and digits with at least one letter but is no BIC: not eight or eleven characters of the form of ISO 9362 (prefix of four letters or digits, country code, location, optional branch) in capital letters, or a country code that is no ISO 3166 country (XK allowed, XI not); national bank codes, clearing identifiers such as SE:BANKGIRO and Indian IFSC are left alone | unreleased |
 | LX-PL-04 | info | the account holder (BT-85) of a credit transfer (30, 58) is not the seller (BT-27, BT-28; neither name contains the other, compared in capital letters with umlauts as AE, OE, UE and sharp s as SS; no hint when a name has characters outside Latin-1) and no payee (BG-10: name, identifier or legal registration) is named | unreleased |
 | LX-PL-05 | warning | a SEPA direct debit (59) without mandate reference (BT-89), creditor identifier (BT-90; in UBL also as payee identifier or seller global identifier with scheme SEPA) or debited account (BT-91); also with the payment means code as other text; not after BR-DE-25-a or DE-R-025-1 (mandate, account; for CII also the creditor), BR-DE-30, BR-DE-31, DE-R-030, DE-R-031, PEPPOL-EN16931-R061 | unreleased |
+
+## LX-DE: German tax law (advisory)
+
+Hints of the advisory checks (family `eaf_German`, legal, only on request: not in
+`LandrixEInvoiceAdvisoryTechnical`), in the part `advisory`. They advise; whether a document is an
+invoice in the sense of the VAT act is not said.
+
+| Identifier | Severity | Finding | Since |
+|---|---|---|---|
+| LX-DE-01 | warning | seller and buyer are in Germany (BT-40, BT-55) and the profile (BT-24) is MINIMUM or BASIC WL, which is no permitted e-invoice format according to the BMF (letter of 15 October 2025); also for plain XML; not for a hybrid PDF where BR-HYBRID-DE-01 or BR-HYBRID-DE-02 reported it | unreleased |

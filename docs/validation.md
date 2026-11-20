@@ -190,7 +190,8 @@ end.
 - Advisory checks (`Options.Advisory`, a set of families; default `LandrixEInvoiceAdvisoryTechnical`,
   `[]` turns them off): hints on the invoice as read that no standard demands, rules LX-... (so far
   LX-ID-01 to LX-ID-10: invisible and deceptive characters, and identifiers by their scheme such as GLN,
-  GTIN and Leitweg-ID; LX-PL-01 to LX-PL-05: dates and payment; see [Rules of this library](rules.md)).
+  GTIN and Leitweg-ID; LX-PL-01 to LX-PL-05: dates and payment; on request with `eaf_German`, LX-DE-01:
+  MINIMUM or BASIC WL between German parties; see [Rules of this library](rules.md)).
   What the rule check of the same validation reported is not repeated.
   They are infos or warnings, never errors, never count for the verdict and are counted apart
   (`advisory` in the XML report). `evp_Advisory` is `evr_Passed` when they ran, `evr_Incomplete`
@@ -237,8 +238,10 @@ report on several documents). A finding has its path in `location` (XPath, eleme
 of the rule check or place in the PDF) and the details of the rule check in the attributes `terms`,
 `expected`, `found` and `calculation`. Verdict, status, severity and part are closed lists: a new
 value is a new major version. Standard, profile, hybrid kind and the configuration choice and kind
-are open: treat a value you do not know as "other". Version 1
-(`schemas/landrix-einvoice-validation-report-1.xsd`) is no longer written.
+are open: treat a value you do not know as "other". `document/@sha256` is the SHA-256 of the bytes
+that were validated (the whole file, or the stream from its position), `pdf/@invoiceSha256` that of
+the embedded invoice as decoded from the PDF (the same values: `DocumentSha256` and `InvoiceSha256`
+of the result). Version 1 (`schemas/landrix-einvoice-validation-report-1.xsd`) is no longer written.
 
 The KoSIT report: the report the KoSIT validator writes, made the same way. The report input
 (`LandrixEInvoiceKositReportInput`: engine, time, document hash, the chosen scenario, the steps,
