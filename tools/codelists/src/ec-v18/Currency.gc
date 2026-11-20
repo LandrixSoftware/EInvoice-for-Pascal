@@ -9,10 +9,10 @@ Do NOT edit!</ext:info>
     </AppInfo>
   </Annotation>
   <Identification>
-    <ShortName>Item</ShortName>
-    <Version>2026-05-15</Version>
-    <CanonicalUri>urn:cef.eu:names:identifier:Item</CanonicalUri>
-    <CanonicalVersionUri>urn:cef.eu:names:identifier:Item-2026-05-15</CanonicalVersionUri>
+    <ShortName>Currency</ShortName>
+    <Version>2026-11-15</Version>
+    <CanonicalUri>urn:cef.eu:names:identifier:Currency</CanonicalUri>
+    <CanonicalVersionUri>urn:cef.eu:names:identifier:Currency-2026-11-15</CanonicalVersionUri>
   </Identification>
   <ColumnSet>
     <Column Id="Code" Use="required">
@@ -31,946 +31,1034 @@ Do NOT edit!</ext:info>
   <SimpleCodeList>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AA</SimpleValue>
+        <SimpleValue>AED</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Product version number</SimpleValue>
+        <SimpleValue>UAE Dirham</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AB</SimpleValue>
+        <SimpleValue>AFN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Assembly</SimpleValue>
+        <SimpleValue>Afghani</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AC</SimpleValue>
+        <SimpleValue>ALL</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>HIBC (Health Industry Bar Code)</SimpleValue>
+        <SimpleValue>Lek</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AD</SimpleValue>
+        <SimpleValue>AMD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Cold roll number</SimpleValue>
+        <SimpleValue>Armenian Dram</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AE</SimpleValue>
+        <SimpleValue>AOA</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Hot roll number</SimpleValue>
+        <SimpleValue>Kwanza</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AF</SimpleValue>
+        <SimpleValue>ARS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Slab number</SimpleValue>
+        <SimpleValue>Argentine Peso</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AG</SimpleValue>
+        <SimpleValue>AUD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Software revision number</SimpleValue>
+        <SimpleValue>Australian Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AH</SimpleValue>
+        <SimpleValue>AWG</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UPC (Universal Product Code) Consumer package code (1-5-5)</SimpleValue>
+        <SimpleValue>Aruban Florin</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AI</SimpleValue>
+        <SimpleValue>AZN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UPC (Universal Product Code) Consumer package code (1-5-5-</SimpleValue>
+        <SimpleValue>Azerbaijan Manat</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AJ</SimpleValue>
+        <SimpleValue>BAM</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Sample number</SimpleValue>
+        <SimpleValue>Convertible Mark</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AK</SimpleValue>
+        <SimpleValue>BBD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Pack number</SimpleValue>
+        <SimpleValue>Barbados Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AL</SimpleValue>
+        <SimpleValue>BDT</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UPC (Universal Product Code) Shipping container code (1-2-</SimpleValue>
+        <SimpleValue>Taka</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AM</SimpleValue>
+        <SimpleValue>BHD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UPC (Universal Product Code)/EAN (European article number)</SimpleValue>
+        <SimpleValue>Bahraini Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AN</SimpleValue>
+        <SimpleValue>BIF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UPC (Universal Product Code) suffix</SimpleValue>
+        <SimpleValue>Burundi Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AO</SimpleValue>
+        <SimpleValue>BMD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>State label code</SimpleValue>
+        <SimpleValue>Bermudian Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AP</SimpleValue>
+        <SimpleValue>BND</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Heat number</SimpleValue>
+        <SimpleValue>Brunei Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AQ</SimpleValue>
+        <SimpleValue>BOB</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Coupon number</SimpleValue>
+        <SimpleValue>Boliviano</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AR</SimpleValue>
+        <SimpleValue>BOV</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Resource number</SimpleValue>
+        <SimpleValue>Mvdol</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AS</SimpleValue>
+        <SimpleValue>BRL</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Work task number</SimpleValue>
+        <SimpleValue>Brazilian Real</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AT</SimpleValue>
+        <SimpleValue>BSD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Price look up number</SimpleValue>
+        <SimpleValue>Bahamian Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AU</SimpleValue>
+        <SimpleValue>BTN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>NSN (North Atlantic Treaty Organization Stock Number)</SimpleValue>
+        <SimpleValue>Ngultrum</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AV</SimpleValue>
+        <SimpleValue>BWP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Refined product code</SimpleValue>
+        <SimpleValue>Pula</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AW</SimpleValue>
+        <SimpleValue>BYN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Exhibit</SimpleValue>
+        <SimpleValue>Belarusian Ruble</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AX</SimpleValue>
+        <SimpleValue>BZD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>End item</SimpleValue>
+        <SimpleValue>Belize Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AY</SimpleValue>
+        <SimpleValue>CAD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Federal supply classification</SimpleValue>
+        <SimpleValue>Canadian Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>AZ</SimpleValue>
+        <SimpleValue>CDF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Engineering data list</SimpleValue>
+        <SimpleValue>Congolese Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BA</SimpleValue>
+        <SimpleValue>CHE</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Milestone event number</SimpleValue>
+        <SimpleValue>WIR Euro</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BB</SimpleValue>
+        <SimpleValue>CHF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Lot number</SimpleValue>
+        <SimpleValue>Swiss Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BC</SimpleValue>
+        <SimpleValue>CHW</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>National drug code 4-4-2 format</SimpleValue>
+        <SimpleValue>WIR Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BD</SimpleValue>
+        <SimpleValue>CLF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>National drug code 5-3-2 format</SimpleValue>
+        <SimpleValue>Unidad de Fomento</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BE</SimpleValue>
+        <SimpleValue>CLP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>National drug code 5-4-1 format</SimpleValue>
+        <SimpleValue>Chilean Peso</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BF</SimpleValue>
+        <SimpleValue>CNY</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>National drug code 5-4-2 format</SimpleValue>
+        <SimpleValue>Yuan Renminbi</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BG</SimpleValue>
+        <SimpleValue>CNH</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>National drug code</SimpleValue>
+        <SimpleValue>Renminbi (offshore)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BH</SimpleValue>
+        <SimpleValue>COP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Part number</SimpleValue>
+        <SimpleValue>Colombian Peso</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BI</SimpleValue>
+        <SimpleValue>COU</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Local Stock Number (LSN)</SimpleValue>
+        <SimpleValue>Unidad de Valor Real</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BJ</SimpleValue>
+        <SimpleValue>CRC</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Next higher assembly number</SimpleValue>
+        <SimpleValue>Costa Rican Colon</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BK</SimpleValue>
+        <SimpleValue>CUP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Data category</SimpleValue>
+        <SimpleValue>Cuban Peso</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BL</SimpleValue>
+        <SimpleValue>CVE</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Control number</SimpleValue>
+        <SimpleValue>Cabo Verde Escudo</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BM</SimpleValue>
+        <SimpleValue>CZK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Special material identification code</SimpleValue>
+        <SimpleValue>Czech Koruna</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BN</SimpleValue>
+        <SimpleValue>DJF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Locally assigned control number</SimpleValue>
+        <SimpleValue>Djibouti Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BO</SimpleValue>
+        <SimpleValue>DKK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Buyer's colour</SimpleValue>
+        <SimpleValue>Danish Krone</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BP</SimpleValue>
+        <SimpleValue>DOP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Buyer's part number</SimpleValue>
+        <SimpleValue>Dominican Peso</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BQ</SimpleValue>
+        <SimpleValue>DZD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Variable measure product code</SimpleValue>
+        <SimpleValue>Algerian Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BR</SimpleValue>
+        <SimpleValue>EGP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Financial phase</SimpleValue>
+        <SimpleValue>Egyptian Pound</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BS</SimpleValue>
+        <SimpleValue>ERN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Contract breakdown</SimpleValue>
+        <SimpleValue>Nakfa</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BT</SimpleValue>
+        <SimpleValue>ETB</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Technical phase</SimpleValue>
+        <SimpleValue>Ethiopian Birr</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BU</SimpleValue>
+        <SimpleValue>EUR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Dye lot number</SimpleValue>
+        <SimpleValue>Euro</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BV</SimpleValue>
+        <SimpleValue>FJD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Daily statement of activities</SimpleValue>
+        <SimpleValue>Fiji Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BW</SimpleValue>
+        <SimpleValue>FKP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Periodical statement of activities within a bilaterally</SimpleValue>
+        <SimpleValue>Falkland Islands Pound</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BX</SimpleValue>
+        <SimpleValue>GBP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Calendar week statement of activities</SimpleValue>
+        <SimpleValue>Pound Sterling</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BY</SimpleValue>
+        <SimpleValue>GEL</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Calendar month statement of activities</SimpleValue>
+        <SimpleValue>Lari</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>BZ</SimpleValue>
+        <SimpleValue>GHS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Original equipment number</SimpleValue>
+        <SimpleValue>Ghana Cedi</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>CC</SimpleValue>
+        <SimpleValue>GIP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Industry commodity code</SimpleValue>
+        <SimpleValue>Gibraltar Pound</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>CG</SimpleValue>
+        <SimpleValue>GMD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Commodity grouping</SimpleValue>
+        <SimpleValue>Dalasi</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>CL</SimpleValue>
+        <SimpleValue>GNF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Colour number</SimpleValue>
+        <SimpleValue>Guinean Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>CR</SimpleValue>
+        <SimpleValue>GTQ</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Contract number</SimpleValue>
+        <SimpleValue>Quetzal</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>CV</SimpleValue>
+        <SimpleValue>GYD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Customs article number</SimpleValue>
+        <SimpleValue>Guyana Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>DR</SimpleValue>
+        <SimpleValue>HKD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Drawing revision number</SimpleValue>
+        <SimpleValue>Hong Kong Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>DW</SimpleValue>
+        <SimpleValue>HNL</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Drawing</SimpleValue>
+        <SimpleValue>Lempira</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>EC</SimpleValue>
+        <SimpleValue>HTG</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Engineering change level</SimpleValue>
+        <SimpleValue>Gourde</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>EF</SimpleValue>
+        <SimpleValue>HUF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Material code</SimpleValue>
+        <SimpleValue>Forint</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>EMD</SimpleValue>
+        <SimpleValue>IDR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>EMDN (European Medical Device Nomenclature)</SimpleValue>
+        <SimpleValue>Rupiah</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>EN</SimpleValue>
+        <SimpleValue>ILS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>International Article Numbering Association (EAN)</SimpleValue>
+        <SimpleValue>New Israeli Sheqel</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>FS</SimpleValue>
+        <SimpleValue>INR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Fish species</SimpleValue>
+        <SimpleValue>Indian Rupee</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>GB</SimpleValue>
+        <SimpleValue>IQD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Buyer's internal product group code</SimpleValue>
+        <SimpleValue>Iraqi Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>GMN</SimpleValue>
+        <SimpleValue>IRR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Global model number</SimpleValue>
+        <SimpleValue>Iranian Rial</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>GN</SimpleValue>
+        <SimpleValue>ISK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>National product group code</SimpleValue>
+        <SimpleValue>Iceland Krona</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>GS</SimpleValue>
+        <SimpleValue>JMD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>General specification number</SimpleValue>
+        <SimpleValue>Jamaican Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>HS</SimpleValue>
+        <SimpleValue>JOD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Harmonised system</SimpleValue>
+        <SimpleValue>Jordanian Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>IB</SimpleValue>
+        <SimpleValue>JPY</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>ISBN (International Standard Book Number)</SimpleValue>
+        <SimpleValue>Yen</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>IN</SimpleValue>
+        <SimpleValue>KES</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Buyer's item number</SimpleValue>
+        <SimpleValue>Kenyan Shilling</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>IS</SimpleValue>
+        <SimpleValue>KGS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>ISSN (International Standard Serial Number)</SimpleValue>
+        <SimpleValue>Som</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>IT</SimpleValue>
+        <SimpleValue>KHR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Buyer's style number</SimpleValue>
+        <SimpleValue>Riel</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>IZ</SimpleValue>
+        <SimpleValue>KMF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Buyer's size code</SimpleValue>
+        <SimpleValue>Comorian Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>MA</SimpleValue>
+        <SimpleValue>KPW</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Machine number</SimpleValue>
+        <SimpleValue>North Korean Won</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>MF</SimpleValue>
+        <SimpleValue>KRW</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Manufacturer's (producer's) article number</SimpleValue>
+        <SimpleValue>Won</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>MN</SimpleValue>
+        <SimpleValue>KWD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Model number</SimpleValue>
+        <SimpleValue>Kuwaiti Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>MP</SimpleValue>
+        <SimpleValue>KYD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Product/service identification number</SimpleValue>
+        <SimpleValue>Cayman Islands Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>NB</SimpleValue>
+        <SimpleValue>KZT</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Batch number</SimpleValue>
+        <SimpleValue>Tenge</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>ON</SimpleValue>
+        <SimpleValue>LAK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Customer order number</SimpleValue>
+        <SimpleValue>Lao Kip</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>PD</SimpleValue>
+        <SimpleValue>LBP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Part number description</SimpleValue>
+        <SimpleValue>Lebanese Pound</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>PL</SimpleValue>
+        <SimpleValue>LKR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Purchaser's order line number</SimpleValue>
+        <SimpleValue>Sri Lanka Rupee</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>PO</SimpleValue>
+        <SimpleValue>LRD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Purchase order number</SimpleValue>
+        <SimpleValue>Liberian Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>PPI</SimpleValue>
+        <SimpleValue>LSL</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Phytosanitary Passport identifier</SimpleValue>
+        <SimpleValue>Loti</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>PV</SimpleValue>
+        <SimpleValue>LYD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Promotional variant number</SimpleValue>
+        <SimpleValue>Libyan Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>QS</SimpleValue>
+        <SimpleValue>MAD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Buyer's qualifier for size</SimpleValue>
+        <SimpleValue>Moroccan Dirham</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>RC</SimpleValue>
+        <SimpleValue>MDL</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Returnable container number</SimpleValue>
+        <SimpleValue>Moldovan Leu</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>RN</SimpleValue>
+        <SimpleValue>MGA</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Release number</SimpleValue>
+        <SimpleValue>Malagasy Ariary</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>RU</SimpleValue>
+        <SimpleValue>MKD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Run number</SimpleValue>
+        <SimpleValue>Denar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>RY</SimpleValue>
+        <SimpleValue>MMK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Record keeping of model year</SimpleValue>
+        <SimpleValue>Kyat</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SA</SimpleValue>
+        <SimpleValue>MNT</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Supplier's article number</SimpleValue>
+        <SimpleValue>Tugrik</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SG</SimpleValue>
+        <SimpleValue>MOP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Standard group of products (mixed assortment)</SimpleValue>
+        <SimpleValue>Pataca</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SK</SimpleValue>
+        <SimpleValue>MRU</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>SKU (Stock keeping unit)</SimpleValue>
+        <SimpleValue>Ouguiya</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SN</SimpleValue>
+        <SimpleValue>MUR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Serial number</SimpleValue>
+        <SimpleValue>Mauritius Rupee</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRS</SimpleValue>
+        <SimpleValue>MVR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>RSK number</SimpleValue>
+        <SimpleValue>Rufiyaa</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRT</SimpleValue>
+        <SimpleValue>MWK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>IFLS (Institut Francais du Libre Service) 5 digit product</SimpleValue>
+        <SimpleValue>Malawi Kwacha</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRU</SimpleValue>
+        <SimpleValue>MXN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>IFLS (Institut Francais du Libre Service) 9 digit product</SimpleValue>
+        <SimpleValue>Mexican Peso</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRV</SimpleValue>
+        <SimpleValue>MXV</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>GS1 Global Trade Item Number</SimpleValue>
+        <SimpleValue>Mexican Unidad de Inversion (UDI)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRW</SimpleValue>
+        <SimpleValue>MYR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>EDIS (Energy Data Identification System)</SimpleValue>
+        <SimpleValue>Malaysian Ringgit</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRX</SimpleValue>
+        <SimpleValue>MZN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Slaughter number</SimpleValue>
+        <SimpleValue>Mozambique Metical</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRY</SimpleValue>
+        <SimpleValue>NAD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Official animal number</SimpleValue>
+        <SimpleValue>Namibia Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SRZ</SimpleValue>
+        <SimpleValue>NGN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Harmonized tariff schedule</SimpleValue>
+        <SimpleValue>Naira</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SS</SimpleValue>
+        <SimpleValue>NIO</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Supplier's supplier article number</SimpleValue>
+        <SimpleValue>Cordoba Oro</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSA</SimpleValue>
+        <SimpleValue>NOK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>46 Level DOT Code</SimpleValue>
+        <SimpleValue>Norwegian Krone</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSB</SimpleValue>
+        <SimpleValue>NPR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Airline Tariff 6D</SimpleValue>
+        <SimpleValue>Nepalese Rupee</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSC</SimpleValue>
+        <SimpleValue>NZD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Title 49 Code of Federal Regulations</SimpleValue>
+        <SimpleValue>New Zealand Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSD</SimpleValue>
+        <SimpleValue>OMR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>International Civil Aviation Administration code</SimpleValue>
+        <SimpleValue>Rial Omani</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSE</SimpleValue>
+        <SimpleValue>PAB</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Hazardous Materials ID DOT</SimpleValue>
+        <SimpleValue>Balboa</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSF</SimpleValue>
+        <SimpleValue>PEN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Endorsement</SimpleValue>
+        <SimpleValue>Sol</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSG</SimpleValue>
+        <SimpleValue>PGK</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Air Force Regulation 71-4</SimpleValue>
+        <SimpleValue>Kina</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSH</SimpleValue>
+        <SimpleValue>PHP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Breed</SimpleValue>
+        <SimpleValue>Philippine Peso</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSI</SimpleValue>
+        <SimpleValue>PKR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Chemical Abstract Service (CAS) registry number</SimpleValue>
+        <SimpleValue>Pakistan Rupee</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSJ</SimpleValue>
+        <SimpleValue>PLN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Engine model designation</SimpleValue>
+        <SimpleValue>Zloty</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSK</SimpleValue>
+        <SimpleValue>PYG</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Institutional Meat Purchase Specifications (IMPS) Number</SimpleValue>
+        <SimpleValue>Guarani</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSL</SimpleValue>
+        <SimpleValue>QAR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Price Look-Up code (PLU)</SimpleValue>
+        <SimpleValue>Qatari Rial</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSM</SimpleValue>
+        <SimpleValue>RON</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>International Maritime Organization (IMO) Code</SimpleValue>
+        <SimpleValue>Romanian Leu</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSN</SimpleValue>
+        <SimpleValue>RSD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Bureau of Explosives 600-A (rail)</SimpleValue>
+        <SimpleValue>Serbian Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SSO</SimpleValue>
+        <SimpleValue>RUB</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>United Nations Dangerous Goods List</SimpleValue>
+        <SimpleValue>Russian Ruble</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>RWF</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Rwanda Franc</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SAR</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Saudi Riyal</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SBD</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Solomon Islands Dollar</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SCR</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Seychelles Rupee</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SDG</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Sudanese Pound</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SEK</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Swedish Krona</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SGD</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Singapore Dollar</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SHP</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Saint Helena Pound</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SLE</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Sierra Leone (new valuation 2022)</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SOS</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Somali Shilling</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>SRD</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Surinam Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
@@ -978,199 +1066,7 @@ Do NOT edit!</ext:info>
         <SimpleValue>SSP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>International Code of Botanical Nomenclature (ICBN)</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSQ</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>International Code of Zoological Nomenclature (ICZN)</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSR</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>International Code of Nomenclature for Cultivated Plants</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSS</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Distributor’s article identifier</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SST</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Norwegian Classification system ENVA</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSU</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Supplier assigned classification</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSV</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Mexican classification system AMECE</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSW</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>German classification system CCG</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSX</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Finnish classification system EANFIN</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSY</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Canadian classification system ICC</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>SSZ</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>French classification system IFLS5</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>ST</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Style number</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STA</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Dutch classification system CBL</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STB</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Japanese classification system JICFS</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STC</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>European Union dairy subsidy eligibility classification</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STD</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>GS1 Spain classification system</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STE</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>GS1 Poland classification system</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STF</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Federal Agency on Technical Regulating and Metrology of the</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STG</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>Efficient Consumer Response (ECR) Austria classification</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STH</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>GS1 Italy classification system</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STI</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>CPV (Common Procurement Vocabulary)</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STJ</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>IFDA (International Foodservice Distributors Association)</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STK</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>AHFS (American Hospital Formulary Service) pharmacologic -</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STL</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>ATC (Anatomical Therapeutic Chemical) classification system</SimpleValue>
-      </Value>
-    </Row>
-    <Row>
-      <Value ColumnRef="Code">
-        <SimpleValue>STM</SimpleValue>
-      </Value>
-      <Value ColumnRef="Name">
-        <SimpleValue>CLADIMED (Classification des Dispositifs Médicaux)</SimpleValue>
+        <SimpleValue>South Sudanese Pound</SimpleValue>
       </Value>
     </Row>
     <Row>
@@ -1178,335 +1074,383 @@ Do NOT edit!</ext:info>
         <SimpleValue>STN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>CMDR (Canadian Medical Device Regulations) classification</SimpleValue>
+        <SimpleValue>Dobra</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STO</SimpleValue>
+        <SimpleValue>SVC</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>CNDM (Classificazione Nazionale dei Dispositivi Medici)</SimpleValue>
+        <SimpleValue>El Salvador Colon</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STP</SimpleValue>
+        <SimpleValue>SYP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UK DM&amp;D (Dictionary of Medicines &amp; Devices) standard coding</SimpleValue>
+        <SimpleValue>Syrian Pound</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STQ</SimpleValue>
+        <SimpleValue>SZL</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>eCl@ss</SimpleValue>
+        <SimpleValue>Lilangeni</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STR</SimpleValue>
+        <SimpleValue>THB</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>EDMA (European Diagnostic Manufacturers Association)</SimpleValue>
+        <SimpleValue>Baht</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STS</SimpleValue>
+        <SimpleValue>TJS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>EGAR (European Generic Article Register)</SimpleValue>
+        <SimpleValue>Somoni</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STT</SimpleValue>
+        <SimpleValue>TMT</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>GMDN (Global Medical Devices Nomenclature)</SimpleValue>
+        <SimpleValue>Turkmenistan New Manat</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STU</SimpleValue>
+        <SimpleValue>TND</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>GPI (Generic Product Identifier)</SimpleValue>
+        <SimpleValue>Tunisian Dinar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STV</SimpleValue>
+        <SimpleValue>TOP</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>HCPCS (Healthcare Common Procedure Coding System)</SimpleValue>
+        <SimpleValue>Pa’anga</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STW</SimpleValue>
+        <SimpleValue>TRY</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>ICPS (International Classification for Patient Safety)</SimpleValue>
+        <SimpleValue>Turkish Lira</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STX</SimpleValue>
+        <SimpleValue>TTD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>MedDRA (Medical Dictionary for Regulatory Activities)</SimpleValue>
+        <SimpleValue>Trinidad and Tobago Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STY</SimpleValue>
+        <SimpleValue>TWD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Medical Columbus</SimpleValue>
+        <SimpleValue>New Taiwan Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>STZ</SimpleValue>
+        <SimpleValue>TZS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>NAPCS (North American Product Classification System)</SimpleValue>
+        <SimpleValue>Tanzanian Shilling</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUA</SimpleValue>
+        <SimpleValue>UAH</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>NHS (National Health Services) eClass</SimpleValue>
+        <SimpleValue>Hryvnia</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUB</SimpleValue>
+        <SimpleValue>UGX</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>US FDA (Food and Drug Administration) Product Code</SimpleValue>
+        <SimpleValue>Uganda Shilling</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUC</SimpleValue>
+        <SimpleValue>USD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>SNOMED CT (Systematized Nomenclature of Medicine-Clinical</SimpleValue>
+        <SimpleValue>US Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUD</SimpleValue>
+        <SimpleValue>USN</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UMDNS (Universal Medical Device Nomenclature System)</SimpleValue>
+        <SimpleValue>US Dollar (Next day)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUE</SimpleValue>
+        <SimpleValue>UYI</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>GS1 Global Returnable Asset Identifier, non-serialised</SimpleValue>
+        <SimpleValue>Uruguay Peso en Unidades Indexadas (UI)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUF</SimpleValue>
+        <SimpleValue>UYU</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>IMEI</SimpleValue>
+        <SimpleValue>Peso Uruguayo</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUG</SimpleValue>
+        <SimpleValue>UYW</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Waste Type (EMSA)</SimpleValue>
+        <SimpleValue>Unidad Previsional</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUH</SimpleValue>
+        <SimpleValue>UZS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Ship's store classification type</SimpleValue>
+        <SimpleValue>Uzbekistan Sum</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUI</SimpleValue>
+        <SimpleValue>VED</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Emergency fire code</SimpleValue>
+        <SimpleValue>Bolívar Soberano, new valuation</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUJ</SimpleValue>
+        <SimpleValue>VES</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Emergency spillage code</SimpleValue>
+        <SimpleValue>Bolívar Soberano</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUK</SimpleValue>
+        <SimpleValue>VND</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>IMDG packing group</SimpleValue>
+        <SimpleValue>Dong</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUL</SimpleValue>
+        <SimpleValue>VUV</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>MARPOL Code IBC</SimpleValue>
+        <SimpleValue>Vatu</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>SUM</SimpleValue>
+        <SimpleValue>WST</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>IMDG subsidiary risk class</SimpleValue>
+        <SimpleValue>Tala</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TG</SimpleValue>
+        <SimpleValue>XAF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Transport group number</SimpleValue>
+        <SimpleValue>CFA Franc BEAC</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TSN</SimpleValue>
+        <SimpleValue>XAG</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Taxonomic Serial Number</SimpleValue>
+        <SimpleValue>Silver</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TSO</SimpleValue>
+        <SimpleValue>XAU</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>IMDG main hazard class</SimpleValue>
+        <SimpleValue>Gold</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TSP</SimpleValue>
+        <SimpleValue>XBA</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>EU Combined Nomenclature</SimpleValue>
+        <SimpleValue>Bond Markets Unit European Composite Unit (EURCO)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TSQ</SimpleValue>
+        <SimpleValue>XBB</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Therapeutic classification number</SimpleValue>
+        <SimpleValue>Bond Markets Unit European Monetary Unit (E.M.U.-6)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TSR</SimpleValue>
+        <SimpleValue>XBC</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>European Waste Catalogue</SimpleValue>
+        <SimpleValue>Bond Markets Unit European Unit of Account 9 (E.U.A.-9)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TSS</SimpleValue>
+        <SimpleValue>XBD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Price grouping code</SimpleValue>
+        <SimpleValue>Bond Markets Unit European Unit of Account 17 (E.U.A.-17)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TST</SimpleValue>
+        <SimpleValue>XCD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UNSPSC</SimpleValue>
+        <SimpleValue>East Caribbean Dollar</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>TSU</SimpleValue>
+        <SimpleValue>XCG</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>EU RoHS Directive</SimpleValue>
+        <SimpleValue>Caribbean guilder</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>UA</SimpleValue>
+        <SimpleValue>XDR</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Ultimate customer's article number</SimpleValue>
+        <SimpleValue>SDR (Special Drawing Right)</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>UP</SimpleValue>
+        <SimpleValue>XOF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>UPC (Universal product code)</SimpleValue>
+        <SimpleValue>CFA Franc BCEAO</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>VN</SimpleValue>
+        <SimpleValue>XPD</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Vendor item number</SimpleValue>
+        <SimpleValue>Palladium</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>VP</SimpleValue>
+        <SimpleValue>XPF</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Vendor's (seller's) part number</SimpleValue>
+        <SimpleValue>CFP Franc</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>VS</SimpleValue>
+        <SimpleValue>XPT</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Vendor's supplemental item number</SimpleValue>
+        <SimpleValue>Platinum</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>VX</SimpleValue>
+        <SimpleValue>XSU</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Vendor specification number</SimpleValue>
+        <SimpleValue>Sucre</SimpleValue>
       </Value>
     </Row>
     <Row>
       <Value ColumnRef="Code">
-        <SimpleValue>ZZZ</SimpleValue>
+        <SimpleValue>XTS</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
-        <SimpleValue>Mutually defined</SimpleValue>
+        <SimpleValue>Codes specifically reserved for testing purposes</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>XUA</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>ADB Unit of Account</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>XXX</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>The codes assigned for transactions where no currency is involved</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>YER</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Yemeni Rial</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>ZAR</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Rand</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>ZMW</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Zambian Kwacha</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>ZWG</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Zimbabwe Gold</SimpleValue>
       </Value>
     </Row>
   </SimpleCodeList>

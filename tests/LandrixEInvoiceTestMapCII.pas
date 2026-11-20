@@ -1247,6 +1247,49 @@ begin
   end;
 end;
 
+{ What CEN 1.3.17 will reject is written as before, with an info: a second
+  card (CII-SR-495) or debited account (CII-SR-496) in the CII as written,
+  after pruning. }
+procedure TestCen1317Hints;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  I: Integer;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    Invoice.InvoiceCurrencyCode := 'EUR';
+    for I := 1 to 2 do
+      with Invoice.PaymentTypes.AddPaymentType do
+      begin
+        PaymentMeansCode := ipmc_CreditCard;
+        FinancialAccount := TLandrixEInvoiceString('1234' + IntToStr(I));
+      end;
+    for I := 1 to 2 do
+      with Invoice.PaymentTypes.AddPaymentType do
+      begin
+        PaymentMeansCode := ipmc_SEPADirectDebit;
+        FinancialAccount := TLandrixEInvoiceString('DE8937040044053201300' + IntToStr(I));
+      end;
+    D.Clear;
+    MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, nil);
+    CheckEquals(1, CountKind(D, edk_DuplicateElement, '/ram:ApplicableTradeSettlementFinancialCard'), 'second card');
+    CheckEquals(1, CountKind(D, edk_DuplicateElement, '/ram:PayerPartyDebtorFinancialAccount'), 'second account');
+    for I := 0 to D.Count - 1 do
+      if D[I].Kind = edk_DuplicateElement then
+        Check(D[I].Severity = eds_Info, 'an info: ' + string(D[I].Message));
+    { MINIMUM writes no payment means: nothing to report }
+    D.Clear;
+    MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Minimum), D, nil);
+    CheckEquals(0, CountKind(D, edk_DuplicateElement, '/ram:ApplicableTradeSettlementFinancialCard'), 'MINIMUM: card');
+    CheckEquals(0, CountKind(D, edk_DuplicateElement, '/ram:PayerPartyDebtorFinancialAccount'), 'MINIMUM: account');
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { Factur-X EXTENDED takes several invoiced object identifiers (BT-18);
   elsewhere only the first is written (CII-SR-458). }
 procedure TestObjectIdentifiers;
@@ -1445,6 +1488,7 @@ end;
 procedure Register;
 begin
   RegisterTest('MapCII.GoldenWrite', TestGoldenWrite);
+  RegisterTest('MapCII.Cen1317Hints', TestCen1317Hints);
   RegisterTest('MapCII.GoldenRead', TestGoldenRead);
   RegisterTest('MapCII.ReadReports', TestReadReports);
   RegisterTest('MapCII.WriteRules', TestWriteRules);

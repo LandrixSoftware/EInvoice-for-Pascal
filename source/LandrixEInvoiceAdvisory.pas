@@ -55,6 +55,11 @@
   holder who is not the seller without a payee (info), a SEPA direct debit
   without mandate reference, creditor identifier or debited account.
 
+  Family eaf_German (LX-DE), legal, only on request: seller and buyer in
+  Germany with the profile MINIMUM or BASIC WL, which is no permitted
+  e-invoice format according to the BMF (LX-DE-01; for a hybrid PDF
+  BR-HYBRID-DE-01/02 say it as an error).
+
   What the rule check of the same invoice reported is not repeated
   (AReported of LandrixEInvoiceAdvise).
 
@@ -103,6 +108,11 @@
   Zahlungsempfaenger (Hinweis), eine SEPA-Lastschrift ohne Mandatsreferenz,
   Glaeubiger-Identifikationsnummer oder belastetes Konto.
 
+  Familie eaf_German (LX-DE), rechtlich, nur auf Anforderung: Verkaeufer
+  und Kaeufer in Deutschland mit dem Profil MINIMUM oder BASIC WL, das nach
+  dem BMF kein zulaessiges E-Rechnungsformat ist (LX-DE-01; bei einem
+  hybriden PDF sagen BR-HYBRID-DE-01/02 das als Fehler).
+
   Was die Regelpruefung derselben Rechnung gemeldet hat, wird nicht
   wiederholt (AReported von LandrixEInvoiceAdvise). }
 
@@ -126,11 +136,13 @@ uses
 type
   { The families of advisory checks. eaf_Identifiers: identifiers and
     characters (LX-ID), technical. eaf_Plausibility: dates and payment
-    (LX-PL), technical.
+    (LX-PL), technical. eaf_German: German tax law (LX-DE), legal, only on
+    request.
     DE: Die Familien der Hinweispruefungen. eaf_Identifiers: Kennungen und
     Zeichen (LX-ID), technisch. eaf_Plausibility: Daten und Zahlung
-    (LX-PL), technisch. }
-  TLandrixEInvoiceAdvisoryFamily = (eaf_Identifiers, eaf_Plausibility);
+    (LX-PL), technisch. eaf_German: deutsches Steuerrecht (LX-DE),
+    rechtlich, nur auf Anforderung. }
+  TLandrixEInvoiceAdvisoryFamily = (eaf_Identifiers, eaf_Plausibility, eaf_German);
   TLandrixEInvoiceAdvisoryFamilies = set of TLandrixEInvoiceAdvisoryFamily;
 
 const
@@ -150,7 +162,8 @@ const
   AReported: the rule identifiers the rule check (LandrixEInvoiceCheckInvoice)
   of the same invoice reported (nil for none): what they report is not
   repeated (PEPPOL-COMMON-R040, PEPPOL-EN16931-R061, BR-DE-19, BR-DE-20,
-  BR-DE-25-a, BR-DE-30, BR-DE-31, DE-R-019, DE-R-020, DE-R-030, DE-R-031).
+  BR-DE-25-a, BR-DE-30, BR-DE-31, DE-R-019, DE-R-020, DE-R-030, DE-R-031,
+  and of a hybrid PDF BR-HYBRID-DE-01 and BR-HYBRID-DE-02).
   Returns the number of hints.
   DE: Fuehrt die Hinweispruefungen von AFamilies auf AInvoice fuer ATarget
   aus (das aus dem Dokument gelesene Ziel, Standard est_None, wenn
@@ -165,7 +178,8 @@ const
   (LandrixEInvoiceCheckInvoice) derselben Rechnung gemeldet hat (nil fuer
   keine): was sie melden, wird nicht wiederholt (PEPPOL-COMMON-R040,
   PEPPOL-EN16931-R061, BR-DE-19, BR-DE-20, BR-DE-25-a, BR-DE-30, BR-DE-31,
-  DE-R-019, DE-R-020, DE-R-030, DE-R-031). Liefert die Zahl der
+  DE-R-019, DE-R-020, DE-R-030, DE-R-031, bei einem hybriden PDF
+  BR-HYBRID-DE-01 und BR-HYBRID-DE-02). Liefert die Zahl der
   Hinweise. }
 function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
   AFamilies: TLandrixEInvoiceAdvisoryFamilies; ADiagnostics: TLandrixEInvoiceDiagnostics;
@@ -1556,6 +1570,41 @@ begin
   end;
 end;
 
+{ --- German tax law ---------------------------------------------------------- }
+
+{ LX-DE-01: seller and buyer in Germany (BT-40, BT-55) with the profile
+  MINIMUM or BASIC WL (BT-24): no permitted e-invoice format according to
+  the BMF (letter of 15 October 2025); whether it is an invoice in the
+  sense of the VAT act is not said. Not after BR-HYBRID-DE-01/02.
+  DE: LX-DE-01: Verkaeufer und Kaeufer in Deutschland (BT-40, BT-55) mit
+  dem Profil MINIMUM oder BASIC WL (BT-24): nach dem BMF (Schreiben vom
+  15. Oktober 2025) kein zulaessiges E-Rechnungsformat; ob es eine
+  Rechnung im Sinne des UStG ist, wird nicht gesagt. Nicht nach
+  BR-HYBRID-DE-01/02. }
+function CheckGerman(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; AReported: TStrings): Integer;
+var
+  Name: string;
+begin
+  Result := 0;
+  if (AReported <> nil) and ((AReported.IndexOf('BR-HYBRID-DE-01') >= 0) or
+     (AReported.IndexOf('BR-HYBRID-DE-02') >= 0)) then
+    Exit;
+  if ATarget.Profile = epr_Minimum then
+    Name := 'MINIMUM'
+  else if ATarget.Profile = epr_BasicWL then
+    Name := 'BASIC WL'
+  else
+    Exit;
+  if (AInvoice.AccountingSupplierParty.Address.CountryCode <> 'DE') or
+     (AInvoice.AccountingCustomerParty.Address.CountryCode <> 'DE') then
+    Exit;
+  AddHint(ADiagnostics, Result, 'LX-DE-01', '', eds_Warning, 'Seller and buyer are in Germany; the profile ' + Name +
+    ' is no permitted e-invoice format according to the BMF (letter of 15 October 2025)', '', '');
+  if ADiagnostics <> nil then
+    ADiagnostics[ADiagnostics.Count - 1].Terms := 'BT-24';
+end;
+
 { --- entry points ------------------------------------------------------------ }
 
 function LandrixEInvoiceAdvise(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
@@ -1569,6 +1618,8 @@ begin
   Result := 0;
   if AInvoice = nil then
     Exit;
+  if eaf_German in AFamilies then
+    Inc(Result, CheckGerman(AInvoice, ATarget, ADiagnostics, AReported));
   if eaf_Plausibility in AFamilies then
   begin
     Plausibility := TPlausibilityChecker.Create;

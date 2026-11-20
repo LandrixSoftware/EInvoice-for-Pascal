@@ -10,28 +10,28 @@
         "territories.json": "7a588516781c3d235e7e0d4557f20c65e8c81bd1887f301283c616e1e26734ac"
       }
     },
-    "ec-v17": {
-      "title": "European Commission, EN16931 code lists values, version 17 (genericode), valid from 2026-05-15",
+    "ec-v18": {
+      "title": "European Commission, EN16931 code lists values, version 18 (genericode), valid from 2026-11-15",
       "registry": "https://ec.europa.eu/digital-building-blocks/sites/display/DIGITAL/Registry+of+supporting+artefacts+to+implement+EN16931",
-      "url": "https://ec.europa.eu/digital-building-blocks/sites/download/attachments/467108974/digital-genericodes-2026-05-15.zip?version=2&modificationDate=1776349554309&api=v2",
-      "zip_sha256": "b10ac254517f3173311498e200829483cdca3c11f4d8046820c72e53ced0c926",
-      "retrieved": "2026-10-16",
+      "url": "https://ec.europa.eu/digital-building-blocks/sites/download/attachments/467108974/digital-genericodes-2026-11-15.zip?version=1&modificationDate=1793009563110&api=v2",
+      "zip_sha256": "679f7bd6b4656b0dc5da2566b79449e0269e7e4fd01394136d0fbd5c11f5d796",
+      "retrieved": "2026-11-20",
       "files": {
-        "1001.gc": "7226d84b2fa3100fd43464f33ad0d570fce382ae568f1fed848f2086d7c31fa7",
-        "1153.gc": "065ee0bb3a6d3e3cfd6e5d4361a2ceefcd77fbc9f00950b4eb26f8d5639d8d21",
-        "5305.gc": "276445487a6e2f3753df1715b60e091294c5e85b496f682e6456bfba86ca5354",
-        "Allowance.gc": "47983df3179fffa3ff44b56395d4d5ad202326b57d18d89fdadb2d3b7f5af58d",
-        "Charge.gc": "7f44bcfb7ebc28ca3a185aac771939615e6bd6a591ae731260c1bdd5befebe2c",
-        "Country.gc": "30b6c041c0a0a30cfe1dbcb1824c4c8e0605acd14214f0d1105be9d651a00f8b",
-        "Currency.gc": "f9c84250bcd224bd2b796c0381a1bda74fe14daea07b4777cce38630df44265c",
-        "EAS.gc": "e5060e426c8f90bec5b1845683863678ed48a270888d78f0bf9f38ec9a2ea36e",
-        "ICD.gc": "53582abe3a3d99420fb052b84fb25221efe7eec5ff7da06623889180284c30bf",
-        "Item.gc": "740fff92392e35f1b6e59c2bc5e07d2ba619f1998946e1fbc12e5ec5cdf5a6eb",
-        "MIME.gc": "f088b66b09537e42bf703112a5ac519b3c6472de8210253bed753559cd166195",
-        "Payment.gc": "3e29b6db578f5b4ddb1706338168ecda161d081935b7c69e81658bdeb171f368",
-        "Text.gc": "8d9a9ed2e4a5473d5256007a0b8d32d28c5672d317a6e06ff409330f6a62cce8",
-        "Unit.gc": "ee2e3a90a059b5ef1f17473267f4677196ee1f98a1b5f3333ee5f8ca615dd13c",
-        "VATEX.gc": "3ac67d81d3bdf1cf34173f1b99b67b820a5db52a4111f4aada22c193f0c02d7b"
+        "1001.gc": "23ac5917b81dfe189e4a2f6642496e693878ccce90703e9fb6ac689cfbdfa18d",
+        "1153.gc": "6c6db2250a33dbd89fcf31e48db5f183b13b60f9efa726a9858946fd50a14424",
+        "5305.gc": "5222f38875d6abdefb9053a6a480c8cdde35763807369c11121f19216bfee293",
+        "Allowance.gc": "b1bc602c0954d8816478fa6ac88d16d1a3ce9a1c8d8ce7601dcfe1cba58fd1ce",
+        "Charge.gc": "c86026b1983e129e7526cec6be7db6bd4e2181f5ccc0de091513b0024a62e965",
+        "Country.gc": "61451c559aae3f5114caa01794302eeef59ea5b400db6bd6ddfda0d107357e4e",
+        "Currency.gc": "9976b8a2dd60e605a8903517cad36b7eb95eabb4c4c9187f0d566adde645292e",
+        "EAS.gc": "6f2636b0b2a5a37974a27d485f6dcbdaa846ec636584e14dfc701e6f4054efc7",
+        "ICD.gc": "bafb0b151a08a0fc882f66eea98b8c05f5845b6440956893570d9382ae47b791",
+        "Item.gc": "b2d0071b6ae149d6999c72eb2cf8ef44c4e31a9d316799b26f0c81286dc76a2d",
+        "MIME.gc": "2e074bc5b9f94bb832e49ab0944c45834a8384ce79e626ffcf0bd43ff40b6510",
+        "Payment.gc": "295378e08ef6eaecc4ee72c1b26918206341277b8ae8003f5c0085d06097ae05",
+        "Text.gc": "8d51a201398de9a8a44016fb3a2ae12a67198525bf8a180c5ad8870bdf36a6a2",
+        "Unit.gc": "d5ea6c7c126c87e11212c5e12de7920d987b0cc15867a4acc913c90ca68d68b5",
+        "VATEX.gc": "52a53b9df0b83eaa08a47b339af64b80b5f32e9715c20e96a2348226c6f34aee"
       }
     }
   },
@@ -50,7 +50,7 @@
       "func": "TypeCode",
       "prefix": "itc_",
       "none": "itc_None",
-      "source": "ec-v17/1001.gc",
+      "source": "ec-v18/1001.gc",
       "members": "members/type-code.json",
       "doc": [
         "Invoice type code (BT-3), UNTDID 1001 as allowed by EN 16931.",
@@ -63,7 +63,7 @@
       "func": "PaymentMeansCode",
       "prefix": "ipmc_",
       "none": "ipmc_NotImplemented",
-      "source": "ec-v17/Payment.gc",
+      "source": "ec-v18/Payment.gc",
       "members": "members/payment-means-code.json",
       "doc": [
         "Payment means type code (BT-81), UNTDID 4461.",
@@ -75,7 +75,7 @@
       "func": "UnitCode",
       "prefix": "iuc_",
       "none": "iuc_None",
-      "source": "ec-v17/Unit.gc",
+      "source": "ec-v18/Unit.gc",
       "members": "members/unit-code.json",
       "read_aliases": {"HAR": "H18"},
       "doc": [
@@ -92,7 +92,7 @@
       "func": "AttachmentType",
       "prefix": "iat_",
       "none": "iat_application_None",
-      "source": "ec-v17/MIME.gc",
+      "source": "ec-v18/MIME.gc",
       "members": "members/attachment-type.json",
       "extra_codes": [
         {"code": "application/xml", "name": "XML, allowed by XRechnung since 2.0.0"}
@@ -132,7 +132,7 @@
       "func": "AllowanceOrChargeIdentCode",
       "prefix": "iacic_",
       "none": "iacic_None",
-      "source": "ec-v17/Allowance.gc",
+      "source": "ec-v18/Allowance.gc",
       "members": "members/allowance-reason-code.json",
       "doc": [
         "Reason code of an allowance (BT-98, BT-140), UNTDID 5189 as allowed",
@@ -146,7 +146,7 @@
       "func": "SpecialServiceDescriptionCode",
       "prefix": "issdc_",
       "none": "issdc_None",
-      "source": "ec-v17/Charge.gc",
+      "source": "ec-v18/Charge.gc",
       "members": "members/charge-reason-code.json",
       "doc": [
         "Reason code of a charge (BT-105, BT-145), UNTDID 7161.",
@@ -158,7 +158,7 @@
       "func": "DutyTaxFeeCategoryCode",
       "prefix": "idtfcc_",
       "none": "idtfcc_None",
-      "source": "ec-v17/5305.gc",
+      "source": "ec-v18/5305.gc",
       "members": "members/tax-category-code.json",
       "doc": [
         "VAT category code (BT-95, BT-102, BT-118, BT-151), UNTDID 5305 as",
@@ -179,7 +179,7 @@
       "func": "NoteSubjectCode",
       "prefix": "insc_",
       "none": "insc_None",
-      "source": "ec-v17/Text.gc",
+      "source": "ec-v18/Text.gc",
       "members": "members/note-subject-code.json",
       "doc": [
         "Subject of an invoice note (BT-21), UNTDID 4451. \"Not set\" means free",
@@ -193,7 +193,7 @@
       "func": "CountryCode",
       "prefix": "icc_",
       "none": "icc_None",
-      "source": "ec-v17/Country.gc",
+      "source": "ec-v18/Country.gc",
       "doc": [
         "Country code (BT-40, BT-55, BT-69, BT-80, BT-159), ISO 3166-1 alpha-2",
         "as used by EN 16931.",
@@ -206,7 +206,7 @@
       "func": "CurrencyCode",
       "prefix": "icur_",
       "none": "icur_None",
-      "source": "ec-v17/Currency.gc",
+      "source": "ec-v18/Currency.gc",
       "doc": [
         "Currency code (BT-5, BT-6), ISO 4217 as used by EN 16931.",
         "DE: Waehrungscode (BT-5, BT-6), ISO 4217 wie in EN 16931 verwendet."
@@ -217,7 +217,7 @@
       "func": "ElectronicAddressScheme",
       "prefix": "ieas_",
       "none": "ieas_None",
-      "source": "ec-v17/EAS.gc",
+      "source": "ec-v18/EAS.gc",
       "doc": [
         "Scheme of an electronic address (BT-34-1, BT-49-1), Electronic Address",
         "Scheme (EAS) code list, e.g. 9930 or EM.",
@@ -230,7 +230,7 @@
       "func": "IdentifierScheme",
       "prefix": "iicd_",
       "none": "iicd_None",
-      "source": "ec-v17/ICD.gc",
+      "source": "ec-v18/ICD.gc",
       "doc": [
         "Scheme of an identifier (e.g. BT-29-1, BT-46-1, BT-60-1, BT-71-1,",
         "BT-157-1), ISO/IEC 6523 International Code Designator (ICD), e.g. 0088",
@@ -246,7 +246,7 @@
       "prefix": "ivx_",
       "none": "ivx_None",
       "strip_prefix": "VATEX-",
-      "source": "ec-v17/VATEX.gc",
+      "source": "ec-v18/VATEX.gc",
       "doc": [
         "VAT exemption reason code (BT-121), VATEX code list; the member name",
         "drops the prefix VATEX- (ivx_EU_79_C is VATEX-EU-79-C).",
@@ -260,7 +260,7 @@
       "func": "ReferenceCodeQualifier",
       "prefix": "irc_",
       "none": "irc_None",
-      "source": "ec-v17/1153.gc",
+      "source": "ec-v18/1153.gc",
       "doc": [
         "Scheme of an object identifier (BT-18-1, BT-128-1), UNTDID 1153, e.g.",
         "ON for the buyer's order number.",
@@ -273,7 +273,7 @@
       "func": "ItemClassificationScheme",
       "prefix": "iics_",
       "none": "iics_None",
-      "source": "ec-v17/Item.gc",
+      "source": "ec-v18/Item.gc",
       "doc": [
         "Scheme of an item classification (BT-158-1), UNTDID 7143, e.g. GB.",
         "DE: Schema einer Artikelklassifizierung (BT-158-1), UNTDID 7143, z. B.",

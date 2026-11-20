@@ -239,6 +239,7 @@ type
     FPdf: TLandrixEInvoicePdfCheckResult;
     FKosit: TLandrixEInvoiceValidationResult;
     FXml: TMemoryStream;
+    FDocumentSha256: TLandrixEInvoiceString;
     function GetStatus(APart: TLandrixEInvoiceValidationPart): TLandrixEInvoicePartStatus;
     function GetInvoiceXml: TMemoryStream;
     function GetFindingCount: Integer;
@@ -330,6 +331,19 @@ type
       Stream, mehr als 2 GB, ein PDF ohne Rechnung). Gehoert dem Ergebnis;
       nur lesen. }
     property InvoiceXml: TMemoryStream read GetInvoiceXml;
+    { The SHA-256 (64 lowercase hex digits) of the bytes that were
+      validated: the stream from its position to its end, the whole PDF
+      for a PDF; '' without a stream or with more than 2 GB.
+      DE: Der SHA-256 (64 kleine Hexziffern) der geprueften Bytes: der
+      Stream von seiner Position bis zum Ende, bei einem PDF das ganze PDF;
+      '' ohne Stream oder bei mehr als 2 GB. }
+    property DocumentSha256: TLandrixEInvoiceString read FDocumentSha256;
+    { The SHA-256 of InvoiceXml as it is (for a PDF the decoded embedded
+      file, for XML the same as DocumentSha256); '' when InvoiceXml is nil.
+      DE: Der SHA-256 von InvoiceXml, wie es ist (bei einem PDF die
+      dekodierte eingebettete Datei, bei XML derselbe wie DocumentSha256);
+      '' wenn InvoiceXml nil ist. }
+    function InvoiceSha256: TLandrixEInvoiceString;
   end;
 
   { The options of a validation.
@@ -419,7 +433,8 @@ type
     constructor Create;
     destructor Destroy; override;
     { Validates the document in AStream, read from its position to the end
-      (a hybrid PDF if it starts with %PDF-, XML otherwise), fills AResult
+      (a hybrid PDF if %PDF- is within its first 1024 bytes and it does not
+      start like XML, XML otherwise), fills AResult
       and returns AResult.Verdict (see Verdict). For XML: with
       Options.Configuration the verdict is the KoSIT assessment; without it
       KoSIT stays evr_NotRun and the verdict is ev_Incomplete. Reading and
@@ -435,7 +450,8 @@ type
       TLandrixEInvoiceValidator.Validate) raises ELandrixEInvoiceError; an
       exception of AStream itself (e.g. EReadError) is passed on.
       DE: Prueft das Dokument in AStream, gelesen ab seiner Position bis
-      zum Ende (ein hybrides PDF, wenn es mit %PDF- beginnt, sonst XML),
+      zum Ende (ein hybrides PDF, wenn %PDF- in seinen ersten 1024 Bytes
+      steht und es nicht wie XML beginnt, sonst XML),
       fuellt AResult und liefert AResult.Verdict (siehe Verdict). Bei XML:
       mit Options.Configuration ist das Urteil die Bewertung von KoSIT;
       ohne bleibt KoSIT evr_NotRun und das Urteil ist ev_Incomplete. Lesen
@@ -466,6 +482,7 @@ type
 implementation
 
 uses
+  LandrixXmlSha256,
   LandrixEInvoiceSpecs,
   LandrixEInvoiceCheck,
   LandrixEInvoicePdf;
@@ -532,6 +549,7 @@ begin
   FKosit := nil;
   FXml.Free;
   FXml := nil;
+  FDocumentSha256 := '';
   Finalize(FInfo);
   FillChar(FInfo, SizeOf(FInfo), 0);
 end;
@@ -551,6 +569,23 @@ begin
   end
   else
     Result := FXml;
+end;
+
+{ the SHA-256 of a whole memory stream }
+function StreamSha256(AStream: TMemoryStream): TLandrixEInvoiceString;
+begin
+  Result := TLandrixEInvoiceString(LandrixXmlSha256Hex(PAnsiChar(AStream.Memory)^, Integer(AStream.Size)));
+end;
+
+function TLandrixEInvoiceDocumentValidation.InvoiceSha256: TLandrixEInvoiceString;
+var
+  Xml: TMemoryStream;
+begin
+  Xml := GetInvoiceXml;
+  if Xml = nil then
+    Result := ''
+  else
+    Result := StreamSha256(Xml);
 end;
 
 function TLandrixEInvoiceDocumentValidation.GetFindingCount: Integer;
@@ -683,6 +718,50 @@ begin
   inherited Destroy;
 end;
 
+{ True if AData is a PDF: %PDF- at the start, or within the first 1024
+  bytes as PDF readers accept it (the PDF checker reports the bytes before
+  it, LX-PDF-13), unless the data starts like XML (a UTF-16 byte order
+  mark, "<" in UTF-16 big endian, or after a UTF-8 byte order mark and
+  white space the first byte is "<"): an XML invoice that names %PDF- early
+  stays XML. Keeps the position.
+  DE: True, wenn AData ein PDF ist: %PDF- am Anfang oder, wie PDF-Leser es
+  annehmen, in den ersten 1024 Bytes (die PDF-Pruefung meldet die Bytes
+  davor, LX-PDF-13), ausser die Daten beginnen wie XML (eine
+  UTF-16-Bytereihenfolgemarke, "<" in UTF-16 Big Endian, oder nach einer
+  UTF-8-Bytereihenfolgemarke und Leerraum ist das erste Byte "<"): Eine
+  XML-Rechnung, die frueh %PDF- nennt, bleibt XML. Laesst die Position
+  unveraendert. }
+function IsPdfData(AData: TMemoryStream): Boolean;
+var
+  P: PAnsiChar;
+  Size, I, Last: Integer;
+begin
+  Result := TLandrixEInvoicePdfExtractor.IsPdfStream(AData);
+  if Result then
+    Exit;
+  Size := Integer(AData.Size);
+  P := PAnsiChar(AData.Memory);
+  if (Size >= 2) and (((P[0] = #$FF) and (P[1] = #$FE)) or ((P[0] = #$FE) and (P[1] = #$FF)) or
+     ((P[0] = #0) and (P[1] = '<'))) then
+    Exit;
+  I := 0;
+  if (Size >= 3) and (P[0] = #$EF) and (P[1] = #$BB) and (P[2] = #$BF) then
+    I := 3;
+  while (I < Size) and (P[I] in [#9, #10, #13, ' ']) do
+    Inc(I);
+  if (I < Size) and (P[I] = '<') then
+    Exit;
+  Last := Size - 5;
+  if Last > 1024 then
+    Last := 1024;
+  for I := 0 to Last do
+    if (P[I] = '%') and (P[I + 1] = 'P') and (P[I + 2] = 'D') and (P[I + 3] = 'F') and (P[I + 4] = '-') then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
 function TLandrixEInvoiceDocumentValidator.ValidateFile(const AFileName: string;
   AResult: TLandrixEInvoiceDocumentValidation): TLandrixEInvoiceVerdict;
 var
@@ -739,7 +818,8 @@ begin
     if Count > 0 then
       Data.CopyFrom(AStream, Count);
     Data.Position := 0;
-    if TLandrixEInvoicePdfExtractor.IsPdfStream(Data) then
+    AResult.FDocumentSha256 := StreamSha256(Data);
+    if IsPdfData(Data) then
       ValidatePdf(Data, AResult)
     else
     begin
@@ -1202,6 +1282,12 @@ begin
     for J := 0 to AResult.FindingCount - 1 do
       if (AResult[J].Part = evp_ModelCheck) and (AResult[J].RuleID <> '') then
         Reported.Add(string(AResult[J].RuleID));
+    { and the PDF checker (its findings are copied later)
+      DE: und die PDF-Pruefung (ihre Befunde werden spaeter uebernommen) }
+    if AResult.FPdf <> nil then
+      for J := 0 to AResult.FPdf.Diagnostics.Count - 1 do
+        if AResult.FPdf.Diagnostics[J].RuleID <> '' then
+          Reported.Add(string(AResult.FPdf.Diagnostics[J].RuleID));
     try
       Advise(ADoc.Invoice, Target, Reported, D);
     except

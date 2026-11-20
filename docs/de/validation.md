@@ -195,7 +195,8 @@ end.
   `LandrixEInvoiceAdvisoryTechnical`, `[]` schaltet sie ab): Hinweise zur gelesenen Rechnung, die kein
   Standard verlangt, Regeln LX-... (bisher LX-ID-01 bis LX-ID-10: unsichtbare und täuschende Zeichen
   und Kennungen nach ihrem Schema wie GLN, GTIN und Leitweg-ID; LX-PL-01 bis LX-PL-05: Daten und
-  Zahlung; siehe [Regeln dieser Bibliothek](rules.md)). Was die Regelprüfung derselben Validierung
+  Zahlung; auf Anforderung mit `eaf_German` LX-DE-01: MINIMUM oder BASIC WL zwischen deutschen
+  Beteiligten; siehe [Regeln dieser Bibliothek](rules.md)). Was die Regelprüfung derselben Validierung
   gemeldet hat, wird nicht wiederholt. Sie sind Hinweise oder Warnungen, nie Fehler, zählen
   nie für das Urteil und werden getrennt gezählt (`advisory` im XML-Bericht). `evp_Advisory` ist
   `evr_Passed`, wenn sie liefen, `evr_Incomplete`, wenn sie abbrachen (mit einer Warnung), nie
@@ -244,7 +245,10 @@ Elementpfad, Modellpfad der Regelprüfung oder Ort im PDF) und die Einzelheiten 
 den Attributen `terms`, `expected`, `found` und `calculation`. Urteil, Status, Schweregrad und Teil
 sind geschlossene Listen: ein neuer Wert ist eine neue Hauptversion. Standard, Profil, hybride Art
 sowie Wahl und Art der Konfiguration sind offen: einen unbekannten Wert als „sonstige“ behandeln.
-Version 1 (`schemas/landrix-einvoice-validation-report-1.xsd`) wird nicht mehr geschrieben.
+`document/@sha256` ist der SHA-256 der geprüften Bytes (die ganze Datei oder der Stream ab seiner
+Position), `pdf/@invoiceSha256` der der eingebetteten Rechnung, wie sie aus dem PDF dekodiert wurde
+(dieselben Werte: `DocumentSha256` und `InvoiceSha256` des Ergebnisses). Version 1
+(`schemas/landrix-einvoice-validation-report-1.xsd`) wird nicht mehr geschrieben.
 
 Der KoSIT-Prüfbericht: der Bericht, den der KoSIT-Validator schreibt, auf demselben Weg erzeugt.
 Der Berichtseingang (`LandrixEInvoiceKositReportInput`: Engine, Zeit, Hash des Dokuments, das

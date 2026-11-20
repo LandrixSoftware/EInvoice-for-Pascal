@@ -10,9 +10,9 @@ Do NOT edit!</ext:info>
   </Annotation>
   <Identification>
     <ShortName>EAS</ShortName>
-    <Version>2026-05-15</Version>
+    <Version>2026-11-15</Version>
     <CanonicalUri>urn:cef.eu:names:identifier:EAS</CanonicalUri>
-    <CanonicalVersionUri>urn:cef.eu:names:identifier:EAS-2026-05-15</CanonicalVersionUri>
+    <CanonicalVersionUri>urn:cef.eu:names:identifier:EAS-2026-11-15</CanonicalVersionUri>
   </Identification>
   <ColumnSet>
     <Column Id="Code" Use="required">
@@ -805,6 +805,14 @@ Organisationskennzeichen</SimpleValue>
       </Value>
       <Value ColumnRef="Name">
         <SimpleValue>Employer Identification Number (EIN, USA)</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>9960</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Taiwan Unified Business Number (UBN)</SimpleValue>
       </Value>
     </Row>
     <Row>

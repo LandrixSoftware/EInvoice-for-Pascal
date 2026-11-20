@@ -2122,6 +2122,10 @@ procedure TestCodeListDeltas;
 var
   Invoice: TLandrixInvoice;
   Subject: TLandrixInvoiceNoteSubjectCode;
+  EAS: TLandrixInvoiceElectronicAddressScheme;
+  ICD: TLandrixInvoiceIdentifierScheme;
+  Exemption: TLandrixInvoiceVATExemptionReasonCode;
+  Saved: TLandrixEInvoiceString;
 begin
   Invoice := TLandrixInvoice.Create;
   try
@@ -2134,7 +2138,7 @@ begin
     Invoice.InvoiceCurrencyCode := 'STD';
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CL-04', nil), 'STD of the validators');
     Invoice.InvoiceCurrencyCode := 'STN';
-    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-04', nil), 'STN of EC version 17');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-04', nil), 'STN of EC version 18');
     Invoice.InvoiceCurrencyCode := 'EUR';
     { BT-6 is written only when it differs, in @currencyID only with BT-111 }
     Invoice.TaxCurrencyCode := 'EURO';
@@ -2158,7 +2162,31 @@ begin
     Invoice.InvoiceLines[0].TaxCategory := idtfcc_S_StandardRate;
     Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := '0219';
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_Peppol), 'BR-CL-25', nil), 'EAS 0219');
+    { codes of EC version 18 that CEN 1.3.16 does not list: the model knows
+      them, the rule check judges like the validators }
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := '9960';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-25', nil), 'EAS 9960');
     Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'EM';
+    Invoice.AccountingSupplierParty.CompanyID := 'X-1';
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := '0249';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-11', nil), 'ICD 0249');
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := '0250';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-11', nil), 'ICD 0250');
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := '0251';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-11', nil), 'ICD 0251');
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := '0248';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-11', nil), 'ICD 0248');
+    Invoice.AccountingSupplierParty.CompanyIDSchemeID := '';
+    Invoice.AccountingSupplierParty.CompanyID := '';
+    Saved := Invoice.TaxAmountSubtotals[0].TaxExemptionReasonCode;
+    Invoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := 'vatex-es-n1';
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-22', nil), 'VATEX-ES-N1');
+    Invoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := 'VATEX-EU-G';
+    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CL-22', nil), 'VATEX-EU-G');
+    Invoice.TaxAmountSubtotals[0].TaxExemptionReasonCode := Saved;
+    Check(LandrixEInvoiceElectronicAddressSchemeFromStr('9960', EAS), 'EAS 9960 is a member');
+    Check(LandrixEInvoiceIdentifierSchemeFromStr('0251', ICD), 'ICD 0251 is a member');
+    Check(LandrixEInvoiceVATExemptionReasonCodeFromStr('VATEX-ES-N1', Exemption), 'VATEX-ES-N1 is a member');
     Check(LandrixEInvoiceNoteSubjectCodeFromStr('BAT', Subject), 'BAT is a member');
     with Invoice.Notes.AddNote do
     begin

@@ -36,7 +36,8 @@
   the schema allows several for a later report on several documents); the
   classifying enumerations are open; a finding has its path in location
   for every part and the business terms of the rule check in @terms (1.0
-  had the terms in location); new are @expected, @found and @calculation;
+  had the terms in location); new are @expected, @found and @calculation,
+  document/@sha256 and pdf/@invoiceSha256;
   recipient is reserved for recipient profiles (not written yet).
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
@@ -107,9 +108,19 @@
     <xs:attribute name="syntax" type="r:Syntax"/>
     <xs:attribute name="customizationId" type="xs:string"/>
     <xs:attribute name="profileId" type="xs:string"/>
+    <xs:attribute name="sha256" type="r:Sha256"/>
     <xs:attribute name="sanitized" type="xs:boolean"/>
     <xs:anyAttribute namespace="##any" processContents="lax"/>
   </xs:complexType>
+
+  <!-- SHA-256 (FIPS 180-4) as 64 lowercase hex digits. document/@sha256: of
+       the bytes validated (the whole file, the stream from its position);
+       pdf/@invoiceSha256: of the embedded invoice as decoded from the PDF. -->
+  <xs:simpleType name="Sha256">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9a-f]{64}"/>
+    </xs:restriction>
+  </xs:simpleType>
 
   <!-- The specification the library assigns to BT-24. version is the
        version of the target (e.g. 3.0), libraryRelease the exact release the
@@ -179,6 +190,7 @@
     <xs:attribute name="xmpConformanceLevel" type="xs:string"/>
     <xs:attribute name="xmpPdfaPart" type="xs:string"/>
     <xs:attribute name="xmpPdfaConformance" type="xs:string"/>
+    <xs:attribute name="invoiceSha256" type="r:Sha256"/>
     <xs:attribute name="sanitized" type="xs:boolean"/>
     <xs:anyAttribute namespace="##any" processContents="lax"/>
   </xs:complexType>

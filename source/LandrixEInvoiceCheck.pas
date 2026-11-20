@@ -3422,23 +3422,34 @@ type
     cl_Category, cl_Allowance, cl_Charge, cl_VATEX, cl_Unit, cl_EAS);
 
 const
-  { The CEN schematron of the validators (XRechnung 3.0.2, Peppol BIS
-    3.0.21) carries older lists than the code lists of the library (EC
-    version 17): ISO 4217 has STD instead of STN, ISO 3166-1 in CII has AN
-    instead of SS, UNTDID 5305 has B as well, the EAS list has 0219 and
-    0220 as well, and UNTDID 4451 in UBL lacks the codes below. UBL splits
-    UNTDID 1001 into the codes of ubl:Invoice and of ubl:CreditNote.
-    DE: Das CEN-Schematron der Validatoren (XRechnung 3.0.2, Peppol BIS
-    3.0.21) enthaelt aeltere Listen als die Codelisten der Bibliothek (EC
-    Version 17): ISO 4217 hat STD statt STN, ISO 3166-1 in CII hat AN statt
-    SS, UNTDID 5305 hat zusaetzlich B, die EAS-Liste zusaetzlich 0219 und
-    0220, und UNTDID 4451 fehlen in UBL die Codes unten. UBL teilt
-    UNTDID 1001 in die Codes von ubl:Invoice und von ubl:CreditNote. }
+  { The CEN schematron of the validators (CEN 1.3.16: XRechnung 3.0.2,
+    Peppol BIS 3.0.22) carries older lists than the code lists of the
+    library (EC version 18): ISO 4217 has STD instead of STN, ISO 3166-1 in
+    CII has AN instead of SS, UNTDID 5305 has B as well, the EAS list has
+    0219 and 0220 as well but not 9960, the ICD list lacks 0249 to 0251,
+    VATEX lacks the VATEX-ES codes, and UNTDID 4451 in UBL lacks the codes
+    below. UBL splits UNTDID 1001 into the codes of ubl:Invoice and of
+    ubl:CreditNote. CEN 1.3.17 has the lists of version 18; when the
+    validators move to it, drop the exceptions for 9960, 0249 to 0251 and
+    VATEX-ES (and check the others against its lists: B stays).
+    DE: Das CEN-Schematron der Validatoren (CEN 1.3.16: XRechnung 3.0.2,
+    Peppol BIS 3.0.22) enthaelt aeltere Listen als die Codelisten der
+    Bibliothek (EC Version 18): ISO 4217 hat STD statt STN, ISO 3166-1 in
+    CII hat AN statt SS, UNTDID 5305 hat zusaetzlich B, die EAS-Liste
+    zusaetzlich 0219 und 0220, aber nicht 9960, der ICD-Liste fehlen 0249
+    bis 0251, VATEX fehlen die VATEX-ES-Codes, und UNTDID 4451 fehlen in
+    UBL die Codes unten. UBL teilt UNTDID 1001 in die Codes von ubl:Invoice
+    und von ubl:CreditNote. CEN 1.3.17 hat die Listen der Version 18; wenn
+    die Validatoren darauf umstellen, entfallen die Ausnahmen fuer 9960,
+    0249 bis 0251 und VATEX-ES (die anderen gegen deren Listen pruefen: B
+    bleibt). }
   UBLInvoiceTypeCodes = '71 80 81 82 84 102 130 202 203 204 211 218 219 295 325 326 331 380 382 383 384 385 ' +
     '386 387 388 389 390 393 394 395 456 457 471 472 473 500 501 527 553 575 623 633 751 780 817 870 875 876 ' +
     '877 935';
   UBLMissingNoteSubjectCodes = 'BAT BAU BAV BAW BAX BAY BAZ BBA BBB BMF BMG BMH CCJ CCK CCL CCM CCN CCO';
   ValidatorEASCodes = '0219 0220';
+  ValidatorMissingEASCodes = '9960';
+  ValidatorMissingICDCodes = '0249 0250 0251';
   UBLTaxPointCodes = '3 35 432';
   CIITaxPointCodes = '5 29 72';
   { BR-CL-24 compares the attribute as it is, without normalize-space.
@@ -3501,7 +3512,8 @@ begin
         (LandrixEInvoiceNoteSubjectCodeToStr(Subject) = Token) and
         (ACII or not InList(Token, UBLMissingNoteSubjectCodes));
     cl_ICD:
-      Result := LandrixEInvoiceIdentifierSchemeFromStr(Token, ICD) and (LandrixEInvoiceIdentifierSchemeToStr(ICD) = Token);
+      Result := LandrixEInvoiceIdentifierSchemeFromStr(Token, ICD) and (LandrixEInvoiceIdentifierSchemeToStr(ICD) = Token) and
+        not InList(Token, ValidatorMissingICDCodes);
     cl_Item:
       Result := LandrixEInvoiceItemClassificationSchemeFromStr(Token, Item) and
         (LandrixEInvoiceItemClassificationSchemeToStr(Item) = Token);
@@ -3525,12 +3537,13 @@ begin
         (LandrixEInvoiceSpecialServiceDescriptionCodeToStr(Charge) = Token);
     cl_VATEX:
       { the codes are upper case; FromStr ignores the case as upper-case(.) does }
-      Result := LandrixEInvoiceVATExemptionReasonCodeFromStr(Token, Exemption);
+      Result := LandrixEInvoiceVATExemptionReasonCodeFromStr(Token, Exemption) and
+        (Pos('VATEX-ES-', UpperCase(string(Token))) <> 1);
     cl_Unit:
       Result := LandrixEInvoiceUnitCodeFromStr(Token, UnitCode) and (LandrixEInvoiceUnitCodeToStr(UnitCode) = Token);
   else
     Result := InList(Token, ValidatorEASCodes) or (LandrixEInvoiceElectronicAddressSchemeFromStr(Token, EAS) and
-      (LandrixEInvoiceElectronicAddressSchemeToStr(EAS) = Token));
+      (LandrixEInvoiceElectronicAddressSchemeToStr(EAS) = Token) and not InList(Token, ValidatorMissingEASCodes));
   end;
 end;
 

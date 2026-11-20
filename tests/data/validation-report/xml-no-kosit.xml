@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <validationReport xmlns="urn:landrix:einvoice:validation-report:2" version="2.0">
   <generator name="EInvoice-for-Pascal" version="@VERSION@"/>
-  <document name="invoice.xml" source="xml" rootName="Invoice" syntax="ubl" customizationId="urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" profileId="urn:fdc:peppol.eu:2017:poacc:billing:01:1.0">
+  <document name="invoice.xml" source="xml" rootName="Invoice" syntax="ubl" customizationId="urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" profileId="urn:fdc:peppol.eu:2017:poacc:billing:01:1.0" sha256="68dc5bfe31bec619a0280b5fda61a6e0c5e5cbea9ebe588a6daf04218e5067cf">
     <specification standard="xrechnung" syntax="ubl" version="3.0" libraryRelease="3.0.2"/>
     <verdict>incomplete</verdict>
     <parts>
