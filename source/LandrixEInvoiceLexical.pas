@@ -24,7 +24,7 @@
     otherwise 4;
   - quantities (BT-129): at least 4 decimals, more when the value has
     them (up to 10), e.g. 1.23456 stays 1.23456;
-  - base quantities (BT-149): up to 6 decimals, trailing zeros removed
+  - base quantities (BT-149): up to 10 decimals, trailing zeros removed
     down to 2 (0.001 stays 0.001);
   - percentages (BT-96, BT-119, BT-152): at least 2 decimals, more only
     when needed (up to 4);
@@ -49,7 +49,7 @@
     hat, sonst 4;
   - Mengen (BT-129): mindestens 4 Nachkommastellen, mehr, wenn der Wert
     sie hat (bis 10), z. B. bleibt 1.23456 1.23456;
-  - Basismengen (BT-149): bis zu 6 Nachkommastellen, Nullen am Ende bis auf
+  - Basismengen (BT-149): bis zu 10 Nachkommastellen, Nullen am Ende bis auf
     2 gestrichen (0.001 bleibt 0.001);
   - Prozentsaetze (BT-96, BT-119, BT-152): mindestens 2 Nachkommastellen,
     mehr nur bei Bedarf (bis 4);
@@ -99,9 +99,9 @@ function LandrixEInvoicePriceToLexical(AValue: Double): TLandrixEInvoiceString;
   1/3 -> '0.3333333333'. }
 function LandrixEInvoiceQuantityToLexical(AValue: Double): TLandrixEInvoiceString;
 
-{ Base quantity with up to 6 decimals and at least 2, e.g. 1 -> '1.00',
+{ Base quantity with up to 10 decimals and at least 2, e.g. 1 -> '1.00',
   0.001 -> '0.001'.
-  DE: Basismenge mit bis zu 6 und mindestens 2 Nachkommastellen, z. B.
+  DE: Basismenge mit bis zu 10 und mindestens 2 Nachkommastellen, z. B.
   1 -> '1.00', 0.001 -> '0.001'. }
 function LandrixEInvoiceBaseQuantityToLexical(AValue: Double): TLandrixEInvoiceString;
 
@@ -154,6 +154,13 @@ function LandrixEInvoiceTryUBLToDate(const AText: TLandrixEInvoiceString;
   andere Formate und fuer Text, der kein gueltiges Datum ist. }
 function LandrixEInvoiceTryCIIToDate(const AText, AFormat: TLandrixEInvoiceString;
   out AValue: TDateTime): Boolean;
+
+{ AText without the XML white space (blank, tab, CR, LF) at both ends, as
+  normalize-space() sees a code or identifier without inner blanks.
+  DE: AText ohne den XML-Leerraum (Leerzeichen, Tab, CR, LF) an beiden
+  Enden, wie normalize-space() einen Code oder eine Kennung ohne innere
+  Leerzeichen sieht. }
+function LandrixEInvoiceTrimXml(const AText: TLandrixEInvoiceString): TLandrixEInvoiceString;
 
 { Reads an xs:boolean ('true', 'false', '1', '0'); white space around the
   value is ignored (whiteSpace collapse). False, with AValue False, for any
@@ -212,7 +219,7 @@ end;
 
 function LandrixEInvoiceBaseQuantityToLexical(AValue: Double): TLandrixEInvoiceString;
 begin
-  Result := Text(LandrixXmlFormatDoubleTrim(AValue, 2, 6));
+  Result := Text(LandrixXmlFormatDoubleTrim(AValue, 2, 10));
 end;
 
 function LandrixEInvoicePercentToLexical(AValue: Double): TLandrixEInvoiceString;
@@ -282,11 +289,9 @@ begin
   Result := (C = ' ') or (C = #9) or (C = #10) or (C = #13);
 end;
 
-function LandrixEInvoiceTryLexicalToBoolean(const AText: TLandrixEInvoiceString;
-  out AValue: Boolean): Boolean;
+function LandrixEInvoiceTrimXml(const AText: TLandrixEInvoiceString): TLandrixEInvoiceString;
 var
   First, Last: Integer;
-  S: TLandrixEInvoiceString;
 begin
   First := 1;
   Last := Length(AText);
@@ -294,7 +299,18 @@ begin
     Inc(First);
   while (Last >= First) and IsXmlSpace(AText[Last]) do
     Dec(Last);
-  S := Copy(AText, First, Last - First + 1);
+  if (First = 1) and (Last = Length(AText)) then
+    Result := AText
+  else
+    Result := Copy(AText, First, Last - First + 1);
+end;
+
+function LandrixEInvoiceTryLexicalToBoolean(const AText: TLandrixEInvoiceString;
+  out AValue: Boolean): Boolean;
+var
+  S: TLandrixEInvoiceString;
+begin
+  S := LandrixEInvoiceTrimXml(AText);
   AValue := (S = 'true') or (S = '1');
   Result := AValue or (S = 'false') or (S = '0');
 end;

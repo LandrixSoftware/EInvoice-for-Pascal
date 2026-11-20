@@ -76,17 +76,10 @@ PEPPOL-EN16931-R002-03.xml	missed PEPPOL-EN16931-R002
 # the identifier next to the global one, which the rule table does not allow for Peppol.
 DK_Validation_DKR013-1[2356].xml	missed DK-R-013
 
-# A credit note without type code: the reader leaves BT-3 empty and the mapper writes
-# ubl:Invoice, where DK-R-016 does not apply.
-DK_Validation_DKR016-04.xml	missed DK-R-016
-
 # The model holds the tax registration (BT-32) with scheme FC only; the mapper never writes the
 # scheme TAX with Foretaksregisteret.
 NO-R-002-0[123].xml	extra NO-R-002
 
-# A payment means holds one account in the model and the mapper writes only the group of its code
-# (as in tools/rulecheck/oracle-exceptions.txt); a card is always written with the network NA.
-UBL-IN_DE-R-024-02.xml	missed DE-R-024-1
 UBL-IN_DE-R-024-03.xml	missed DE-R-024-2
 UBL-IN_DE-R-025-03.xml	missed DE-R-025-2
 

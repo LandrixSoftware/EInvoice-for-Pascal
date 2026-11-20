@@ -17,7 +17,8 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
   BR-CO-18), the other BR-CO rules (reasons, seller identifier, payment terms), XRechnung
   (BR-DE-...), Peppol (PEPPOL-EN16931-...), the code list rules of XRechnung and Peppol (BR-CL-...)
   the rules of Factur-X EXTENDED (BR-FXEXT-...), the syntax rules on several payment instructions
-  (CII-SR-467, CII-SR-468, UBL-SR-46, UBL-SR-47, UBL-SR-54, UBL-SR-55), BR-DEC-15 (CII),
+  (CII-SR-467, CII-SR-468, UBL-SR-47, UBL-SR-54, UBL-SR-55; the UBL writer writes BT-82 once, so
+  UBL-SR-46 always holds), BR-DEC-15 (CII),
   BR-TMP-2 and BR-DEX-14 (XRechnung). Each violation is an entry of kind
   `edk_RuleViolation` with its rule identifier in `RuleID`.
 - For Factur-X, the code checks of the Factur-X Schematron (FX-SCH-A-...) on the CII syntax

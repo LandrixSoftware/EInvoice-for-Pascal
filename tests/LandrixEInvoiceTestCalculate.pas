@@ -300,8 +300,8 @@ begin
     CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice), 'S totals');
     CheckEqualsInvoiceStr('', Invoice.TaxAmountSubtotals[0].TaxExemptionReason, 'no reason for S');
 
-    { a base quantity written as 0.00 }
-    Line.BaseQuantity := Quot(4, 10000000);
+    { a base quantity written as 0.00 (below 10 decimals) }
+    Line.BaseQuantity := Quot(4, 100000) / 1000000;
     CheckEquals(1, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'base quantity written as 0');
     Line.BaseQuantity := 0;
 

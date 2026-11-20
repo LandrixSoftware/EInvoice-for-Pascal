@@ -86,6 +86,7 @@ begin
   CheckText('0.001', LandrixEInvoiceBaseQuantityToLexical(Quot(1, 1000)), 'base quantity 0.001');
   CheckText('1.50', LandrixEInvoiceBaseQuantityToLexical(1.5), 'base quantity 1.5');
   CheckText('0.000001', LandrixEInvoiceBaseQuantityToLexical(Quot(1, 1000000)), 'six decimals');
+  CheckText('0.0000004', LandrixEInvoiceBaseQuantityToLexical(Quot(4, 10000000)), 'seven decimals: not 0');
 end;
 
 procedure TestPercent;

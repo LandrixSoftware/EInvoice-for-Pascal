@@ -137,8 +137,10 @@ const
   { Buyer reference placeholder 'non-existent' (BT-10).
     DE: Platzhalter 'non-existent' fuer die Kaeuferreferenz (BT-10). }
   LandrixEInvoiceRuleBuyerReferencePlaceholder = 'Header.BuyerReferencePlaceholder';
-  { Payment due date on a credit note (BT-9).
-    DE: Faelligkeitsdatum auf einer Gutschrift (BT-9). }
+  { Payment due date on a credit note (BT-9); no target forbids it (UBL
+    carries it in cac:PaymentMeans/cbc:PaymentDueDate).
+    DE: Faelligkeitsdatum auf einer Gutschrift (BT-9); kein Ziel verbietet
+    es (UBL traegt es in cac:PaymentMeans/cbc:PaymentDueDate). }
   LandrixEInvoiceRuleCreditNoteDueDate = 'CreditNote.DueDate';
   { Default scheme 'EM' for an electronic address without scheme (BT-34, BT-49).
     DE: Vorgabeschema 'EM' fuer eine elektronische Adresse ohne Schema
@@ -204,7 +206,7 @@ const
   AnySyntax = [esy_UBL, esy_CII];
   AnyProfile = [Low(TLandrixEInvoiceProfile)..High(TLandrixEInvoiceProfile)];
 
-  Rules: array[0..36] of TLandrixEInvoiceRule = (
+  Rules: array[0..35] of TLandrixEInvoiceRule = (
     { sub lines: CII only in Factur-X EXTENDED; UBL XRechnung extension;
       Peppol only a warning of the EN 16931 rules. Where the level is not
       erl_Allowed they are written flat (LandrixEInvoiceSubLines). }
@@ -285,9 +287,6 @@ const
     (Key: LandrixEInvoiceRuleBuyerReferencePlaceholder; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-10';
      Source: 'placeholder only for XRechnung and Peppol'),
-    (Key: LandrixEInvoiceRuleCreditNoteDueDate; Standards: AnyStandard; Syntaxes: [esy_UBL];
-     Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-9';
-     Source: 'UBL CreditNote has no cbc:DueDate'),
     { Peppol }
     (Key: LandrixEInvoiceRuleElectronicAddressDefaultEM; Standards: [est_PeppolBIS]; Syntaxes: AnySyntax;
      Profiles: AnyProfile; Level: erl_Forbidden; Terms: 'BT-34, BT-49';

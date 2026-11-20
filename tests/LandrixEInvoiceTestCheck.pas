@@ -284,7 +284,7 @@ begin
       PaymentMeansCode := ipmc_CreditTransfer;
       FinancialAccount := 'DE02120300000000202051';
     end
-  else if (AID = 'CII-SR-468') or (AID = 'UBL-SR-46') then
+  else if AID = 'CII-SR-468' then
   begin
     Payment.PaymentMeansInformation := 'Transfer';
     with Invoice.PaymentTypes.AddPaymentType do
@@ -670,7 +670,7 @@ type
   end;
 
 const
-  RuleCases: array[0..159] of TRuleCase = (
+  RuleCases: array[0..158] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -826,7 +826,6 @@ const
     (ID: 'BR-FXEXT-08'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
     (ID: 'CII-SR-467'; Target: tk_XRCII; NotApplicable: tk_XRUBL),
     (ID: 'CII-SR-468'; Target: tk_FXEN16931; NotApplicable: tk_FXMinimum),
-    (ID: 'UBL-SR-46'; Target: tk_XRUBL; NotApplicable: tk_XRCII),
     (ID: 'UBL-SR-47'; Target: tk_Peppol; NotApplicable: tk_FXEN16931),
     (ID: 'UBL-SR-54'; Target: tk_XRUBL; NotApplicable: tk_XRCII),
     (ID: 'UBL-SR-55'; Target: tk_XRUBL; NotApplicable: tk_XRCII),
@@ -2683,7 +2682,7 @@ begin
     Line.SubInvoiceLines.Clear;
 
     { R121 on the base quantity as written; R046 exactly }
-    Line.BaseQuantity := Thousandths(1) / 10000;
+    Line.BaseQuantity := Thousandths(1) / 100000000;
     Check(not RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R121'), 'R121: written as 0.00');
     Line.BaseQuantity := Thousandths(1);
     Check(RuleHolds(Invoice, tk_XRUBL, 'PEPPOL-EN16931-R121'), 'R121: 0.001');

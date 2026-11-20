@@ -18,7 +18,8 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
   Zahlungsbedingungen), XRechnung (BR-DE-...), Peppol (PEPPOL-EN16931-...), die
   Codelistenregeln von XRechnung und Peppol (BR-CL-...), die Regeln von Factur-X EXTENDED
   (BR-FXEXT-...), die Syntaxregeln zu mehreren Zahlungsanweisungen (CII-SR-467, CII-SR-468,
-  UBL-SR-46, UBL-SR-47, UBL-SR-54, UBL-SR-55), BR-DEC-15 (CII), BR-TMP-2 und BR-DEX-14
+  UBL-SR-47, UBL-SR-54, UBL-SR-55; der UBL-Writer schreibt BT-82 einmal, UBL-SR-46 hält daher
+  immer), BR-DEC-15 (CII), BR-TMP-2 und BR-DEX-14
   (XRechnung). Jeder Verstoß ist ein Eintrag der Art
   `edk_RuleViolation` mit der Regelkennung in `RuleID`.
 - Für Factur-X die Codeprüfungen des Factur-X-Schematrons (FX-SCH-A-...) auf dem

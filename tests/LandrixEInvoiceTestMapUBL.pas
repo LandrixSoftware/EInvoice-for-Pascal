@@ -712,7 +712,7 @@ begin
     Check(Pos('DueDate', LandrixXmlUtf8ToString(Xml)) = 0, 'no due date');
     Check(Pos('SubCreditNoteLine', LandrixXmlUtf8ToString(Xml)) = 0, 'no sub lines');
     Check(Pos('#conformant#', LandrixXmlUtf8ToString(Xml)) = 0, 'no extension');
-    CheckEquals(1, CountKind(D, edk_NotAllowed, '/CreditNote'), 'due date reported');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:PaymentMeans/cbc:PaymentDueDate'), 'due date without payment instruction reported');
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/CreditNote/cac:CreditNoteLine'), 'sub lines reported');
     D.Clear;
     ReadAndMap(Xml, Back, D, Root);
@@ -1296,6 +1296,131 @@ begin
   end;
 end;
 
+function CountText(const APattern, AText: string): Integer;
+var
+  P: Integer;
+  Rest: string;
+begin
+  Result := 0;
+  Rest := AText;
+  P := Pos(APattern, Rest);
+  while P > 0 do
+  begin
+    Inc(Result);
+    Rest := Copy(Rest, P + Length(APattern), Length(Rest));
+    P := Pos(APattern, Rest);
+  end;
+end;
+
+{ The corrections of the review: BT-9 of a credit note in the first payment
+  instruction, BT-82 once, no card account without card number, BT-147
+  without BT-148, codes and the VAT scheme as normalize-space reads them,
+  a credit note without type code. }
+procedure TestReviewCases;
+var
+  Invoice, Back: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  Spec: TLandrixEInvoiceSpec;
+  Payment: TLandrixInvoicePaymentType;
+  Line: TLandrixInvoiceLine;
+  Xml: TLandrixXmlUtf8;
+  Text, Root: string;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  Back := TLandrixInvoice.Create;
+  try
+    { a credit note carries BT-9 once, in the first payment instruction;
+      BT-82 is written once (UBL-SR-46) }
+    FillInvoice(Invoice);
+    Invoice.InvoiceTypeCode := itc_CreditNote;
+    Invoice.InvoiceDueDate := EncodeDate(2026, 12, 15);
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_SEPACreditTransfer;
+    Payment.PaymentMeansInformation := 'Transfer';
+    Payment.FinancialAccount := 'DE02120300000000202051';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_SEPACreditTransfer;
+    Payment.PaymentMeansInformation := 'Transfer';
+    Payment.FinancialAccount := 'DE21860000000086001055';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_CreditCard;
+    Payment.PaymentMeansInformation := 'Card';
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec), 'spec');
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := LandrixXmlUtf8ToString(Xml);
+    CheckEquals(1, CountText('<cbc:PaymentDueDate>2026-12-15</cbc:PaymentDueDate>', Text), 'BT-9 once');
+    CheckEquals(1, CountText('name="Transfer"', Text), 'BT-82 once');
+    CheckEquals(0, CountText('name="Card"', Text), 'a second text left out');
+    CheckEquals(1, CountKind(D, edk_NotAllowed, '/cbc:PaymentMeansCode/@name'), 'the second text reported');
+    CheckEquals(0, CountText('CardAccount', Text), 'no card account without card number');
+    D.Clear;
+    ReadAndMap(Xml, Back, D, Root);
+    CheckEqualsStr('CreditNote', Root, 'credit note root');
+    Check(Back.InvoiceDueDate = EncodeDate(2026, 12, 15), 'BT-9 read back');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
+
+    { a credit note without type code stays a credit note }
+    Text := StringReplace(Text, '<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>', '', []);
+    Back.Clear;
+    D.Clear;
+    ReadAndMap(LandrixXmlStringToUtf8(Text), Back, D, Root);
+    Check(Back.InvoiceTypeCode = itc_CreditNote, 'type 381 assumed');
+    CheckEquals(1, CountKind(D, edk_MissingElement, '/cbc:CreditNoteTypeCode'), 'missing type code reported');
+
+    { BT-147 without BT-148 is written without base amount }
+    Invoice.Clear;
+    FillInvoice(Invoice);
+    Invoice.InvoiceLines[0].NetPriceAmount := 9;
+    Invoice.InvoiceLines[0].DiscountOnTheGrossPrice := 1;
+    D.Clear;
+    Xml := MapAndWrite(Invoice, Spec, D);
+    Text := LandrixXmlUtf8ToString(Xml);
+    CheckEquals(0, CountText('BaseAmount', Text), 'no gross price');
+    Back.Clear;
+    ReadAndMap(Xml, Back, D, Root);
+    Check(Back.InvoiceLines[0].DiscountOnTheGrossPrice = 1, 'discount read back');
+    Check(Back.InvoiceLines[0].GrossPriceAmount = 0, 'still no gross price');
+
+    { codes and the VAT scheme with white space or in lower case are read as
+      normalize-space(upper-case()) sees them }
+    Invoice.Clear;
+    FillInvoice(Invoice);
+    Line := Invoice.InvoiceLines[0];
+    Line.TaxCategory := idtfcc_O_ServicesOutsideScopeOfTax;
+    Line.TaxPercent := 0;
+    Invoice.AccountingSupplierParty.VATCompanyID := 'DE123456789';
+    Invoice.PaymentMandateID := 'M-1';
+    Payment := Invoice.PaymentTypes.AddPaymentType;
+    Payment.PaymentMeansCode := ipmc_SEPADirectDebit;
+    Payment.FinancialAccount := 'DE21860000000086001055';
+    Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.PeppolBIS('3.0'), Spec), 'Peppol spec');
+    D.Clear;
+    Text := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
+    Check(Pos('<cbc:ID>O</cbc:ID>', Text) > 0, 'category O written');
+    Check(Pos('<cbc:PaymentMeansCode>59</cbc:PaymentMeansCode>', Text) > 0, 'code 59 written');
+    Check(Pos('<cbc:ID>VAT</cbc:ID>', Text) > 0, 'scheme VAT written');
+    Text := StringReplace(Text, '<cbc:ID>O</cbc:ID>', '<cbc:ID> O </cbc:ID>', [rfReplaceAll]);
+    Text := StringReplace(Text, '<cbc:PaymentMeansCode>59</cbc:PaymentMeansCode>',
+      '<cbc:PaymentMeansCode> 59 </cbc:PaymentMeansCode>', []);
+    Text := StringReplace(Text, '<cbc:ID>VAT</cbc:ID>', '<cbc:ID> vat </cbc:ID>', [rfReplaceAll]);
+    Back.Clear;
+    D.Clear;
+    ReadAndMap(LandrixXmlStringToUtf8(Text), Back, D, Root);
+    Check(Back.InvoiceLines[0].TaxCategory = idtfcc_O_ServicesOutsideScopeOfTax, 'category '' O ''');
+    Check(Back.PaymentTypes[0].PaymentMeansCode = ipmc_SEPADirectDebit, 'code '' 59 ''');
+    CheckEqualsInvoiceStr('DE21860000000086001055', Back.PaymentTypes[0].FinancialAccount, 'debited account');
+    CheckEqualsInvoiceStr('M-1', Back.PaymentMandateID, 'mandate');
+    CheckEqualsInvoiceStr('DE123456789', Back.AccountingSupplierParty.VATCompanyID, 'scheme '' vat '' is VAT');
+    CheckEqualsInvoiceStr('', Back.AccountingSupplierParty.VATCompanyNumber, 'no tax number');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'nothing lost: ' + string(D.ToText));
+  finally
+    Back.Free;
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 procedure Register;
 begin
   RegisterTest('MapUBL.GoldenWrite', TestGoldenWrite);
@@ -1317,6 +1442,7 @@ begin
   RegisterTest('MapUBL.CreditorIdentifierPlace', TestCreditorIdentifierPlace);
   RegisterTest('MapUBL.Periods', TestPeriods);
   RegisterTest('MapUBL.BlankValues', TestBlankValues);
+  RegisterTest('MapUBL.ReviewCases', TestReviewCases);
 end;
 
 end.

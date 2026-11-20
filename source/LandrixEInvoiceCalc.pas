@@ -140,7 +140,7 @@ function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoice
   when there is no error; they return the number of errors, with the
   reasons in ADiagnostics. They compute exactly with the numbers as the
   writers write them (quantity 4 to 10 decimals, price 2 or 4, base
-  quantity up to 6, rates 2 to 4) and round amounts to cents half away from zero, as the
+  quantity up to 10, rates 2 to 4) and round amounts to cents half away from zero, as the
   writers round; an amount above 9e14 or a sum beyond Currency is an
   error.
   LandrixEInvoiceCalculateLineAmounts sets BT-131 of every line: quantity x
@@ -160,7 +160,7 @@ function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoice
   wenn kein Fehler auftritt; sie liefern die Anzahl der Fehler, die Gruende
   stehen in ADiagnostics. Sie rechnen genau mit den Zahlen, wie die Writer
   sie schreiben (Menge 4 bis 10 Nachkommastellen, Preis 2 oder 4,
-  Basismenge bis 6, Saetze 2 bis 4), und runden Betraege halb weg von null auf Cent, wie die
+  Basismenge bis 10, Saetze 2 bis 4), und runden Betraege halb weg von null auf Cent, wie die
   Writer runden; ein Betrag ueber 9e14 oder eine Summe jenseits von
   Currency ist ein Fehler.
   LandrixEInvoiceCalculateLineAmounts setzt BT-131 jeder Position: Menge x
@@ -781,14 +781,14 @@ begin
 end;
 
 { BT-131 of a line without sub lines: quantity x (net price / base quantity)
-  (0 counts as 1; divided first, as PEPPOL-EN16931-R120 does), each as written (quantity with 4 decimals, the price with
-  2 or 4, the base quantity with up to 6), computed exactly and rounded to
+  (0 counts as 1; divided first, as PEPPOL-EN16931-R120 does), each as written (quantity with 4 to 10 decimals, the price with
+  2 or 4, the base quantity with up to 10), computed exactly and rounded to
   cents, minus the line allowances, plus the line charges (each as written,
   in cents).
   DE: BT-131 einer Position ohne Unterpositionen: Menge x (Nettopreis /
   Basismenge) (0 gilt als 1; zuerst geteilt, wie PEPPOL-EN16931-R120),
-  jeweils wie geschrieben (Menge mit 4
-  Nachkommastellen, Preis mit 2 oder 4, Basismenge mit bis zu 6), genau
+  jeweils wie geschrieben (Menge mit 4 bis 10
+  Nachkommastellen, Preis mit 2 oder 4, Basismenge mit bis zu 10), genau
   gerechnet und auf Cent gerundet, minus Positionsnachlaesse, plus
   Positionszuschlaege (jeweils wie geschrieben, in Cent). }
 function PricedAmount(ALine: TLandrixInvoiceLine; var AState: TCalcState; out AAmount: Currency): Boolean;

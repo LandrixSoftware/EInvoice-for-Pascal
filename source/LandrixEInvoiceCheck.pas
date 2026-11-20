@@ -260,7 +260,7 @@ type
     cr_BR23, cr_BR25, cr_BR27, cr_BR28, cr_BR29, cr_BR30, cr_BR32, cr_BR33,
     cr_BR37, cr_BR38, cr_BR42, cr_BR44, cr_BR47, cr_BR51UBL, cr_BR51CII, cr_BR52, cr_BR53, cr_BRDEC15, cr_BR54,
     cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65, cr_BRB01, cr_BRB02, cr_UBLSR29,
-    cr_CIISR467, cr_CIISR468, cr_UBLSR46, cr_UBLSR47, cr_UBLSR54, cr_UBLSR55,
+    cr_CIISR467, cr_CIISR468, cr_UBLSR47, cr_UBLSR54, cr_UBLSR55,
     cr_BRDE01, cr_BRDE02, cr_BRDE03, cr_BRDE04, cr_BRDE05, cr_BRDE06,
     cr_BRDE07, cr_BRDE08, cr_BRDE09, cr_BRDE10, cr_BRDE11, cr_BRDE15,
     cr_BRDE16, cr_BRDE17, cr_BRDE18, cr_BRDE19, cr_BRDE20, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
@@ -621,10 +621,6 @@ const
     (ID: 'CII-SR-468'; Standards: EN16931Standards; Syntaxes: [esy_CII];
      Profiles: FromEN16931; Severity: eds_Error; Legacy: False; Terms: 'BT-82';
      Message: 'all payment means texts (BT-82) shall have the same value';
-     Source: EN16931Source),
-    (ID: 'UBL-SR-46'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
-     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-82';
-     Message: 'the payment means text (BT-82) shall occur at most once';
      Source: EN16931Source),
     (ID: 'UBL-SR-47'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-81';
@@ -1888,10 +1884,11 @@ end;
 { The syntax rules on several payment instructions as the mappers write
   them (one per payment type with a code): CII-SR-467 and CII-SR-468 (the
   codes and the texts normalized), UBL-SR-47 (the codes as written),
-  UBL-SR-46 (texts, @name), UBL-SR-54 (card accounts) and UBL-SR-55
-  (mandates with content).
+  UBL-SR-54 (card accounts) and UBL-SR-55 (mandates with content). The UBL
+  writer writes BT-82 once, so UBL-SR-46 always holds.
   DE: Die Syntaxregeln zu mehreren Zahlungsanweisungen, wie die Mapper sie
-  schreiben (eine je Zahlungsart mit Code). }
+  schreiben (eine je Zahlungsart mit Code). UBL-SR-46 haelt immer: der
+  UBL-Writer schreibt BT-82 einmal. }
 function PaymentMeansMixed(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
@@ -1920,16 +1917,11 @@ begin
             Continue;
           Value := NormalizedSpace(P.PaymentMeansInformation);
         end;
-      cr_UBLSR46:
-        begin
-          if P.PaymentMeansInformation <> '' then
-            Inc(Count);
-          Continue;
-        end;
       cr_UBLSR54:
         begin
-          { cac:CardAccount always has its network 'NA' }
-          if IsCard(P) then
+          { cac:CardAccount (always with its network 'NA') only with a card
+            number }
+          if IsCard(P) and Present(P.FinancialAccount) then
             Inc(Count);
           Continue;
         end;
@@ -4464,7 +4456,7 @@ begin
       Result := not TypeCodeSupported(AInvoice);
     cr_UBLSR29:
       Result := SEPAIdentifierCount(AInvoice) > 1;
-    cr_CIISR467, cr_CIISR468, cr_UBLSR46, cr_UBLSR47, cr_UBLSR54, cr_UBLSR55:
+    cr_CIISR467, cr_CIISR468, cr_UBLSR47, cr_UBLSR54, cr_UBLSR55:
       Result := PaymentMeansMixed(AIndex, AInvoice);
     { BR-DE-18: the lines as written; the second part of the test (a line
       break after the last cash discount line) always holds, as the text

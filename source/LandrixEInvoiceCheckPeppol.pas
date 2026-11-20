@@ -1703,14 +1703,16 @@ begin
       Result := (Code = '59') and not GermanIBANValid(PayerAccount(APayment));
     pr_DER0231:
       Result := ((Code = '30') or (Code = '58')) and (Account = '');
+    { cac:CardAccount only with a card number (the UBL writer)
+      DE: cac:CardAccount nur mit Kartennummer (der UBL-Writer) }
     pr_DER0241:
-      Result := InList(Code, '48 54 55') and (Group <> pg_Card);
+      Result := InList(Code, '48 54 55') and not ((Group = pg_Card) and Present(APayment.FinancialAccount));
     pr_DER0242:
       Result := InList(Code, '48 54 55') and ((Account <> '') or Mandate);
     pr_DER0251:
       Result := (Code = '59') and not Mandate;
     pr_DER0252:
-      Result := (Code = '59') and ((Account <> '') or (Group = pg_Card));
+      Result := (Code = '59') and ((Account <> '') or ((Group = pg_Card) and Present(APayment.FinancialAccount)));
   else
     { the other rules are no payment rules }
     ;

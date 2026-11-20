@@ -429,6 +429,18 @@ begin
     ADate.SetValue(AValue);
 end;
 
+{ The tax scheme VAT as the Schematron tests it:
+  normalize-space(upper-case(cbc:ID)) = 'VAT'.
+  DE: Das Steuerschema VAT, wie die Schematron es prueft. }
+function IsVATScheme(const AText: TLandrixEInvoiceString): Boolean;
+var
+  S: TLandrixEInvoiceString;
+begin
+  S := LandrixEInvoiceTrimXml(AText);
+  Result := (Length(S) = 3) and ((S[1] = 'V') or (S[1] = 'v')) and ((S[2] = 'A') or (S[2] = 'a')) and
+    ((S[3] = 'T') or (S[3] = 't'));
+end;
+
 { An xs:boolean indicator; the schema collapses white space around it, and
   text that is no boolean (reported by the reader) counts as false.
   DE: Ein xs:boolean-Kennzeichen; das Schema ignoriert Leerraum darum, und
@@ -788,16 +800,12 @@ begin
   FDoc.ID^.Value := FInvoice.InvoiceNumber;
   if DateSet(FInvoice.InvoiceIssueDate) then
     FDoc.IssueDate^ := LandrixEInvoiceDateToUBL(FInvoice.InvoiceIssueDate);
-  if DateSet(FInvoice.InvoiceDueDate) then
-  begin
-    if FDoc.DueDate = nil then
-      Report(edk_NotAllowed, FDoc.Path, 'due date (BT-9) left out: ubl:CreditNote has no cbc:DueDate', eds_Warning)
-    else if (FInvoice.InvoiceTypeCode = itc_CreditNote) and
-      (LandrixEInvoiceRuleLevel(FSpec, LandrixEInvoiceRuleCreditNoteDueDate) = erl_Forbidden) then
-      Report(edk_NotAllowed, FDoc.Path + '/cbc:DueDate', 'due date (BT-9) left out on a credit note', eds_Warning)
-    else
-      FDoc.DueDate^ := LandrixEInvoiceDateToUBL(FInvoice.InvoiceDueDate);
-  end;
+  { ubl:CreditNote has no cbc:DueDate: BT-9 goes into the first payment
+    instruction (MapPaymentMeans)
+    DE: ubl:CreditNote hat kein cbc:DueDate: BT-9 kommt in die erste
+    Zahlungsanweisung (MapPaymentMeans) }
+  if DateSet(FInvoice.InvoiceDueDate) and (FDoc.DueDate <> nil) then
+    FDoc.DueDate^ := LandrixEInvoiceDateToUBL(FInvoice.InvoiceDueDate);
   FDoc.TypeCode^.Value := Code(LandrixEInvoiceTypeCodeToStr(FInvoice.InvoiceTypeCode), FInvoice.InvoiceTypeCodeOther,
     FDoc.Path + '/' + FDoc.TypeCodeName);
   for I := 0 to FInvoice.Notes.Count - 1 do
@@ -1258,34 +1266,51 @@ end;
   (BT-89 mandate, BT-91 debited account), BG-18 card (BT-87, BT-88; the
   network is not known and written as 'NA'), BG-17 credit transfer (BT-84,
   BT-85, BT-86). In UBL BT-83 and BT-89 exist only inside a payment
-  instruction.
+  instruction; BT-82 is written once (UBL-SR-46), a credit note carries
+  BT-9 in the first one (UBL-SR-45: once). A card payment without card
+  number has no cac:CardAccount.
   DE: BG-16 Zahlungsanweisungen, eine je Zahlungsart mit Code: BT-81
   Zahlungsart, BT-82 Text, BT-83 Verwendungszweck, BG-19 Lastschrift (BT-89
   Mandat, BT-91 belastetes Konto), BG-18 Karte (BT-87, BT-88; das
   Kartennetz ist nicht bekannt und wird als 'NA' geschrieben), BG-17
   Ueberweisung (BT-84, BT-85, BT-86). In UBL gibt es BT-83 und BT-89 nur
-  innerhalb einer Zahlungsanweisung. }
+  innerhalb einer Zahlungsanweisung; BT-82 wird einmal geschrieben
+  (UBL-SR-46), eine Gutschrift traegt BT-9 in der ersten (UBL-SR-45:
+  einmal). Eine Kartenzahlung ohne Kartennummer hat kein cac:CardAccount. }
 procedure TUBLWriteMapper.MapPaymentMeans;
 var
   I: TLandrixEInvoiceListIndex;
   Payment: TLandrixInvoicePaymentType;
   Target: TLandrixUBLPaymentMeans;
-  Path: TLandrixEInvoiceString;
+  Path, Name: TLandrixEInvoiceString;
   MeansWritten, MandateWritten: Boolean;
 begin
   Path := FDoc.Path + '/cac:PaymentMeans';
   MeansWritten := False;
   MandateWritten := False;
+  Name := '';
   for I := 0 to FInvoice.PaymentTypes.Count - 1 do
   begin
     Payment := FInvoice.PaymentTypes[I];
     if (Payment.PaymentMeansCode = ipmc_NotImplemented) and Blank(Payment.PaymentMeansCodeOther) then
       Continue;
-    MeansWritten := True;
     Target := FDoc.PaymentMeans.Add;
     Target.PaymentMeansCode.Value := Code(LandrixEInvoicePaymentMeansCodeToStr(Payment.PaymentMeansCode),
       Payment.PaymentMeansCodeOther, Path + '/cbc:PaymentMeansCode');
-    Target.PaymentMeansCode.Name := Txt(Payment.PaymentMeansInformation);
+    if Present(Payment.PaymentMeansInformation) then
+    begin
+      if Name = '' then
+      begin
+        Name := Txt(Payment.PaymentMeansInformation);
+        Target.PaymentMeansCode.Name := Name;
+      end
+      else if Txt(Payment.PaymentMeansInformation) <> Name then
+        Report(edk_NotAllowed, Path + '/cbc:PaymentMeansCode/@name', 'payment means text (BT-82) ' +
+          Payment.PaymentMeansInformation + ' left out: UBL allows one per document (UBL-SR-46)', eds_Warning);
+    end;
+    if not MeansWritten and (FDoc.DueDate = nil) and DateSet(FInvoice.InvoiceDueDate) then
+      Target.PaymentDueDate := LandrixEInvoiceDateToUBL(FInvoice.InvoiceDueDate);
+    MeansWritten := True;
     if Present(FInvoice.PaymentID) then
       Target.PaymentID.Add(UBLID(FInvoice.PaymentID, ''));
     if IsDirectDebit(Payment) then
@@ -1302,6 +1327,13 @@ begin
     end
     else if IsCardPayment(Payment) then
     begin
+      if Blank(Payment.FinancialAccount) then
+      begin
+        if Present(Payment.FinancialAccountName) then
+          Report(edk_NotAllowed, Path + '/cac:CardAccount/cbc:HolderName',
+            'card holder (BT-88) left out: no card number (BT-87)', eds_Warning);
+        Continue;
+      end;
       Target.CardAccount.PrimaryAccountNumberID.Value := Payment.FinancialAccount;
       Target.CardAccount.NetworkID.Value := 'NA';
       Target.CardAccount.HolderName := Payment.FinancialAccountName;
@@ -1313,6 +1345,9 @@ begin
       Target.PayeeFinancialAccount.FinancialInstitutionBranch.ID.Value := Payment.FinancialInstitutionBranch;
     end;
   end;
+  if not MeansWritten and (FDoc.DueDate = nil) and DateSet(FInvoice.InvoiceDueDate) then
+    Report(edk_NotAllowed, Path + '/cbc:PaymentDueDate',
+      'due date (BT-9) left out: ubl:CreditNote carries it in a payment instruction', eds_Warning);
   if Present(FInvoice.PaymentID) and not MeansWritten then
     Report(edk_NotAllowed, Path + '/cbc:PaymentID',
       'remittance information (BT-83) left out: UBL carries it in a payment instruction', eds_Warning);
@@ -1684,10 +1719,10 @@ end;
 
 { BG-29 price: BT-146 net price, BT-149/BT-150 base quantity (BT-150 is
   optional), BT-148 gross price with BT-147 discount (the discount is
-  written also when it is 0).
+  written also when it is 0, and without gross price when it is not).
   DE: BG-29 Preis: BT-146 Nettopreis, BT-149/BT-150 Basismenge (BT-150 ist
   optional), BT-148 Bruttopreis mit BT-147 Rabatt (der Rabatt wird auch
-  geschrieben, wenn er 0 ist). }
+  geschrieben, wenn er 0 ist, und ohne Bruttopreis, wenn er es nicht ist). }
 procedure TUBLWriteMapper.MapLinePrice(ALine: TLandrixInvoiceLine; APrice: TLandrixUBLPrice;
   const APath: TLandrixEInvoiceString);
 var
@@ -1700,15 +1735,13 @@ begin
     APrice.BaseQuantity.UnitCode := Code(LandrixEInvoiceUnitCodeToStr(ALine.BaseQuantityUnitCode),
       ALine.BaseQuantityUnitCodeOther, APath + '/cbc:BaseQuantity/@unitCode');
   end;
-  if (ALine.GrossPriceAmount = 0) and (ALine.DiscountOnTheGrossPrice <> 0) then
-    Report(edk_NotAllowed, APath + '/cac:AllowanceCharge', 'discount on the gross price (BT-147) of line ' +
-      ALine.ID + ' left out: no gross price (BT-148)', eds_Warning);
-  if ALine.GrossPriceAmount <> 0 then
+  if (ALine.GrossPriceAmount <> 0) or (ALine.DiscountOnTheGrossPrice <> 0) then
   begin
     Discount := APrice.AllowanceCharge.Add;
     Discount.ChargeIndicator := 'false';
     Discount.Amount := PriceMoney(ALine.DiscountOnTheGrossPrice);
-    Discount.BaseAmount := PriceMoney(ALine.GrossPriceAmount);
+    if ALine.GrossPriceAmount <> 0 then
+      Discount.BaseAmount := PriceMoney(ALine.GrossPriceAmount);
   end;
 end;
 
@@ -1900,7 +1933,7 @@ begin
   Result := Decimal(AValue.Value, APath);
   AOther := '';
   AUnit := iuc_None;
-  if (AValue.UnitCode <> '') and not LandrixEInvoiceUnitCodeFromStr(AValue.UnitCode, AUnit) then
+  if (AValue.UnitCode <> '') and not LandrixEInvoiceUnitCodeFromStr(LandrixEInvoiceTrimXml(AValue.UnitCode), AUnit) then
   begin
     AUnit := iuc_None;
     UnknownCode(AValue.UnitCode, APath + '/@unitCode', AOther);
@@ -1949,7 +1982,7 @@ procedure TUBLReadMapper.ReadTaxCategory(const AText, APath: TLandrixEInvoiceStr
   out AValue: TLandrixInvoiceDutyTaxFeeCategoryCode; out AOther: TLandrixEInvoiceString);
 begin
   AOther := '';
-  if not LandrixEInvoiceDutyTaxFeeCategoryCodeFromStr(AText, AValue) then
+  if not LandrixEInvoiceDutyTaxFeeCategoryCodeFromStr(LandrixEInvoiceTrimXml(AText), AValue) then
   begin
     AValue := idtfcc_None;
     UnknownCode(AText, APath, AOther);
@@ -1960,7 +1993,7 @@ end;
   Umsatzsteuer. }
 procedure TUBLReadMapper.ReadTaxScheme(ATaxScheme: TLandrixUBLTaxScheme; const APath: TLandrixEInvoiceString);
 begin
-  if (ATaxScheme.ID.Value <> '') and (ATaxScheme.ID.Value <> 'VAT') then
+  if (ATaxScheme.ID.Value <> '') and not IsVATScheme(ATaxScheme.ID.Value) then
     NotMapped(APath + '/cbc:ID', 'tax scheme ' + ATaxScheme.ID.Value);
   if ATaxScheme.ID.SchemeID <> '' then
     NotMapped(APath + '/cbc:ID/@schemeID', 'scheme ' + ATaxScheme.ID.SchemeID);
@@ -1982,13 +2015,13 @@ begin
     Exit;
   if AItem.ChargeIndicator then
   begin
-    if not LandrixEInvoiceSpecialServiceDescriptionCodeFromStr(Text, AItem.ReasonCodeCharge) then
+    if not LandrixEInvoiceSpecialServiceDescriptionCodeFromStr(LandrixEInvoiceTrimXml(Text), AItem.ReasonCodeCharge) then
     begin
       AItem.ReasonCodeCharge := issdc_None;
       UnknownCode(Text, APath, AItem.ReasonCodeChargeOther);
     end;
   end
-  else if not LandrixEInvoiceAllowanceOrChargeIdentCodeFromStr(Text, AItem.ReasonCodeAllowance) then
+  else if not LandrixEInvoiceAllowanceOrChargeIdentCodeFromStr(LandrixEInvoiceTrimXml(Text), AItem.ReasonCodeAllowance) then
   begin
     AItem.ReasonCodeAllowance := iacic_None;
     UnknownCode(Text, APath, AItem.ReasonCodeAllowanceOther);
@@ -2058,10 +2091,20 @@ begin
   if FDoc.DueDate <> nil then
     FInvoice.InvoiceDueDate := Date(FDoc.DueDate^, FDoc.Path + '/cbc:DueDate');
   Text := CodeValue(FDoc.TypeCode^, FDoc.Path + '/' + FDoc.TypeCodeName);
-  if (Text <> '') and not LandrixEInvoiceTypeCodeFromStr(Text, FInvoice.InvoiceTypeCode) then
+  if (Text <> '') and not LandrixEInvoiceTypeCodeFromStr(LandrixEInvoiceTrimXml(Text), FInvoice.InvoiceTypeCode) then
   begin
     FInvoice.InvoiceTypeCode := itc_None;
     UnknownCode(Text, FDoc.Path + '/' + FDoc.TypeCodeName, FInvoice.InvoiceTypeCodeOther);
+  end;
+  { a credit note without type code (BR-04) stays a credit note when written
+    back; without code it would become ubl:Invoice
+    DE: eine Gutschrift ohne Typcode (BR-04) bleibt beim Zurueckschreiben
+    eine Gutschrift; ohne Code wuerde sie zu ubl:Invoice }
+  if (FDoc.CreditNote <> nil) and LandrixEInvoiceIsBlank(Text) then
+  begin
+    FInvoice.InvoiceTypeCode := itc_CreditNote;
+    Report(edk_MissingElement, FDoc.Path + '/' + FDoc.TypeCodeName,
+      'credit note type code (BT-3, BR-04) missing; 381 assumed', eds_Warning);
   end;
   for I := 0 to FDoc.Note.Count - 1 do
   begin
@@ -2070,7 +2113,7 @@ begin
     if (Length(Text) >= 5) and (Text[1] = '#') and (Text[5] = '#') then
     begin
       Subject := Copy(Text, 2, 3);
-      if not LandrixEInvoiceNoteSubjectCodeFromStr(Subject, Note.SubjectCode) then
+      if not LandrixEInvoiceNoteSubjectCodeFromStr(LandrixEInvoiceTrimXml(Subject), Note.SubjectCode) then
       begin
         Note.SubjectCode := insc_None;
         UnknownCode(Subject, FDoc.Path + '/cbc:Note', Note.SubjectCodeOther);
@@ -2171,7 +2214,7 @@ begin
   begin
     Source := FDoc.AdditionalDocumentReference[I];
     TypeText := CodeValue(Source.DocumentTypeCode, Path + '/cbc:DocumentTypeCode');
-    if (FDoc.CreditNote <> nil) and (TypeText = '50') and Source.Attachment.IsEmpty and
+    if (FDoc.CreditNote <> nil) and (LandrixEInvoiceTrimXml(TypeText) = '50') and Source.Attachment.IsEmpty and
        (FInvoice.ProjectReference = '') then
     begin
       FInvoice.ProjectReference := IDValue(Source.ID, Path + '/cbc:ID');
@@ -2180,7 +2223,7 @@ begin
       Continue;
     end;
     Attachment := FInvoice.Attachments.AddAttachment(iat_application_None);
-    if (TypeText <> '') and not LandrixEInvoiceAttachmentTypeCodeFromStr(TypeText, Attachment.TypeCode) then
+    if (TypeText <> '') and not LandrixEInvoiceAttachmentTypeCodeFromStr(LandrixEInvoiceTrimXml(TypeText), Attachment.TypeCode) then
     begin
       Attachment.TypeCode := iatc_None;
       UnknownCode(TypeText, Path + '/cbc:DocumentTypeCode', Attachment.TypeCodeOther);
@@ -2200,7 +2243,7 @@ begin
     Rest(Path + '/cac:Attachment/cac:ExternalReference', ['cbc:URI']);
     if Source.Attachment.EmbeddedDocumentBinaryObject.Value <> '' then
     begin
-      if not LandrixEInvoiceAttachmentTypeFromStr(Source.Attachment.EmbeddedDocumentBinaryObject.MimeCode,
+      if not LandrixEInvoiceAttachmentTypeFromStr(LandrixEInvoiceTrimXml(Source.Attachment.EmbeddedDocumentBinaryObject.MimeCode),
         Attachment.AttachmentType) then
       begin
         Attachment.AttachmentType := iat_application_None;
@@ -2303,13 +2346,13 @@ begin
   begin
     TaxScheme := ASource.PartyTaxScheme[I];
     Scheme := TaxScheme.TaxScheme.ID.Value;
-    if (Scheme = 'VAT') and (AParty.VATCompanyID = '') then
+    if IsVATScheme(Scheme) and (AParty.VATCompanyID = '') then
       AParty.VATCompanyID := IDValue(TaxScheme.CompanyID, APath + '/cac:PartyTaxScheme/cbc:CompanyID')
     { BT-32: the binding fixes only VAT for BT-31; any other scheme (FC,
       the KoSIT examples use '???') is the tax registration.
       DE: BT-32: die Bindung legt nur VAT fuer BT-31 fest; jedes andere
       Schema (FC, die KoSIT-Beispiele nutzen '???') ist die Steuernummer. }
-    else if (Scheme <> '') and (Scheme <> 'VAT') and (AParty.VATCompanyNumber = '') then
+    else if (Scheme <> '') and not IsVATScheme(Scheme) and (AParty.VATCompanyNumber = '') then
       AParty.VATCompanyNumber := IDValue(TaxScheme.CompanyID, APath + '/cac:PartyTaxScheme/cbc:CompanyID')
     else
       NotMapped(APath + '/cac:PartyTaxScheme', 'tax registration ' + TaxScheme.CompanyID.Value +
@@ -2395,7 +2438,7 @@ begin
   for I := 0 to ASource.PartyTaxScheme.Count - 1 do
   begin
     TaxScheme := ASource.PartyTaxScheme[I];
-    if (TaxScheme.TaxScheme.ID.Value = 'VAT') and (AParty.VATCompanyID = '') then
+    if IsVATScheme(TaxScheme.TaxScheme.ID.Value) and (AParty.VATCompanyID = '') then
       AParty.VATCompanyID := IDValue(TaxScheme.CompanyID, APath + '/cac:PartyTaxScheme/cbc:CompanyID')
     else
       NotMapped(APath + '/cac:PartyTaxScheme', 'tax registration ' + TaxScheme.CompanyID.Value +
@@ -2465,11 +2508,12 @@ end;
 { BG-16: BT-81 with BT-82 (attribute name), BT-83 (the first remittance
   information), BG-18 card (network 'NA' is the placeholder of the writer),
   BG-17 credit transfer, BG-19 direct debit with BT-89 mandate. One account
-  per payment type.
+  per payment type. In a credit note the first cbc:PaymentDueDate is BT-9.
   DE: BG-16: BT-81 mit BT-82 (Attribut name), BT-83 (der erste
   Verwendungszweck), BG-18 Karte (Kartennetz 'NA' ist der Platzhalter des
   Schreibers), BG-17 Ueberweisung, BG-19 Lastschrift mit BT-89 Mandat. Ein
-  Konto je Zahlungsart. }
+  Konto je Zahlungsart. In einer Gutschrift ist das erste
+  cbc:PaymentDueDate BT-9. }
 procedure TUBLReadMapper.ReadPaymentMeans;
 var
   I, J: TLandrixEInvoiceListIndex;
@@ -2487,10 +2531,18 @@ begin
     Payment.PaymentMeansInformation := MeansCode.Name;
     MeansCode.Name := '';
     Text := CodeValue(MeansCode, Path + '/cbc:PaymentMeansCode');
-    if (Text <> '') and not LandrixEInvoicePaymentMeansCodeFromStr(Text, Payment.PaymentMeansCode) then
+    if (Text <> '') and not LandrixEInvoicePaymentMeansCodeFromStr(LandrixEInvoiceTrimXml(Text), Payment.PaymentMeansCode) then
     begin
       Payment.PaymentMeansCode := ipmc_NotImplemented;
       UnknownCode(Text, Path + '/cbc:PaymentMeansCode', Payment.PaymentMeansCodeOther);
+    end;
+    if (Source.PaymentDueDate <> '') and (FDoc.DueDate = nil) then
+    begin
+      { UBL-SR-45: one due date per document }
+      if not DateSet(FInvoice.InvoiceDueDate) then
+        FInvoice.InvoiceDueDate := Date(Source.PaymentDueDate, Path + '/cbc:PaymentDueDate')
+      else
+        NotMapped(Path + '/cbc:PaymentDueDate', 'second due date ' + Source.PaymentDueDate);
     end;
     for J := 0 to Source.PaymentID.Count - 1 do
     begin
@@ -2556,8 +2608,12 @@ begin
       Rest(Path + '/cac:PaymentMandate', ['cbc:ID', 'cac:PayerFinancialAccount']);
     end;
     Source.ListFilledChildren(FFilled);
-    Rest(Path, ['cbc:PaymentMeansCode', 'cbc:PaymentID', 'cac:CardAccount', 'cac:PayeeFinancialAccount',
-      'cac:PaymentMandate']);
+    if FDoc.DueDate = nil then
+      Rest(Path, ['cbc:PaymentMeansCode', 'cbc:PaymentDueDate', 'cbc:PaymentID', 'cac:CardAccount',
+        'cac:PayeeFinancialAccount', 'cac:PaymentMandate'])
+    else
+      Rest(Path, ['cbc:PaymentMeansCode', 'cbc:PaymentID', 'cac:CardAccount', 'cac:PayeeFinancialAccount',
+        'cac:PaymentMandate']);
   end;
 end;
 

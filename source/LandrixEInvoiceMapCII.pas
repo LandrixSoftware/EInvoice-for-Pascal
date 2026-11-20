@@ -1954,7 +1954,7 @@ procedure TCIIReadMapper.ReadUnit(const AText, APath: TLandrixEInvoiceString;
   out AValue: TLandrixInvoiceUnitCode; out AOther: TLandrixEInvoiceString);
 begin
   AOther := '';
-  if not LandrixEInvoiceUnitCodeFromStr(AText, AValue) then
+  if not LandrixEInvoiceUnitCodeFromStr(LandrixEInvoiceTrimXml(AText), AValue) then
   begin
     AValue := iuc_None;
     UnknownCode(AText, APath, AOther);
@@ -1965,7 +1965,7 @@ procedure TCIIReadMapper.ReadTaxCategory(const AText, APath: TLandrixEInvoiceStr
   out AValue: TLandrixInvoiceDutyTaxFeeCategoryCode; out AOther: TLandrixEInvoiceString);
 begin
   AOther := '';
-  if not LandrixEInvoiceDutyTaxFeeCategoryCodeFromStr(AText, AValue) then
+  if not LandrixEInvoiceDutyTaxFeeCategoryCodeFromStr(LandrixEInvoiceTrimXml(AText), AValue) then
   begin
     AValue := idtfcc_None;
     UnknownCode(AText, APath, AOther);
@@ -1985,13 +1985,13 @@ begin
     Exit;
   if AItem.ChargeIndicator then
   begin
-    if not LandrixEInvoiceSpecialServiceDescriptionCodeFromStr(AValue.Value, AItem.ReasonCodeCharge) then
+    if not LandrixEInvoiceSpecialServiceDescriptionCodeFromStr(LandrixEInvoiceTrimXml(AValue.Value), AItem.ReasonCodeCharge) then
     begin
       AItem.ReasonCodeCharge := issdc_None;
       UnknownCode(AValue.Value, APath, AItem.ReasonCodeChargeOther);
     end;
   end
-  else if not LandrixEInvoiceAllowanceOrChargeIdentCodeFromStr(AValue.Value, AItem.ReasonCodeAllowance) then
+  else if not LandrixEInvoiceAllowanceOrChargeIdentCodeFromStr(LandrixEInvoiceTrimXml(AValue.Value), AItem.ReasonCodeAllowance) then
   begin
     AItem.ReasonCodeAllowance := iacic_None;
     UnknownCode(AValue.Value, APath, AItem.ReasonCodeAllowanceOther);
@@ -2046,7 +2046,7 @@ begin
   Path := Root + '/rsm:ExchangedDocument';
   FInvoice.InvoiceNumber := IDValue(Doc.ID, Path + '/ram:ID');
   FInvoice.DocumentName := Doc.Name;
-  if (Doc.TypeCode <> '') and not LandrixEInvoiceTypeCodeFromStr(Doc.TypeCode, FInvoice.InvoiceTypeCode) then
+  if (Doc.TypeCode <> '') and not LandrixEInvoiceTypeCodeFromStr(LandrixEInvoiceTrimXml(Doc.TypeCode), FInvoice.InvoiceTypeCode) then
   begin
     FInvoice.InvoiceTypeCode := itc_None;
     UnknownCode(Doc.TypeCode, Path + '/ram:TypeCode', FInvoice.InvoiceTypeCodeOther);
@@ -2057,7 +2057,7 @@ begin
     Note := FInvoice.Notes.AddNote;
     Note.Content := Doc.IncludedNote[I].Content;
     Text := CodeValue(Doc.IncludedNote[I].SubjectCode, Path + '/ram:IncludedNote/ram:SubjectCode');
-    if (Text <> '') and not LandrixEInvoiceNoteSubjectCodeFromStr(Text, Note.SubjectCode) then
+    if (Text <> '') and not LandrixEInvoiceNoteSubjectCodeFromStr(LandrixEInvoiceTrimXml(Text), Note.SubjectCode) then
     begin
       Note.SubjectCode := insc_None;
       UnknownCode(Text, Path + '/ram:IncludedNote/ram:SubjectCode', Note.SubjectCodeOther);
@@ -2121,7 +2121,7 @@ begin
   ALine.ID := IDValue(Doc.LineID, APath + '/ram:AssociatedDocumentLineDocument/ram:LineID');
   AParentID := IDValue(Doc.ParentLineID, APath + '/ram:AssociatedDocumentLineDocument/ram:ParentLineID');
   Text := CodeValue(Doc.LineStatusReasonCode, APath + '/ram:AssociatedDocumentLineDocument/ram:LineStatusReasonCode');
-  if (Text <> '') and not LandrixEInvoiceLineStatusReasonCodeFromStr(Text, ALine.LineStatusReasonCode) then
+  if (Text <> '') and not LandrixEInvoiceLineStatusReasonCodeFromStr(LandrixEInvoiceTrimXml(Text), ALine.LineStatusReasonCode) then
   begin
     ALine.LineStatusReasonCode := ilsrc_None;
     UnknownCode(Text, APath + '/ram:AssociatedDocumentLineDocument/ram:LineStatusReasonCode',
@@ -2635,14 +2635,14 @@ begin
     Attachment.DocumentDescription := Source.Name;
     Attachment.ExternalReference := IDValue(Source.URIID, Path + '/ram:URIID');
     Attachment.TypeCode := iatc_None;
-    if (Source.TypeCode <> '') and not LandrixEInvoiceAttachmentTypeCodeFromStr(Source.TypeCode, Attachment.TypeCode) then
+    if (Source.TypeCode <> '') and not LandrixEInvoiceAttachmentTypeCodeFromStr(LandrixEInvoiceTrimXml(Source.TypeCode), Attachment.TypeCode) then
     begin
       Attachment.TypeCode := iatc_None;
       UnknownCode(Source.TypeCode, Path + '/ram:TypeCode', Attachment.TypeCodeOther);
     end;
     if Source.AttachmentBinaryObject.Value <> '' then
     begin
-      if not LandrixEInvoiceAttachmentTypeFromStr(Source.AttachmentBinaryObject.MimeCode, Attachment.AttachmentType) then
+      if not LandrixEInvoiceAttachmentTypeFromStr(LandrixEInvoiceTrimXml(Source.AttachmentBinaryObject.MimeCode), Attachment.AttachmentType) then
       begin
         Attachment.AttachmentType := iat_application_None;
         UnknownCode(Source.AttachmentBinaryObject.MimeCode, Path + '/ram:AttachmentBinaryObject/@mimeCode',
@@ -2871,7 +2871,7 @@ begin
   begin
     Source := ASettlement.SpecifiedTradeSettlementPaymentMeans[I];
     Payment := FInvoice.PaymentTypes.AddPaymentType;
-    if (Source.TypeCode <> '') and not LandrixEInvoicePaymentMeansCodeFromStr(Source.TypeCode, Payment.PaymentMeansCode) then
+    if (Source.TypeCode <> '') and not LandrixEInvoicePaymentMeansCodeFromStr(LandrixEInvoiceTrimXml(Source.TypeCode), Payment.PaymentMeansCode) then
     begin
       Payment.PaymentMeansCode := ipmc_NotImplemented;
       UnknownCode(Source.TypeCode, Path + '/ram:TypeCode', Payment.PaymentMeansCodeOther);

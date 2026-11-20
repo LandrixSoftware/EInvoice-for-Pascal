@@ -93,7 +93,7 @@ TLandrixEInvoice.CalculateTotals(Invoice);        // BG-23 und BG-22
 - `CalculateLineAmounts`: Menge x Nettopreis / Basismenge (0 gilt als 1), halb weg von null auf
   Cent gerundet, minus Positionsnachlässe, plus Positionszuschläge. Gerechnet wird genau mit den
   Werten, wie sie geschrieben werden (Menge mit 4 bis 10 Nachkommastellen, Preis mit 2 oder 4,
-  Basismenge mit bis zu 6), damit der Betrag zu dem passt, was ein Validator aus dem XML
+  Basismenge mit bis zu 10), damit der Betrag zu dem passt, was ein Validator aus dem XML
   nachrechnet. Eine Gruppe (Position mit
   Unterpositionen) erhält die Summe ihrer DETAIL- und GROUP-Unterpositionen. Lassen Sie diesen
   Aufruf weg, wenn Ihre Positionsbeträge von anderswo kommen.
