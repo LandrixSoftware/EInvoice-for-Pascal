@@ -1128,8 +1128,39 @@ end;
 
 function TLandrixEInvoiceValidator.Validate(const AFileName: string;
   AResult: TLandrixEInvoiceValidationResult): Boolean;
+var
+  F: TFileStream;
+  Data: TMemoryStream;
 begin
-  Result := DoValidate(AFileName, nil, AResult);
+  { the file is read once, so hash, scenario, schema and Schematron judge
+    the same bytes even if the file is replaced meanwhile; a file that
+    cannot be opened or is larger than 2 GB takes the path by name, whose
+    well-formedness step reports it }
+  Data := nil;
+  try
+    try
+      F := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+      try
+        if F.Size <= MaxInt then
+        begin
+          Data := TMemoryStream.Create;
+          if F.Size > 0 then
+            Data.CopyFrom(F, F.Size);
+          Data.Position := 0;
+        end;
+      finally
+        F.Free;
+      end;
+    except
+      on EStreamError do
+        FreeAndNil(Data);
+      on EInOutError do
+        FreeAndNil(Data);
+    end;
+    Result := DoValidate(AFileName, Data, AResult);
+  finally
+    Data.Free;
+  end;
 end;
 
 function TLandrixEInvoiceValidator.ValidateStream(AStream: TStream;
@@ -1263,9 +1294,11 @@ var
   Step: TLandrixEInvoiceValidationStepResult;
   FileData: TMemoryStream;
   SvrlWriter: TLandrixXmlWriter;
+  TruncMsg: TLandrixEInvoiceValidationMessage;
 begin
   AResult.Clear;
   Result := False;
+  TruncMsg := nil;
   Scenario := nil;
   AResult.FTimestamp := U(LandrixXmlFormatDateTime(Now));
   if AFileName <> '' then
@@ -1306,6 +1339,9 @@ begin
         finally
           Reader.Free;
         end;
+        { the bytes of a file read once keep its URI (document-uri()) }
+        if AFileName <> '' then
+          Tree.BaseUri := LandrixXmlFileUri(AFileName);
       end;
     except
       on E: ELandrixXmlError do
@@ -1330,7 +1366,9 @@ begin
 
     XsdValidator := TLandrixXmlXsdValidator.Create(TLandrixXmlXsdSchemaSet(SchemaOf(Scenario.FSchemaFile)));
     try
-      XsdValidator.MaxErrors := 0;
+      { a crafted document can produce an error per element: keep at most
+        10000 and say that the list was cut }
+      XsdValidator.MaxErrors := 10000;
       if AData = nil then
         XsdValidator.ValidateFile(AFileName)
       else
@@ -1354,6 +1392,13 @@ begin
         Msg.FLine := XsdError.Line;
         Msg.FColumn := XsdError.Column;
         Msg.FText := TLandrixEInvoiceString(XsdError.Message);
+      end;
+      if XsdValidator.Truncated then
+      begin
+        Msg := AResult.Add(evs_XmlSchema, 0, 'generic-error', evl_Error);
+        TruncMsg := Msg;
+        Msg.FText := 'more than ' + TLandrixEInvoiceString(IntToStr(XsdValidator.MaxErrors)) +
+          ' schema errors; the rest is not listed';
       end;
       AResult.FXmlSchemaValid := XsdValidator.ErrorCount = 0;
     finally
@@ -1393,7 +1438,7 @@ begin
             if FKeepSvrl then
             begin
               SchValidator.SvrlPreserveWhitespace := True;
-              if AData = nil then
+              if AFileName <> '' then
                 SchValidator.DocumentUri := LandrixXmlFileUri(AFileName);
               SvrlWriter := TLandrixXmlWriter.Create;
               try
@@ -1434,6 +1479,10 @@ begin
         if Scenario.CustomLevel(Msg.FCode, Level) then
           Msg.FEffectiveLevel := Level;
       end;
+    { errors beyond the cut were not seen: a customLevel must not turn the
+      cut list into an acceptance }
+    if TruncMsg <> nil then
+      TruncMsg.FEffectiveLevel := evl_Error;
     AResult.FAccepted := (Scenario <> nil) and (AResult.FProcessingError = '');
     if AResult.FAccepted and Scenario.FHasAcceptMatch then
     begin

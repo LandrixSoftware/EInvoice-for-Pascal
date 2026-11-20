@@ -323,6 +323,15 @@ It shows the XML as it is (also what the model does not hold); the rendering abo
 model with every field and works without files. A PDF of the invoice is not produced (the
 visualization makes it with Apache FOP).
 
+The visualization page is active content: it carries JavaScript (opening an attachment) and links
+whose targets come from the invoice. Two values of the stylesheet would let the sender of an
+invoice run script in the page, so the visualizer filters its output: a link to the external
+document (BT-124) with a scheme other than `http`, `https`, `mailto` or `ftp` becomes `#`, and an
+attachment link whose reference, MIME code or file name would break out of the JavaScript string
+does nothing. A regular invoice keeps the page unchanged. Show the page in a browser or web view
+anyway as content from outside: in a sandbox or with a Content Security Policy, not in the origin
+of your own application. The rendering above writes no script at all.
+
 ## What to ship
 
 | Feature | Needs at run time |

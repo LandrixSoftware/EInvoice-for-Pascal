@@ -665,7 +665,16 @@ begin
     finally
       M.Free;
     end;
+    { an invoice root of another namespace is no invoice }
     M := BytesStream(BuildInvoicePdf('<rsm:CrossIndustryInvoice xmlns:rsm="urn:wrong"/>'));
+    try
+      Check(not TXRechnungInvoiceAdapter.LoadFromPdfStream(Back, M, Error, Name), 'foreign namespace');
+      Check(Pos('No embedded invoice', string(Error)) > 0, 'message: ' + string(Error));
+    finally
+      M.Free;
+    end;
+    M := BytesStream(BuildInvoicePdf('<rsm:CrossIndustryInvoice ' +
+      'xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"><a></b></rsm:CrossIndustryInvoice>'));
     try
       Check(not TXRechnungInvoiceAdapter.LoadFromPdfStream(Back, M, Error, Name), 'unreadable embedded invoice');
       Check(Pos('Embedded file factur-x.xml', string(Error)) > 0, 'message: ' + string(Error));

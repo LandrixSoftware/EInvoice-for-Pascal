@@ -332,6 +332,16 @@ Sie zeigt das XML, wie es ist (auch, was das Modell nicht hält); die Darstellun
 Modell mit jedem Feld und braucht keine Dateien. Ein PDF der Rechnung entsteht nicht (die
 Visualisierung erzeugt es mit Apache FOP).
 
+Die Seite der Visualisierung ist aktiver Inhalt: Sie enthält JavaScript (zum Öffnen eines Anhangs)
+und Links, deren Ziele aus der Rechnung stammen. Über zwei Werte des Stylesheets könnte der
+Absender einer Rechnung Skript in der Seite ausführen; deshalb filtert der Visualizer seine
+Ausgabe: Ein Link auf das externe Dokument (BT-124) mit einem anderen Schema als `http`, `https`,
+`mailto` oder `ftp` wird zu `#`, und ein Anhang-Link, dessen Referenz, MIME-Code oder Dateiname aus
+der JavaScript-Zeichenkette ausbrechen würde, bewirkt nichts. Bei einer regulären Rechnung bleibt
+die Seite unverändert. Zeigen Sie die Seite trotzdem in einem Browser oder Web-View als fremden
+Inhalt an: in einer Sandbox oder mit einer Content Security Policy, nicht im Origin der eigenen
+Anwendung. Die Darstellung oben schreibt überhaupt kein Skript.
+
 ## Was ausgeliefert werden muss
 
 | Funktion | Braucht zur Laufzeit |

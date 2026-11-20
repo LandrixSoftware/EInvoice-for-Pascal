@@ -720,10 +720,12 @@ begin
     AddObj(Pdf, O, 3, PageBody);
     AddObj(Pdf, O, 4, '<< /Type /Filespec /F (a\200b.xml) /UF <FEFF0066006100E400DF0020007820AC002E0078006D006C> ' +
       '/EF << /F 5 0 R >> >>');
-    AddObj(Pdf, O, 5, StreamBody('/Type /EmbeddedFile', '<Invoice/>'));
+    AddObj(Pdf, O, 5, StreamBody('/Type /EmbeddedFile',
+      '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>'));
     AddObj(Pdf, O, 6, '<< /Names [(first) 4 0 R (second) 7 0 R] >>');
     AddObj(Pdf, O, 7, '<< /Type /Filespec /F (a\200b.xml) /EF << /F 8 0 R >> >>');
-    AddObj(Pdf, O, 8, StreamBody('/Type /EmbeddedFile', '<CreditNote/>'));
+    AddObj(Pdf, O, 8, StreamBody('/Type /EmbeddedFile',
+      '<CreditNote xmlns="urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"/>'));
     Finish(Pdf, O, 9, '');
     Check(ExtractAll(Pdf, List, Info), 'name tree with kids: ' + string(Info.Error));
     Check(List.Count = 2, 'two attachments from the kids');
@@ -749,8 +751,10 @@ end;
   counts, also though the old one stays in the file. }
 procedure TestIncrementalUpdate;
 const
-  OldXml = '<rsm:CrossIndustryInvoice xmlns:rsm="urn:x"><V>FIRST-REPLACED</V></rsm:CrossIndustryInvoice>';
-  NewXml = '<rsm:CrossIndustryInvoice xmlns:rsm="urn:x"><V>SECOND-VALID</V></rsm:CrossIndustryInvoice>';
+  OldXml = '<rsm:CrossIndustryInvoice xmlns:rsm="' +
+    'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"><V>FIRST-REPLACED</V></rsm:CrossIndustryInvoice>';
+  NewXml = '<rsm:CrossIndustryInvoice xmlns:rsm="' +
+    'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"><V>SECOND-VALID</V></rsm:CrossIndustryInvoice>';
 var
   Pdf, Xml: AnsiString;
   X1, X2, Ofs: Integer;
@@ -787,7 +791,8 @@ end;
   update freed. }
 procedure TestHybridXref;
 const
-  Xml = '<rsm:CrossIndustryInvoice xmlns:rsm="urn:x"><V>HYBRID</V></rsm:CrossIndustryInvoice>';
+  Xml = '<rsm:CrossIndustryInvoice xmlns:rsm="' +
+    'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"><V>HYBRID</V></rsm:CrossIndustryInvoice>';
   ObjStmHead = '4 0 ';
 var
   Pdf, Body, Got: AnsiString;
@@ -2180,6 +2185,282 @@ begin
 end;
 
 { The object layer has its own copy of the public limits. }
+{ --- hostile input: bounded work ----------------------------------------------- }
+
+function RepeatText(const S: AnsiString; ACount: Integer): AnsiString;
+var
+  I: Integer;
+begin
+  Result := '';
+  if (S = '') or (ACount <= 0) then
+    Exit;
+  SetLength(Result, Length(S) * ACount);
+  for I := 0 to ACount - 1 do
+    Move(S[1], Result[I * Length(S) + 1], Length(S));
+end;
+
+procedure AppendRaw(M: TMemoryStream; const S: AnsiString);
+begin
+  if S <> '' then
+    M.WriteBuffer(S[1], Length(S));
+end;
+
+{ LZW codes of 9 bits, most significant bit first. }
+function LzwPack(const ACodes: array of Integer): AnsiString;
+var
+  I, J, Acc, Bits: Integer;
+begin
+  Result := '';
+  Acc := 0;
+  Bits := 0;
+  for I := Low(ACodes) to High(ACodes) do
+    for J := 8 downto 0 do
+    begin
+      Acc := (Acc shl 1) or ((ACodes[I] shr J) and 1);
+      Inc(Bits);
+      if Bits = 8 then
+      begin
+        Result := Result + AnsiChar(Acc);
+        Acc := 0;
+        Bits := 0;
+      end;
+    end;
+  if Bits > 0 then
+    Result := Result + AnsiChar(Acc shl (8 - Bits));
+end;
+
+{ Objects 1..ACount+1 each compressed in the object stream with the next
+  number; only an xref stream knows them. }
+function ObjStmChainPdf(ACount: Integer): AnsiString;
+var
+  M: TMemoryStream;
+  Rows: AnsiString;
+  I, P, XrefOfs, Num: Integer;
+
+  procedure PutRow(AType, AField2, AField3: Integer);
+  begin
+    Rows[P] := AnsiChar(AType);
+    Rows[P + 1] := AnsiChar((AField2 shr 24) and $FF);
+    Rows[P + 2] := AnsiChar((AField2 shr 16) and $FF);
+    Rows[P + 3] := AnsiChar((AField2 shr 8) and $FF);
+    Rows[P + 4] := AnsiChar(AField2 and $FF);
+    Rows[P + 5] := AnsiChar((AField3 shr 8) and $FF);
+    Rows[P + 6] := AnsiChar(AField3 and $FF);
+    Inc(P, 7);
+  end;
+
+begin
+  M := TMemoryStream.Create;
+  try
+    AppendRaw(M, PdfHeader);
+    XrefOfs := Integer(M.Size);
+    Num := ACount + 2;
+    Rows := '';
+    SetLength(Rows, 7 * (Num + 1));
+    P := 1;
+    PutRow(0, 0, 65535);
+    for I := 1 to ACount + 1 do
+      PutRow(2, I + 1, 0);
+    PutRow(1, XrefOfs, 0);
+    AppendRaw(M, IntToAnsi(Num) + ' 0 obj'#10 + StreamBody('/Type /XRef /Size ' + IntToAnsi(Num + 1) +
+      ' /W [1 4 2] /Root 1 0 R', Rows) + #10'endobj'#10'startxref'#10 + IntToAnsi(XrefOfs) + #10'%%EOF'#10);
+    Result := StreamText(M);
+  finally
+    M.Free;
+  end;
+end;
+
+{ Damaged and crafted files whose naive handling costs quadratic time,
+  unbounded memory or stack: each must finish quickly with a plain result. }
+procedure TestHostileInput;
+var
+  Pdf, Kids, Names, Xml: AnsiString;
+  Name: TLandrixEInvoiceString;
+  M: TMemoryStream;
+  O: TPdfOffsets;
+  I, Ofs: Integer;
+  List: TLandrixEInvoicePdfAttachmentList;
+  Info: TLandrixEInvoicePdfExtractInfo;
+  Doc: TLandrixEInvoicePdfDocument;
+  Col: TLandrixEInvoicePdfCollector;
+begin
+  { a predictor outside ISO 32000-1, Table 8 is no PNG predictor }
+  CheckSkipped(InvoicePdf('/Filter /FlateDecode /DecodeParms << /Predictor 5 /Columns 61 >>', HexToBytes(VecPngUp)),
+    'predictor', 'predictor 5');
+  { 5 0 R names generation 0, the file holds 5 1 obj: the reference is null }
+  Check(not ExtractInvoice(RawReplace(InvoicePdf('', VecXml), '5 0 obj', '5 1 obj'), Xml, Name, Info),
+    'reference to another generation');
+
+  { ASCII85 'z' expands four times; the stream limit holds there too }
+  CheckSkipped(InvoicePdf('/Filter /ASCII85Decode',
+    RepeatText('z', LandrixEInvoicePdfObjectMaxStreamSize div 4 + 1) + '~>'), 'exceeds', 'ASCII85 z run');
+
+  List := TLandrixEInvoicePdfAttachmentList.Create;
+  try
+    { LZW: a code above the next free entry ends the data }
+    Check(ExtractAll(InvoicePdf('/Filter /LZWDecode', LzwPack([256, 65, 300, 66, 257])), List, Info),
+      'LZW: ' + string(Info.Error));
+    Check(List.Count = 1, 'LZW: one attachment');
+    if List.Count = 1 then
+      CheckEquals(1, List[0].Size, 'LZW: only the literal before the bad code');
+
+    { object streams said to lie in object streams, 100000 deep }
+    List.Clear;
+    Check(not ExtractAll(ObjStmChainPdf(100000), List, Info), 'object stream chain: no catalog');
+
+    { many trailers without /Root and without end }
+    Check(not ExtractAll(PdfHeader + RepeatText('trailer<<', 20000), List, Info), 'trailer run');
+
+    { many stream keywords without endstream }
+    M := TMemoryStream.Create;
+    try
+      AppendRaw(M, PdfHeader);
+      for I := 1 to 100000 do
+        AppendRaw(M, IntToAnsi(I) + ' 0 obj<<>>stream'#10);
+      Pdf := StreamText(M);
+    finally
+      M.Free;
+    end;
+    Check(not ExtractAll(Pdf, List, Info), 'streams without endstream');
+
+    { xref entries pointing into one huge token }
+    Pdf := PdfHeader;
+    Ofs := Length(Pdf);
+    Pdf := Pdf + RepeatText('a', 4 * 1024 * 1024) + #10;
+    I := Length(Pdf);
+    Pdf := Pdf + 'xref'#10'0 20001'#10'0000000000 65535 f '#10 + RepeatText(Pad10(Ofs) + ' 00000 n '#10, 20000) +
+      'trailer'#10'<< /Size 20001 >>'#10'startxref'#10 + IntToAnsi(I) + #10'%%EOF'#10;
+    Check(not ExtractAll(Pdf, List, Info), 'xref into a huge token');
+
+    { decompression bombs before the invoice: the decoding work is bounded,
+      so the invoice after them is skipped too }
+    O := NoOffsets;
+    Names := '';
+    for I := 0 to 8 do
+      Names := Names + '(a' + IntToAnsi(I) + ') ' + IntToAnsi(10 + I) + ' 0 R ';
+    Pdf := PdfHeader;
+    AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [' + Names + '] >> >> >>');
+    AddObj(Pdf, O, 2, PagesBody);
+    AddObj(Pdf, O, 3, PageBody);
+    for I := 4 to 9 do
+      AddObj(Pdf, O, I, '<< >>');
+    for I := 0 to 8 do
+      AddObj(Pdf, O, 10 + I, '<< /Type /Filespec /F (a' + IntToAnsi(I) + '.xml) /EF << /F ' + IntToAnsi(20 + I) +
+        ' 0 R >> >>');
+    AddObj(Pdf, O, 19, '<< >>');
+    for I := 0 to 7 do
+      AddObj(Pdf, O, 20 + I, StreamBody('/Type /EmbeddedFile /Filter [/FlateDecode /FlateDecode]', HexToBytes(VecBomb)));
+    AddObj(Pdf, O, 28, StreamBody('/Type /EmbeddedFile', VecXml));
+    Finish(Pdf, O, 29, '');
+    List.Clear;
+    Check(ExtractAll(Pdf, List, Info), 'bombs: ' + string(Info.Error));
+    CheckEquals(0, List.Count, 'bombs: nothing decoded after the budget');
+    CheckEquals(9, Info.SkippedAttachments, 'bombs: all skipped');
+  finally
+    List.Free;
+  end;
+
+  { name tree whose /Kids name one node 100000 times, also inside it }
+  Kids := '[' + RepeatText('7 0 R ', 100000) + ']';
+  O := NoOffsets;
+  Pdf := PdfHeader;
+  AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles 6 0 R >> >>');
+  AddObj(Pdf, O, 2, PagesBody);
+  AddObj(Pdf, O, 3, PageBody);
+  AddObj(Pdf, O, 4, '<< >>');
+  AddObj(Pdf, O, 5, '<< >>');
+  AddObj(Pdf, O, 6, '<< /Kids ' + Kids + ' >>');
+  AddObj(Pdf, O, 7, '<< /Kids ' + Kids + ' /Names [1 2] >>');
+  Finish(Pdf, O, 8, '');
+  Doc := LoadDocument(Pdf);
+  try
+    Col := TLandrixEInvoicePdfCollector.Create(Doc);
+    try
+      Col.Collect;
+      Check(Col.LimitReached, 'name tree: limit reached');
+      Check(Col.NameTreeIssues.Count <= 1001, 'name tree: issues bounded, ' + IntToStr(Col.NameTreeIssues.Count));
+    finally
+      Col.Free;
+    end;
+  finally
+    Doc.Free;
+  end;
+end;
+
+{ Checker and extractor on crafted structures: a pages tree naming one
+  page many times with a long /AF, an Invoice root of another namespace,
+  an attachment above the stream limit. }
+procedure TestHostileCheck;
+var
+  Pdf: AnsiString;
+  O: TPdfOffsets;
+  List: TLandrixEInvoicePdfAttachmentList;
+  Info: TLandrixEInvoicePdfExtractInfo;
+  R: TLandrixEInvoicePdfCheckResult;
+begin
+  List := TLandrixEInvoicePdfAttachmentList.Create;
+  try
+    Check(ExtractAll(InvoicePdf('', '<Invoice xmlns="urn:x"/>'), List, Info), 'foreign root: ' + string(Info.Error));
+    Check((List.Count = 1) and (List[0].Kind = epa_OtherXml), 'Invoice of another namespace is other XML');
+    List.Clear;
+    Check(ExtractAll(InvoicePdf('', '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>'),
+      List, Info), 'UBL root: ' + string(Info.Error));
+    Check((List.Count = 1) and (List[0].Kind = epa_Invoice), 'UBL Invoice is an invoice');
+    List.Clear;
+    Check(ExtractAll(InvoicePdf('', '<x:CrossIndustryInvoice xmlns:y="urn:y" ' +
+      'xmlns:x="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"/>'), List, Info),
+      'CII root: ' + string(Info.Error));
+    Check((List.Count = 1) and (List[0].Kind = epa_Invoice), 'CII with prefix is an invoice');
+  finally
+    List.Free;
+  end;
+
+  { the attachment not in /AF of the catalog is looked for on the pages;
+    the one page is named 100000 times and has 20000 /AF entries }
+  O := NoOffsets;
+  Pdf := PdfHeader;
+  AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R ' +
+    '(other.txt) 7 0 R] >> >> /AF [4 0 R] >>');
+  AddObj(Pdf, O, 2, '<< /Type /Pages /Kids [' + RepeatText('3 0 R ', 100000) + '] /Count 1 >>');
+  AddObj(Pdf, O, 3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /AF [' + RepeatText('8 0 R ', 20000) + '] >>');
+  AddObj(Pdf, O, 4, GoodSpec);
+  AddObj(Pdf, O, 5, StreamBody('/Type /EmbeddedFile /Subtype /text#2Fxml /Params << /Size ' + IntToAnsi(Length(VecXml)) +
+    ' /ModDate (D:20261028120000+01''00) >>', VecXml));
+  AddObj(Pdf, O, 6, StreamBody('/Type /EmbeddedFile', 'hello'));
+  AddObj(Pdf, O, 7, '<< /Type /Filespec /F (other.txt) /UF (other.txt) /EF << /F 6 0 R >> /AFRelationship /Data >>');
+  AddObj(Pdf, O, 8, '<< >>');
+  Finish(Pdf, O, 9, '');
+  R := TLandrixEInvoicePdfCheckResult.Create;
+  try
+    RunCheck(Pdf, R);
+    CheckEquals(1, Findings(R, 'LX-PDF-08', 'not every page /AF'), 'page /AF bounded: ' + StatusText(R));
+  finally
+    R.Free;
+  end;
+
+  { an attachment above the stream limit leaves open whether it is a second
+    invoice }
+  O := NoOffsets;
+  Pdf := PdfHeader;
+  AddObj(Pdf, O, 1, '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(factur-x.xml) 4 0 R ' +
+    '(other.bin) 7 0 R] >> >> /AF [4 0 R 7 0 R] >>');
+  AddObj(Pdf, O, 2, PagesBody);
+  AddObj(Pdf, O, 3, PageBody);
+  AddObj(Pdf, O, 4, GoodSpec);
+  AddObj(Pdf, O, 5, StreamBody('/Type /EmbeddedFile /Subtype /text#2Fxml /Params << /Size ' + IntToAnsi(Length(VecXml)) +
+    ' /ModDate (D:20261028120000+01''00) >>', VecXml));
+  AddObj(Pdf, O, 6, StreamBody('/Type /EmbeddedFile /Filter [/FlateDecode /FlateDecode]', HexToBytes(VecBomb)));
+  AddObj(Pdf, O, 7, '<< /Type /Filespec /F (other.bin) /UF (other.bin) /EF << /F 6 0 R >> /AFRelationship /Data >>');
+  Finish(Pdf, O, 8, '');
+  R := TLandrixEInvoicePdfCheckResult.Create;
+  try
+    RunCheck(Pdf, R);
+    Check(R.Status[epl_Embedding] = eps_Incomplete, 'bomb: incomplete: ' + StatusText(R));
+  finally
+    R.Free;
+  end;
+end;
+
 procedure TestLimits;
 begin
   CheckEquals(LandrixEInvoicePdfMaxStreamSize, LandrixEInvoicePdfObjectMaxStreamSize, 'stream size');
@@ -2190,6 +2471,8 @@ end;
 procedure Register;
 begin
   RegisterTest('Pdf.Limits', TestLimits);
+  RegisterTest('Pdf.HostileInput', TestHostileInput);
+  RegisterTest('Pdf.HostileCheck', TestHostileCheck);
   RegisterTest('Pdf.Detection', TestDetection);
   RegisterTest('Pdf.Filters', TestFilters);
   RegisterTest('Pdf.DamagedStreams', TestDamagedStreams);

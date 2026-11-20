@@ -323,6 +323,11 @@ type
     FPos: Integer;
     FOwned: TObjectList;
     FSink: TLandrixEInvoicePdfSyntaxSink;
+    { sorted positions of 'endstream' in FBuf, built on first use; shared
+      with the document for the file buffer (FOwnsEnds False) }
+    FEnds: TObject;
+    FOwnsEnds: Boolean;
+    function NextEndstream(AFrom: Integer): Integer;
     function NewObj(AKind: TLandrixEInvoicePdfObjectKind): TLandrixEInvoicePdfObject;
     function ParseLiteralString: TLandrixEInvoicePdfObject;
     function ParseHexString: TLandrixEInvoicePdfObject;
@@ -331,10 +336,18 @@ type
     function ParseDict(ADepth: Integer): TLandrixEInvoicePdfObject;
   public
     constructor Create(const ABuf: TLandrixEInvoicePdfBytes; AOwned: TObjectList);
+    destructor Destroy; override;
     procedure SkipWhite;
     { A regular token (number, keyword) without interpretation.
       DE: Ein regulaeres Token (Zahl, Schluesselwort) ohne Deutung. }
     function ReadToken: AnsiString;
+    { ReadToken for an object header (number, generation, obj): at most
+      4096 bytes of white space and comments and 32 bytes of token, else ''.
+      An xref offset pointing into a huge run then costs little.
+      DE: ReadToken fuer einen Objektkopf (Nummer, Generation, obj):
+      hoechstens 4096 Byte Leerraum und Kommentare und 32 Byte Token, sonst
+      ''. Ein xref-Offset mitten in einen riesigen Lauf kostet dann wenig. }
+    function ReadHeadToken: AnsiString;
     function ParseObject(ADepth: Integer): TLandrixEInvoicePdfObject;
     property Pos: Integer read FPos write FPos;
     { Receiver of the raw syntax, nil = none. DE: Empfaenger der rohen
@@ -371,6 +384,9 @@ type
     FBuf: TLandrixEInvoicePdfBytes;
     FXref: array of TLandrixEInvoicePdfXrefEntry;
     FCache: array of TLandrixEInvoicePdfObject;
+    { the xref section that set each entry, see SetEntry }
+    FEntrySection: array of Integer;
+    FCurSection: Integer;
     FLoading: array of Boolean;
     FObjStmDone: array of Boolean;
     FOwned: TObjectList;
@@ -404,6 +420,14 @@ type
       /Index is malformed }
     FXrefShort: Boolean;
     FXrefBadIndex: Boolean;
+    { set by ParseXrefStream for a type 2 entry whose fields are out of range }
+    FXrefBadEntry: Boolean;
+    { 'endstream' positions of FBuf, see NewFileLexer }
+    FEnds: TObject;
+    FDecodedBytes: Int64;
+    FStreamTooBig: Boolean;
+    function NewFileLexer: TLandrixEInvoicePdfLexer;
+    function NextEndstream(AFrom: Integer): Integer;
     function MaxPlausibleObjNum: Integer;
     function SyntaxSeen(AOfs: Integer): Boolean;
     procedure SettleStreamEnd(AObj: TLandrixEInvoicePdfObject; ALex: TLandrixEInvoicePdfLexer; ADirectOnly: Boolean);
@@ -451,6 +475,19 @@ type
       DE: Die rohen Daten eines Streams (entschluesselt, ohne Filter); False
       mit StreamError, wenn sie sich nicht finden lassen. }
     function GetStreamRaw(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
+    { Bytes produced by the stream filters of GetStreamData so far, an
+      attempt that exceeds the stream limit counted with the limit; lets a
+      caller bound the decoding work over many streams.
+      DE: Von den Stream-Filtern in GetStreamData bisher erzeugte Bytes, ein
+      Versuch ueber der Stream-Grenze zaehlt mit der Grenze; damit kann ein
+      Aufrufer die Dekodierarbeit ueber viele Streams begrenzen. }
+    property DecodedBytes: Int64 read FDecodedBytes;
+    { The last GetStreamData failed because the decoded data would exceed
+      LandrixEInvoicePdfObjectMaxStreamSize (a limit, not damaged data).
+      DE: Der letzte GetStreamData-Aufruf scheiterte, weil die dekodierten
+      Daten LandrixEInvoicePdfObjectMaxStreamSize ueberschritten haetten
+      (eine Grenze, keine beschaedigten Daten). }
+    property StreamTooBig: Boolean read FStreamTooBig;
     { The document catalog (/Root of the trailer); nil if it is missing.
       DE: Der Dokumentkatalog (/Root des Trailers); nil, wenn er fehlt. }
     function Catalog: TLandrixEInvoicePdfObject;
@@ -523,6 +560,24 @@ function LandrixEInvoicePdfDocChar(AByte: Byte): Word;
   arbeitet auf den Bytes, also laeuft kein XML-Parser (und keine externe
   Entitaet wird aufgeloest). }
 function LandrixEInvoicePdfDetectXmlRoot(const AData: TLandrixEInvoicePdfBytes): TLandrixEInvoiceString;
+
+{ As LandrixEInvoicePdfDetectXmlRoot, with the namespace URI of the root
+  element in ANamespace ('' if the start tag declares none for its prefix).
+  DE: Wie LandrixEInvoicePdfDetectXmlRoot, mit der Namensraum-URI des
+  Wurzelelements in ANamespace ('', wenn das Start-Tag fuer sein Praefix
+  keinen deklariert). }
+function LandrixEInvoicePdfDetectXmlRootNs(const AData: TLandrixEInvoicePdfBytes;
+  out ANamespace: TLandrixEInvoiceString): TLandrixEInvoiceString;
+
+{ Whether local name and namespace are the root of an invoice: CII
+  (CrossIndustryInvoice, D16B namespace), ZUGFeRD 1.0
+  (CrossIndustryDocument) or UBL (Invoice-2, CreditNote-2). An element
+  of the same name in another namespace is other XML.
+  DE: Ob Lokalname und Namensraum die Wurzel einer Rechnung sind: CII
+  (CrossIndustryInvoice, Namensraum D16B), ZUGFeRD 1.0
+  (CrossIndustryDocument) oder UBL (Invoice-2, CreditNote-2). Ein
+  gleichnamiges Element in einem anderen Namensraum ist anderes XML. }
+function LandrixEInvoicePdfIsInvoiceRoot(const ALocal, ANamespace: TLandrixEInvoiceString): Boolean;
 
 { ALen bytes from APos as AnsiString, byte by byte.
   DE: ALen Bytes ab APos als AnsiString, Byte fuer Byte. }
@@ -637,14 +692,16 @@ type
     100000 name tree nodes and the nesting depth of the object layer are
     read (see LimitReached). Structural problems of the name tree (keys not
     sorted or no strings, wrong /Limits, a node with both or none of /Names
-    and /Kids) are noted, not repaired.
+    and /Kids) are noted, not repaired; after 1000 lines one closing line
+    stands for the rest.
     DE: Sammelt die Dateispezifikationen eines Dokuments: zuerst den
     Namensbaum in seiner Reihenfolge, dann die nur in /AF genannten.
     Gelesen werden hoechstens 10000 Vorkommen, 100000 Knoten des
     Namensbaums und die Verschachtelungstiefe der Objektschicht (siehe
     LimitReached). Strukturfehler des Namensbaums (Schluessel nicht
     sortiert oder keine Strings, falsche /Limits, ein Knoten mit beiden oder
-    keinem von /Names und /Kids) werden notiert, nicht repariert. }
+    keinem von /Names und /Kids) werden notiert, nicht repariert; nach 1000
+    Zeilen steht eine Schlusszeile fuer den Rest. }
   TLandrixEInvoicePdfCollector = class(TObject)
   private
     FDoc: TLandrixEInvoicePdfDocument;
@@ -828,16 +885,20 @@ end;
 
 procedure BuilderGrow(var B: TPdfByteBuilder; ANeed: Integer);
 var
-  NewCap: Integer;
+  NewCap: Int64;
 begin
-  if B.Len + ANeed <= Length(B.Data) then
+  if Int64(B.Len) + ANeed <= Length(B.Data) then
     Exit;
-  NewCap := Integer(Length(B.Data)) * 2;
+  NewCap := Int64(Length(B.Data)) * 2;
   if NewCap < 4096 then
     NewCap := 4096;
-  if NewCap < B.Len + ANeed then
-    NewCap := B.Len + ANeed;
-  SetLength(B.Data, NewCap);
+  if NewCap < Int64(B.Len) + ANeed then
+    NewCap := Int64(B.Len) + ANeed;
+  { Callers stop at LandrixEInvoicePdfObjectMaxStreamSize; the cap keeps the
+    doubling from overflowing Integer on the way there. }
+  if NewCap > MaxInt then
+    raise EOutOfMemory.Create('PDF stream buffer too large');
+  SetLength(B.Data, Integer(NewCap));
 end;
 
 procedure BuilderAdd(var B: TPdfByteBuilder; const ASource: TLandrixEInvoicePdfBytes; AStart, ACount: Integer);
@@ -1664,7 +1725,7 @@ begin
     BuilderAddByte(B, Byte((ATuple shr (24 - 8 * I)) and $FF));
 end;
 
-function FilterASCII85(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes): Boolean;
+function FilterASCII85(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes; out ATooBig: Boolean): Boolean;
 var
   I, Cnt, K: Integer;
   Tuple: Int64;
@@ -1672,6 +1733,7 @@ var
   Output: TPdfByteBuilder;
 begin
   Result := False;
+  ATooBig := False;
   ADst := nil;
   Output.Data := nil;
   Output.Len := 0;
@@ -1693,6 +1755,11 @@ begin
       if Cnt <> 0 then
         Exit;
       PutTuple(Output, 0, 4);
+      if Output.Len > LandrixEInvoicePdfObjectMaxStreamSize then
+      begin
+        ATooBig := True;
+        Exit;
+      end;
       Continue;
     end;
     if (B < Ord('!')) or (B > Ord('u')) then
@@ -1709,7 +1776,10 @@ begin
       Cnt := 0;
     end;
     if Output.Len > LandrixEInvoicePdfObjectMaxStreamSize then
+    begin
+      ATooBig := True;
       Exit;
+    end;
   end;
   if Cnt > 1 then
   begin
@@ -1718,18 +1788,24 @@ begin
     if Tuple > $FFFFFFFF then
       Exit;
     PutTuple(Output, Tuple, Cnt - 1);
+    if Output.Len > LandrixEInvoicePdfObjectMaxStreamSize then
+    begin
+      ATooBig := True;
+      Exit;
+    end;
   end;
   ADst := BuilderDone(Output);
   Result := True;
 end;
 
-function FilterRunLength(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes): Boolean;
+function FilterRunLength(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes; out ATooBig: Boolean): Boolean;
 var
   I, J, Len: Integer;
   B: Byte;
   Output: TPdfByteBuilder;
 begin
   Result := False;
+  ATooBig := False;
   ADst := nil;
   Output.Data := nil;
   Output.Len := 0;
@@ -1759,7 +1835,10 @@ begin
         BuilderAddByte(Output, B);
     end;
     if Output.Len > LandrixEInvoicePdfObjectMaxStreamSize then
+    begin
+      ATooBig := True;
       Exit;
+    end;
   end;
   ADst := BuilderDone(Output);
   Result := True;
@@ -1796,7 +1875,8 @@ begin
 end;
 
 { LZW as in the PDF specification; EarlyChange 1 is the normal case. }
-function FilterLZW(const ASrc: TLandrixEInvoicePdfBytes; AEarlyChange: Integer; out ADst: TLandrixEInvoicePdfBytes): Boolean;
+function FilterLZW(const ASrc: TLandrixEInvoicePdfBytes; AEarlyChange: Integer; out ADst: TLandrixEInvoicePdfBytes;
+  out ATooBig: Boolean): Boolean;
 var
   Dict: TPdfLzwDict;
   Next, CodeLen, PrevCode, Code, K, D, SrcPos, BitCnt: Integer;
@@ -1805,14 +1885,18 @@ var
   Output: TPdfByteBuilder;
 begin
   Result := False;
+  ATooBig := False;
   ADst := nil;
   Output.Data := nil;
   Output.Len := 0;
-  for D := 0 to 255 do
+  for D := 0 to 4095 do
   begin
     Dict[D].Prev := -1;
-    Dict[D].Ch := Byte(D);
-    Dict[D].Len := 1;
+    Dict[D].Ch := Byte(D and $FF);
+    if D < 256 then
+      Dict[D].Len := 1
+    else
+      Dict[D].Len := 0;
   end;
   Next := 258;
   CodeLen := 9;
@@ -1855,6 +1939,9 @@ begin
         if not LzwExpand(Dict, Next, Code, Seq) then
           Break;
       end
+      else if Code > Next then
+        { A code beyond the next free entry is damaged data. }
+        Break
       else
       begin
         { KwKwK case }
@@ -1875,7 +1962,10 @@ begin
       PrevCode := Code;
     end;
     if Output.Len > LandrixEInvoicePdfObjectMaxStreamSize then
+    begin
+      ATooBig := True;
       Exit;
+    end;
     if (Next + AEarlyChange >= 512) and (CodeLen = 9) then
       CodeLen := 10
     else if (Next + AEarlyChange >= 1024) and (CodeLen = 10) then
@@ -1909,6 +1999,10 @@ begin
     Result := True;
     Exit;
   end;
+  { 2 is TIFF, 10 to 15 are PNG; anything else is no predictor of ISO
+    32000-1, Table 8, and must not pass as PNG }
+  if (APredictor > 2) and (APredictor < 10) then
+    Exit;
   if (AColors <= 0) or (ABpc <= 0) or (AColumns <= 0) then
     Exit;
   if (AColors > 32) or (ABpc > 32) or (AColumns > LandrixEInvoicePdfObjectMaxStreamSize) then
@@ -1923,13 +2017,10 @@ begin
 
   if APredictor = 2 then
   begin
-    { TIFF predictor, only the common 8-bit case }
+    { TIFF predictor, only the common 8-bit case; other depths fail
+      instead of passing undecoded bytes on }
     if ABpc <> 8 then
-    begin
-      ADst := ASrc;
-      Result := True;
       Exit;
-    end;
     ADst := Copy(ASrc, 0, Length(ASrc));
     Rows := Integer(Length(ADst)) div RowLen;
     for R := 0 to Rows - 1 do
@@ -2339,12 +2430,85 @@ end;
 // Lexer and object parser
 //==============================================================================
 
+type
+  { Every position of 'endstream' in a buffer, found by one pass. Searching
+    the next endstream for each stream keyword would cost a pass to the end
+    of the file per object when the keyword is missing (quadratic). }
+  TPdfEndstreamIndex = class(TObject)
+  private
+    FPos: array of Integer;
+    FCount: Integer;
+  public
+    constructor Create(const ABuf: TLandrixEInvoicePdfBytes);
+    { first position at or after AFrom; -1 if none }
+    function NextFrom(AFrom: Integer): Integer;
+  end;
+
+constructor TPdfEndstreamIndex.Create(const ABuf: TLandrixEInvoicePdfBytes);
+var
+  P: Integer;
+begin
+  inherited Create;
+  FCount := 0;
+  P := IndexOfBytes(ABuf, 'endstream', 0);
+  while P >= 0 do
+  begin
+    if FCount = Length(FPos) then
+    begin
+      if FCount < 16 then
+        SetLength(FPos, 16)
+      else
+        SetLength(FPos, FCount * 2);
+    end;
+    FPos[FCount] := P;
+    Inc(FCount);
+    P := IndexOfBytes(ABuf, 'endstream', P + 9);
+  end;
+end;
+
+function TPdfEndstreamIndex.NextFrom(AFrom: Integer): Integer;
+var
+  Lo, Hi, Mid: Integer;
+begin
+  Lo := 0;
+  Hi := FCount;
+  while Lo < Hi do
+  begin
+    Mid := (Lo + Hi) div 2;
+    if FPos[Mid] < AFrom then
+      Lo := Mid + 1
+    else
+      Hi := Mid;
+  end;
+  if Lo < FCount then
+    Result := FPos[Lo]
+  else
+    Result := -1;
+end;
+
 constructor TLandrixEInvoicePdfLexer.Create(const ABuf: TLandrixEInvoicePdfBytes; AOwned: TObjectList);
 begin
   inherited Create;
   FBuf := ABuf;
   FOwned := AOwned;
   FPos := 0;
+end;
+
+destructor TLandrixEInvoicePdfLexer.Destroy;
+begin
+  if FOwnsEnds then
+    FEnds.Free;
+  inherited Destroy;
+end;
+
+function TLandrixEInvoicePdfLexer.NextEndstream(AFrom: Integer): Integer;
+begin
+  if FEnds = nil then
+  begin
+    FEnds := TPdfEndstreamIndex.Create(FBuf);
+    FOwnsEnds := True;
+  end;
+  Result := TPdfEndstreamIndex(FEnds).NextFrom(AFrom);
 end;
 
 function TLandrixEInvoicePdfLexer.NewObj(AKind: TLandrixEInvoicePdfObjectKind): TLandrixEInvoicePdfObject;
@@ -2388,6 +2552,45 @@ begin
     end
     else
       Result := '';
+    Exit;
+  end;
+  Result := LandrixEInvoicePdfBytesToAnsi(FBuf, Start, FPos - Start);
+end;
+
+function TLandrixEInvoicePdfLexer.ReadHeadToken: AnsiString;
+var
+  Start, Stop: Integer;
+begin
+  Result := '';
+  Stop := FPos + 4096;
+  while (FPos < Length(FBuf)) and (FPos < Stop) do
+  begin
+    if IsPdfWhite(FBuf[FPos]) then
+      Inc(FPos)
+    else if FBuf[FPos] = Ord('%') then
+    begin
+      while (FPos < Length(FBuf)) and (FPos < Stop) and (FBuf[FPos] <> 10) and (FBuf[FPos] <> 13) do
+        Inc(FPos);
+    end
+    else
+      Break;
+  end;
+  if FPos >= Stop then
+    Exit;
+  Start := FPos;
+  while (FPos < Length(FBuf)) and IsPdfRegular(FBuf[FPos]) do
+  begin
+    if FPos - Start >= 32 then
+      Exit;
+    Inc(FPos);
+  end;
+  if FPos = Start then
+  begin
+    if FPos < Length(FBuf) then
+    begin
+      Result := AnsiChar(FBuf[FPos]);
+      Inc(FPos);
+    end;
     Exit;
   end;
   Result := LandrixEInvoicePdfBytesToAnsi(FBuf, Start, FPos - Start);
@@ -2800,7 +3003,7 @@ begin
     Result.Kind := pok_Stream;
     Result.StreamPos := FPos;
     { the length is decided by the document (/Length may be indirect) }
-    Save := IndexOfBytes(FBuf, 'endstream', FPos);
+    Save := NextEndstream(FPos);
     if FSink <> nil then
     begin
       if Save >= 0 then
@@ -2961,8 +3164,25 @@ end;
 
 destructor TLandrixEInvoicePdfDocument.Destroy;
 begin
+  FEnds.Free;
   FOwned.Free;
   inherited Destroy;
+end;
+
+function TLandrixEInvoicePdfDocument.NextEndstream(AFrom: Integer): Integer;
+begin
+  if FEnds = nil then
+    FEnds := TPdfEndstreamIndex.Create(FBuf);
+  Result := TPdfEndstreamIndex(FEnds).NextFrom(AFrom);
+end;
+
+{ A lexer over the file buffer that shares the document's endstream index. }
+function TLandrixEInvoicePdfDocument.NewFileLexer: TLandrixEInvoicePdfLexer;
+begin
+  Result := TLandrixEInvoicePdfLexer.Create(FBuf, FOwned);
+  if FEnds = nil then
+    FEnds := TPdfEndstreamIndex.Create(FBuf);
+  Result.FEnds := FEnds;
 end;
 
 procedure TLandrixEInvoicePdfDocument.EnsureSize(ANum: Integer);
@@ -2974,11 +3194,13 @@ begin
   Old := Integer(Length(FXref));
   SetLength(FXref, ANum + 1);
   SetLength(FCache, ANum + 1);
+  SetLength(FEntrySection, ANum + 1);
   SetLength(FLoading, ANum + 1);
   SetLength(FObjStmDone, ANum + 1);
   for I := Old to ANum do
   begin
     FXref[I].Known := False;
+    FEntrySection[I] := -1;
     FCache[I] := nil;
     FLoading[I] := False;
     FObjStmDone[I] := False;
@@ -3005,17 +3227,17 @@ end;
   an object wins. One exception: in a hybrid file (ISO 32000-1, 7.5.8.4) the
   classic table of the same update lists every object inside an object
   stream as free; the real entry comes from the /XRefStm stream. While
-  exactly that stream is read, an entry may replace a free placeholder, and
-  only from free to used, so an older section never revives an object that
-  a newer one freed.
+  exactly that stream is read, an entry may replace a free placeholder of
+  the classic table of the same update, and only from free to used, so an
+  older section never revives an object that a newer one freed.
   DE: Die xref-Kette wird vom neuesten zum aeltesten Abschnitt gelesen, und
   ein Eintrag wird nur fuer eine noch unbekannte Objektnummer uebernommen:
   So gewinnt die aktuelle Fassung eines Objekts. Eine Ausnahme: In einer
   hybriden Datei (ISO 32000-1, 7.5.8.4) fuehrt die klassische Tabelle
   desselben Updates jedes Objekt in einem Object Stream als frei; den echten
   Eintrag liefert der /XRefStm-Strom. Nur waehrend genau dieser Strom
-  gelesen wird, darf ein Eintrag einen freien Platzhalter ersetzen, und nur
-  von frei auf belegt, damit ein aelterer Abschnitt kein Objekt wiederbelebt,
+  gelesen wird, darf ein Eintrag einen freien Platzhalter der klassischen
+  Tabelle desselben Updates ersetzen, und nur von frei auf belegt, damit ein aelterer Abschnitt kein Objekt wiederbelebt,
   das ein neuerer freigegeben hat. }
 procedure TLandrixEInvoicePdfDocument.SetEntry(ANum: Integer; AKind: TLandrixEInvoicePdfXrefKind; AOfs: Int64; AGen, AStmNum, AStmIdx: Integer);
 begin
@@ -3030,8 +3252,10 @@ begin
   end;
   EnsureSize(ANum);
   if FXref[ANum].Known then
-    if not (FAllowFreeOverride and (FXref[ANum].Kind = pxk_Free) and (AKind <> pxk_Free)) then
+    if not (FAllowFreeOverride and (FXref[ANum].Kind = pxk_Free) and (AKind <> pxk_Free) and
+      (FEntrySection[ANum] = FCurSection)) then
       Exit;
+  FEntrySection[ANum] := FCurSection;
   FXref[ANum].Known := True;
   FXref[ANum].Kind := AKind;
   FXref[ANum].Offset := AOfs;
@@ -3139,6 +3363,7 @@ begin
   IdxPairs := nil;
   FXrefShort := False;
   FXrefBadIndex := False;
+  FXrefBadEntry := False;
   if (AObj = nil) or (AObj.Kind <> pok_Stream) then
     Exit;
   { an xref stream is never encrypted (ISO 32000-1, 7.5.8.2) }
@@ -3224,7 +3449,17 @@ begin
       else if F[0] = 1 then
         SetEntry(StartNum + Entry, pxk_Normal, F[1], Integer(F[2] and $7FFFFFFF), -1, -1)
       else if F[0] = 2 then
-        SetEntry(StartNum + Entry, pxk_Compressed, 0, 0, Integer(F[1] and $7FFFFFFF), Integer(F[2] and $7FFFFFFF));
+      begin
+        { a container number or index out of range names no object stream;
+          masking it could alias a real one (ISO 32000-1, Table 18) }
+        if (F[1] < 0) or (F[1] > MaxPlausibleObjNum) or (F[2] < 0) or (F[2] > MaxInt) then
+        begin
+          FXrefBadEntry := True;
+          SetEntry(StartNum + Entry, pxk_Compressed, 0, 0, -1, -1);
+        end
+        else
+          SetEntry(StartNum + Entry, pxk_Compressed, 0, 0, Integer(F[1]), Integer(F[2]));
+      end;
     end;
   end;
   Result := True;
@@ -3234,6 +3469,7 @@ procedure TLandrixEInvoicePdfDocument.ParseXrefChain(AStartOfs: Int64);
 var
   Ofs: Int64;
   Visited: array of Int64;
+  StmVisited: array of Integer;
   I, KeywordEnd, StmOfs: Integer;
   Seen, StmOk, TableOk: Boolean;
   Lex: TLandrixEInvoicePdfLexer;
@@ -3242,6 +3478,7 @@ var
   Problem: string;
 begin
   Visited := nil;
+  StmVisited := nil;
   Problem := '';
   Ofs := AStartOfs;
   while (Ofs > 0) and (Ofs < Length(FBuf)) do
@@ -3266,7 +3503,7 @@ begin
     SetLength(Visited, Length(Visited) + 1);
     Visited[Integer(Length(Visited)) - 1] := Ofs;
 
-    Lex := TLandrixEInvoicePdfLexer.Create(FBuf, FOwned);
+    Lex := NewFileLexer;
     try
       Lex.Pos := Integer(Ofs);
       Lex.SkipWhite;
@@ -3282,6 +3519,7 @@ begin
           FSyntax.BeginObject(-1, 0, pss_File);
         end;
         try
+          FCurSection := FXrefSections;
           TableOk := ParseClassicXref(Lex, Trailer);
         finally
           if FSyntax <> nil then
@@ -3326,39 +3564,56 @@ begin
             StmOk := False;
             StmOfs := Integer(Obj.AsInt);
             StmObj := nil;
-            try
-              StmObj := ParseChainObject(Lex, StmOfs);
-              if (StmObj <> nil) and (StmObj.Kind = pok_Stream) then
+            { many trailers may name the same stream: read it once (its
+              entries are merged already; decoding it again is only work) }
+            Seen := False;
+            for I := 0 to Integer(Length(StmVisited)) - 1 do
+              if StmVisited[I] = StmOfs then
               begin
-                FAllowFreeOverride := True;
-                try
-                  StmOk := ParseXrefStream(StmObj);
-                finally
-                  FAllowFreeOverride := False;
-                end;
+                Seen := True;
+                Break;
               end;
-            except
-              on EOutOfMemory do
-                raise;
-              on Exception do
-                StmOk := False;
-            end;
-            if FSyntax <> nil then
+            if not Seen then
             begin
-              if not StmOk then
-                FSyntax.ChainProblem('damaged /XRefStm at offset ' + IntToStr(StmOfs))
-              else
+              SetLength(StmVisited, Length(StmVisited) + 1);
+              StmVisited[Integer(Length(StmVisited)) - 1] := StmOfs;
+              try
+                StmObj := ParseChainObject(Lex, StmOfs);
+                if (StmObj <> nil) and (StmObj.Kind = pok_Stream) then
+                begin
+                  FAllowFreeOverride := True;
+                  try
+                    StmOk := ParseXrefStream(StmObj);
+                  finally
+                    FAllowFreeOverride := False;
+                  end;
+                end;
+              except
+                on EOutOfMemory do
+                  raise;
+                on Exception do
+                  StmOk := False;
+              end;
+              if FSyntax <> nil then
               begin
-                if FXrefShort then
-                  FSyntax.ChainProblem('xref stream at offset ' + IntToStr(StmOfs) + ' ends before its last entry');
-                if FXrefBadIndex then
-                  FSyntax.ChainProblem('xref stream at offset ' + IntToStr(StmOfs) + ' with a malformed /Index');
-                Section.Offset := StmOfs;
-                Section.IsStream := True;
-                Section.KeywordEol := peo_None;
-                Section.HeaderAfterEol := False;
-                Section.Trailer := StmObj;
-                FSyntax.XrefSection(Section);
+                if not StmOk then
+                  FSyntax.ChainProblem('damaged /XRefStm at offset ' + IntToStr(StmOfs))
+                else
+                begin
+                  if FXrefShort then
+                    FSyntax.ChainProblem('xref stream at offset ' + IntToStr(StmOfs) + ' ends before its last entry');
+                  if FXrefBadIndex then
+                    FSyntax.ChainProblem('xref stream at offset ' + IntToStr(StmOfs) + ' with a malformed /Index');
+                  if FXrefBadEntry then
+                    FSyntax.ChainProblem('xref stream at offset ' + IntToStr(StmOfs) +
+                      ' with an object stream entry out of range');
+                  Section.Offset := StmOfs;
+                  Section.IsStream := True;
+                  Section.KeywordEol := peo_None;
+                  Section.HeaderAfterEol := False;
+                  Section.Trailer := StmObj;
+                  FSyntax.XrefSection(Section);
+                end;
               end;
             end;
           end
@@ -3374,6 +3629,7 @@ begin
         Obj := ParseChainObject(Lex, KeywordEnd);
         if (Obj = nil) or (Obj.Kind <> pok_Stream) then
           Break;
+        FCurSection := FXrefSections;
         if not ParseXrefStream(Obj) then
           Break;
         Problem := '';
@@ -3381,6 +3637,8 @@ begin
           FSyntax.ChainProblem('xref stream at offset ' + IntToStr(KeywordEnd) + ' ends before its last entry');
         if FXrefBadIndex and (FSyntax <> nil) then
           FSyntax.ChainProblem('xref stream at offset ' + IntToStr(KeywordEnd) + ' with a malformed /Index');
+        if FXrefBadEntry and (FSyntax <> nil) then
+          FSyntax.ChainProblem('xref stream at offset ' + IntToStr(KeywordEnd) + ' with an object stream entry out of range');
         Inc(FXrefSections);
         NoteTrailer(Obj);
         Trailer := Obj;
@@ -3423,11 +3681,18 @@ end;
   aber nicht vor ersetzten Fassungen. }
 procedure TLandrixEInvoicePdfDocument.Reconstruct;
 var
-  I, J, K, NumStart, Num, Gen, TrailerPos: Integer;
+  I, J, K, NumStart, Num, Gen, TrailerPos, Tries, Hits, Cap: Integer;
   Lex: TLandrixEInvoicePdfLexer;
   TrailerObj: TLandrixEInvoicePdfObject;
+  HitNum, HitGen, HitOfs: array of Integer;
 begin
   FReconstructed := True;
+  { first collect, then size the table by the number of hits: one text
+    '8388608 0 obj' must not force a table of millions of entries }
+  Hits := 0;
+  HitNum := nil;
+  HitGen := nil;
+  HitOfs := nil;
   I := 0;
   while I < Length(FBuf) - 3 do
   begin
@@ -3460,26 +3725,50 @@ begin
       NumStart := K + 1;
       if (Num >= 0) and (Num <= MaxPlausibleObjNum) then
       begin
-        EnsureSize(Num);
-        FXref[Num].Known := True;
-        FXref[Num].Kind := pxk_Normal;
-        FXref[Num].Offset := NumStart;
-        FXref[Num].Gen := Gen;
-        FCache[Num] := nil;
+        if Hits = Length(HitNum) then
+        begin
+          SetLength(HitNum, 2 * Hits + 64);
+          SetLength(HitGen, 2 * Hits + 64);
+          SetLength(HitOfs, 2 * Hits + 64);
+        end;
+        HitNum[Hits] := Num;
+        HitGen[Hits] := Gen;
+        HitOfs[Hits] := NumStart;
+        Inc(Hits);
       end;
       Inc(I, 3);
       Continue;
     end;
     Inc(I);
   end;
+  { numbers may be sparse after updates, but not beyond 16 per object found }
+  Cap := 16 * Hits;
+  if Cap < 65536 then
+    Cap := 65536;
+  for I := 0 to Hits - 1 do
+  begin
+    Num := HitNum[I];
+    if Num > Cap then
+      Continue;
+    EnsureSize(Num);
+    FXref[Num].Known := True;
+    FXref[Num].Kind := pxk_Normal;
+    FXref[Num].Offset := HitOfs[I];
+    FXref[Num].Gen := HitGen[I];
+    FCache[Num] := nil;
+  end;
 
-  { look for a trailer if /Root is still missing }
+  { look for a trailer if /Root is still missing; each attempt may parse to
+    the end of the file, so only the last 64 trailers are tried (a damaged
+    file of repeated 'trailer<<' would otherwise cost quadratic time) }
   if FRootRef = nil then
   begin
     TrailerPos := LastIndexOfBytes(FBuf, 'trailer', Integer(Length(FBuf)));
-    while TrailerPos >= 0 do
+    Tries := 0;
+    while (TrailerPos >= 0) and (Tries < 64) do
     begin
-      Lex := TLandrixEInvoicePdfLexer.Create(FBuf, FOwned);
+      Inc(Tries);
+      Lex := NewFileLexer;
       try
         Lex.Pos := TrailerPos + 7;
         TrailerObj := Lex.ParseObject(0);
@@ -3511,6 +3800,10 @@ begin
   if FObjStmDone[AStmNum] then
     Exit;
   FObjStmDone[AStmNum] := True;
+  { an object stream is never itself compressed (ISO 32000-1, 7.5.7); a
+    chain of compressed containers would recurse without bound }
+  if (AStmNum >= Length(FXref)) or not FXref[AStmNum].Known or (FXref[AStmNum].Kind <> pxk_Normal) then
+    Exit;
 
   Stm := GetObject(AStmNum);
   if (Stm = nil) or (Stm.Kind <> pok_Stream) then
@@ -3620,6 +3913,17 @@ end;
   einer Datei, die nur ein Berechtigungspasswort traegt. Ein echtes
   Benutzerpasswort und AES (/CFM /AESV2, /AESV3) werden gemeldet, nicht
   geraten. }
+{ /V, /R and /Length of the security handler; a value beyond any version or
+  key length becomes -1 (unsupported) instead of being cut to 32 bits, where
+  2^32 + 128 would read as 128. }
+function SmallCryptInt(AValue: Int64): Integer;
+begin
+  if (AValue < 0) or (AValue > 65535) then
+    Result := -1
+  else
+    Result := Integer(AValue);
+end;
+
 procedure TLandrixEInvoicePdfDocument.SetupEncryption;
 var
   Enc, O, CfDict, CfEntry: TLandrixEInvoicePdfObject;
@@ -3643,6 +3947,7 @@ begin
     Exit;
   FCryptDone := True;
   FEncrypted := True;
+  FCryptError := '';
   { the /Encrypt dictionary itself is not encrypted }
   if FEncryptRef.Kind = pok_Ref then
     FEncryptNum := FEncryptRef.RefNum;
@@ -3651,6 +3956,8 @@ begin
   if (Enc = nil) or not Enc.IsDictLike then
   begin
     FCryptError := 'PDF is encrypted and the /Encrypt dictionary is missing';
+    { a reconstruction may still find it: allow the second call }
+    FCryptDone := False;
     Exit;
   end;
 
@@ -3671,14 +3978,14 @@ begin
   R := 0;
   O := DGet(Enc, 'V');
   if (O <> nil) and (O.Kind = pok_Num) then
-    V := Integer(O.AsInt);
+    V := SmallCryptInt(O.AsInt);
   O := DGet(Enc, 'R');
   if (O <> nil) and (O.Kind = pok_Num) then
-    R := Integer(O.AsInt);
+    R := SmallCryptInt(O.AsInt);
   LenBits := 40;
   O := DGet(Enc, 'Length');
   if (O <> nil) and (O.Kind = pok_Num) then
-    LenBits := Integer(O.AsInt);
+    LenBits := SmallCryptInt(O.AsInt);
 
   { from /V 4 on, named crypt filters say how streams and strings are
     handled; /Identity leaves that part unencrypted }
@@ -3724,7 +4031,7 @@ begin
       O := DGet(CfEntry, 'Length');
       if (O <> nil) and (O.Kind = pok_Num) then
       begin
-        N := Integer(O.AsInt);
+        N := SmallCryptInt(O.AsInt);
         if (N > 0) and (N <= 40) then
           LenBits := N * 8
         else
@@ -3978,7 +4285,7 @@ begin
             Exit;
           if FSyntax <> FLoadSyntax then
             FLoadSyntax := nil;
-          Lex := TLandrixEInvoicePdfLexer.Create(FBuf, FOwned);
+          Lex := NewFileLexer;
           try
             Lex.Pos := Integer(FXref[ANum].Offset);
             { an xref stream object was reported while the chain was read }
@@ -3990,16 +4297,16 @@ begin
             end;
             try
               { the object number must match, else the xref points elsewhere }
-              NumTok := Lex.ReadToken;
+              NumTok := Lex.ReadHeadToken;
               if not TokenToInt(NumTok, GotNum) or (GotNum <> ANum) then
                 Exit;
-              GenTok := Lex.ReadToken;
+              GenTok := Lex.ReadHeadToken;
               GenBad := not HeaderGenOf(GenTok, GotGen);
               if GenBad then
                 GotGen := FXref[ANum].Gen;
               if Observed and not (IsPdfDigits(NumTok) and IsPdfDigits(GenTok)) then
                 FSyntax.Unobserved(Integer(FXref[ANum].Offset), 'malformed object or generation number');
-              if Lex.ReadToken <> 'obj' then
+              if Lex.ReadHeadToken <> 'obj' then
                 Exit;
               ObjEnd := Lex.Pos;
               Result := Lex.ParseObject(0);
@@ -4146,9 +4453,9 @@ begin
   G := 0;
   ALex.Pos := AOfs;
   ALex.SkipWhite;
-  NumTok := ALex.ReadToken;
-  GenTok := ALex.ReadToken;
-  if ALex.ReadToken <> 'obj' then
+  NumTok := ALex.ReadHeadToken;
+  GenTok := ALex.ReadHeadToken;
+  if ALex.ReadHeadToken <> 'obj' then
     Exit;
   ObjEnd := ALex.Pos;
   Observed := (FSyntax <> nil) and not SyntaxSeen(AOfs);
@@ -4207,7 +4514,7 @@ end;
 
 function TLandrixEInvoicePdfDocument.Resolve(AObj: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
 var
-  Depth: Integer;
+  Depth, Num, Gen: Integer;
 begin
   Result := AObj;
   Depth := 0;
@@ -4219,7 +4526,22 @@ begin
       Result := nil;
       Exit;
     end;
-    Result := GetObject(Result.RefNum);
+    Num := Result.RefNum;
+    Gen := Result.RefGen;
+    { a reference to another generation than the current one is undefined
+      and so null (ISO 32000-1, 7.3.10), as in LandrixEInvoicePdfResolveRef }
+    if (Num >= 0) and (Num < Length(FXref)) and FXref[Num].Known and (FXref[Num].Kind <> pxk_Free) and
+      (FXref[Num].Gen <> Gen) then
+    begin
+      Result := nil;
+      Exit;
+    end;
+    Result := GetObject(Num);
+    if (Result <> nil) and (Result.OwnerNum = Num) and (Result.OwnerGen <> Gen) and not Result.HeaderGenBad then
+    begin
+      Result := nil;
+      Exit;
+    end;
   end;
 end;
 
@@ -4275,6 +4597,20 @@ begin
     Result := O.NameVal;
 end;
 
+{ Whether the stream lists a /Crypt filter (it must be the first one). }
+function HasCryptFilter(AObj: TLandrixEInvoicePdfObject): Boolean;
+var
+  F: TLandrixEInvoicePdfObject;
+begin
+  Result := False;
+  F := AObj.RawGet('Filter');
+  if F = nil then
+    Exit;
+  if (F.Kind = pok_Arr) and (F.ArrCount > 0) then
+    F := F.ArrItem(0);
+  Result := (F <> nil) and (F.Kind = pok_Name) and (F.NameVal = 'Crypt');
+end;
+
 function TLandrixEInvoicePdfDocument.GetStreamRaw(AObj: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
 var
   LenObj: TLandrixEInvoicePdfObject;
@@ -4309,7 +4645,7 @@ begin
   end;
   if RawLen < 0 then
   begin
-    EndPos := IndexOfBytes(FBuf, 'endstream', AObj.StreamPos);
+    EndPos := NextEndstream(AObj.StreamPos);
     if EndPos < 0 then
     begin
       FStreamError := 'stream without end';
@@ -4325,9 +4661,11 @@ begin
   AData := Copy(FBuf, AObj.StreamPos, RawLen);
 
   { with the standard security handler the raw data is encrypted; not for
-    xref streams, the /Encrypt dictionary and objects of an object stream }
+    xref streams, the /Encrypt dictionary and objects of an object stream;
+    a stream with its own /Crypt filter is handled there (ISO 32000-1,
+    7.6.5), see GetStreamData }
   if FCryptReady and FCryptStreams and not AObj.NoDecrypt and
-    (AObj.OwnerNum >= 0) and (AObj.OwnerNum <> FEncryptNum) then
+    (AObj.OwnerNum >= 0) and (AObj.OwnerNum <> FEncryptNum) and not HasCryptFilter(AObj) then
     DecryptBytes(AData, AObj.OwnerNum, AObj.OwnerGen);
   FStreamError := '';
   Result := True;
@@ -4338,11 +4676,12 @@ var
   FilterObj, ParmObj, F, P, O: TLandrixEInvoicePdfObject;
   I, NFilters, Pred, Colors, Bpc, Cols, Early: Integer;
   Raw, Decoded: TLandrixEInvoicePdfBytes;
-  FName: AnsiString;
+  FName, CfmName: AnsiString;
   Ok, TooBig: Boolean;
 begin
   Result := False;
   AData := nil;
+  FStreamTooBig := False;
   if not GetStreamRaw(AObj, Raw) then
     Exit;
 
@@ -4399,19 +4738,55 @@ begin
         if (O <> nil) and (O.Kind = pok_Num) and (O.AsInt >= 0) and (O.AsInt <= 1) then
           Early := Integer(O.AsInt);
       end;
-      Ok := FilterLZW(Raw, Early, Decoded);
+      Ok := FilterLZW(Raw, Early, Decoded, TooBig);
     end
     else if (FName = 'ASCIIHexDecode') or (FName = 'AHx') then
       Ok := FilterASCIIHex(Raw, Decoded)
     else if (FName = 'ASCII85Decode') or (FName = 'A85') then
-      Ok := FilterASCII85(Raw, Decoded)
+      Ok := FilterASCII85(Raw, Decoded, TooBig)
     else if (FName = 'RunLengthDecode') or (FName = 'RL') then
-      Ok := FilterRunLength(Raw, Decoded)
+      Ok := FilterRunLength(Raw, Decoded, TooBig)
     else if FName = 'Crypt' then
     begin
-      { only the Identity crypt filter passes data through }
+      { /Name of the parameters, Identity by default, passes the data
+        through; another name is a crypt filter of /CF in /Encrypt: its
+        /CFM /None (the default, ISO 32000-1, Table 25) passes the data
+        through too, /V2 decrypts with the document key when the handler is
+        ready (RC4 only, see SetupEncryption), anything else is not
+        supported }
       Decoded := Raw;
       Ok := True;
+      O := nil;
+      if (P <> nil) and P.IsDictLike then
+        O := DGet(P, 'Name');
+      if (O <> nil) and ((O.Kind <> pok_Name) or (O.NameVal <> 'Identity')) then
+      begin
+        CfmName := '';
+        if O.Kind = pok_Name then
+        begin
+          F := DGet(DGet(Resolve(FEncryptRef), 'CF'), O.NameVal);
+          if (F <> nil) and F.IsDictLike then
+          begin
+            CfmName := 'None';
+            F := DGet(F, 'CFM');
+            if (F <> nil) and (F.Kind = pok_Name) then
+              CfmName := F.NameVal;
+          end;
+        end;
+        if CfmName = 'None' then
+          // plain data
+        else if (CfmName = 'V2') and FCryptReady and not AObj.NoDecrypt and (AObj.OwnerNum >= 0) and
+          (AObj.OwnerNum <> FEncryptNum) then
+        begin
+          Decoded := Copy(Raw, 0, Length(Raw));
+          DecryptBytes(Decoded, AObj.OwnerNum, AObj.OwnerGen);
+        end
+        else
+        begin
+          FStreamError := 'unsupported crypt filter';
+          Ok := False;
+        end;
+      end;
     end
     else
     begin
@@ -4419,6 +4794,12 @@ begin
       FStreamError := 'unsupported filter /' + AsciiToNative(FName);
       Ok := False;
     end;
+    { decoding work, also of attempts that fail; see DecodedBytes }
+    FStreamTooBig := TooBig;
+    if TooBig then
+      FDecodedBytes := FDecodedBytes + LandrixEInvoicePdfObjectMaxStreamSize
+    else if Ok then
+      FDecodedBytes := FDecodedBytes + Length(Decoded);
     if not Ok then
     begin
       if FStreamError <> '' then
@@ -4488,6 +4869,7 @@ begin
     AError := 'File too large';
     Exit;
   end;
+  FreeAndNil(FEnds);
   SetLength(FBuf, Integer(Size));
   AStream.ReadBuffer(FBuf[0], Integer(Size));
 
@@ -4510,7 +4892,7 @@ begin
   SxPos := LastIndexOfBytes(FBuf, 'startxref', Integer(Length(FBuf)));
   if SxPos >= 0 then
   begin
-    Lex := TLandrixEInvoicePdfLexer.Create(FBuf, FOwned);
+    Lex := NewFileLexer;
     try
       Lex.Pos := SxPos + 9;
       if not TokenToInt64(Lex.ReadToken, StartOfs) then
@@ -4675,14 +5057,136 @@ begin
   SetLength(Result, Count);
 end;
 
-{ Local name of the XML root element, '' if the data is not XML. Works on
-  the bytes, so no XML parser runs (and no external entity is resolved). }
 function LandrixEInvoicePdfDetectXmlRoot(const AData: TLandrixEInvoicePdfBytes): TLandrixEInvoiceString;
 var
-  I, Limit, Start, P: Integer;
-  S: AnsiString;
+  Ns: TLandrixEInvoiceString;
+begin
+  Result := LandrixEInvoicePdfDetectXmlRootNs(AData, Ns);
+end;
+
+function LandrixEInvoicePdfIsInvoiceRoot(const ALocal, ANamespace: TLandrixEInvoiceString): Boolean;
+begin
+  Result := ((ALocal = 'CrossIndustryInvoice') and
+    (ANamespace = 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100')) or
+    ((ALocal = 'CrossIndustryDocument') and (ANamespace = 'urn:ferd:CrossIndustryDocument:invoice:1p0')) or
+    ((ALocal = 'Invoice') and (ANamespace = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2')) or
+    ((ALocal = 'CreditNote') and (ANamespace = 'urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2'));
+end;
+
+{ An attribute value with the predefined entities and character references
+  replaced; a character outside ASCII becomes '?' (the invoice namespaces
+  are ASCII). }
+function DecodeXmlValue(const S: AnsiString): AnsiString;
+var
+  I, J, N, Code: Integer;
+  Ent: AnsiString;
 begin
   Result := '';
+  SetLength(Result, Length(S));
+  N := 0;
+  I := 1;
+  while I <= Length(S) do
+  begin
+    Code := -1;
+    J := I;
+    if S[I] = '&' then
+    begin
+      J := I + 1;
+      while (J <= Length(S)) and (S[J] <> ';') and (J - I < 12) do
+        Inc(J);
+      if (J <= Length(S)) and (S[J] = ';') then
+      begin
+        Ent := Copy(S, I + 1, J - I - 1);
+        if Ent = 'amp' then
+          Code := Ord('&')
+        else if Ent = 'lt' then
+          Code := Ord('<')
+        else if Ent = 'gt' then
+          Code := Ord('>')
+        else if Ent = 'quot' then
+          Code := Ord('"')
+        else if Ent = 'apos' then
+          Code := Ord('''')
+        else if (Length(Ent) > 2) and (Ent[1] = '#') and (Ent[2] = 'x') then
+          Code := StrToIntDef('$' + string(Copy(Ent, 3, MaxInt)), -1)
+        else if (Length(Ent) > 1) and (Ent[1] = '#') then
+          Code := StrToIntDef(string(Copy(Ent, 2, MaxInt)), -1);
+      end;
+    end;
+    Inc(N);
+    if Code < 0 then
+    begin
+      Result[N] := S[I];
+      Inc(I);
+    end
+    else
+    begin
+      if Code < 128 then
+        Result[N] := AnsiChar(Code)
+      else
+        Result[N] := '?';
+      I := J + 1;
+    end;
+  end;
+  SetLength(Result, N);
+end;
+
+{ The namespace declared for APrefix in the start tag from APos (behind the
+  element name) to its '>'; '' if none. }
+function RootNamespace(const AData: TLandrixEInvoicePdfBytes; APos: Integer; const APrefix: AnsiString): AnsiString;
+var
+  I, NameStart, ValStart, Stop: Integer;
+  Quote: Byte;
+  Name: AnsiString;
+begin
+  Result := '';
+  I := APos;
+  Stop := MinInt(Integer(Length(AData)), APos + 65536);
+  while I < Stop do
+  begin
+    while (I < Stop) and IsPdfWhite(AData[I]) do
+      Inc(I);
+    if (I >= Stop) or (AData[I] = Ord('>')) or (AData[I] = Ord('/')) then
+      Exit;
+    NameStart := I;
+    while (I < Stop) and not IsPdfWhite(AData[I]) and (AData[I] <> Ord('=')) and (AData[I] <> Ord('>')) do
+      Inc(I);
+    Name := LandrixEInvoicePdfBytesToAnsi(AData, NameStart, I - NameStart);
+    while (I < Stop) and IsPdfWhite(AData[I]) do
+      Inc(I);
+    if (I >= Stop) or (AData[I] <> Ord('=')) then
+      Exit;
+    Inc(I);
+    while (I < Stop) and IsPdfWhite(AData[I]) do
+      Inc(I);
+    if (I >= Stop) or ((AData[I] <> Ord('"')) and (AData[I] <> Ord(''''))) then
+      Exit;
+    Quote := AData[I];
+    Inc(I);
+    ValStart := I;
+    while (I < Stop) and (AData[I] <> Quote) do
+      Inc(I);
+    if I >= Stop then
+      Exit;
+    if ((APrefix = '') and (Name = 'xmlns')) or ((APrefix <> '') and (Name = 'xmlns:' + APrefix)) then
+    begin
+      Result := DecodeXmlValue(LandrixEInvoicePdfBytesToAnsi(AData, ValStart, I - ValStart));
+      Exit;
+    end;
+    Inc(I);
+  end;
+end;
+
+{ Local name of the XML root element, '' if the data is not XML. Works on
+  the bytes, so no XML parser runs (and no external entity is resolved). }
+function LandrixEInvoicePdfDetectXmlRootNs(const AData: TLandrixEInvoicePdfBytes;
+  out ANamespace: TLandrixEInvoiceString): TLandrixEInvoiceString;
+var
+  I, Limit, Start, P: Integer;
+  S, Prefix: AnsiString;
+begin
+  Result := '';
+  ANamespace := '';
   Limit := MinInt(Integer(Length(AData)), 65536);
   I := 0;
   if (Limit >= 3) and (AData[0] = $EF) and (AData[1] = $BB) and (AData[2] = $BF) then
@@ -4749,10 +5253,15 @@ begin
     P := I - 1;
     while (P >= Start) and (AData[P] <> Ord(':')) do
       Dec(P);
+    Prefix := '';
     if P >= Start then
+    begin
+      Prefix := LandrixEInvoicePdfBytesToAnsi(AData, Start, P - Start);
       Start := P + 1;
+    end;
     S := LandrixEInvoicePdfBytesToAnsi(AData, Start, I - Start);
     Result := AnsiToText(S);
+    ANamespace := AnsiToText(RootNamespace(AData, I, Prefix));
     Exit;
   end;
 end;
@@ -4844,7 +5353,11 @@ end;
 
 procedure TLandrixEInvoicePdfCollector.Issue(const APath, AText: TLandrixEInvoiceString);
 begin
-  FNameTreeIssues.Add(string(APath + ': ' + AText));
+  { a hostile tree can produce an issue per entry and visit }
+  if FNameTreeIssues.Count < 1000 then
+    FNameTreeIssues.Add(string(APath + ': ' + AText))
+  else if FNameTreeIssues.Count = 1000 then
+    FNameTreeIssues.Add(string(APath + ': further problems not listed'));
 end;
 
 procedure TLandrixEInvoicePdfCollector.AddOccurrence(AValue: TLandrixEInvoicePdfObject;
@@ -4996,18 +5509,20 @@ begin
   ALeast := nil;
   AGreatest := nil;
   AHasKeys := False;
+  { every visit counts, also of a shared node or a non-dictionary, so a
+    /Kids array of many references to one node cannot multiply the work }
+  Inc(FNodeCount);
+  if FNodeCount > 100000 then
+  begin
+    FLimitReached := True;
+    Exit;
+  end;
   if (ANode = nil) or not ANode.IsDictLike then
   begin
     Issue(APath, 'node is no dictionary');
     Exit;
   end;
   if ADepth > LandrixEInvoicePdfObjectMaxDepth then
-  begin
-    FLimitReached := True;
-    Exit;
-  end;
-  Inc(FNodeCount);
-  if FNodeCount > 100000 then
   begin
     FLimitReached := True;
     Exit;
@@ -5024,7 +5539,7 @@ begin
     if Odd(NamesArr.ArrCount) then
       Issue(APath + '/Names', 'odd number of entries');
     I := 0;
-    while I + 1 < NamesArr.ArrCount do
+    while (I + 1 < NamesArr.ArrCount) and not FLimitReached do
     begin
       Key := FDoc.Resolve(NamesArr.ArrItem(I));
       if (Key = nil) or (Key.Kind <> pok_Str) then
@@ -5059,6 +5574,8 @@ begin
   begin
     for I := 0 to KidsArr.ArrCount - 1 do
     begin
+      if FLimitReached then
+        Break;
       WalkNameTree(FDoc.Resolve(KidsArr.ArrItem(I)), APath + '/Kids[' + TLandrixEInvoiceString(IntToStr(I)) + ']',
         ADepth + 1, False, KidLeast, KidGreatest, KidHasKeys);
       if KidHasKeys then

@@ -265,24 +265,312 @@ begin
   Result := Target;
 end;
 
+{ --- active content of the visualization ------------------------------------ }
+
+{ The KoSIT stylesheet copies invoice values into active content: BT-124
+  (external document location) into an href, and the attachment's
+  reference, MIME code and file name into the arguments of an onClick
+  JavaScript call, where an apostrophe ends the string literal. The values
+  come from the sender of the invoice, so the page would run their script.
+  The output is filtered: an href with a scheme other than http, https,
+  mailto or ftp becomes '#', a downloadData onClick that is not exactly
+  downloadData('...', '...', '...') with plain arguments becomes
+  'return false'. A well-formed invoice keeps the page unchanged. }
+
+function DecodeAttr(const AValue: AnsiString): AnsiString;
+var
+  I, J, N, Code: Integer;
+  Ent: AnsiString;
+begin
+  { never longer than the input }
+  Result := '';
+  SetLength(Result, Length(AValue));
+  N := 0;
+  I := 1;
+  while I <= Length(AValue) do
+  begin
+    if AValue[I] = '&' then
+    begin
+      J := I + 1;
+      while (J <= Length(AValue)) and (AValue[J] <> ';') and (J - I < 12) do
+        Inc(J);
+      if (J <= Length(AValue)) and (AValue[J] = ';') then
+      begin
+        Ent := Copy(AValue, I + 1, J - I - 1);
+        Code := -1;
+        if Ent = 'amp' then
+          Code := Ord('&')
+        else if Ent = 'quot' then
+          Code := Ord('"')
+        else if Ent = 'apos' then
+          Code := Ord('''')
+        else if Ent = 'lt' then
+          Code := Ord('<')
+        else if Ent = 'gt' then
+          Code := Ord('>')
+        else if (Length(Ent) > 2) and (Ent[1] = '#') and ((Ent[2] = 'x') or (Ent[2] = 'X')) then
+          Code := StrToIntDef('$' + string(Copy(Ent, 3, MaxInt)), -1)
+        else if (Length(Ent) > 1) and (Ent[1] = '#') then
+          Code := StrToIntDef(string(Copy(Ent, 2, MaxInt)), -1);
+        if Code >= 0 then
+        begin
+          Inc(N);
+          { only the ASCII range matters for the checks }
+          if Code < 128 then
+            Result[N] := AnsiChar(Code)
+          else
+            Result[N] := '?';
+          I := J + 1;
+          Continue;
+        end;
+      end;
+    end;
+    Inc(N);
+    Result[N] := AValue[I];
+    Inc(I);
+  end;
+  SetLength(Result, N);
+end;
+
+{ A relative reference or one with a harmless scheme. Browsers ignore
+  control characters and spaces in the scheme, so they are dropped first. }
+function IsSafeHref(const AValue: AnsiString): Boolean;
+var
+  V, Scheme: AnsiString;
+  I, N: Integer;
+begin
+  V := '';
+  SetLength(V, Length(AValue));
+  N := 0;
+  for I := 1 to Length(AValue) do
+    if Ord(AValue[I]) > 32 then
+    begin
+      Inc(N);
+      V[N] := AValue[I];
+    end;
+  SetLength(V, N);
+  V := AnsiString(LowerCase(string(V)));
+  Result := True;
+  for I := 1 to Length(V) do
+    if (V[I] = '/') or (V[I] = '?') or (V[I] = '#') then
+      Exit
+    else if V[I] = ':' then
+    begin
+      Scheme := Copy(V, 1, I - 1);
+      Result := (Scheme = 'http') or (Scheme = 'https') or (Scheme = 'mailto') or (Scheme = 'ftp');
+      Exit;
+    end;
+end;
+
+{ Exactly downloadData('a', 'b', 'c') with arguments free of quotes,
+  backslashes and control characters. }
+function IsSafeOnClick(const AValue: AnsiString): Boolean;
+const
+  Head = 'downloadData(';
+var
+  P, K: Integer;
+begin
+  Result := False;
+  if Copy(AValue, 1, Length(Head)) <> Head then
+    Exit;
+  P := Length(Head) + 1;
+  for K := 1 to 3 do
+  begin
+    if K > 1 then
+    begin
+      if Copy(AValue, P, 2) <> ', ' then
+        Exit;
+      Inc(P, 2);
+    end;
+    if (P > Length(AValue)) or (AValue[P] <> '''') then
+      Exit;
+    Inc(P);
+    while (P <= Length(AValue)) and (AValue[P] <> '''') do
+    begin
+      if (AValue[P] = '\') or (AValue[P] = '"') or (Ord(AValue[P]) < 32) then
+        Exit;
+      Inc(P);
+    end;
+    if P > Length(AValue) then
+      Exit;
+    Inc(P);
+  end;
+  Result := (P = Length(AValue)) and (AValue[P] = ')');
+end;
+
+function LowerAt(const ABuf: AnsiString; APos: Integer; const AText: AnsiString): Boolean;
+var
+  I: Integer;
+  C: AnsiChar;
+begin
+  Result := False;
+  if APos + Length(AText) - 1 > Length(ABuf) then
+    Exit;
+  for I := 1 to Length(AText) do
+  begin
+    C := ABuf[APos + I - 1];
+    if (C >= 'A') and (C <= 'Z') then
+      C := AnsiChar(Ord(C) + 32);
+    if C <> AText[I] then
+      Exit;
+  end;
+  Result := True;
+end;
+
+procedure WriteSegment(AOutput: TStream; const ABuf: AnsiString; AFrom, ATo: Integer);
+begin
+  { bytes AFrom..ATo - 1 }
+  if ATo > AFrom then
+    AOutput.WriteBuffer(ABuf[AFrom], ATo - AFrom);
+end;
+
+function IsHtmlWhite(C: AnsiChar): Boolean;
+begin
+  Result := (C = ' ') or (C = #9) or (C = #10) or (C = #12) or (C = #13);
+end;
+
+{ The page is read as HTML: attributes count only inside a start tag, so
+  text of the invoice (where an apostrophe is not escaped) cannot hide one;
+  comments and the contents of script and style are skipped. Everything
+  else is copied unchanged. }
+procedure NeutralizeActiveContent(ASource: TMemoryStream; AOutput: TStream);
+var
+  Buf, Tag, Name, Repl: AnsiString;
+  Len, I, P, Start, NameStart, ValStart, ValStop: Integer;
+  Quote: AnsiChar;
+  Quoted, Safe: Boolean;
+begin
+  Buf := '';
+  Len := Integer(ASource.Size);
+  if Len = 0 then
+    Exit;
+  SetLength(Buf, Len);
+  Move(ASource.Memory^, Buf[1], Len);
+  Start := 1;
+  I := 1;
+  while I <= Len do
+  begin
+    if Buf[I] <> '<' then
+    begin
+      Inc(I);
+      Continue;
+    end;
+    if LowerAt(Buf, I, '<!--') then
+    begin
+      P := I + 4;
+      while (P <= Len) and not LowerAt(Buf, P, '-->') do
+        Inc(P);
+      I := P + 3;
+      Continue;
+    end;
+    if (I < Len) and ((Buf[I + 1] = '!') or (Buf[I + 1] = '?') or (Buf[I + 1] = '/')) then
+    begin
+      while (I <= Len) and (Buf[I] <> '>') do
+        Inc(I);
+      Inc(I);
+      Continue;
+    end;
+    { start tag: name, then the attributes up to '>' }
+    P := I + 1;
+    NameStart := P;
+    while (P <= Len) and not IsHtmlWhite(Buf[P]) and (Buf[P] <> '>') and (Buf[P] <> '/') do
+      Inc(P);
+    Tag := AnsiString(LowerCase(string(Copy(Buf, NameStart, P - NameStart))));
+    while P <= Len do
+    begin
+      while (P <= Len) and (IsHtmlWhite(Buf[P]) or (Buf[P] = '/')) do
+        Inc(P);
+      if (P > Len) or (Buf[P] = '>') then
+        Break;
+      NameStart := P;
+      while (P <= Len) and not IsHtmlWhite(Buf[P]) and (Buf[P] <> '=') and (Buf[P] <> '>') do
+        Inc(P);
+      Name := AnsiString(LowerCase(string(Copy(Buf, NameStart, P - NameStart))));
+      while (P <= Len) and IsHtmlWhite(Buf[P]) do
+        Inc(P);
+      if (P > Len) or (Buf[P] <> '=') then
+        Continue;
+      Inc(P);
+      while (P <= Len) and IsHtmlWhite(Buf[P]) do
+        Inc(P);
+      Quoted := (P <= Len) and ((Buf[P] = '"') or (Buf[P] = ''''));
+      if Quoted then
+      begin
+        Quote := Buf[P];
+        ValStart := P + 1;
+        ValStop := ValStart;
+        while (ValStop <= Len) and (Buf[ValStop] <> Quote) do
+          Inc(ValStop);
+        P := ValStop + 1;
+      end
+      else
+      begin
+        ValStart := P;
+        while (P <= Len) and not IsHtmlWhite(Buf[P]) and (Buf[P] <> '>') do
+          Inc(P);
+        ValStop := P;
+      end;
+      if (Name <> 'href') and (Name <> 'onclick') then
+        Continue;
+      { an attribute this long carries no reference the page needs }
+      if ValStop - ValStart > 65536 then
+        Safe := False
+      else if Name = 'href' then
+        Safe := IsSafeHref(DecodeAttr(Copy(Buf, ValStart, ValStop - ValStart)))
+      else
+      begin
+        Repl := DecodeAttr(Copy(Buf, ValStart, ValStop - ValStart));
+        { the other handlers of the page (show(this)) carry no invoice
+          data; an injected value cannot change the start }
+        Safe := (Copy(Repl, 1, 13) <> 'downloadData(') or IsSafeOnClick(Repl);
+      end;
+      if not Safe then
+      begin
+        if Name = 'href' then
+          Repl := '#'
+        else
+          Repl := 'return false';
+        if not Quoted then
+          Repl := '"' + Repl + '"';
+        WriteSegment(AOutput, Buf, Start, ValStart);
+        AOutput.WriteBuffer(Repl[1], Length(Repl));
+        Start := ValStop;
+      end;
+    end;
+    I := P + 1;
+    { raw text: up to the end tag }
+    if (Tag = 'script') or (Tag = 'style') then
+      while (I <= Len) and not LowerAt(Buf, I, '</' + Tag) do
+        Inc(I);
+  end;
+  WriteSegment(AOutput, Buf, Start, Len + 1);
+end;
+
 procedure TLandrixEInvoiceKositVisualizer.Html(AXr: TObject; AOutput: TStream);
 var
   Transformer: TLandrixXmlXsltTransformer;
+  Page: TMemoryStream;
 begin
-  Transformer := TLandrixXmlXsltTransformer.Create(TLandrixXmlXsltStylesheet(StylesheetOf('xrechnung-html.xsl')));
+  Page := TMemoryStream.Create;
   try
-    if FLanguage = eln_English then
-      Transformer.SetParameter('lang', 'en')
-    else
-      Transformer.SetParameter('lang', 'de');
+    Transformer := TLandrixXmlXsltTransformer.Create(TLandrixXmlXsltStylesheet(StylesheetOf('xrechnung-html.xsl')));
     try
-      Transformer.Transform(TLandrixXmlXPathTree(AXr), AOutput);
-    except
-      on E: ELandrixXmlError do
-        Fail(E.Message);
+      if FLanguage = eln_English then
+        Transformer.SetParameter('lang', 'en')
+      else
+        Transformer.SetParameter('lang', 'de');
+      try
+        Transformer.Transform(TLandrixXmlXPathTree(AXr), Page);
+      except
+        on E: ELandrixXmlError do
+          Fail(E.Message);
+      end;
+    finally
+      Transformer.Free;
     end;
+    NeutralizeActiveContent(Page, AOutput);
   finally
-    Transformer.Free;
+    Page.Free;
   end;
 end;
 

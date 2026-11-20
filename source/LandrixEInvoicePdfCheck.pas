@@ -360,13 +360,6 @@ begin
   Result := ToText(IntToStr(V));
 end;
 
-{ Root elements of a CII or UBL invoice (CrossIndustryDocument: ZUGFeRD 1). }
-function IsInvoiceRoot(const ARoot: TLandrixEInvoiceString): Boolean;
-begin
-  Result := (ARoot = 'CrossIndustryInvoice') or (ARoot = 'CrossIndustryDocument') or
-    (ARoot = 'Invoice') or (ARoot = 'CreditNote');
-end;
-
 { File names of an invoice in any case: the code list HybridDocumentFilename
   (without order-x.xml, which is Order-X) and those of ZUGFeRD 1.0 and 2.0.
   DE: Dateinamen einer Rechnung in beliebiger Schreibung: die Codeliste
@@ -496,16 +489,27 @@ type
     FSpecs: TLandrixEInvoicePdfCollector;
     { per file specification: root element and decoded data }
     FRoots: array of TLandrixEInvoiceString;
+    { the root is an invoice root in its namespace, see
+      LandrixEInvoicePdfIsInvoiceRoot }
+    FRootIsInvoice: array of Boolean;
     FData: array of TLandrixEInvoicePdfBytes;
     FDecoded: array of Boolean;
     FDecodeErrors: array of string;
     FDecodedBytes: Int64;
+    { FDoc.DecodedBytes at the start: the decoding work, failed attempts
+      included, is bounded as in the extractor }
+    FStartDecoded: Int64;
     FDecodedCount: Integer;
     FIncomplete: Boolean;
     FLimitNoted: Boolean;
     { file specifications in the /AF of a page }
-    FPageSpecs: TObjectList;
+    { indices of FSpecs still looked for in /AF of the pages, see
+      CollectPageAF }
+    FPending: array of Integer;
+    FPendingCount: Integer;
     FPageNodes: Integer;
+    FPageAF: Integer;
+    FPageLimit: Boolean;
     procedure Add(const ARule: TLandrixEInvoiceString; ASeverity: TLandrixEInvoiceDiagnosticSeverity;
       const APath, AMessage: TLandrixEInvoiceString; ALine: Integer = 0; AColumn: Integer = 0;
       AOffset: Int64 = 0);
@@ -535,12 +539,11 @@ begin
   FDoc := ADoc;
   FResult := AResult;
   FSpecs := TLandrixEInvoicePdfCollector.Create(ADoc);
-  FPageSpecs := TObjectList.Create(False);
+  FStartDecoded := ADoc.DecodedBytes;
 end;
 
 destructor TEmbeddingCheck.Destroy;
 begin
-  FPageSpecs.Free;
   FSpecs.Free;
   inherited Destroy;
 end;
@@ -585,6 +588,7 @@ function TEmbeddingCheck.Decode(AIndex: Integer): Boolean;
 var
   F: TLandrixEInvoicePdfFileSpec;
   Data: TLandrixEInvoicePdfBytes;
+  Ns: TLandrixEInvoiceString;
 begin
   F := FSpecs[AIndex];
   Result := False;
@@ -594,6 +598,7 @@ begin
   begin
     Result := Decode(F.DuplicateOf);
     FRoots[AIndex] := FRoots[F.DuplicateOf];
+    FRootIsInvoice[AIndex] := FRootIsInvoice[F.DuplicateOf];
     FDecodeErrors[AIndex] := FDecodeErrors[F.DuplicateOf];
     Exit;
   end;
@@ -611,11 +616,24 @@ begin
     Exit;
   end;
   Inc(FDecodedCount);
+  if FDoc.DecodedBytes - FStartDecoded > 2 * Int64(LandrixEInvoicePdfMaxTotalSize) then
+  begin
+    FDecodeErrors[AIndex] := 'not decoded: decoding the embedded files exceeds ' +
+      IntToStr(2 * Int64(LandrixEInvoicePdfMaxTotalSize)) + ' bytes';
+    NoteLimit(SpecPath(AIndex), 'Embedded file ' + ToText(FDecodeErrors[AIndex]));
+    Exit;
+  end;
   if not FDoc.GetStreamData(F.Stream, Data) then
   begin
     FDecodeErrors[AIndex] := FDoc.StreamError;
     if FDecodeErrors[AIndex] = '' then
       FDecodeErrors[AIndex] := 'cannot be decoded';
+    { a limit, not damage: whether it is a second invoice stays open }
+    if FDoc.StreamTooBig then
+    begin
+      FDecodeErrors[AIndex] := 'not decoded: ' + FDecodeErrors[AIndex];
+      NoteLimit(SpecPath(AIndex), 'Embedded file ' + ToText(FDecodeErrors[AIndex]));
+    end;
     Exit;
   end;
   if FDecodedBytes + Length(Data) > LandrixEInvoicePdfMaxTotalSize then
@@ -626,7 +644,8 @@ begin
     Exit;
   end;
   FDecodedBytes := FDecodedBytes + Integer(Length(Data));
-  FRoots[AIndex] := LandrixEInvoicePdfDetectXmlRoot(Data);
+  FRoots[AIndex] := LandrixEInvoicePdfDetectXmlRootNs(Data, Ns);
+  FRootIsInvoice[AIndex] := LandrixEInvoicePdfIsInvoiceRoot(FRoots[AIndex], Ns);
   FData[AIndex] := Data;
   Result := True;
 end;
@@ -641,38 +660,64 @@ begin
   FResult.Invoice.Position := 0;
 end;
 
-{ The file specifications in /AF of the pages (ISO 19005-3, 6.8 allows the
-  association with a page); the pages tree is bounded like the name tree. }
+{ Looks for the pending file specifications (FPending) in /AF of the pages
+  (ISO 19005-3, 6.8 allows the association with a page) and removes each one
+  found. Every visit counts, also of a shared node or a non-dictionary, and
+  at most 10000 page /AF entries are read: a /Kids array naming one node
+  many times or a huge shared /AF array cannot multiply the work. }
 procedure TEmbeddingCheck.CollectPageAF(ANode: TLandrixEInvoicePdfObject; ADepth: Integer);
 var
   Kids, Af, Spec: TLandrixEInvoicePdfObject;
-  I: Integer;
+  I, J: Integer;
 begin
-  if (ANode = nil) or not ANode.IsDictLike then
+  if FPageLimit or (FPendingCount = 0) then
     Exit;
   Inc(FPageNodes);
   if (ADepth > LandrixEInvoicePdfObjectMaxDepth) or (FPageNodes > 100000) then
   begin
+    FPageLimit := True;
     NoteLimit('/Root/Pages', 'Too large or too deep a pages tree; not every page /AF was read');
     Exit;
   end;
+  if (ANode = nil) or not ANode.IsDictLike then
+    Exit;
   Af := FDoc.DGet(ANode, 'AF');
   if (Af <> nil) and (Af.Kind = pok_Arr) then
     for I := 0 to Af.ArrCount - 1 do
     begin
+      if FPendingCount = 0 then
+        Break;
+      Inc(FPageAF);
+      if FPageAF > 10000 then
+      begin
+        FPageLimit := True;
+        NoteLimit('/Root/Pages', 'Too many /AF entries in the pages tree; not every page /AF was read');
+        Exit;
+      end;
       Spec := FDoc.Resolve(Af.ArrItem(I));
-      if Spec <> nil then
-        FPageSpecs.Add(Spec);
+      if Spec = nil then
+        Continue;
+      for J := 0 to FPendingCount - 1 do
+        if FSpecs[FPending[J]].Spec = Spec then
+        begin
+          FPending[J] := FPending[FPendingCount - 1];
+          Dec(FPendingCount);
+          Break;
+        end;
     end;
   Kids := FDoc.DGet(ANode, 'Kids');
   if (Kids <> nil) and (Kids.Kind = pok_Arr) then
     for I := 0 to Kids.ArrCount - 1 do
+    begin
+      if FPageLimit or (FPendingCount = 0) then
+        Break;
       CollectPageAF(FDoc.Resolve(Kids.ArrItem(I)), ADepth + 1);
+    end;
 end;
 
 function TEmbeddingCheck.IsCandidate(AIndex: Integer): Boolean;
 begin
-  Result := IsInvoiceName(FSpecs[AIndex].FileName) or IsInvoiceRoot(FRoots[AIndex]);
+  Result := IsInvoiceName(FSpecs[AIndex].FileName) or FRootIsInvoice[AIndex];
 end;
 
 { The invoice among the candidates: an exact invoice name counts more than
@@ -691,7 +736,7 @@ begin
       Score := 1;
       if IsHybridFileName(N) or (N = 'zugferd-invoice.xml') or (N = 'ZUGFeRD-invoice.xml') then
         Inc(Score, 2);
-      if IsInvoiceRoot(FRoots[I]) then
+      if FRootIsInvoice[I] then
         Inc(Score);
       if Score > Best then
       begin
@@ -714,7 +759,7 @@ begin
     Result := ehk_XRechnung
   else if N = 'factur-x.xml' then
     Result := ehk_FacturX
-  else if FRoots[AIndex] = 'CrossIndustryDocument' then
+  else if FRootIsInvoice[AIndex] and (FRoots[AIndex] = 'CrossIndustryDocument') then
     Result := ehk_ZUGFeRD10
   else if AsciiLower(N) = 'zugferd-invoice.xml' then
     Result := ehk_ZUGFeRD20
@@ -914,11 +959,28 @@ end;
   Strukturelementen und XObjects wird noch nicht durchsucht). }
 procedure TEmbeddingCheck.CheckOtherFiles(AInvoice: Integer);
 var
-  I: Integer;
+  I, J: Integer;
   F: TLandrixEInvoicePdfFileSpec;
+  OffPage: array of Boolean;
 begin
-  if FDoc.Catalog <> nil then
+  { only the files missing from /AF of the catalog are looked for on pages }
+  FPending := nil;
+  SetLength(FPending, FSpecs.Count);
+  FPendingCount := 0;
+  for I := 0 to FSpecs.Count - 1 do
+    if (I <> AInvoice) and not (efr_AF in FSpecs[I].Routes) then
+    begin
+      FPending[FPendingCount] := I;
+      Inc(FPendingCount);
+    end;
+  if (FPendingCount > 0) and (FDoc.Catalog <> nil) then
     CollectPageAF(FDoc.DGet(FDoc.Catalog, 'Pages'), 0);
+  OffPage := nil;
+  SetLength(OffPage, FSpecs.Count);
+  for I := 0 to FSpecs.Count - 1 do
+    OffPage[I] := False;
+  for J := 0 to FPendingCount - 1 do
+    OffPage[FPending[J]] := True;
   for I := 0 to FSpecs.Count - 1 do
     if I <> AInvoice then
     begin
@@ -926,7 +988,9 @@ begin
       if not F.HasRelationship then
         Add(RuleOtherFile, eds_Error, SpecPath(I) + '/AFRelationship', 'The embedded file "' + F.FileName +
           '" has no /AFRelationship');
-      if not (efr_AF in F.Routes) and (FPageSpecs.IndexOf(F.Spec) < 0) then
+      { after a limit the file may stand on a page not read: the limit
+        note already makes the check incomplete }
+      if OffPage[I] and not FPageLimit then
         Add(RuleOtherFile, eds_Error, SpecPath(I), 'The embedded file "' + F.FileName +
           '" is not listed in /AF of the catalog or of a page');
     end;
@@ -942,6 +1006,7 @@ begin
   if FSpecs.LimitReached then
     NoteLimit('/Root', 'Too many embedded files or too deep a name tree; not all were read');
   SetLength(FRoots, FSpecs.Count);
+  SetLength(FRootIsInvoice, FSpecs.Count);
   SetLength(FData, FSpecs.Count);
   SetLength(FDecoded, FSpecs.Count);
   SetLength(FDecodeErrors, FSpecs.Count);
@@ -1027,6 +1092,15 @@ const
   XmpMaxNodes = 20000;
   XmpMaxDepth = 64;
   XmpMaxText = 4096;
+  { the namespace URIs kept by all nodes together are bounded by
+    XmpMaxNsChars characters, so one long URI used by many elements cannot
+    multiply the memory (a shared string still counts for every node: on
+    Delphi 6 a WideString assignment copies); short URIs (at most
+    XmpMaxNsShared distinct ones of at most XmpMaxNsSharedLen bytes) are
+    converted once }
+  XmpMaxNsShared = 64;
+  XmpMaxNsSharedLen = 256;
+  XmpMaxNsChars = 8388608;
   { the four properties of the Factur-X extension schema }
   FacturXProperties: array[0..3] of string = ('DocumentFileName', 'DocumentType', 'Version', 'ConformanceLevel');
 
@@ -1129,12 +1203,43 @@ var
   R: TLandrixXmlReader;
   Stack: TObjectList;
   Cur, N, A: TXmpNode;
-  I, Nodes: Integer;
+  I, Nodes, NsCount, NsChars: Integer;
   AttrNs, AttrLocal: TLandrixEInvoiceString;
+  NsUtf8: array[0..XmpMaxNsShared - 1] of TLandrixXmlUtf8;
+  NsWide: array[0..XmpMaxNsShared - 1] of TLandrixEInvoiceString;
+
+  { the shared UTF-16 copy of AUri; False when the character budget is
+    exhausted }
+  function InternNs(const AUri: TLandrixXmlUtf8; out AWide: TLandrixEInvoiceString): Boolean;
+  var
+    K: Integer;
+  begin
+    Inc(NsChars, Length(AUri));
+    Result := NsChars <= XmpMaxNsChars;
+    if not Result then
+      Exit;
+    for K := 0 to NsCount - 1 do
+      if NsUtf8[K] = AUri then
+      begin
+        AWide := NsWide[K];
+        Exit;
+      end;
+    AWide := LandrixXmlUtf8ToWide(AUri);
+    { only short URIs are kept for comparison, so that it stays cheap }
+    if (NsCount < XmpMaxNsShared) and (Length(AUri) <= XmpMaxNsSharedLen) then
+    begin
+      NsUtf8[NsCount] := AUri;
+      NsWide[NsCount] := AWide;
+      Inc(NsCount);
+    end;
+  end;
+
 begin
   Result := '';
   ALimit := False;
   Nodes := 0;
+  NsCount := 0;
+  NsChars := 0;
   ALine := 0;
   AColumn := 0;
   if Length(AData) = 0 then
@@ -1161,13 +1266,23 @@ begin
                 Exit;
               end;
               N := Cur.Add;
-              N.Ns := R.NamespaceUriW;
+              if not InternNs(R.NamespaceUriUtf8, N.Ns) then
+              begin
+                ALimit := True;
+                Result := 'too large (namespace URIs of more than ' + IntText(XmpMaxNsChars) + ' characters)';
+                Exit;
+              end;
               N.Local := R.LocalNameW;
               N.Prefix := LandrixXmlUtf8ToWide(R.PrefixUtf8);
               for I := 0 to R.AttributeCount - 1 do
                 if not R.IsNamespaceDeclaration(I) then
                 begin
-                  AttrNs := LandrixXmlUtf8ToWide(R.AttributeNamespaceUriUtf8(I));
+                  if not InternNs(R.AttributeNamespaceUriUtf8(I), AttrNs) then
+                  begin
+                    ALimit := True;
+                    Result := 'too large (namespace URIs of more than ' + IntText(XmpMaxNsChars) + ' characters)';
+                    Exit;
+                  end;
                   if AttrNs = NsRdf then
                   begin
                     AttrLocal := LandrixXmlUtf8ToWide(R.AttributeLocalNameUtf8(I));

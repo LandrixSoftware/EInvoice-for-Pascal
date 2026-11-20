@@ -153,13 +153,19 @@ type
     constructor Create(AOut: TStream; ALanguage: TLandrixEInvoiceReportLanguage; AShowBusinessTerms: Boolean);
   end;
 
+{ The helpers below size the result first and fill it by index: appending
+  character by character costs quadratic time on a long text value. }
+
 function Spaces(N: Integer): TLandrixEInvoiceString;
 var
   I: Integer;
 begin
   Result := '';
+  if N <= 0 then
+    Exit;
+  SetLength(Result, N);
   for I := 1 to N do
-    Result := Result + ' ';
+    Result[I] := ' ';
 end;
 
 function HasLineBreak(const S: TLandrixEInvoiceString): Boolean;
@@ -178,22 +184,26 @@ end;
 { CR LF and CR as LF }
 function NormalizeBreaks(const S: TLandrixEInvoiceString): TLandrixEInvoiceString;
 var
-  I: Integer;
+  I, N: Integer;
 begin
   Result := '';
+  SetLength(Result, Length(S));
+  N := 0;
   I := 1;
   while I <= Length(S) do
   begin
+    Inc(N);
     if S[I] = #13 then
     begin
-      Result := Result + #10;
+      Result[N] := #10;
       if (I < Length(S)) and (S[I + 1] = #10) then
         Inc(I);
     end
     else
-      Result := Result + S[I];
+      Result[N] := S[I];
     Inc(I);
   end;
+  SetLength(Result, N);
 end;
 
 { a fence of backticks longer than any run of backticks in S, at least
@@ -275,24 +285,36 @@ end;
   markup inline; line breaks become spaces (for headings) }
 function TMarkdownTarget.Escape(const S: TLandrixEInvoiceString): TLandrixEInvoiceString;
 var
-  I: Integer;
+  I, N: Integer;
   T: TLandrixEInvoiceString;
   C: TLandrixEInvoiceChar;
 begin
   T := Clean(S);
   Result := '';
+  { at most two characters per character }
+  SetLength(Result, 2 * Length(T));
+  N := 0;
   for I := 1 to Length(T) do
   begin
     C := T[I];
     case C of
       '\', '`', '*', '_', '[', ']', '<', '>', '&', '#', '|', '~':
-        Result := Result + '\' + C;
+        begin
+          Result[N + 1] := '\';
+          Result[N + 2] := C;
+          Inc(N, 2);
+        end;
       #10, #13:
-        Result := Result + ' ';
+        begin
+          Inc(N);
+          Result[N] := ' ';
+        end;
     else
-      Result := Result + C;
+      Inc(N);
+      Result[N] := C;
     end;
   end;
+  SetLength(Result, N);
 end;
 
 function TMarkdownTarget.LabelOf(AField: TLandrixEInvoiceRenderField;

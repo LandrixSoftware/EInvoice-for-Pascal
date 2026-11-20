@@ -373,6 +373,7 @@ type
     FDoc: TLandrixEInvoicePdfDocument;
     FList: TLandrixEInvoicePdfAttachmentList;
     FTotalBytes: Int64;
+    FStartDecoded: Int64;
     FSkipped: Integer;
     FWarning: string;
     procedure Skip(const AName: TLandrixEInvoiceString; const AReason: string);
@@ -389,6 +390,7 @@ begin
   inherited Create;
   FDoc := ADoc;
   FList := AList;
+  FStartDecoded := ADoc.DecodedBytes;
 end;
 
 procedure TPdfAttachmentCollector.Skip(const AName: TLandrixEInvoiceString; const AReason: string);
@@ -402,7 +404,7 @@ procedure TPdfAttachmentCollector.AddFilespec(ASpec: TLandrixEInvoicePdfFileSpec
 var
   Att: TLandrixEInvoicePdfAttachment;
   Data: TLandrixEInvoicePdfBytes;
-  Name: TLandrixEInvoiceString;
+  Name, Ns: TLandrixEInvoiceString;
 begin
   if (ASpec.Stream = nil) or (ASpec.DuplicateOf >= 0) then
     Exit;
@@ -410,6 +412,13 @@ begin
   if FList.Count >= LandrixEInvoicePdfMaxAttachments then
   begin
     Skip(Name, 'more than ' + IntToStr(LandrixEInvoicePdfMaxAttachments) + ' attachments');
+    Exit;
+  end;
+  { the limits below apply after decoding; this one bounds the decoding work
+    itself, including attempts that fail or are skipped (zip bombs) }
+  if FDoc.DecodedBytes - FStartDecoded > 2 * Int64(LandrixEInvoicePdfMaxTotalSize) then
+  begin
+    Skip(Name, 'decoding the attachments exceeds ' + IntToStr(2 * Int64(LandrixEInvoicePdfMaxTotalSize)) + ' bytes');
     Exit;
   end;
   if not FDoc.GetStreamData(ASpec.Stream, Data) then
@@ -433,8 +442,9 @@ begin
     if Length(Data) > 0 then
       Att.Data.WriteBuffer(Data[0], Length(Data));
     Att.Data.Position := 0;
-    Att.RootElement := LandrixEInvoicePdfDetectXmlRoot(Data);
-    if IsInvoiceRootElement(Att.RootElement) then
+    Att.RootElement := LandrixEInvoicePdfDetectXmlRootNs(Data, Ns);
+    { the local name alone would take an Invoice of any namespace }
+    if LandrixEInvoicePdfIsInvoiceRoot(Att.RootElement, Ns) then
       Att.Kind := epa_Invoice
     else if Att.RootElement <> '' then
       Att.Kind := epa_OtherXml

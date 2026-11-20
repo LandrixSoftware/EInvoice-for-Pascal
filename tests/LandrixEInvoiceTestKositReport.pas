@@ -318,11 +318,34 @@ begin
     Result := '';
 end;
 
+{ A UBL invoice with one supporting document: reference, file name and
+  external location as given. }
+function UblWithAttachment(const ARef, AFileName, AUri, ADescription: TLandrixXmlUtf8): TMemoryStream;
+var
+  X: TLandrixXmlUtf8;
+begin
+  X := '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" ' +
+    'xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" ' +
+    'xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">' +
+    '<cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</cbc:CustomizationID>' +
+    '<cbc:ID>1</cbc:ID><cbc:IssueDate>2026-01-01</cbc:IssueDate><cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>' +
+    '<cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>' +
+    '<cac:AdditionalDocumentReference><cbc:ID>' + ARef + '</cbc:ID>' +
+    '<cbc:DocumentDescription>' + ADescription + '</cbc:DocumentDescription><cac:Attachment>' +
+    '<cbc:EmbeddedDocumentBinaryObject mimeCode="text/plain" filename="' + AFileName + '">QQ==' +
+    '</cbc:EmbeddedDocumentBinaryObject><cac:ExternalReference><cbc:URI>' + AUri + '</cbc:URI>' +
+    '</cac:ExternalReference></cac:Attachment></cac:AdditionalDocumentReference></Invoice>';
+  Result := TMemoryStream.Create;
+  Result.WriteBuffer(PAnsiChar(X)^, Length(X));
+  Result.Position := 0;
+end;
+
 procedure TestVisualization;
 var
   Viz: TLandrixEInvoiceKositVisualizer;
   Doc: TFileStream;
-  S: TMemoryStream;
+  S, Crafted: TMemoryStream;
   Text: TLandrixXmlUtf8;
 begin
   if VisualizationFolder = '' then
@@ -359,6 +382,42 @@ begin
       Check(Contains(StreamText(S), 'Invoice'), 'English page');
     finally
       Doc.Free;
+    end;
+    { values of the sender in active content: the script must not survive }
+    Crafted := UblWithAttachment('ref-1', 'x'');alert(1);(''', 'javascript:alert(2)', 'text');
+    try
+      S.Clear;
+      Viz.WriteHtml(Crafted, S);
+      Text := StreamText(S);
+      Check(not Contains(Text, 'href="javascript:'), 'no javascript: link');
+      Check(not Contains(Text, ''', ''x'');alert(1)'), 'no script in onClick');
+      Check(Contains(Text, 'return false'), 'onClick neutralized');
+    finally
+      Crafted.Free;
+    end;
+    { an apostrophe in a text node must not make the filter skip the
+      attributes after it }
+    Crafted := UblWithAttachment('x'', alert(1), ''', 'a.txt', 'javascript:alert(2)', 'blah href=''');
+    try
+      S.Clear;
+      Viz.WriteHtml(Crafted, S);
+      Text := StreamText(S);
+      Check(not Contains(Text, 'href="javascript:'), 'text node: no javascript: link');
+      { the stylesheet turns spaces of the reference into '-' }
+      Check(not Contains(Text, 'downloadData(''x'',-alert(1)'), 'text node: no script in onClick');
+    finally
+      Crafted.Free;
+    end;
+    Crafted := UblWithAttachment('ref-1', 'a.txt', 'https://example.org/a', 'text');
+    try
+      S.Clear;
+      Viz.WriteHtml(Crafted, S);
+      Text := StreamText(S);
+      Check(Contains(Text, 'href="https://example.org/a"'), 'https link kept');
+      Check(Contains(Text, 'downloadData('''), 'download link kept');
+      Check(not Contains(Text, 'return false'), 'nothing neutralized');
+    finally
+      Crafted.Free;
     end;
     { not an invoice }
     Doc := TFileStream.Create(DataDir + 'doc-a-5.xml', fmOpenRead or fmShareDenyWrite);

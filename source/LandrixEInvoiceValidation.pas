@@ -333,10 +333,12 @@ type
     property InvoiceXml: TMemoryStream read GetInvoiceXml;
     { The SHA-256 (64 lowercase hex digits) of the bytes that were
       validated: the stream from its position to its end, the whole PDF
-      for a PDF; '' without a stream or with more than 2 GB.
+      for a PDF; '' without a stream, with more than 2 GB and for a PDF above
+      LandrixEInvoicePdfMaxFileSize (rejected unread, not buffered).
       DE: Der SHA-256 (64 kleine Hexziffern) der geprueften Bytes: der
       Stream von seiner Position bis zum Ende, bei einem PDF das ganze PDF;
-      '' ohne Stream oder bei mehr als 2 GB. }
+      '' ohne Stream, bei mehr als 2 GB und fuer ein PDF ueber
+      LandrixEInvoicePdfMaxFileSize (ungelesen abgelehnt, nicht gepuffert). }
     property DocumentSha256: TLandrixEInvoiceString read FDocumentSha256;
     { The SHA-256 of InvoiceXml as it is (for a PDF the decoded embedded
       file, for XML the same as DocumentSha256); '' when InvoiceXml is nil.
@@ -411,7 +413,7 @@ type
     function RunChosen(AData: TStream; AResult: TLandrixEInvoiceDocumentValidation;
       out AWellFormed: Boolean): Boolean;
     procedure CheckKind(AResult: TLandrixEInvoiceDocumentValidation; AKositEnd: Integer);
-    procedure ValidatePdf(AData: TMemoryStream; AResult: TLandrixEInvoiceDocumentValidation);
+    procedure ValidatePdf(AData: TStream; AResult: TLandrixEInvoiceDocumentValidation);
     procedure ReadAndCheck(AData: TMemoryStream; AResult: TLandrixEInvoiceDocumentValidation;
       APdfChecker: TLandrixEInvoicePdfChecker);
     procedure RunModelCheck(ADoc: TLandrixEInvoiceDocument; AResult: TLandrixEInvoiceDocumentValidation);
@@ -778,9 +780,9 @@ end;
 function TLandrixEInvoiceDocumentValidator.ValidateStream(AStream: TStream;
   AResult: TLandrixEInvoiceDocumentValidation): TLandrixEInvoiceVerdict;
 var
-  Data: TMemoryStream;
-  Count: Int64;
-  WellFormed: Boolean;
+  Data, Head: TMemoryStream;
+  Count, Start: Int64;
+  WellFormed, IsPdf: Boolean;
   KositEnd: Integer;
 begin
   AResult.Clear;
@@ -811,6 +813,27 @@ begin
     end;
     Result := AResult.FVerdict;
     Exit;
+  end;
+  { a PDF above the reader's limit is rejected by its size: hand the stream
+    to the checker without copying it }
+  if Count > LandrixEInvoicePdfMaxFileSize then
+  begin
+    Start := AStream.Position;
+    Head := TMemoryStream.Create;
+    try
+      Head.CopyFrom(AStream, 1100);
+      AStream.Position := Start;
+      Head.Position := 0;
+      IsPdf := IsPdfData(Head);
+    finally
+      Head.Free;
+    end;
+    if IsPdf then
+    begin
+      ValidatePdf(AStream, AResult);
+      Result := AResult.FVerdict;
+      Exit;
+    end;
   end;
   Data := TMemoryStream.Create;
   try
@@ -1104,7 +1127,7 @@ end;
   oder 3 fehlschlug; unvollstaendig, wenn eine davon nicht lief oder
   unvollstaendig ist; sonst angenommen. PDF/A (Ebene 1) wird gemeldet und
   zaehlt nicht mit. }
-procedure TLandrixEInvoiceDocumentValidator.ValidatePdf(AData: TMemoryStream;
+procedure TLandrixEInvoiceDocumentValidator.ValidatePdf(AData: TStream;
   AResult: TLandrixEInvoiceDocumentValidation);
 var
   Checker: TLandrixEInvoicePdfChecker;
