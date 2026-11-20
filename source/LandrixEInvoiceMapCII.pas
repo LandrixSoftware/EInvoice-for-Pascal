@@ -3110,6 +3110,48 @@ begin
 end;
 
 
+{ CEN 1.3.17 allows one payment card (CII-SR-495) and one debited account
+  (CII-SR-496) per invoice, CEN 1.3.16 more: an info when the CII to be
+  written (after pruning) has a second one.
+  DE: CEN 1.3.17 erlaubt eine Zahlungskarte (CII-SR-495) und ein belastetes
+  Konto (CII-SR-496) je Rechnung, CEN 1.3.16 mehr: ein Hinweis, wenn das zu
+  schreibende CII (nach dem Beschneiden) ein zweites hat. }
+procedure ReportCen1317PaymentMeans(ACII: TLandrixCIIInvoice; ADiagnostics: TLandrixEInvoiceDiagnostics);
+var
+  Means: TLandrixCIITradeSettlementPaymentMeansList;
+  I: TLandrixEInvoiceListIndex;
+  Cards, Debits: Integer;
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  if ADiagnostics = nil then
+    Exit;
+  Means := ACII.SupplyChainTradeTransaction.ApplicableHeaderTradeSettlement.SpecifiedTradeSettlementPaymentMeans;
+  Cards := 0;
+  Debits := 0;
+  for I := 0 to Means.Count - 1 do
+  begin
+    if not Means[I].ApplicableTradeSettlementFinancialCard.IsEmpty then
+      Inc(Cards);
+    if not Means[I].PayerPartyDebtorFinancialAccount.IsEmpty then
+      Inc(Debits);
+  end;
+  if Cards > 1 then
+  begin
+    D := ADiagnostics.AddDiagnostic(edk_DuplicateElement,
+      Settlement + '/ram:SpecifiedTradeSettlementPaymentMeans/ram:ApplicableTradeSettlementFinancialCard', 0, 0, 0,
+      TLandrixEInvoiceString(IntToStr(Cards) + ' payment cards (BG-18); CEN 1.3.17 allows one per invoice (CII-SR-495)'));
+    D.Severity := eds_Info;
+  end;
+  if Debits > 1 then
+  begin
+    D := ADiagnostics.AddDiagnostic(edk_DuplicateElement,
+      Settlement + '/ram:SpecifiedTradeSettlementPaymentMeans/ram:PayerPartyDebtorFinancialAccount', 0, 0, 0,
+      TLandrixEInvoiceString(IntToStr(Debits) + ' debited accounts (BT-91); CEN 1.3.17 allows one per invoice ' +
+      '(CII-SR-496)'));
+    D.Severity := eds_Info;
+  end;
+end;
+
 { --- public ------------------------------------------------------------------- }
 
 function LandrixEInvoiceInvoiceToCII(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec;
@@ -3135,6 +3177,7 @@ begin
         Mapper.Free;
       end;
       LandrixEInvoicePruneCII(Result, ASpec.Target.Profile, ADiagnostics);
+      ReportCen1317PaymentMeans(Result, ADiagnostics);
     except
       Result.Free;
       raise;

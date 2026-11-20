@@ -10,9 +10,9 @@ Do NOT edit!</ext:info>
   </Annotation>
   <Identification>
     <ShortName>VATEX</ShortName>
-    <Version>2026-05-15</Version>
+    <Version>2026-11-15</Version>
     <CanonicalUri>urn:cef.eu:names:identifier:VATEX</CanonicalUri>
-    <CanonicalVersionUri>urn:cef.eu:names:identifier:VATEX-2026-05-15</CanonicalVersionUri>
+    <CanonicalVersionUri>urn:cef.eu:names:identifier:VATEX-2026-11-15</CanonicalVersionUri>
   </Identification>
   <ColumnSet>
     <Column Id="Code" Use="required">
@@ -841,6 +841,204 @@ Exonération de TVA - Article 261 D-3° du Code Général des Impôts </SimpleV
       </Value>
       <Value ColumnRef="Remark">
         <SimpleValue>Only for domestic invoicing in France</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-N1</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Transaction not subject to VAT based on Articles 7 and 15 of Law 37/1992 of 28 December, Article 9 of Law 20/1991 of 7 June, Article 6 of Law 8/1991 of 25 March, and others</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-N2</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Transaction not subject to VAT based on place-of-supply rules</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IVA20</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 20 of Law 37/1992 of 28 December</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IVA21</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 21 of Law 37/1992 of 28 December</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IVA22</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 22 of Law 37/1992 of 28 December</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IVA23/24</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Articles 23/24 of Law 37/1992 of 28 December</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IVA25</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 25 of Law 37/1992 of 28 December</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IVA140BIS</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 140 bis of Law 37/1992 of 28 December</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-OTROS</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on other grounds</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IGIC1TR</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Chapter I of the Consolidated Text approved by Legislative Decree 1/2025</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IGIC11</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 11 of Law 20/1991 of 7 June</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IGIC12</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 12 of Law 20/1991 of 7 June</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IGIC13</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 13 of Law 20/1991 of 7 June</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IGIC25</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 25 of Law 19/1994 of 6 July</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IGIC47</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 47 of Law 19/1994 of 6 July</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IGIC90</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 90 of the Consolidated Text approved by Legislative Decree 1/2025</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IPSI7</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 7 of Law 8/1991 of 25 March</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>VATEX-ES-IPSI8</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>Exempt based on Article 8 of Law 8/1991 of 25 March</SimpleValue>
+      </Value>
+      <Value ColumnRef="Remark">
+        <SimpleValue>Only for domestic invoicing in Spain</SimpleValue>
       </Value>
     </Row>
   </SimpleCodeList>

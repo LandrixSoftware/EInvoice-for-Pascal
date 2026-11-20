@@ -10,9 +10,9 @@ Do NOT edit!</ext:info>
   </Annotation>
   <Identification>
     <ShortName>ICD</ShortName>
-    <Version>2026-05-15</Version>
+    <Version>2026-11-15</Version>
     <CanonicalUri>urn:cef.eu:names:identifier:ICD</CanonicalUri>
-    <CanonicalVersionUri>urn:cef.eu:names:identifier:ICD-2026-05-15</CanonicalVersionUri>
+    <CanonicalVersionUri>urn:cef.eu:names:identifier:ICD-2026-11-15</CanonicalVersionUri>
   </Identification>
   <ColumnSet>
     <Column Id="Code" Use="required">
@@ -1971,6 +1971,30 @@ Do NOT edit!</ext:info>
       </Value>
       <Value ColumnRef="Name">
         <SimpleValue>Oman Value Added Tax Identification Number (VATIN)</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>0249</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>The Chamber of Commerce &amp; Industry St. Eustatius &amp; Saba establishment number</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>0250</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>SECD - Siemens Energy Classification Dictionary</SimpleValue>
+      </Value>
+    </Row>
+    <Row>
+      <Value ColumnRef="Code">
+        <SimpleValue>0251</SimpleValue>
+      </Value>
+      <Value ColumnRef="Name">
+        <SimpleValue>The Bonaire Chamber of Commerce and Industry establishment number.</SimpleValue>
       </Value>
     </Row>
   </SimpleCodeList>

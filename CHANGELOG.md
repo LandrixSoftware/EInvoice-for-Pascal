@@ -194,6 +194,13 @@ Supported invoice standards are documented per release.
   stay incomplete.
 
 ### Changed
+- Code lists: EN 16931 code list values version 18 of the European Commission (valid from 2026-11-15)
+  instead of version 17. New members: electronic address scheme 9960, ICD 0249 to 0251 and the 18
+  Spanish exemption reasons `VATEX-ES-*`. The rule check keeps judging them as the validators of
+  today do (CEN 1.3.16, which does not list them) until they move to CEN 1.3.17.
+- CII writer (from `TLandrixInvoice`): what CEN 1.3.17 will reject is still written, with an info: a
+  second payment card (CII-SR-495) or a second debited account (CII-SR-496) in the CII as written. An
+  attachment without MIME code or file name (CII-DT-105, CII-DT-106) was already reported as missing.
 - Diagnostics: the business terms of a rule violation (and of the values the rule check and the
   calculation cannot write or judge) are in the new field `Terms`, no longer in `Path`. For the
   rule check `Path` is now the model path of the violation, or empty; reading and writing keep
