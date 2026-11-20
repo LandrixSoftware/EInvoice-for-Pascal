@@ -236,6 +236,132 @@ begin
   end;
 end;
 
+{ The calculation works with the numbers as written: rounding of half
+  cents at any size, quantity and rate with the written decimals, category
+  O without rate, nested groups without VAT data, ranges, invoices without
+  lines, a breakdown without exemption reason. }
+procedure TestPrecision;
+var
+  Invoice: TLandrixInvoice;
+  Line, Group, Inner, Sub: TLandrixInvoiceLine;
+  Tax: TLandrixInvoiceTaxAmount;
+  D: TLandrixEInvoiceDiagnostics;
+  NaN: Double;
+begin
+  Invoice := TLandrixInvoice.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    { a half cent above 1e7 rounds up (Double alone gives .33) }
+    Line := AddLine(Invoice, '1', 1, Quot(84428850, 1) + Quot(335, 1000), idtfcc_S_StandardRate, 19);
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'large half cent');
+    CheckAmount(Cur(844288503400), Line.LineAmount, '84428850.335 -> .34');
+    { the quantity counts with the 4 decimals written: 1.0000 x 1000 }
+    Line.Quantity := Quot(100004, 100000);
+    Line.NetPriceAmount := 1000;
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'quantity');
+    CheckAmount(1000, Line.LineAmount, 'quantity 1.00004 is written 1.0000');
+
+    { rates with more than two decimals group as written }
+    Line.Quantity := 1;
+    Line.NetPriceAmount := 100;
+    Line.TaxPercent := Quot(19001, 1000);
+    AddLine(Invoice, '2', 1, 100, idtfcc_S_StandardRate, Quot(19002, 1000));
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'lines');
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice), 'rates');
+    CheckEquals(1, Integer(Invoice.TaxAmountSubtotals.Count), '19.001 and 19.002 are both 19.00');
+    CheckAmount(38, Invoice.TaxAmountSubtotals[0].TaxAmount, '19 % of 200');
+
+    { category O: a rate left on the line does not count (BR-O-09) }
+    Invoice.InvoiceLines.Clear;
+    Invoice.TaxAmountSubtotals.Clear;
+    Line := AddLine(Invoice, '1', 1, 100, idtfcc_O_ServicesOutsideScopeOfTax, 19);
+    Line.TaxExemptionReason := 'Not subject to VAT';
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'O line');
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice), 'O totals');
+    CheckAmount(0, Invoice.TaxAmountTotal, 'O: no VAT');
+    CheckAmount(100, Invoice.PayableAmount, 'O: due = net');
+    Check(Invoice.TaxAmountSubtotals[0].TaxPercent = 0, 'O breakdown without rate');
+    Invoice.TaxAmountSubtotals[0].TaxPercent := 19;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice), 'O again');
+    Check(Invoice.TaxAmountSubtotals[0].TaxPercent = 0, 'existing O breakdown loses its rate');
+
+    { S: a reason on the line is not copied (BR-S-10) }
+    Invoice.InvoiceLines.Clear;
+    Invoice.TaxAmountSubtotals.Clear;
+    Line := AddLine(Invoice, '1', 1, 100, idtfcc_S_StandardRate, 19);
+    Line.TaxExemptionReason := 'Text';
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_S_StandardRate;
+    Tax.TaxPercent := 19;
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'S line');
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice), 'S totals');
+    CheckEqualsInvoiceStr('', Invoice.TaxAmountSubtotals[0].TaxExemptionReason, 'no reason for S');
+
+    { a base quantity written as 0.00 }
+    Line.BaseQuantity := Quot(4, 10000000);
+    CheckEquals(1, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'base quantity written as 0');
+    Line.BaseQuantity := 0;
+
+    { an existing exempt breakdown without reason takes that of the lines }
+    Invoice.InvoiceLines.Clear;
+    Invoice.TaxAmountSubtotals.Clear;
+    Line := AddLine(Invoice, '1', 1, 100, idtfcc_E_ExemptFromTax, 0);
+    Line.TaxExemptionReason := 'Exempt';
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_E_ExemptFromTax;
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'E line');
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice), 'E totals');
+    CheckEqualsInvoiceStr('Exempt', Invoice.TaxAmountSubtotals[0].TaxExemptionReason, 'reason of the lines');
+
+    { GROUP > GROUP > DETAIL, both groups without VAT data }
+    Invoice.InvoiceLines.Clear;
+    Invoice.TaxAmountSubtotals.Clear;
+    Group := AddLine(Invoice, '1', 1, 0, idtfcc_None, 0);
+    Inner := Group.SubInvoiceLines.AddInvoiceLine;
+    Inner.ID := '1.1';
+    Sub := Inner.SubInvoiceLines.AddInvoiceLine;
+    Sub.ID := '1.1.1';
+    Sub.Quantity := 1;
+    Sub.NetPriceAmount := 10;
+    Sub.TaxCategory := idtfcc_S_StandardRate;
+    Sub.TaxPercent := 19;
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'nested lines');
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, D), 'nested groups: ' + string(D.ToText));
+    CheckAmount(Cents(190), Invoice.TaxAmountTotal, '19 % of 10');
+
+    { a rate that cannot be written is an error, no exception }
+    PInt64(@NaN)^ := $7FF8000000000000;
+    Sub.TaxPercent := NaN;
+    CheckEquals(1, TLandrixEInvoice.CalculateTotals(Invoice), 'NaN rate');
+    Sub.TaxPercent := 19;
+
+    { sums beyond 9e14 are errors }
+    Invoice.InvoiceLines.Clear;
+    Line := AddLine(Invoice, '1', 1, 0, idtfcc_S_StandardRate, 0);
+    Line.LineAmount := Cur(5000000000000000000);
+    Line := AddLine(Invoice, '2', 1, 0, idtfcc_S_StandardRate, 0);
+    Line.LineAmount := Cur(5000000000000000000);
+    Invoice.LineAmount := 1;
+    Check(TLandrixEInvoice.CalculateTotals(Invoice) > 0, 'sum out of range');
+    CheckAmount(1, Invoice.LineAmount, 'unchanged on error');
+
+    { no lines (BASIC WL): the totals stay }
+    Invoice.InvoiceLines.Clear;
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_S_StandardRate;
+    Tax.TaxPercent := 7;
+    Tax.TaxAmount := Cents(118);
+    Invoice.LineAmount := Cents(1690);
+    CheckEquals(1, TLandrixEInvoice.CalculateTotals(Invoice), 'no lines');
+    CheckAmount(Cents(1690), Invoice.LineAmount, 'BT-106 kept');
+    Check(Invoice.TaxAmountSubtotals.Count > 0, 'breakdown kept');
+  finally
+    D.Free;
+    Invoice.Free;
+  end;
+end;
+
 { A complete invoice with zeroed amounts, recalculated, passes the check. }
 procedure TestPassesCheck;
 var
@@ -481,6 +607,7 @@ begin
   RegisterTest('Calculate.LineAmounts', TestLineAmounts);
   RegisterTest('Calculate.Groups', TestGroups);
   RegisterTest('Calculate.Totals', TestTotals);
+  RegisterTest('Calculate.Precision', TestPrecision);
   RegisterTest('Calculate.PassesCheck', TestPassesCheck);
   RegisterTest('Calculate.SweepOracle', TestSweepOracle);
 end;

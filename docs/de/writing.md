@@ -91,13 +91,18 @@ TLandrixEInvoice.CalculateTotals(Invoice);        // BG-23 und BG-22
 ```
 
 - `CalculateLineAmounts`: Menge x Nettopreis / Basismenge (0 gilt als 1), halb weg von null auf
-  Cent gerundet, minus Positionsnachlässe, plus Positionszuschläge. Eine Gruppe (Position mit
+  Cent gerundet, minus Positionsnachlässe, plus Positionszuschläge. Gerechnet wird genau mit den
+  Werten, wie sie geschrieben werden (Menge mit 4 Nachkommastellen, Preis mit 2 oder 4,
+  Basismenge mit bis zu 6), damit der Betrag zu dem passt, was ein Validator aus dem XML
+  nachrechnet. Eine Gruppe (Position mit
   Unterpositionen) erhält die Summe ihrer DETAIL- und GROUP-Unterpositionen. Lassen Sie diesen
   Aufruf weg, wenn Ihre Positionsbeträge von anderswo kommen.
-- `CalculateTotals`: die Steueraufschlüsselung nach Umsatzsteuerkategorie und Satz (die Steuer
-  jeder Gruppe einmal auf ihre Bemessungsgrundlage gerundet; vorhandene Einträge behalten ihre
-  Befreiungsgründe, fehlende kommen dazu, nicht benutzte werden entfernt) und die Belegsummen
-  BT-106 bis BT-110, BT-112 und BT-115. BT-111 (Steuerwährung), BT-113 (Vorauszahlung) und BT-114
+- `CalculateTotals`: die Steueraufschlüsselung nach Umsatzsteuerkategorie und Satz, wie er
+  geschrieben wird, mit zwei Nachkommastellen (die Steuer jeder Gruppe einmal auf ihre
+  Bemessungsgrundlage gerundet; Kategorie O zählt ohne Satz; vorhandene Einträge behalten ihre
+  Befreiungsgründe und übernehmen den der Positionen, wenn sie keinen haben, fehlende kommen
+  dazu, nicht benutzte werden entfernt) und die Belegsummen BT-106 bis BT-110, BT-112 und
+  BT-115. Eine Rechnung ohne Positionen (MINIMUM, BASIC WL) ist ein Fehler. BT-111 (Steuerwährung), BT-113 (Vorauszahlung) und BT-114
   (Rundung) bleiben, wie Sie sie setzen; BT-115 enthält Zahlungen Dritter.
 
 Beide überschreiben, was sie berechnen, liefern die Anzahl der Fehler und lassen die Rechnung

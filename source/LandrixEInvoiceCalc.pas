@@ -138,32 +138,44 @@ function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoice
 { Calculation on request (TLandrixEInvoice.CalculateLineAmounts and
   CalculateTotals). Both compute everything first and change AInvoice only
   when there is no error; they return the number of errors, with the
-  reasons in ADiagnostics. Amounts are rounded to cents half away from
-  zero, as the writers round.
+  reasons in ADiagnostics. They compute exactly with the numbers as the
+  writers write them (quantity 4 decimals, price 2 or 4, base quantity up
+  to 6, rates 2) and round amounts to cents half away from zero, as the
+  writers round; an amount above 9e14 or a sum beyond Currency is an
+  error.
   LandrixEInvoiceCalculateLineAmounts sets BT-131 of every line: quantity x
   net price / base quantity (0 counts as 1), minus line allowances, plus
   line charges; a group (a line with sub lines) gets the sum of its DETAIL
   and GROUP sub lines.
   LandrixEInvoiceCalculateTotals sets the VAT breakdown (BG-23, grouped by
-  category and rate, tax per group on its taxable amount; existing
-  breakdowns keep their exemption reasons, missing ones are added, unused
-  ones removed) and the document totals BT-106 to BT-110, BT-112 and BT-115 from
-  the line amounts as they are. BT-111, BT-113 and BT-114 stay as given.
+  category and rate as written, tax per group on its taxable amount;
+  category O counts without rate, BR-O-09; existing breakdowns keep their
+  exemption reasons and get the one of the lines if they have none, missing
+  ones are added, unused ones removed) and the document totals BT-106 to
+  BT-110, BT-112 and BT-115 from the line amounts as they are. BT-111,
+  BT-113 and BT-114 stay as given. An invoice without lines (MINIMUM,
+  BASIC WL) is an error: its totals cannot be calculated.
   DE: Berechnung auf Aufruf (TLandrixEInvoice.CalculateLineAmounts und
   CalculateTotals). Beide rechnen zuerst alles aus und aendern AInvoice nur,
   wenn kein Fehler auftritt; sie liefern die Anzahl der Fehler, die Gruende
-  stehen in ADiagnostics. Betraege werden halb weg von null auf Cent
-  gerundet, wie die Writer runden.
+  stehen in ADiagnostics. Sie rechnen genau mit den Zahlen, wie die Writer
+  sie schreiben (Menge 4 Nachkommastellen, Preis 2 oder 4, Basismenge bis
+  6, Saetze 2), und runden Betraege halb weg von null auf Cent, wie die
+  Writer runden; ein Betrag ueber 9e14 oder eine Summe jenseits von
+  Currency ist ein Fehler.
   LandrixEInvoiceCalculateLineAmounts setzt BT-131 jeder Position: Menge x
   Nettopreis / Basismenge (0 gilt als 1), minus Positionsnachlaesse, plus
   Positionszuschlaege; eine Gruppe (Position mit Unterpositionen) erhaelt
   die Summe ihrer DETAIL- und GROUP-Unterpositionen.
   LandrixEInvoiceCalculateTotals setzt die Steueraufschluesselung (BG-23,
-  nach Kategorie und Satz gruppiert, Steuer je Gruppe auf ihre
-  Bemessungsgrundlage; vorhandene Eintraege behalten ihre Befreiungsgruende,
-  fehlende kommen dazu, nicht benutzte werden entfernt) und die Belegsummen
-  BT-106 bis BT-110, BT-112 und BT-115 aus den Positionsbetraegen, wie sie sind.
-  BT-111, BT-113 und BT-114 bleiben wie gegeben. }
+  nach Kategorie und Satz wie geschrieben gruppiert, Steuer je Gruppe auf
+  ihre Bemessungsgrundlage; Kategorie O zaehlt ohne Satz, BR-O-09;
+  vorhandene Eintraege behalten ihre Befreiungsgruende und erhalten den der
+  Positionen, wenn sie keinen haben, fehlende kommen dazu, nicht benutzte
+  werden entfernt) und die Belegsummen BT-106 bis BT-110, BT-112 und BT-115
+  aus den Positionsbetraegen, wie sie sind. BT-111, BT-113 und BT-114
+  bleiben wie gegeben. Eine Rechnung ohne Positionen (MINIMUM, BASIC WL)
+  ist ein Fehler: ihre Summen lassen sich nicht berechnen. }
 function LandrixEInvoiceCalculateLineAmounts(AInvoice: TLandrixInvoice;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 function LandrixEInvoiceCalculateTotals(AInvoice: TLandrixInvoice;
@@ -172,8 +184,10 @@ function LandrixEInvoiceCalculateTotals(AInvoice: TLandrixInvoice;
 implementation
 
 uses
+  LandrixXmlBase,
   LandrixEInvoiceCodes,
-  LandrixEInvoiceLexical;
+  LandrixEInvoiceLexical,
+  LandrixEInvoiceExact;
 
 function LandrixEInvoiceLineStatusOf(ALine: TLandrixInvoiceLine;
   AIsSubLine: Boolean): TLandrixInvoiceLineStatusReasonCode;
@@ -415,8 +429,11 @@ end;
 function GroupAmount(ALine: TLandrixInvoiceLine; ANoAmountLines: TObjectList): Currency;
 var
   I: TLandrixEInvoiceListIndex;
+  A, B: Int64;
+  Part: Currency;
 begin
-  if (ANoAmountLines.IndexOf(ALine) < 0) or (ALine.LineStatusReasonCode <> ilsrc_Group) then
+  { the status as derived: a line with sub lines and no BT-X-8 is a group }
+  if (ANoAmountLines.IndexOf(ALine) < 0) or (LandrixEInvoiceLineStatusOf(ALine, False) <> ilsrc_Group) then
   begin
     Result := ALine.LineAmount;
     Exit;
@@ -424,7 +441,18 @@ begin
   Result := 0;
   for I := 0 to ALine.SubInvoiceLines.Count - 1 do
     if LandrixEInvoiceLineStatusOf(ALine.SubInvoiceLines[I], True) in [ilsrc_Detail, ilsrc_Group] then
-      Result := Result + GroupAmount(ALine.SubInvoiceLines[I], ANoAmountLines);
+    begin
+      Part := GroupAmount(ALine.SubInvoiceLines[I], ANoAmountLines);
+      A := PInt64(@Result)^;
+      B := PInt64(@Part)^;
+      { a sum beyond Currency stays 0: the calculation reports it }
+      if ((B > 0) and (A > High(Int64) - B)) or ((B < 0) and (A < Low(Int64) - B)) then
+      begin
+        Result := 0;
+        Exit;
+      end;
+      PInt64(@Result)^ := A + B;
+    end;
 end;
 
 procedure LandrixEInvoiceBuildSubLines(AInvoice: TLandrixInvoice; ALines: TObjectList;
@@ -581,19 +609,27 @@ type
     Diagnostics: TLandrixEInvoiceDiagnostics;
   end;
 
-  { One VAT group of the breakdown: category, rate and what goes into it.
-    DE: Eine Gruppe der Steueraufschluesselung: Kategorie, Satz und was
-    hineinfliesst. }
+  { One VAT group of the breakdown: category, rate as written and what goes
+    into it.
+    DE: Eine Gruppe der Steueraufschluesselung: Kategorie, Satz wie
+    geschrieben und was hineinfliesst. }
   TVatGroup = record
     Category: TLandrixInvoiceDutyTaxFeeCategoryCode;
     CategoryOther: TLandrixEInvoiceString;
-    RateKey: Int64;
+    RateText: TLandrixEInvoiceString;
     Rate: Double;
     Taxable: Currency;
     Reason: TLandrixEInvoiceString;
     Matched: Boolean;
   end;
   TVatGroups = array of TVatGroup;
+
+  { which lexical form a number is written in }
+  TWrittenKind = (wk_Quantity, wk_Price, wk_BaseQuantity, wk_Percent);
+
+const
+  { the largest amount taken as input: 9e14 (raw Currency 9e18) }
+  MaxRawAmount = 9000000000000000000;
 
 procedure CalcReport(var AState: TCalcState; ASeverity: TLandrixEInvoiceDiagnosticSeverity;
   const ATerms, AMessage: TLandrixEInvoiceString);
@@ -618,38 +654,125 @@ begin
   CalcReport(AState, eds_Warning, ATerms, AMessage);
 end;
 
-{ AValue rounded to cents, half away from zero (as the writers round), not
-  with Round (banker's rounding). A tiny margin absorbs the binary error of
-  products like 0.285 x 100. False for NaN and values beyond the Currency
-  range.
-  DE: AValue auf Cent gerundet, halb weg von null (wie die Writer runden),
-  nicht mit Round (Banker's Rounding). Ein kleiner Zuschlag faengt den
-  Binaerfehler von Produkten wie 0.285 x 100 ab. False bei NaN und Werten
-  ausserhalb des Currency-Bereichs. }
-function RoundCents(AValue: Double; out ACents: Currency): Boolean;
+{ AValue as the writers write it, exact; False for a value they cannot
+  format (NaN, infinite, 1e23 and above).
+  DE: AValue, wie die Writer es schreiben, genau; False fuer einen Wert,
+  den sie nicht formatieren koennen (NaN, unendlich, ab 1e23). }
+function WrittenExact(AValue: Double; AKind: TWrittenKind; out AExact: TExact): Boolean;
 var
-  Limit, Margin: Double;
-  N: Int64;
+  Text: TLandrixEInvoiceString;
 begin
   Result := False;
-  ACents := 0;
-  Limit := 900000000;
-  Limit := Limit * 1000000;
-  Margin := 1;
-  Margin := Margin / 10000000;
-  if (AValue <> AValue) or (Abs(AValue) > Limit) then
+  AExact := ExactInt(0);
+  try
+    case AKind of
+      wk_Quantity:
+        Text := LandrixEInvoiceQuantityToLexical(AValue);
+      wk_Price:
+        Text := LandrixEInvoicePriceToLexical(AValue);
+      wk_BaseQuantity:
+        Text := LandrixEInvoiceBaseQuantityToLexical(AValue);
+    else
+      Text := LandrixEInvoicePercentToLexical(AValue);
+    end;
+  except
+    on ELandrixXmlError do
+      Exit;
+  end;
+  if Text = '' then
     Exit;
-  N := Trunc(Abs(AValue) * 100 + 0.5 + Margin);
-  if AValue < 0 then
-    N := -N;
-  PInt64(@ACents)^ := N * 100;
+  AExact := ExactOf(Text);
   Result := True;
 end;
 
-function CentsOf(AValue: Currency): Currency;
+{ The rate of a category as written (two decimals): category O has no rate
+  (BR-O-05, the writers omit it) and counts with 0 (BR-O-09). '' if the
+  rate cannot be written.
+  DE: Der Satz einer Kategorie, wie geschrieben (zwei Nachkommastellen):
+  Kategorie O hat keinen Satz (BR-O-05, die Writer lassen ihn weg) und
+  zaehlt mit 0 (BR-O-09). '', wenn der Satz nicht geschrieben werden kann. }
+function RateTextOf(ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; ARate: Double): TLandrixEInvoiceString;
 begin
-  if not RoundCents(AValue, Result) then
+  if ACategory = idtfcc_O_ServicesOutsideScopeOfTax then
+    ARate := 0;
+  try
+    Result := LandrixEInvoicePercentToLexical(ARate);
+  except
+    on ELandrixXmlError do
+      Result := '';
+  end;
+end;
+
+{ AValue rounded to cents half away from zero (as the writers round), on
+  the raw Int64 of the Currency (ten thousandths): exact, no Double.
+  DE: AValue auf Cent gerundet, halb weg von null (wie die Writer runden),
+  auf dem rohen Int64 des Currency (Zehntausendstel): genau, ohne Double. }
+function CentsOf(AValue: Currency): Currency;
+var
+  Raw, R: Int64;
+begin
+  Raw := PInt64(@AValue)^;
+  if (Raw > MaxRawAmount) or (Raw < -MaxRawAmount) then
+  begin
     Result := AValue;
+    Exit;
+  end;
+  R := Raw mod 100;
+  Raw := Raw - R;
+  if R >= 50 then
+    Inc(Raw, 100)
+  else if R <= -50 then
+    Dec(Raw, 100);
+  PInt64(@Result)^ := Raw;
+end;
+
+{ CentsOf, with an error for a value of 9e14 or more. }
+function CheckedCents(var AState: TCalcState; AValue: Currency; const ATerms,
+  AWhat: TLandrixEInvoiceString): Currency;
+var
+  Raw: Int64;
+begin
+  Raw := PInt64(@AValue)^;
+  if (Raw > MaxRawAmount) or (Raw < -MaxRawAmount) then
+  begin
+    CalcError(AState, ATerms, AWhat + ' is out of range');
+    Result := 0;
+    Exit;
+  end;
+  Result := CentsOf(AValue);
+end;
+
+{ ASum + AValue, with an error instead of leaving the Currency range
+  (only the result counts, so the order of the summands does not matter
+  below it).
+  DE: ASum + AValue, mit einem Fehler statt den Currency-Bereich zu
+  verlassen. }
+procedure AddAmount(var AState: TCalcState; var ASum: Currency; AValue: Currency; const ATerms,
+  AWhat: TLandrixEInvoiceString);
+var
+  A, B: Int64;
+begin
+  A := PInt64(@ASum)^;
+  B := PInt64(@AValue)^;
+  if ((B > 0) and (A > High(Int64) - B)) or ((B < 0) and (A < Low(Int64) - B)) then
+  begin
+    CalcError(AState, ATerms, AWhat + ' is out of range');
+    Exit;
+  end;
+  PInt64(@ASum)^ := A + B;
+end;
+
+{ Exact cents as Currency. }
+function CentsToCurrency(ACents: Int64): Currency;
+begin
+  PInt64(@Result)^ := ACents * 100;
+end;
+
+function CurrencyExact(AValue: Currency): TExact;
+begin
+  Result := ExactInt(PInt64(@AValue)^);
+  { ten thousandths }
+  Inc(Result.Scale, 4);
 end;
 
 function LineLabel(ALine: TLandrixInvoiceLine): TLandrixEInvoiceString;
@@ -657,42 +780,64 @@ begin
   Result := 'line ' + ALine.ID;
 end;
 
-{ BT-131 of a line without sub lines: quantity x net price / base quantity
-  (0 counts as 1) rounded to cents, minus the line allowances, plus the line
-  charges (each as written, in cents).
-  DE: BT-131 einer Position ohne Unterpositionen: Menge x Nettopreis /
-  Basismenge (0 gilt als 1), auf Cent gerundet, minus Positionsnachlaesse,
-  plus Positionszuschlaege (jeweils wie geschrieben, in Cent). }
+{ BT-131 of a line without sub lines: quantity x (net price / base quantity)
+  (0 counts as 1; divided first, as PEPPOL-EN16931-R120 does), each as written (quantity with 4 decimals, the price with
+  2 or 4, the base quantity with up to 6), computed exactly and rounded to
+  cents, minus the line allowances, plus the line charges (each as written,
+  in cents).
+  DE: BT-131 einer Position ohne Unterpositionen: Menge x (Nettopreis /
+  Basismenge) (0 gilt als 1; zuerst geteilt, wie PEPPOL-EN16931-R120),
+  jeweils wie geschrieben (Menge mit 4
+  Nachkommastellen, Preis mit 2 oder 4, Basismenge mit bis zu 6), genau
+  gerechnet und auf Cent gerundet, minus Positionsnachlaesse, plus
+  Positionszuschlaege (jeweils wie geschrieben, in Cent). }
 function PricedAmount(ALine: TLandrixInvoiceLine; var AState: TCalcState; out AAmount: Currency): Boolean;
 var
-  Base: Double;
+  Quantity, Price, Base: TExact;
+  Cents: Int64;
   I: TLandrixEInvoiceListIndex;
   Item: TLandrixInvoiceAllowanceCharge;
+  Errors: Integer;
 begin
   Result := False;
   AAmount := 0;
-  Base := ALine.BaseQuantity;
-  if Base = 0 then
-    Base := 1;
-  if Base < 0 then
+  if ALine.BaseQuantity < 0 then
   begin
     CalcError(AState, 'BT-149', LineLabel(ALine) + ': negative price base quantity');
     Exit;
   end;
-  if not RoundCents(ALine.Quantity * ALine.NetPriceAmount / Base, AAmount) then
+  Base := ExactInt(1);
+  if (ALine.BaseQuantity <> 0) and not WrittenExact(ALine.BaseQuantity, wk_BaseQuantity, Base) then
+  begin
+    CalcError(AState, 'BT-149', LineLabel(ALine) + ': the price base quantity cannot be written');
+    Exit;
+  end;
+  { a base quantity that is written as 0 would be rejected (R121) }
+  if ExactSign(Base) = 0 then
+  begin
+    CalcError(AState, 'BT-149', LineLabel(ALine) + ': the price base quantity is written as 0');
+    Exit;
+  end;
+  if not WrittenExact(ALine.Quantity, wk_Quantity, Quantity) or
+     not WrittenExact(ALine.NetPriceAmount, wk_Price, Price) or
+     not ExactRoundCents(ExactMul(Quantity, ExactDiv(Price, Base)), Cents) then
   begin
     CalcError(AState, 'BT-131', LineLabel(ALine) + ': quantity x price is out of range');
     Exit;
   end;
+  AAmount := CentsToCurrency(Cents);
+  Errors := AState.Errors;
   for I := 0 to ALine.AllowanceCharges.Count - 1 do
   begin
     Item := ALine.AllowanceCharges[I];
     if Item.ChargeIndicator then
-      AAmount := AAmount + CentsOf(Item.Amount)
+      AddAmount(AState, AAmount, CheckedCents(AState, Item.Amount, 'BT-141', LineLabel(ALine) + ': a charge'),
+        'BT-131', LineLabel(ALine) + ': the line amount')
     else
-      AAmount := AAmount - CentsOf(Item.Amount);
+      AddAmount(AState, AAmount, -CheckedCents(AState, Item.Amount, 'BT-136', LineLabel(ALine) + ': an allowance'),
+        'BT-131', LineLabel(ALine) + ': the line amount');
   end;
-  Result := True;
+  Result := AState.Errors = Errors;
 end;
 
 { Computes BT-131 of ALines and their sub lines into AState (nothing is
@@ -708,7 +853,7 @@ var
   I, K: TLandrixEInvoiceListIndex;
   Line, Sub: TLandrixInvoiceLine;
   Amount: Currency;
-  First, J: Integer;
+  First, J, Errors: Integer;
   Ok: Boolean;
 begin
   for I := 0 to ALines.Count - 1 do
@@ -723,14 +868,18 @@ begin
       if not Ok then
         CalcError(AState, 'BT-X-8', LineLabel(Line) + ': a line with sub lines must be a group (GROUP)')
       else
+      begin
+        Errors := AState.Errors;
         for K := 0 to Line.SubInvoiceLines.Count - 1 do
         begin
           Sub := Line.SubInvoiceLines[K];
           if LandrixEInvoiceLineStatusOf(Sub, True) in [ilsrc_Detail, ilsrc_Group] then
             for J := First to AState.LineCount - 1 do
               if AState.Lines[J].Line = Sub then
-                Amount := Amount + AState.Lines[J].Amount;
+                AddAmount(AState, Amount, AState.Lines[J].Amount, 'BT-131', LineLabel(Line) + ': the group amount');
         end;
+        Ok := AState.Errors = Errors;
+      end;
     end
     else
       Ok := PricedAmount(Line, AState, Amount);
@@ -762,33 +911,23 @@ begin
     State.Lines[I].Line.LineAmount := State.Lines[I].Amount;
 end;
 
-function RateKeyOf(ARate: Double): Int64;
-begin
-  if ARate < 0 then
-    Result := -Trunc(-ARate * 10000 + 0.5)
-  else
-    Result := Trunc(ARate * 10000 + 0.5);
-end;
-
 function CategoryLabel(ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode;
-  const AOther: TLandrixEInvoiceString; ARate: Double): TLandrixEInvoiceString;
+  const AOther, ARateText: TLandrixEInvoiceString): TLandrixEInvoiceString;
 begin
   if ACategory = idtfcc_None then
     Result := AOther
   else
     Result := LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(ACategory);
-  Result := Result + ' ' + LandrixEInvoiceAmountToLexical(ARate);
+  Result := Result + ' ' + ARateText;
 end;
 
 function FindGroup(const AGroups: TVatGroups; ACount: Integer;
-  ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther: TLandrixEInvoiceString; ARate: Double): Integer;
+  ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther, ARateText: TLandrixEInvoiceString): Integer;
 var
-  Key: Int64;
   I: Integer;
 begin
-  Key := RateKeyOf(ARate);
   for I := 0 to ACount - 1 do
-    if (AGroups[I].Category = ACategory) and (AGroups[I].RateKey = Key) and
+    if (AGroups[I].Category = ACategory) and (AGroups[I].RateText = ARateText) and
        ((ACategory <> idtfcc_None) or (AGroups[I].CategoryOther = AOther)) then
     begin
       Result := I;
@@ -797,11 +936,22 @@ begin
   Result := -1;
 end;
 
-{ The leaf lines below a group must share its category and rate: the
-  breakdown takes the top-level line, Factur-X EXTENDED the DETAIL lines.
+{ The line has VAT data of its own (a GROUP line may have none).
+  DE: Die Position hat eigene Steuerangaben (eine GROUP-Position darf keine
+  haben). }
+function HasOwnTax(ALine: TLandrixInvoiceLine): Boolean;
+begin
+  Result := (ALine.TaxCategory <> idtfcc_None) or not LandrixEInvoiceIsBlank(ALine.TaxCategoryOther);
+end;
+
+{ The leaf lines below a group must share its category and rate as
+  written: the breakdown takes the top-level line, Factur-X EXTENDED the
+  DETAIL lines. A group line without VAT data of its own is only looked
+  through.
   DE: Die Blattpositionen unter einer Gruppe muessen deren Kategorie und
-  Satz teilen: die Aufschluesselung nimmt die oberste Position, Factur-X
-  EXTENDED die DETAIL-Positionen. }
+  Satz (wie geschrieben) teilen: die Aufschluesselung nimmt die oberste
+  Position, Factur-X EXTENDED die DETAIL-Positionen. Durch eine
+  Gruppenposition ohne eigene Steuerangaben wird nur hindurchgesehen. }
 function SubLinesMatch(ALine: TLandrixInvoiceLine; ATop: TLandrixInvoiceLine): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
@@ -813,7 +963,17 @@ begin
     Sub := ALine.SubInvoiceLines[I];
     if LandrixEInvoiceLineStatusOf(Sub, True) = ilsrc_Information then
       Continue;
-    if (Sub.TaxCategory <> ATop.TaxCategory) or (RateKeyOf(Sub.TaxPercent) <> RateKeyOf(ATop.TaxPercent)) or
+    if (LandrixEInvoiceLineStatusOf(Sub, True) = ilsrc_Group) and not HasOwnTax(Sub) then
+    begin
+      if not SubLinesMatch(Sub, ATop) then
+      begin
+        Result := False;
+        Exit;
+      end;
+      Continue;
+    end;
+    if (Sub.TaxCategory <> ATop.TaxCategory) or
+       (RateTextOf(Sub.TaxCategory, Sub.TaxPercent) <> RateTextOf(ATop.TaxCategory, ATop.TaxPercent)) or
        ((Sub.TaxCategory = idtfcc_None) and (Sub.TaxCategoryOther <> ATop.TaxCategoryOther)) or
        not SubLinesMatch(Sub, ATop) then
     begin
@@ -834,8 +994,7 @@ var
   I: TLandrixEInvoiceListIndex;
 begin
   Result := ALine;
-  if (ALine.SubInvoiceLines.Count = 0) or (ALine.TaxCategory <> idtfcc_None) or
-     not LandrixEInvoiceIsBlank(ALine.TaxCategoryOther) then
+  if (ALine.SubInvoiceLines.Count = 0) or HasOwnTax(ALine) then
     Exit;
   for I := 0 to ALine.SubInvoiceLines.Count - 1 do
     if LandrixEInvoiceLineStatusOf(ALine.SubInvoiceLines[I], True) <> ilsrc_Information then
@@ -857,27 +1016,34 @@ begin
     idtfcc_O_ServicesOutsideScopeOfTax];
 end;
 
-procedure AddToGroup(var AGroups: TVatGroups; var ACount: Integer;
-  ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther: TLandrixEInvoiceString; ARate: Double;
-  AAmount: Currency; const AReason: TLandrixEInvoiceString);
+procedure AddToGroup(var AState: TCalcState; var AGroups: TVatGroups; var ACount: Integer;
+  ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther, ARateText: TLandrixEInvoiceString;
+  ARate: Double; AAmount: Currency; const AReason: TLandrixEInvoiceString);
 var
   G: Integer;
 begin
-  G := FindGroup(AGroups, ACount, ACategory, AOther, ARate);
+  G := FindGroup(AGroups, ACount, ACategory, AOther, ARateText);
   if G < 0 then
   begin
     G := ACount;
     Inc(ACount);
     AGroups[G].Category := ACategory;
     AGroups[G].CategoryOther := AOther;
-    AGroups[G].RateKey := RateKeyOf(ARate);
-    AGroups[G].Rate := ARate;
+    AGroups[G].RateText := ARateText;
+    if ACategory = idtfcc_O_ServicesOutsideScopeOfTax then
+      AGroups[G].Rate := 0
+    else
+      AGroups[G].Rate := ARate;
     AGroups[G].Taxable := 0;
     AGroups[G].Reason := '';
     AGroups[G].Matched := False;
   end;
-  AGroups[G].Taxable := AGroups[G].Taxable + AAmount;
-  if (AGroups[G].Reason = '') and (AReason <> '') then
+  AddAmount(AState, AGroups[G].Taxable, AAmount, 'BT-116', 'the taxable amount of ' +
+    CategoryLabel(ACategory, AOther, ARateText));
+  { only categories that need an exemption reason get one (BR-S-10 and
+    BR-Z-10 forbid it); a blank one does not hide a later reason }
+  if NeedsExemptionReason(ACategory) and LandrixEInvoiceIsBlank(AGroups[G].Reason) and
+     not LandrixEInvoiceIsBlank(AReason) then
     AGroups[G].Reason := AReason;
 end;
 
@@ -892,7 +1058,10 @@ var
   Line, Source: TLandrixInvoiceLine;
   Item: TLandrixInvoiceAllowanceCharge;
   Sub: TLandrixInvoiceTaxAmount;
-  Lines, Allowances, Charges, TaxTotal, Amount, Payable: Currency;
+  Lines, Allowances, Charges, TaxTotal, Amount, Payable, Total: Currency;
+  RateText: TLandrixEInvoiceString;
+  SubRates: array of TLandrixEInvoiceString;
+  TaxCents: Int64;
 begin
   State.LineCount := 0;
   State.Errors := 0;
@@ -900,11 +1069,21 @@ begin
   Groups := nil;
   Existing := nil;
   Taxes := nil;
+  SubRates := nil;
   SetLength(Groups, AInvoice.InvoiceLines.Count + AInvoice.AllowanceCharges.Count);
   GroupCount := 0;
   Lines := 0;
   Allowances := 0;
   Charges := 0;
+
+  { MINIMUM and BASIC WL carry totals without lines: they cannot be
+    calculated, and an empty breakdown would replace the given one }
+  if AInvoice.InvoiceLines.Count = 0 then
+  begin
+    CalcError(State, 'BG-25', 'the invoice has no lines (MINIMUM, BASIC WL): the totals cannot be calculated');
+    Result := State.Errors;
+    Exit;
+  end;
 
   { BT-106 and the line part of BG-23: the top-level lines, without
     INFORMATION lines (they do not count in Factur-X EXTENDED and are not
@@ -928,9 +1107,15 @@ begin
       ;
     end;
     Source := TaxSource(Line);
-    if (Source.TaxCategory = idtfcc_None) and LandrixEInvoiceIsBlank(Source.TaxCategoryOther) then
+    if not HasOwnTax(Source) then
     begin
       CalcError(State, 'BT-151', LineLabel(Line) + ': no VAT category');
+      Continue;
+    end;
+    RateText := RateTextOf(Source.TaxCategory, Source.TaxPercent);
+    if RateText = '' then
+    begin
+      CalcError(State, 'BT-152', LineLabel(Line) + ': the VAT rate cannot be written');
       Continue;
     end;
     if not SubLinesMatch(Line, Source) then
@@ -938,57 +1123,95 @@ begin
       CalcError(State, 'BT-151', LineLabel(Line) + ': the sub lines have another VAT category or rate');
       Continue;
     end;
-    Amount := CentsOf(Line.LineAmount);
-    Lines := Lines + Amount;
-    AddToGroup(Groups, GroupCount, Source.TaxCategory, Source.TaxCategoryOther, Source.TaxPercent, Amount,
-      Source.TaxExemptionReason);
+    Amount := CheckedCents(State, Line.LineAmount, 'BT-131', LineLabel(Line) + ': the line amount');
+    AddAmount(State, Lines, Amount, 'BT-106', 'the sum of the line amounts');
+    AddToGroup(State, Groups, GroupCount, Source.TaxCategory, Source.TaxCategoryOther, RateText, Source.TaxPercent,
+      Amount, Source.TaxExemptionReason);
   end;
 
   { BG-20 and BG-21 }
   for I := 0 to Integer(AInvoice.AllowanceCharges.Count) - 1 do
   begin
     Item := AInvoice.AllowanceCharges[I];
-    Amount := CentsOf(Item.Amount);
+    Amount := CheckedCents(State, Item.Amount, 'BT-92', 'allowance or charge');
     if (Item.TaxCategory = idtfcc_None) and LandrixEInvoiceIsBlank(Item.TaxCategoryOther) then
     begin
-      CalcError(State, 'BT-95', 'allowance or charge ' + LandrixEInvoiceAmountToLexical(Item.Amount) +
+      CalcError(State, 'BT-95', 'allowance or charge ' + LandrixEInvoiceAmountToLexical(Amount) +
         ': no VAT category');
       Continue;
     end;
+    RateText := RateTextOf(Item.TaxCategory, Item.TaxPercent);
+    if RateText = '' then
+    begin
+      CalcError(State, 'BT-96', 'allowance or charge ' + LandrixEInvoiceAmountToLexical(Amount) +
+        ': the VAT rate cannot be written');
+      Continue;
+    end;
     if Item.ChargeIndicator then
-      Charges := Charges + Amount
+      AddAmount(State, Charges, Amount, 'BT-108', 'the sum of the charges')
     else
     begin
-      Allowances := Allowances + Amount;
+      AddAmount(State, Allowances, Amount, 'BT-107', 'the sum of the allowances');
       Amount := -Amount;
     end;
-    AddToGroup(Groups, GroupCount, Item.TaxCategory, Item.TaxCategoryOther, Item.TaxPercent, Amount, '');
+    AddToGroup(State, Groups, GroupCount, Item.TaxCategory, Item.TaxCategoryOther, RateText, Item.TaxPercent,
+      Amount, '');
   end;
 
-  { the existing breakdowns: one per category and rate }
+  { the existing breakdowns: one per category and rate as written }
   SetLength(Existing, AInvoice.TaxAmountSubtotals.Count);
+  SetLength(SubRates, AInvoice.TaxAmountSubtotals.Count);
   for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
   begin
     Sub := AInvoice.TaxAmountSubtotals[I];
-    Existing[I] := FindGroup(Groups, GroupCount, Sub.TaxCategory, Sub.TaxCategoryOther, Sub.TaxPercent);
+    SubRates[I] := RateTextOf(Sub.TaxCategory, Sub.TaxPercent);
+    if SubRates[I] = '' then
+    begin
+      CalcError(State, 'BT-119', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther, '') +
+        ': the VAT rate cannot be written');
+      Existing[I] := -1;
+      Continue;
+    end;
+    Existing[I] := FindGroup(Groups, GroupCount, Sub.TaxCategory, Sub.TaxCategoryOther, SubRates[I]);
     for J := 0 to I - 1 do
-      if (AInvoice.TaxAmountSubtotals[J].TaxCategory = Sub.TaxCategory) and
-         (RateKeyOf(AInvoice.TaxAmountSubtotals[J].TaxPercent) = RateKeyOf(Sub.TaxPercent)) and
+      if (AInvoice.TaxAmountSubtotals[J].TaxCategory = Sub.TaxCategory) and (SubRates[J] = SubRates[I]) and
          ((Sub.TaxCategory <> idtfcc_None) or (AInvoice.TaxAmountSubtotals[J].TaxCategoryOther = Sub.TaxCategoryOther)) then
         CalcError(State, 'BG-23', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
-          Sub.TaxPercent) + ' occurs twice');
+          SubRates[I]) + ' occurs twice');
   end;
 
-  { BT-117 per group: the taxable amount x rate, rounded once }
+  { BT-117 per group: the taxable amount x the rate as written, exact,
+    rounded once }
   SetLength(Taxes, GroupCount);
   TaxTotal := 0;
   for G := 0 to GroupCount - 1 do
   begin
-    if not RoundCents(Groups[G].Taxable * Groups[G].Rate / 100, Taxes[G]) then
+    Taxes[G] := 0;
+    if ExactRoundCents(ExactDiv(ExactMul(CurrencyExact(Groups[G].Taxable), ExactOf(Groups[G].RateText)),
+      ExactInt(100)), TaxCents) and (TaxCents < MaxRawAmount div 100) and (TaxCents > -(MaxRawAmount div 100)) then
+      Taxes[G] := CentsToCurrency(TaxCents)
+    else
       CalcError(State, 'BT-117', 'VAT of ' + CategoryLabel(Groups[G].Category, Groups[G].CategoryOther,
-        Groups[G].Rate) + ' is out of range');
-    TaxTotal := TaxTotal + Taxes[G];
+        Groups[G].RateText) + ' is out of range');
+    AddAmount(State, TaxTotal, Taxes[G], 'BT-110', 'the VAT total');
   end;
+
+  { BG-22 }
+  Total := 0;
+  AddAmount(State, Total, Lines, 'BT-109', 'the total without VAT');
+  AddAmount(State, Total, -Allowances, 'BT-109', 'the total without VAT');
+  AddAmount(State, Total, Charges, 'BT-109', 'the total without VAT');
+  Payable := Total;
+  AddAmount(State, Payable, TaxTotal, 'BT-112', 'the total with VAT');
+  { BT-112 }
+  Amount := Payable;
+  AddAmount(State, Payable, -CheckedCents(State, AInvoice.PrepaidAmount, 'BT-113', 'the paid amount'),
+    'BT-115', 'the amount due');
+  AddAmount(State, Payable, CheckedCents(State, AInvoice.PayableRoundingAmount, 'BT-114', 'the rounding amount'),
+    'BT-115', 'the amount due');
+  for I := 0 to Integer(AInvoice.PrepaidPayments.Count) - 1 do
+    AddAmount(State, Payable, CheckedCents(State, AInvoice.PrepaidPayments[I].PaidAmount, 'BT-113',
+      'a prepaid amount'), 'BT-115', 'the amount due');
 
   Result := State.Errors;
   if Result > 0 then
@@ -1002,13 +1225,24 @@ begin
     if G < 0 then
     begin
       CalcWarning(State, 'BG-23', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
-        Sub.TaxPercent) + ' removed: no line, allowance or charge has this category and rate');
+        SubRates[I]) + ' removed: no line, allowance or charge has this category and rate');
       AInvoice.TaxAmountSubtotals.Delete(I);
       Continue;
     end;
     Groups[G].Matched := True;
     Sub.TaxableAmount := Groups[G].Taxable;
     Sub.TaxAmount := Taxes[G];
+    { category O has no rate (BR-O-05); one left in the model would be
+      written }
+    if Sub.TaxCategory = idtfcc_O_ServicesOutsideScopeOfTax then
+      Sub.TaxPercent := 0;
+    { a missing reason is taken from the lines, as for a new breakdown }
+    if LandrixEInvoiceIsBlank(Sub.TaxExemptionReason) and LandrixEInvoiceIsBlank(Sub.TaxExemptionReasonCode) then
+      Sub.TaxExemptionReason := Groups[G].Reason;
+    if NeedsExemptionReason(Sub.TaxCategory) and LandrixEInvoiceIsBlank(Sub.TaxExemptionReason) and
+       LandrixEInvoiceIsBlank(Sub.TaxExemptionReasonCode) then
+      CalcWarning(State, 'BT-120', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
+        SubRates[I]) + ' needs an exemption reason (BT-120 or BT-121)');
   end;
   for G := 0 to GroupCount - 1 do
     if not Groups[G].Matched then
@@ -1022,19 +1256,16 @@ begin
       Sub.TaxExemptionReason := Groups[G].Reason;
       if NeedsExemptionReason(Sub.TaxCategory) and LandrixEInvoiceIsBlank(Sub.TaxExemptionReason) then
         CalcWarning(State, 'BT-120', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
-          Sub.TaxPercent) + ' needs an exemption reason (BT-120 or BT-121)');
+          Groups[G].RateText) + ' needs an exemption reason (BT-120 or BT-121)');
     end;
 
   { BG-22; BT-113, BT-114 and BT-111 stay as given }
   AInvoice.LineAmount := Lines;
   AInvoice.AllowanceTotalAmount := Allowances;
   AInvoice.ChargeTotalAmount := Charges;
-  AInvoice.TaxExclusiveAmount := Lines - Allowances + Charges;
+  AInvoice.TaxExclusiveAmount := Total;
   AInvoice.TaxAmountTotal := TaxTotal;
-  AInvoice.TaxInclusiveAmount := AInvoice.TaxExclusiveAmount + TaxTotal;
-  Payable := AInvoice.TaxInclusiveAmount - CentsOf(AInvoice.PrepaidAmount) + CentsOf(AInvoice.PayableRoundingAmount);
-  for I := 0 to Integer(AInvoice.PrepaidPayments.Count) - 1 do
-    Payable := Payable + CentsOf(AInvoice.PrepaidPayments[I].PaidAmount);
+  AInvoice.TaxInclusiveAmount := Amount;
   AInvoice.PayableAmount := Payable;
 end;
 
