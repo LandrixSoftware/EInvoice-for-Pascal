@@ -16,7 +16,9 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
   BR-G-..., BR-O-..., BR-AF-..., BR-AG-..., BR-B-01, BR-B-02, BR-CO-03, BR-CO-04, BR-CO-09,
   BR-CO-18), the other BR-CO rules (reasons, seller identifier, payment terms), XRechnung
   (BR-DE-...), Peppol (PEPPOL-EN16931-...), the code list rules of XRechnung and Peppol (BR-CL-...)
-  and the rules of Factur-X EXTENDED (BR-FXEXT-...). Each violation is an entry of kind
+  the rules of Factur-X EXTENDED (BR-FXEXT-...), the syntax rules on several payment instructions
+  (CII-SR-467, CII-SR-468, UBL-SR-46, UBL-SR-47, UBL-SR-54, UBL-SR-55), BR-DEC-15 (CII),
+  BR-TMP-2 and BR-DEX-14 (XRechnung). Each violation is an entry of kind
   `edk_RuleViolation` with its rule identifier in `RuleID`.
 - For Factur-X, the code checks of the Factur-X Schematron (FX-SCH-A-...) on the CII syntax
   model as it is written, also for a CII model you pass to `Check` or `SaveTo*` directly.
@@ -28,7 +30,10 @@ The rule check predicts what the KoSIT validator would report for the written do
 does not replace the validator: schema and Schematron checks of the official configuration
 remain the reference, and the library runs them too, without Java
 ([Validating](validation.md)). Not checked yet, among others: the other FX-SCH-A rules of the Factur-X
-Schematron (cardinality, required attributes). The format rules
+Schematron (cardinality, required attributes); the code lists of the XRechnung extension
+(BR-DEX-01, BR-DEX-04 to BR-DEX-08); the decimal rules BR-DEC except BR-DEC-15, which the
+written document always meets (the writers write amounts with two decimals) but a document
+as read may break, so the validator judges them there. The format rules
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN check sum), BR-DE-27, BR-DE-28 and BR-51 are checked; all of
 them are warnings except BR-51 in CII.
 

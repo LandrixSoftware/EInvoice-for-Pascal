@@ -60,6 +60,7 @@ cii-peppol-en16931-r005-1021-code-EUR.xml	missed BR-53
 # BT-111.
 cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-53
 cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-CO-14
+cii-peppol-en16931-r053-1-1177-remove.xml	extra BR-DEC-15
 ubl-inv-br-dex-14-test-30[67]-code-*.xml	missed BR-CO-15
 
 # Two VAT totals with breakdown in the invoice currency (PEPPOL-EN16931-R053 tests): the model
@@ -170,3 +171,9 @@ ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra PEPPOL-EN16931-R055
 # has no wrong cash discount line; the rule fires only for negative days or percent in the model
 # (tests: Check.RuleCases, Identifiers.CashDiscountText).
 *-br-de-18-*-identity.xml	missed BR-DE-18
+
+# A third-party payment without amount (BT-DEX-002) is read as 0 and written with the invoice
+# currency, so BR-DEX-14 cannot fail in the output (KoSIT reports it on the missing amount, next
+# to BR-DEX-11).
+ubl-inv-br-dex-10-11-12-negative-test-293-identity.xml	missed BR-DEX-14
+ubl-inv-br-dex-11-test-298-remove.xml	missed BR-DEX-14

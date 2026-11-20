@@ -1211,9 +1211,39 @@ end;
 
 { BG-18 belongs to the card codes 48, 54 and 55 (BR-DE-24).
   DE: BG-18 gehoert zu den Kartencodes 48, 54 und 55 (BR-DE-24). }
-function IsCardPayment(ACode: TLandrixInvoicePaymentMeansCode): Boolean;
+{ The payment means code as written: the enumeration, otherwise the other
+  text without white space at the edges. The groups below follow it, as
+  the rules test the written code.
+  DE: Der Zahlungsartcode, wie er geschrieben wird: die Aufzaehlung, sonst
+  der andere Text ohne Leerraum am Rand. Die Gruppen unten folgen ihm, da
+  die Regeln den geschriebenen Code pruefen. }
+function WrittenPaymentCode(APayment: TLandrixInvoicePaymentType): TLandrixEInvoiceString;
+var
+  First, Last: Integer;
 begin
-  Result := ACode in [ipmc_BankCard, ipmc_CreditCard, ipmc_DebitCard];
+  if APayment.PaymentMeansCode <> ipmc_NotImplemented then
+  begin
+    Result := LandrixEInvoicePaymentMeansCodeToStr(APayment.PaymentMeansCode);
+    Exit;
+  end;
+  Result := APayment.PaymentMeansCodeOther;
+  First := 1;
+  Last := Length(Result);
+  while (First <= Last) and ((Result[First] = ' ') or (Result[First] = #9) or (Result[First] = #10) or
+    (Result[First] = #13)) do
+    Inc(First);
+  while (Last >= First) and ((Result[Last] = ' ') or (Result[Last] = #9) or (Result[Last] = #10) or
+    (Result[Last] = #13)) do
+    Dec(Last);
+  Result := Copy(Result, First, Last - First + 1);
+end;
+
+function IsCardPayment(APayment: TLandrixInvoicePaymentType): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+begin
+  Code := WrittenPaymentCode(APayment);
+  Result := (Code = '48') or (Code = '54') or (Code = '55');
 end;
 
 { BG-19 belongs to the direct debit codes 49 and 59: both carry the
@@ -1222,9 +1252,12 @@ end;
   DE: BG-19 gehoert zu den Lastschriftcodes 49 und 59: beide tragen das
   Mandat (BT-89) und das belastete Konto (BT-91); 49 ist die allgemeine
   Lastschrift (Peppol- und ZUGFeRD-Beispiele), 59 die SEPA-Lastschrift. }
-function IsDirectDebit(ACode: TLandrixInvoicePaymentMeansCode): Boolean;
+function IsDirectDebit(APayment: TLandrixInvoicePaymentType): Boolean;
+var
+  Code: TLandrixEInvoiceString;
 begin
-  Result := ACode in [ipmc_DirectDebit, ipmc_SEPADirectDebit];
+  Code := WrittenPaymentCode(APayment);
+  Result := (Code = '49') or (Code = '59');
 end;
 
 { BT-90 creditor identifier, BT-83 remittance information, BT-5 currency,
@@ -1262,12 +1295,12 @@ begin
       written without one (ZUGFeRD example X01)
       DE: BT-86 gehoert zum Konto des Zahlungsempfaengers; neben einer
       Lastschrift wird es auch ohne Konto geschrieben (ZUGFeRD-Beispiel X01) }
-    if not IsCardPayment(Payment.PaymentMeansCode) and
-       (Present(Payment.FinancialAccount) or IsDirectDebit(Payment.PaymentMeansCode)) then
+    if not IsCardPayment(Payment) and
+       (Present(Payment.FinancialAccount) or IsDirectDebit(Payment)) then
       Target.PayeeSpecifiedCreditorFinancialInstitution.BICID.Value := Payment.FinancialInstitutionBranch;
     if Blank(Payment.FinancialAccount) then
       Continue;
-    if IsDirectDebit(Payment.PaymentMeansCode) then
+    if IsDirectDebit(Payment) then
     begin
       Target.PayerPartyDebtorFinancialAccount.IBANID.Value := Payment.FinancialAccount;
       if Present(Payment.FinancialAccountName) then
@@ -1276,7 +1309,7 @@ begin
           '/ram:AccountName',
           'account name (BT-85) next to a direct debit left out: it belongs to the payee account', eds_Warning);
     end
-    else if IsCardPayment(Payment.PaymentMeansCode) then
+    else if IsCardPayment(Payment) then
     begin
       Target.ApplicableTradeSettlementFinancialCard.ID.Value := Payment.FinancialAccount;
       Target.ApplicableTradeSettlementFinancialCard.CardholderName := Payment.FinancialAccountName;
@@ -2717,7 +2750,7 @@ begin
         DE: Bei einer Lastschrift (49, 59) ist das Konto des Modells das
         belastete Konto (BT-91); ein Ueberweisungskonto (BG-17) wird
         gemeldet. }
-      if IsDirectDebit(Payment.PaymentMeansCode) then
+      if IsDirectDebit(Payment) then
         NotMapped(Path + '/ram:PayeePartyCreditorFinancialAccount', 'credit transfer account with a direct debit')
       else if Payment.FinancialAccount <> '' then
         NotMapped(Path + '/ram:PayeePartyCreditorFinancialAccount', 'second account of one payment means')

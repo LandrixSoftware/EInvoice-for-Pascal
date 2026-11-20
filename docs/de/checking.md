@@ -16,8 +16,10 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
   BR-IC-..., BR-G-..., BR-O-..., BR-AF-..., BR-AG-..., BR-B-01, BR-B-02, BR-CO-03, BR-CO-04,
   BR-CO-09, BR-CO-18), die übrigen BR-CO-Regeln (Gründe, Verkäuferkennung,
   Zahlungsbedingungen), XRechnung (BR-DE-...), Peppol (PEPPOL-EN16931-...), die
-  Codelistenregeln von XRechnung und Peppol (BR-CL-...) und die Regeln von Factur-X EXTENDED
-  (BR-FXEXT-...). Jeder Verstoß ist ein Eintrag der Art
+  Codelistenregeln von XRechnung und Peppol (BR-CL-...), die Regeln von Factur-X EXTENDED
+  (BR-FXEXT-...), die Syntaxregeln zu mehreren Zahlungsanweisungen (CII-SR-467, CII-SR-468,
+  UBL-SR-46, UBL-SR-47, UBL-SR-54, UBL-SR-55), BR-DEC-15 (CII), BR-TMP-2 und BR-DEX-14
+  (XRechnung). Jeder Verstoß ist ein Eintrag der Art
   `edk_RuleViolation` mit der Regelkennung in `RuleID`.
 - Für Factur-X die Codeprüfungen des Factur-X-Schematrons (FX-SCH-A-...) auf dem
   CII-Syntaxmodell, wie es geschrieben wird, auch für ein CII-Modell, das Sie `Check` oder
@@ -30,7 +32,10 @@ Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dok
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
 Konfiguration bleiben der Maßstab, und die Bibliothek führt sie ebenfalls aus, ohne Java
 ([Validieren](validation.md)). Noch nicht geprüft werden unter anderem die übrigen
-FX-SCH-A-Regeln des Factur-X-Schematrons (Kardinalität, Pflichtattribute). Die Formatregeln
+FX-SCH-A-Regeln des Factur-X-Schematrons (Kardinalität, Pflichtattribute); die Codelisten der
+XRechnung-Extension (BR-DEX-01, BR-DEX-04 bis BR-DEX-08); die Stellenregeln BR-DEC außer
+BR-DEC-15, die das geschriebene Dokument immer einhält (die Writer schreiben Beträge mit zwei
+Nachkommastellen), ein gelesenes Dokument aber verletzen kann; dort urteilt der Validator. Die Formatregeln
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN-Prüfsumme), BR-DE-27, BR-DE-28 und BR-51 werden geprüft; bis
 auf BR-51 in CII sind alle Warnungen.
 

@@ -258,12 +258,13 @@ type
     cr_BR02, cr_BR03, cr_BR04, cr_BR05, cr_BR06, cr_BR07, cr_BR08, cr_BR09,
     cr_BR10, cr_BR11, cr_BR16, cr_BR17, cr_BR18, cr_BR19, cr_BR20, cr_BR21,
     cr_BR23, cr_BR25, cr_BR27, cr_BR28, cr_BR29, cr_BR30, cr_BR32, cr_BR33,
-    cr_BR37, cr_BR38, cr_BR42, cr_BR44, cr_BR47, cr_BR51UBL, cr_BR51CII, cr_BR52, cr_BR53, cr_BR54,
+    cr_BR37, cr_BR38, cr_BR42, cr_BR44, cr_BR47, cr_BR51UBL, cr_BR51CII, cr_BR52, cr_BR53, cr_BRDEC15, cr_BR54,
     cr_BR55, cr_BR56, cr_BR57, cr_BR61, cr_BR62, cr_BR63, cr_BR64, cr_BR65, cr_BRB01, cr_BRB02, cr_UBLSR29,
+    cr_CIISR467, cr_CIISR468, cr_UBLSR46, cr_UBLSR47, cr_UBLSR54, cr_UBLSR55,
     cr_BRDE01, cr_BRDE02, cr_BRDE03, cr_BRDE04, cr_BRDE05, cr_BRDE06,
     cr_BRDE07, cr_BRDE08, cr_BRDE09, cr_BRDE10, cr_BRDE11, cr_BRDE15,
     cr_BRDE16, cr_BRDE17, cr_BRDE18, cr_BRDE19, cr_BRDE20, cr_BRDE22, cr_BRDE23a, cr_BRDE23b, cr_BRDE24a, cr_BRDE24b,
-    cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE27, cr_BRDE28, cr_BRDE30, cr_BRDE31,
+    cr_BRDE25a, cr_BRDE25b, cr_BRDE26, cr_BRDE27, cr_BRDE28, cr_BRDE30, cr_BRDE31, cr_BRTMP2,
     cr_PeppolR003, cr_PeppolR010, cr_PeppolR020, cr_PeppolR061,
     cr_PeppolR005, cr_PeppolR040, cr_PeppolR041, cr_PeppolR042, cr_PeppolR046, cr_PeppolR053, cr_PeppolR054,
     cr_PeppolR055, cr_PeppolR110, cr_PeppolR111, cr_PeppolR120XR, cr_PeppolR120BIS, cr_PeppolR121, cr_PeppolR130,
@@ -271,7 +272,7 @@ type
     cr_BRCO10, cr_BRCO11, cr_BRCO12, cr_BRCO13, cr_BRCO14, cr_BRCO15, cr_BRCO16, cr_BRCO17, cr_BRCO18,
     cr_BRCO21, cr_BRCO22, cr_BRCO23, cr_BRCO24, cr_BRCO25, cr_BRCO26, cr_BRFXEXTCO04,
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
-    cr_BRDEX09,
+    cr_BRFXEXT08, cr_BRDEX09, cr_BRDEX14,
     cr_BRCL01, cr_BRCL03, cr_BRCL04, cr_BRCL05, cr_BRCL06, cr_BRCL07, cr_BRCL08, cr_BRCL10, cr_BRCL11,
     cr_BRCL13, cr_BRCL14, cr_BRCL15, cr_BRCL16, cr_BRCL17, cr_BRCL18, cr_BRCL19, cr_BRCL20,
     cr_BRCL21XR, cr_BRCL21BIS, cr_BRCL22, cr_BRCL23XR, cr_BRCL23BIS, cr_BRCL24, cr_BRCL25, cr_BRCL26);
@@ -545,6 +546,14 @@ const
      Message: 'with a VAT accounting currency code (BT-6) the invoice total VAT amount in accounting ' +
        'currency (BT-111) shall be provided';
      Source: EN16931Source),
+    { BR-DEC-15 (CII) fails on the same state as BR-53: a VAT total but none
+      in the accounting currency. DE: BR-DEC-15 (CII) scheitert am selben
+      Zustand wie BR-53. }
+    (ID: 'BR-DEC-15'; Standards: EN16931Standards; Syntaxes: [esy_CII];
+     Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BT-6, BT-111';
+     Message: 'with a VAT accounting currency code (BT-6) the VAT total in accounting currency (BT-111) ' +
+       'shall be given, with at most 2 decimals';
+     Source: EN16931Source),
     (ID: 'BR-54'; Standards: EN16931Standards; Syntaxes: AllSyntaxes;
      Profiles: FromBasicNoExtended; Severity: eds_Error; Legacy: False; Terms: 'BT-160, BT-161';
      Message: 'each item attribute (BG-32) shall contain a name (BT-160) and a value (BT-161)';
@@ -599,6 +608,35 @@ const
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-29, BT-46, BT-60, BT-90';
      Message: 'the document shall contain at most one party identifier with scheme SEPA (bank assigned ' +
        'creditor reference)';
+     Source: EN16931Source),
+    { the syntax rules on several payment instructions, as the mappers write
+      one per payment type. DE: die Syntaxregeln zu mehreren
+      Zahlungsanweisungen; die Mapper schreiben eine je Zahlungsart. }
+    (ID: 'CII-SR-467'; Standards: EN16931Standards; Syntaxes: [esy_CII];
+     Profiles: FromBasicWL; Severity: eds_Error; Legacy: False; Terms: 'BT-81';
+     Message: 'all payment means type codes (BT-81) shall have the same value';
+     Source: EN16931Source),
+    { BT-82 is written from Factur-X EN 16931 on. DE: BT-82 wird ab Factur-X
+      EN 16931 geschrieben. }
+    (ID: 'CII-SR-468'; Standards: EN16931Standards; Syntaxes: [esy_CII];
+     Profiles: FromEN16931; Severity: eds_Error; Legacy: False; Terms: 'BT-82';
+     Message: 'all payment means texts (BT-82) shall have the same value';
+     Source: EN16931Source),
+    (ID: 'UBL-SR-46'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-82';
+     Message: 'the payment means text (BT-82) shall occur at most once';
+     Source: EN16931Source),
+    (ID: 'UBL-SR-47'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-81';
+     Message: 'all payment means codes (BT-81) shall be the same';
+     Source: EN16931Source),
+    (ID: 'UBL-SR-54'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BG-18';
+     Message: 'the payment card information (BG-18) shall occur at most once';
+     Source: EN16931Source),
+    (ID: 'UBL-SR-55'; Standards: [est_XRechnung, est_PeppolBIS]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BG-19';
+     Message: 'the direct debit information (BG-19) shall occur at most once';
      Source: EN16931Source),
     (ID: 'BR-DE-1'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BG-16';
@@ -723,6 +761,10 @@ const
     (ID: 'BR-DE-31'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-91';
      Message: 'direct debit information (BG-19) shall have the debited account identifier (BT-91)';
+     Source: XRechnungSource),
+    (ID: 'BR-TMP-2'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-124';
+     Message: 'the external document location (BT-124) shall be an absolute URL with a valid scheme';
      Source: XRechnungSource),
     (ID: 'PEPPOL-EN16931-R003'; Standards: [est_PeppolBIS]; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-10, BT-13';
@@ -911,10 +953,19 @@ const
      Message: 'amount due for payment (BT-115) = BT-112 - BT-113 + BT-114 + third-party ' +
        'charges (ram:SpecifiedFinancialAdjustment)';
      Source: FacturXExtendedSource),
+    (ID: 'BR-FXEXT-08'; Standards: [est_FacturX]; Syntaxes: AllSyntaxes;
+     Profiles: [epr_Extended]; Severity: eds_Error; Legacy: False; Terms: 'BG-DEX-01, BT-131';
+     Message: 'the amount of a GROUP line (BT-131) shall be the sum of the amounts of its DETAIL and ' +
+       'GROUP sub lines';
+     Source: FacturXExtendedSource),
     (ID: 'BR-DEX-09'; Standards: [est_XRechnung]; Syntaxes: [esy_UBL];
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-115, BT-DEX-002';
      Message: 'amount due for payment (BT-115) = BT-112 - BT-113 + BT-114 + sum of third-party payment ' +
        'amounts (BT-DEX-002)';
+     Source: XRechnungSource),
+    (ID: 'BR-DEX-14'; Standards: [est_XRechnung]; Syntaxes: [esy_UBL];
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-DEX-002, BT-5';
+     Message: 'the currency of a third-party payment amount (BT-DEX-002) shall be the invoice currency (BT-5)';
      Source: XRechnungSource),
     (ID: 'BR-CL-01'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-3';
@@ -1062,6 +1113,10 @@ end;
   DE: BR-FXEXT-08: Ein GROUP-Betrag ist die Summe seiner DETAIL- und
   GROUP-Unterpositionen, verglichen auf den Centbetraegen, die geschrieben
   werden. }
+function NormalizedSpace(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString; forward;
+function WrittenCode(const AEnumText, AOther: TLandrixEInvoiceString): TLandrixEInvoiceString; forward;
+function ExtensionWritten(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean; forward;
+
 function HasGroupAmountMismatch(ALines: TLandrixInvoiceLines; AIsSubLine: Boolean): Boolean;
 var
   I, K: TLandrixEInvoiceListIndex;
@@ -1178,20 +1233,51 @@ begin
   Result := (APayment.PaymentMeansCode <> ipmc_NotImplemented) or Present(APayment.PaymentMeansCodeOther);
 end;
 
-function IsCreditTransfer(APayment: TLandrixInvoicePaymentType): Boolean;
+{ The payment means code as written: the enumeration, otherwise the other
+  text, white space normalized (the Schematron compares
+  normalize-space(...)).
+  DE: Der Zahlungsartcode, wie er geschrieben wird: die Aufzaehlung, sonst
+  der andere Text, Leerraum normalisiert. }
+function PaymentCodeOf(APayment: TLandrixInvoicePaymentType): TLandrixEInvoiceString;
 begin
-  Result := APayment.PaymentMeansCode in [ipmc_CreditTransfer, ipmc_SEPACreditTransfer];
+  if APayment.PaymentMeansCode <> ipmc_NotImplemented then
+    Result := LandrixEInvoicePaymentMeansCodeToStr(APayment.PaymentMeansCode)
+  else
+    Result := NormalizedSpace(APayment.PaymentMeansCodeOther);
+end;
+
+function IsCreditTransfer(APayment: TLandrixInvoicePaymentType): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+begin
+  Code := PaymentCodeOf(APayment);
+  Result := (Code = '30') or (Code = '58');
 end;
 
 function IsCard(APayment: TLandrixInvoicePaymentType): Boolean;
+var
+  Code: TLandrixEInvoiceString;
 begin
-  Result := APayment.PaymentMeansCode in [ipmc_BankCard, ipmc_CreditCard, ipmc_DebitCard];
+  Code := PaymentCodeOf(APayment);
+  Result := (Code = '48') or (Code = '54') or (Code = '55');
+end;
+
+function IsDirectDebitCode(APayment: TLandrixInvoicePaymentType): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+begin
+  Code := PaymentCodeOf(APayment);
+  Result := (Code = '49') or (Code = '59');
 end;
 
 { Payment kinds of the payment-group rules (BR-61, BR-DE-23 to BR-DE-25,
   BR-DE-30, BR-DE-31, PEPPOL-EN16931-R061).
   DE: Zahlungsarten der Regeln zu den Zahlungsgruppen. }
 type
+  { All kinds go by the code as written: the rules test it, and the
+    mappers write the card and direct debit groups by it.
+    DE: Alle Arten gehen nach dem geschriebenen Code: die Regeln pruefen
+    ihn, und die Mapper schreiben die Karten- und Lastschriftgruppen danach. }
   TPaymentKind = (pk_Written, pk_CreditTransfer, pk_CreditTransferWithoutAccount, pk_Card,
     pk_CardWithoutAccount, pk_DirectDebit, pk_DirectDebitWithAccount, pk_SEPADirectDebitWithBIC,
     pk_SEPADirectDebitWithoutAccount);
@@ -1219,13 +1305,13 @@ begin
       pk_CardWithoutAccount:
         Hit := IsCard(P) and not Present(P.FinancialAccount);
       pk_DirectDebit:
-        Hit := P.PaymentMeansCode in [ipmc_DirectDebit, ipmc_SEPADirectDebit];
+        Hit := IsDirectDebitCode(P);
       pk_DirectDebitWithAccount:
-        Hit := (P.PaymentMeansCode in [ipmc_DirectDebit, ipmc_SEPADirectDebit]) and Present(P.FinancialAccount);
+        Hit := IsDirectDebitCode(P) and Present(P.FinancialAccount);
       pk_SEPADirectDebitWithoutAccount:
-        Hit := (P.PaymentMeansCode = ipmc_SEPADirectDebit) and not Present(P.FinancialAccount);
+        Hit := (PaymentCodeOf(P) = '59') and not Present(P.FinancialAccount);
       pk_SEPADirectDebitWithBIC:
-        Hit := (P.PaymentMeansCode = ipmc_SEPADirectDebit) and Present(P.FinancialInstitutionBranch);
+        Hit := (PaymentCodeOf(P) = '59') and Present(P.FinancialInstitutionBranch);
     end;
     if Hit then
       Exit;
@@ -1234,15 +1320,18 @@ begin
 end;
 
 { BT-90 as the validators see it: the seller's creditor identifier; in UBL
-  also a payee identifier with scheme SEPA.
+  also a payee identifier or a seller global identifier with scheme SEPA
+  (both are written as cac:PartyIdentification with that scheme).
   DE: BT-90, wie die Validatoren es sehen: die Glaeubiger-ID des
-  Verkaeufers; in UBL auch eine Kennung des Zahlungsempfaengers mit Schema
-  SEPA. }
+  Verkaeufers; in UBL auch eine Kennung des Zahlungsempfaengers oder eine
+  globale Kennung des Verkaeufers mit Schema SEPA. }
 function HasCreditorID(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
 begin
   Result := Present(AInvoice.AccountingSupplierParty.BankAssignedCreditorIdentifier) or
     ((ASpec.Target.Syntax = esy_UBL) and Present(AInvoice.PayeeParty.Identifier) and
-     (AInvoice.PayeeParty.IdentifierSchemeID = 'SEPA'));
+     (AInvoice.PayeeParty.IdentifierSchemeID = 'SEPA')) or
+    ((ASpec.Target.Syntax = esy_UBL) and Present(AInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer) and
+     (AInvoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID = 'SEPA'));
 end;
 
 { BR-DE-30 and BR-DE-31 test the direct debit group (BG-19) differently per
@@ -1302,11 +1391,18 @@ begin
     (ACode = 'G') or (ACode = 'L') or (ACode = 'M');
 end;
 
-function UsesRegisteredCategory(AInvoice: TLandrixInvoice): Boolean;
+{ CII: the lines only. The allowance branch of the CII Schematron compares
+  ram:CategoryTradeTax as a whole with 'VAT' and never holds; such an
+  invoice fails BR-S-03 and its kind anyway.
+  DE: CII: nur die Positionen. Der Zweig fuer Nachlaesse im CII-Schematron
+  vergleicht ram:CategoryTradeTax als Ganzes mit 'VAT' und greift nie; eine
+  solche Rechnung scheitert ohnehin an BR-S-03 und Verwandten. }
+function UsesRegisteredCategory(AInvoice: TLandrixInvoice; AWithAllowances: Boolean): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
 begin
   Result := True;
+  if AWithAllowances then
   for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
     if IsRegisteredCategory(TaxCategoryText(AInvoice.AllowanceCharges[I].TaxCategory,
       AInvoice.AllowanceCharges[I].TaxCategoryOther)) then
@@ -1584,10 +1680,51 @@ begin
   Result := False;
 end;
 
-{ BR-DE-22 compares the written file names; a blank name is not written.
+{ Whether the mapper writes attachment AIndex as an additional document
+  reference: UBL never a tender reference (type 50, it is
+  cac:OriginatorDocumentReference) and only the first object identifier
+  (type 130) with an identifier; CII the first tender reference with an
+  identifier and object identifiers with an identifier (a further one only
+  where the target allows it).
+  DE: Ob der Mapper Anlage AIndex als weitere Dokumentreferenz schreibt:
+  UBL nie eine Vergabe (Art 50) und nur die erste Objektkennung (Art 130)
+  mit Kennung; CII die erste Vergabe mit Kennung und Objektkennungen mit
+  Kennung (eine weitere nur, wo das Ziel sie erlaubt). }
+function AttachmentWritten(AInvoice: TLandrixInvoice; AIndex: TLandrixEInvoiceListIndex;
+  const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  A: TLandrixInvoiceAttachment;
+  IsUBL: Boolean;
+begin
+  A := AInvoice.Attachments[AIndex];
+  IsUBL := ASpec.Target.Syntax = esy_UBL;
+  Result := False;
+  if A.TypeCode = iatc_50 then
+  begin
+    if IsUBL or not Present(A.ID) then
+      Exit;
+    for I := 0 to AIndex - 1 do
+      if (AInvoice.Attachments[I].TypeCode = iatc_50) and Present(AInvoice.Attachments[I].ID) then
+        Exit;
+  end
+  else if A.TypeCode = iatc_130 then
+  begin
+    if not Present(A.ID) then
+      Exit;
+    if IsUBL or Forbidden(ASpec, LandrixEInvoiceRuleFurtherObjectIdentifier) then
+      for I := 0 to AIndex - 1 do
+        if (AInvoice.Attachments[I].TypeCode = iatc_130) and Present(AInvoice.Attachments[I].ID) then
+          Exit;
+  end;
+  Result := True;
+end;
+
+{ BR-DE-22 compares the written file names; an empty name is not written
+  (a blank one is, as an attribute).
   DE: BR-DE-22 vergleicht die geschriebenen Dateinamen; ein leerer Name
-  wird nicht geschrieben. }
-function DuplicateFilename(AInvoice: TLandrixInvoice): Boolean;
+  wird nicht geschrieben (ein Name aus Leerzeichen schon, als Attribut). }
+function DuplicateFilename(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
 var
   I, K: TLandrixEInvoiceListIndex;
   A: TLandrixInvoiceAttachment;
@@ -1596,11 +1733,45 @@ begin
   for I := 0 to AInvoice.Attachments.Count - 1 do
   begin
     A := AInvoice.Attachments[I];
-    if not A.ContainsBinaryObject or not Present(A.Filename) then
+    if not A.ContainsBinaryObject or (A.Filename = '') or not AttachmentWritten(AInvoice, I, ASpec) then
       Continue;
     for K := 0 to I - 1 do
-      if AInvoice.Attachments[K].ContainsBinaryObject and (AInvoice.Attachments[K].Filename = A.Filename) then
+      if AInvoice.Attachments[K].ContainsBinaryObject and (AInvoice.Attachments[K].Filename = A.Filename) and
+         AttachmentWritten(AInvoice, K, ASpec) then
         Exit;
+  end;
+  Result := False;
+end;
+
+{ BR-TMP-2: the written external document location must match
+  ^([a-zA-Z])([a-zA-Z0-9+.-])+: (UBL: every cac:ExternalReference; CII: only
+  a supporting document, type code 916).
+  DE: BR-TMP-2: der geschriebene Ort des externen Dokuments muss eine
+  absolute URL sein (UBL: jede cac:ExternalReference; CII: nur ein
+  rechnungsbegruendendes Dokument, Typcode 916). }
+function ExternalLocationWrong(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  A: TLandrixInvoiceAttachment;
+begin
+  Result := True;
+  for I := 0 to AInvoice.Attachments.Count - 1 do
+  begin
+    A := AInvoice.Attachments[I];
+    if not AttachmentWritten(AInvoice, I, ASpec) then
+      Continue;
+    { UBL writes cac:ExternalReference only with text; CII writes ram:URIID
+      when not empty and tests ram:TypeCode = '916' as written }
+    if ASpec.Target.Syntax = esy_UBL then
+    begin
+      if not Present(A.ExternalReference) then
+        Continue;
+    end
+    else if (A.ExternalReference = '') or
+       (WrittenCode(LandrixEInvoiceAttachmentTypeCodeToStr(A.TypeCode), A.TypeCodeOther) <> '916') then
+      Continue;
+    if not LandrixEInvoiceAbsoluteURL(A.ExternalReference) then
+      Exit;
   end;
   Result := False;
 end;
@@ -1700,6 +1871,90 @@ begin
     (Code = '875') or (Code = '876') or (Code = '877');
 end;
 
+{ The length as XPath string-length counts: code points, a surrogate pair
+  is one.
+  DE: Die Laenge, wie XPath string-length zaehlt: Codepunkte, ein
+  Surrogatpaar ist einer. }
+function CodePointLength(const S: TLandrixEInvoiceString): Integer;
+var
+  I: Integer;
+begin
+  Result := Length(S);
+  for I := 1 to Length(S) - 1 do
+    if (Ord(S[I]) >= $D800) and (Ord(S[I]) <= $DBFF) and (Ord(S[I + 1]) >= $DC00) and (Ord(S[I + 1]) <= $DFFF) then
+      Dec(Result);
+end;
+
+{ The syntax rules on several payment instructions as the mappers write
+  them (one per payment type with a code): CII-SR-467 and CII-SR-468 (the
+  codes and the texts normalized), UBL-SR-47 (the codes as written),
+  UBL-SR-46 (texts, @name), UBL-SR-54 (card accounts) and UBL-SR-55
+  (mandates with content).
+  DE: Die Syntaxregeln zu mehreren Zahlungsanweisungen, wie die Mapper sie
+  schreiben (eine je Zahlungsart mit Code). }
+function PaymentMeansMixed(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  P: TLandrixInvoicePaymentType;
+  First, Value: TLandrixEInvoiceString;
+  HasFirst: Boolean;
+  Count: Integer;
+begin
+  HasFirst := False;
+  First := '';
+  Count := 0;
+  for I := 0 to AInvoice.PaymentTypes.Count - 1 do
+  begin
+    P := AInvoice.PaymentTypes[I];
+    if not PaymentWritten(P) then
+      Continue;
+    case AIndex of
+      cr_CIISR467:
+        Value := PaymentCodeOf(P);
+      cr_UBLSR47:
+        Value := WrittenCode(LandrixEInvoicePaymentMeansCodeToStr(P.PaymentMeansCode), P.PaymentMeansCodeOther);
+      cr_CIISR468:
+        begin
+          { the CII writer leaves a blank text out }
+          if not Present(P.PaymentMeansInformation) then
+            Continue;
+          Value := NormalizedSpace(P.PaymentMeansInformation);
+        end;
+      cr_UBLSR46:
+        begin
+          if P.PaymentMeansInformation <> '' then
+            Inc(Count);
+          Continue;
+        end;
+      cr_UBLSR54:
+        begin
+          { cac:CardAccount always has its network 'NA' }
+          if IsCard(P) then
+            Inc(Count);
+          Continue;
+        end;
+    else
+      begin
+        { cac:PaymentMandate only with the mandate or the debited account }
+        if IsDirectDebitCode(P) and ((AInvoice.PaymentMandateID <> '') or (P.FinancialAccount <> '')) then
+          Inc(Count);
+        Continue;
+      end;
+    end;
+    if not HasFirst then
+    begin
+      First := Value;
+      HasFirst := True;
+    end
+    else if Value <> First then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+  Result := Count > 1;
+end;
+
 { BR-DE-19 (credit transfer 58, the payee account BT-84), BR-DE-20 (direct
   debit 59, the debited account BT-91), BR-51 (card payment, BT-87 longer
   than 10 characters), per payment means as written.
@@ -1718,13 +1973,13 @@ begin
     P := AInvoice.PaymentTypes[I];
     case AIndex of
       cr_BRDE19:
-        if (P.PaymentMeansCode = ipmc_SEPACreditTransfer) and not IBANValid(P.FinancialAccount, ASpec.Target.Syntax = esy_CII) then
+        if (PaymentCodeOf(P) = '58') and not IBANValid(P.FinancialAccount, ASpec.Target.Syntax = esy_CII) then
           Exit;
       cr_BRDE20:
-        if (P.PaymentMeansCode = ipmc_SEPADirectDebit) and not IBANValid(P.FinancialAccount, False) then
+        if (PaymentCodeOf(P) = '59') and not IBANValid(P.FinancialAccount, False) then
           Exit;
     else
-      if IsCard(P) and (Length(NormalizedSpace(P.FinancialAccount)) > 10) then
+      if IsCard(P) and (CodePointLength(NormalizedSpace(P.FinancialAccount)) > 10) then
         Exit;
     end;
   end;
@@ -1888,6 +2143,29 @@ begin
     not ((ASpec.Target.Syntax = esy_UBL) and (AInvoice.InvoiceTypeCode = itc_CreditNote));
 end;
 
+{ BR-DEX-14: a third-party payment written in another currency than the
+  invoice (an empty currency is written as the invoice currency).
+  DE: BR-DEX-14: eine Zahlung Dritter in einer anderen Waehrung als die
+  Rechnung (eine leere Waehrung wird als Rechnungswaehrung geschrieben). }
+function ThirdPartyCurrencyWrong(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  Code: TLandrixEInvoiceString;
+begin
+  Result := False;
+  if not ThirdPartyWritten(AInvoice, ASpec) then
+    Exit;
+  for I := 0 to AInvoice.PrepaidPayments.Count - 1 do
+  begin
+    Code := AInvoice.PrepaidPayments[I].PaidAmountCurrencyID;
+    if Present(Code) and (Code <> AInvoice.InvoiceCurrencyCode) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
 function ThirdPartyCents(AInvoice: TLandrixInvoice): Int64;
 var
   I: TLandrixEInvoiceListIndex;
@@ -2009,6 +2287,7 @@ var
   Tolerance: Int64;
   Calculation: TLandrixEInvoiceString;
   Scratch: TRuleDetail;
+  Extension: Boolean;
 
   function Count(AValue: Integer; const AOne, AMany: TLandrixEInvoiceString): TLandrixEInvoiceString;
   begin
@@ -2120,14 +2399,22 @@ begin
         Calculation := 'invoice total with VAT (BT-112) ' + CentsText(Cents(AInvoice.TaxInclusiveAmount)) +
           ' - paid amount (BT-113) ' + CentsText(Cents(AInvoice.PrepaidAmount)) + ' + rounding amount (BT-114) ' +
           CentsText(Cents(AInvoice.PayableRoundingAmount));
-        if ThirdPartyWritten(AInvoice, ASpec) then
+        { XRechnung UBL: BR-DEX-09 replaces BR-CO-16 (KoSIT: information)
+          whenever the extension is written, with or without third-party
+          payments; elsewhere BR-FXEXT-CO-16 takes the third-party charges }
+        if (ASpec.Target.Standard = est_XRechnung) and (ASpec.Target.Syntax = esy_UBL) then
+          Extension := ExtensionWritten(AInvoice, ASpec)
+        else
+          Extension := ThirdPartyWritten(AInvoice, ASpec);
+        if Extension then
         begin
-          { BR-CO-16 gives way to BR-DEX-09 (KoSIT: information in the
-            extension) and BR-FXEXT-CO-16 }
           if AIndex = cr_BRCO16 then
             Exit;
-          Inc(Expected, ThirdPartyCents(AInvoice));
-          Calculation := Calculation + ' + third-party payments ' + CentsText(ThirdPartyCents(AInvoice));
+          if ThirdPartyWritten(AInvoice, ASpec) then
+          begin
+            Inc(Expected, ThirdPartyCents(AInvoice));
+            Calculation := Calculation + ' + third-party payments ' + CentsText(ThirdPartyCents(AInvoice));
+          end;
         end
         else if AIndex = cr_BRDEX09 then
           Exit;
@@ -2214,6 +2501,8 @@ type
   TTaxUse = record
     Kind: TTaxUseKind;
     Code: TLandrixEInvoiceString;
+    { the code as written, not normalized (BR-AF-01, BR-AG-01) }
+    Raw: TLandrixEInvoiceString;
     HasRate: Boolean;
     Rate: TExact;
     Amount: Int64;
@@ -2244,6 +2533,7 @@ begin
     SetLength(AUses.Items, 2 * AUses.Count + 8);
   AUses.Items[AUses.Count].Kind := AKind;
   AUses.Items[AUses.Count].Code := ACode;
+  AUses.Items[AUses.Count].Raw := ACode;
   AUses.Items[AUses.Count].HasRate := AHasRate;
   if AHasRate then
     AUses.Items[AUses.Count].Rate := RateExact(ARate)
@@ -2261,8 +2551,20 @@ end;
   DE: Die Positionen, wie die Mapper ihre Steuerkategorie schreiben: der
   Satz faellt bei Kategorie O weg; Unterpositionen nur, wo das Ziel sie
   hat. Eine Position ohne Kategorie zaehlt fuer keine Gruppe. }
+{ The category code a rule compares: UBL normalizes it
+  (normalize-space(cbc:ID)), CII takes it as written.
+  DE: Der Kategoriecode, den eine Regel vergleicht: UBL normalisiert ihn,
+  CII nimmt ihn wie geschrieben. }
+function UseCode(ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther: TLandrixEInvoiceString;
+  ANormalize: Boolean): TLandrixEInvoiceString;
+begin
+  Result := TaxCategoryText(ACategory, AOther);
+  if ANormalize then
+    Result := NormalizedSpace(Result);
+end;
+
 procedure AddLineTaxUses(var AUses: TTaxUses; ALines: TLandrixInvoiceLines; AKind: TTaxUseKind;
-  ASubLines: Boolean);
+  ASubLines, ANormalize: Boolean);
 var
   I: TLandrixEInvoiceListIndex;
   Line: TLandrixInvoiceLine;
@@ -2270,10 +2572,10 @@ begin
   for I := 0 to ALines.Count - 1 do
   begin
     Line := ALines[I];
-    AddTaxUse(AUses, AKind, TaxCategoryText(Line.TaxCategory, Line.TaxCategoryOther),
+    AddTaxUse(AUses, AKind, UseCode(Line.TaxCategory, Line.TaxCategoryOther, ANormalize),
       Line.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax, Line.TaxPercent, Cents(Line.LineAmount));
     if ASubLines then
-      AddLineTaxUses(AUses, Line.SubInvoiceLines, tuk_SubLine, True);
+      AddLineTaxUses(AUses, Line.SubInvoiceLines, tuk_SubLine, True, ANormalize);
   end;
 end;
 
@@ -2283,24 +2585,27 @@ var
   Item: TLandrixInvoiceAllowanceCharge;
   Subtotal: TLandrixInvoiceTaxAmount;
   Kind: TTaxUseKind;
+  Normalize: Boolean;
 begin
   AUses.Items := nil;
   AUses.Count := 0;
-  AddLineTaxUses(AUses, AInvoice.InvoiceLines, tuk_Line, LandrixEInvoiceSubLinesNested(AInvoice, ASpec));
+  Normalize := ASpec.Target.Syntax = esy_UBL;
+  AddLineTaxUses(AUses, AInvoice.InvoiceLines, tuk_Line, LandrixEInvoiceSubLinesNested(AInvoice, ASpec), Normalize);
   for I := 0 to AInvoice.AllowanceCharges.Count - 1 do
   begin
     Item := AInvoice.AllowanceCharges[I];
     Kind := tuk_Allowance;
     if Item.ChargeIndicator then
       Kind := tuk_Charge;
-    AddTaxUse(AUses, Kind, TaxCategoryText(Item.TaxCategory, Item.TaxCategoryOther),
+    AddTaxUse(AUses, Kind, UseCode(Item.TaxCategory, Item.TaxCategoryOther, Normalize),
       Item.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax, Item.TaxPercent, Cents(Item.Amount));
   end;
   for I := 0 to AInvoice.TaxAmountSubtotals.Count - 1 do
   begin
     Subtotal := AInvoice.TaxAmountSubtotals[I];
-    AddTaxUse(AUses, tuk_Breakdown, TaxCategoryText(Subtotal.TaxCategory, Subtotal.TaxCategoryOther), True,
+    AddTaxUse(AUses, tuk_Breakdown, UseCode(Subtotal.TaxCategory, Subtotal.TaxCategoryOther, Normalize), True,
       Subtotal.TaxPercent, Cents(Subtotal.TaxableAmount));
+    AUses.Items[AUses.Count - 1].Raw := TaxCategoryText(Subtotal.TaxCategory, Subtotal.TaxCategoryOther);
     AUses.Items[AUses.Count - 1].TaxAmount := Cents(Subtotal.TaxAmount);
     AUses.Items[AUses.Count - 1].Exemption := Present(Subtotal.TaxExemptionReason) or
       Present(Subtotal.TaxExemptionReasonCode);
@@ -2448,6 +2753,16 @@ end;
   zusammen mit den Aufschluesselungen (mindestens zwei), die uebrigen genau
   eine mit Verwendung, keine ohne, und O prueft nur eine vorhandene
   Aufschluesselung. }
+function RawBreakdownCount(const AUses: TTaxUses; const ACode: TLandrixEInvoiceString): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to AUses.Count - 1 do
+    if (AUses.Items[I].Kind = tuk_Breakdown) and (AUses.Items[I].Raw = ACode) then
+      Inc(Result);
+end;
+
 function BreakdownCountWrong(AGroup: TVatGroup; const AUses: TTaxUses; const ASpec: TLandrixEInvoiceSpec): Boolean;
 var
   Code: TLandrixEInvoiceString;
@@ -2459,7 +2774,11 @@ begin
   Breakdowns := CountTaxUses(AUses, Code, [tuk_Breakdown]);
   if ASpec.Target.Syntax = esy_UBL then
   begin
-    if AGroup in [vg_S, vg_AF, vg_AG] then
+    { BR-AF-01 and BR-AG-01 count the breakdowns of a used category with
+      cbc:ID = 'L' as written, those of an unused one normalized }
+    if (AGroup in [vg_AF, vg_AG]) and (Lines + Others > 0) then
+      Result := RawBreakdownCount(AUses, Code) = 0
+    else if AGroup in [vg_S, vg_AF, vg_AG] then
       Result := (Lines + Others > 0) <> (Breakdowns > 0)
     else
       Result := (Lines + Others + Breakdowns > 0) and (Breakdowns <> 1);
@@ -2507,7 +2826,11 @@ begin
         if IsUBL then
           LineKinds := [tuk_Line];
         Net := TaxUseNet(AUses, AUse.Code, ByRate, AUse.Rate, LineKinds, Found);
-        if not IsUBL and (AGroup = vg_O) then
+        { CII: BR-AF-08 and BR-AG-08 read ../ram:RateApplicablePercent from
+          ram:ApplicableTradeTax, an empty sequence, so they always hold }
+        if not IsUBL and (AGroup in [vg_AF, vg_AG]) then
+          Result := False
+        else if not IsUBL and (AGroup = vg_O) then
           Result := AUse.Amount <> Net
         else if not IsUBL and not ByRate and (ASpec.Target.Standard = est_FacturX) then
           Result := (AUse.Amount - Net > 100) or (Net - AUse.Amount >= 100)
@@ -2928,28 +3251,20 @@ begin
   Result := False;
 end;
 
-{ BR-CO-25 (Factur-X EXTENDED): a due date or a payment term text as the
-  mapper writes them: in the structured payment terms the due date, the net
-  note or a cash discount (which always has a due date), otherwise the
-  payment terms text and the due date (not on a credit note where the
-  target forbids it).
-  DE: BR-CO-25 (Factur-X EXTENDED): ein Faelligkeitsdatum oder ein Text der
-  Zahlungsbedingungen, wie der Mapper sie schreibt: in den strukturierten
-  Zahlungsbedingungen das Faelligkeitsdatum, der Nettohinweis oder ein
-  Skonto (das immer eine Faelligkeit hat), sonst der Text der
-  Zahlungsbedingungen und das Faelligkeitsdatum (nicht auf einer
-  Gutschrift, wo das Ziel es verbietet). }
-function PaymentTermsMissing(AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
+{ BR-CO-25 (Factur-X EXTENDED, the only target with the rule, where the
+  mapper writes structured payment terms): a due date, the net note or a
+  cash discount (which always has a due date).
+  DE: BR-CO-25 (Factur-X EXTENDED, das einzige Ziel mit der Regel, wo der
+  Mapper strukturierte Zahlungsbedingungen schreibt): ein
+  Faelligkeitsdatum, der Nettohinweis oder ein Skonto (das immer eine
+  Faelligkeit hat). }
+function PaymentTermsMissing(AInvoice: TLandrixInvoice): Boolean;
 begin
   if Cents(AInvoice.PayableAmount) <= 0 then
     Result := False
-  else if not Forbidden(ASpec, LandrixEInvoiceRuleStructuredPaymentTerms) then
-    Result := not (AInvoice.InvoiceDueDate > 0) and not Present(AInvoice.PaymentTermNetNote) and
-      not (AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3])
   else
-    Result := not Present(TermsText(AInvoice)) and
-      not ((AInvoice.InvoiceDueDate > 0) and not ((AInvoice.InvoiceTypeCode = itc_CreditNote) and
-        Forbidden(ASpec, LandrixEInvoiceRuleCreditNoteDueDate)));
+    Result := not (AInvoice.InvoiceDueDate > 0) and not Present(AInvoice.PaymentTermNetNote) and
+      not (AInvoice.PaymentTermsType in [iptt_CashDiscount1, iptt_CashDiscount2, iptt_CashDiscount3]);
 end;
 
 { BR-CO-26: a seller identifier as written (not in Factur-X MINIMUM, which
@@ -4018,8 +4333,10 @@ begin
     cr_LXCC11:
       Result := not IsFacturXExtended(ASpec) and (HasInformationLines(AInvoice.InvoiceLines) or
         HasDetailWithSubInvoiceLines(AInvoice.InvoiceLines));
-    cr_LXCC12:
+    cr_LXCC12, cr_BRFXEXT08:
       Result := HasGroupAmountMismatch(AInvoice.InvoiceLines, False);
+    cr_BRDEX14:
+      Result := ThirdPartyCurrencyWrong(AInvoice, ASpec);
     cr_BR02:
       Result := not Present(AInvoice.InvoiceNumber);
     cr_BR03:
@@ -4073,7 +4390,7 @@ begin
       Result := PaymentFormatViolated(AIndex, AInvoice, ASpec);
     cr_BR52:
       Result := BG24IDMissing(AInvoice);
-    cr_BR53:
+    cr_BR53, cr_BRDEC15:
       Result := Present(AInvoice.TaxCurrencyCode) and (AInvoice.TaxCurrencyCode <> AInvoice.InvoiceCurrencyCode) and
         not AInvoice.TaxAmountTotalInTaxCurrency.HasValue;
     cr_BR55:
@@ -4117,7 +4434,7 @@ begin
     cr_BRCO24:
       Result := AnyLineViolated(cr_BR44, AInvoice.InvoiceLines, ASpec.Target.Syntax = esy_CII);
     cr_BRCO25:
-      Result := PaymentTermsMissing(AInvoice, ASpec);
+      Result := PaymentTermsMissing(AInvoice);
     cr_BRCO26:
       Result := SellerIdentifierMissing(Seller, ASpec);
     cr_BRFXEXTCO04:
@@ -4147,12 +4464,14 @@ begin
     cr_BRDE15:
       Result := not Present(AInvoice.BuyerReference);
     cr_BRDE16:
-      Result := UsesRegisteredCategory(AInvoice) and not Present(Seller.VATCompanyID) and
+      Result := UsesRegisteredCategory(AInvoice, ASpec.Target.Syntax = esy_UBL) and not Present(Seller.VATCompanyID) and
         not Present(Seller.VATCompanyNumber) and not PartySet(TaxRepresentative);
     cr_BRDE17:
       Result := not TypeCodeSupported(AInvoice);
     cr_UBLSR29:
       Result := SEPAIdentifierCount(AInvoice) > 1;
+    cr_CIISR467, cr_CIISR468, cr_UBLSR46, cr_UBLSR47, cr_UBLSR54, cr_UBLSR55:
+      Result := PaymentMeansMixed(AIndex, AInvoice);
     { BR-DE-18: the lines as written; the second part of the test (a line
       break after the last cash discount line) always holds, as the text
       ends every line with LF and replaces # in the free text.
@@ -4163,7 +4482,9 @@ begin
     cr_BRDE18:
       Result := not LandrixEInvoiceCashDiscountTextValid(TermsText(AInvoice));
     cr_BRDE22:
-      Result := DuplicateFilename(AInvoice);
+      Result := DuplicateFilename(AInvoice, ASpec);
+    cr_BRTMP2:
+      Result := ExternalLocationWrong(AInvoice, ASpec);
     cr_BRDE23b:
       Result := HasPayment(AInvoice, pk_CreditTransfer) and
         (Present(AInvoice.PaymentMandateID) or Present(Seller.BankAssignedCreditorIdentifier));
@@ -4178,7 +4499,8 @@ begin
     cr_BRDE25b:
       Result := HasPayment(AInvoice, pk_SEPADirectDebitWithBIC);
     cr_BRDE26:
-      Result := (AInvoice.InvoiceTypeCode = itc_CorrectedInvoice) and not HasPrecedingID(AInvoice);
+      Result := (NormalizedSpace(WrittenCode(LandrixEInvoiceTypeCodeToStr(AInvoice.InvoiceTypeCode),
+        AInvoice.InvoiceTypeCodeOther)) = '384') and not HasPrecedingID(AInvoice);
     cr_BRDE27:
       Result := ContactSet(Seller) and not LandrixEInvoiceTelephoneValid(Seller.ContactTelephone);
     cr_BRDE28:

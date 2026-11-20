@@ -264,8 +264,69 @@ begin
     Invoice.TaxAmountSubtotals[0].TaxCategory := idtfcc_None
   else if AID = 'BR-52' then
     AddPdf(Invoice, ' ', 'a.pdf')
-  else if AID = 'BR-53' then
+  else if (AID = 'BR-53') or (AID = 'BR-DEC-15') then
     Invoice.TaxCurrencyCode := 'USD'
+  else if AID = 'BR-FXEXT-08' then
+    with Line.SubInvoiceLines.AddInvoiceLine do
+    begin
+      ID := '1.1';
+      Name := 'Part';
+      Quantity := 1;
+      UnitCode := iuc_piece;
+      NetPriceAmount := 99;
+      LineAmount := 99;
+      TaxCategory := idtfcc_S_StandardRate;
+      TaxPercent := 19;
+    end
+  else if (AID = 'CII-SR-467') or (AID = 'UBL-SR-47') then
+    with Invoice.PaymentTypes.AddPaymentType do
+    begin
+      PaymentMeansCode := ipmc_CreditTransfer;
+      FinancialAccount := 'DE02120300000000202051';
+    end
+  else if (AID = 'CII-SR-468') or (AID = 'UBL-SR-46') then
+  begin
+    Payment.PaymentMeansInformation := 'Transfer';
+    with Invoice.PaymentTypes.AddPaymentType do
+    begin
+      PaymentMeansCode := ipmc_SEPACreditTransfer;
+      FinancialAccount := 'DE02120300000000202051';
+      PaymentMeansInformation := 'Other text';
+    end;
+  end
+  else if AID = 'UBL-SR-54' then
+  begin
+    Payment.PaymentMeansCode := ipmc_CreditCard;
+    Payment.FinancialAccount := '1234';
+    with Invoice.PaymentTypes.AddPaymentType do
+    begin
+      PaymentMeansCode := ipmc_CreditCard;
+      FinancialAccount := '5678';
+    end;
+  end
+  else if AID = 'UBL-SR-55' then
+  begin
+    Payment.PaymentMeansCode := ipmc_SEPADirectDebit;
+    Invoice.PaymentMandateID := 'M-1';
+    Seller.BankAssignedCreditorIdentifier := 'DE98ZZZ09999999999';
+    with Invoice.PaymentTypes.AddPaymentType do
+    begin
+      PaymentMeansCode := ipmc_SEPADirectDebit;
+      FinancialAccount := 'DE02120300000000202051';
+    end;
+  end
+  else if AID = 'BR-TMP-2' then
+  begin
+    AddPdf(Invoice, 'A-1', 'a.pdf');
+    Invoice.Attachments[0].ExternalReference := 'www.example.com/a.pdf';
+  end
+  else if AID = 'BR-DEX-14' then
+    with Invoice.PrepaidPayments.AddPrepaidPayment do
+    begin
+      ID := 'Voucher';
+      InstructionID := 'Voucher 1';
+      PaidAmountCurrencyID := 'USD';
+    end
   else if AID = 'BR-54' then
     with Line.ItemAttributes.AddItemAttribute do
     begin
@@ -609,7 +670,7 @@ type
   end;
 
 const
-  RuleCases: array[0..149] of TRuleCase = (
+  RuleCases: array[0..159] of TRuleCase = (
     (ID: 'BR-02'; Target: tk_FXMinimum; NotApplicable: tk_None),
     (ID: 'BR-03'; Target: tk_XRUBL; NotApplicable: tk_None),
     (ID: 'BR-04'; Target: tk_XRCII; NotApplicable: tk_None),
@@ -760,7 +821,17 @@ const
     (ID: 'PEPPOL-EN16931-R120'; Target: tk_Peppol; NotApplicable: tk_FXExtended),
     (ID: 'PEPPOL-EN16931-R120'; Target: tk_XRCII; NotApplicable: tk_FXBasic),
     (ID: 'PEPPOL-EN16931-R121'; Target: tk_XRUBL; NotApplicable: tk_FXEN16931),
-    (ID: 'PEPPOL-EN16931-R130'; Target: tk_XRCII; NotApplicable: tk_FXExtended));
+    (ID: 'PEPPOL-EN16931-R130'; Target: tk_XRCII; NotApplicable: tk_FXExtended),
+    (ID: 'BR-DEC-15'; Target: tk_XRCII; NotApplicable: tk_XRUBL),
+    (ID: 'BR-FXEXT-08'; Target: tk_FXExtended; NotApplicable: tk_FXEN16931),
+    (ID: 'CII-SR-467'; Target: tk_XRCII; NotApplicable: tk_XRUBL),
+    (ID: 'CII-SR-468'; Target: tk_FXEN16931; NotApplicable: tk_FXMinimum),
+    (ID: 'UBL-SR-46'; Target: tk_XRUBL; NotApplicable: tk_XRCII),
+    (ID: 'UBL-SR-47'; Target: tk_Peppol; NotApplicable: tk_FXEN16931),
+    (ID: 'UBL-SR-54'; Target: tk_XRUBL; NotApplicable: tk_XRCII),
+    (ID: 'UBL-SR-55'; Target: tk_XRUBL; NotApplicable: tk_XRCII),
+    (ID: 'BR-TMP-2'; Target: tk_XRUBL; NotApplicable: tk_Peppol),
+    (ID: 'BR-DEX-14'; Target: tk_XRUBL; NotApplicable: tk_XRCII));
 
 function HasRule(D: TLandrixEInvoiceDiagnostics; const AID: string): Boolean;
 var
@@ -885,7 +956,10 @@ begin
       FinancialAccount := '5678';
     end;
     Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'LX-CC-05', nil), 'LX-CC-05 is violated');
-    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRUBL), D), 'no errors');
+    { CII: no official rule on two cards (UBL-SR-54 and the mixed codes
+      would report it in UBL) }
+    Invoice.PaymentTypes.Delete(0);
+    CheckEquals(0, LandrixEInvoiceCheckInvoice(Invoice, SpecOf(tk_XRCII), D), 'no errors: ' + string(D.ToText));
     CheckEquals(0, D.CountOf(edk_RuleViolation), 'no legacy rule reported');
   finally
     Invoice.Free;
@@ -1031,7 +1105,8 @@ begin
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-26', nil), 'reference with identifier');
     AddPdf(Invoice, 'A-1', ' ');
     AddPdf(Invoice, 'A-2', ' ');
-    Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-22', nil), 'blank file names are not written');
+    { a blank name is written (filename=" ") and compared }
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-DE-22', nil), 'blank file names are written');
   finally
     Invoice.Free;
     D.Free;
@@ -1794,7 +1869,8 @@ end;
 
 { The VAT category rules BR-S-nn to BR-AG-nn: the invoice of each group
   passes them for every target; each rule breaks for XRechnung UBL and CII
-  (except BR-AF-09 and BR-AG-09, which CII does not test) and does not apply
+  (except BR-AF-08, BR-AG-08, BR-AF-09 and BR-AG-09, which CII does not test:
+  -08 reads the rate from the parent element, -09 is not there) and does not apply
   to Factur-X MINIMUM; BR-FXEXT-xx-01 applies to EXTENDED only. }
 procedure TestVatCategories;
 var
@@ -1841,7 +1917,7 @@ begin
             ID + ' violated in UBL');
           if D.Count = 1 then
             CheckEqualsInvoiceStr(TLandrixEInvoiceString(ID), D[0].RuleID, ID + ' rule of the diagnostic');
-          if ((VatGroupCases[G].Group = 'AF') or (VatGroupCases[G].Group = 'AG')) and (N = 9) then
+          if ((VatGroupCases[G].Group = 'AF') or (VatGroupCases[G].Group = 'AG')) and (N in [8, 9]) then
             Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), TLandrixEInvoiceString(ID), nil),
               ID + ' not tested in CII')
           else
@@ -2331,6 +2407,137 @@ begin
   Result := LandrixEInvoiceCheckRule(Invoice, SpecOf(AKind), TLandrixEInvoiceString(AID), nil);
 end;
 
+{ The corrections of the review: rules that compare the value as written
+  (payment code as other text, padded category text, type code as other
+  text, code points), the attachments the writers leave out, the SEPA
+  identifier of the seller, BR-DE-16 and BR-AF-08 as the CII Schematron
+  judges them, BR-DEX-09 with the extension. }
+procedure TestReviewCases;
+var
+  Invoice: TLandrixInvoice;
+  Payment: TLandrixInvoicePaymentType;
+  Pan: TLandrixEInvoiceString;
+  I: Integer;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-61: a credit transfer given as other text needs the account }
+    FillComplete(Invoice);
+    Payment := Invoice.PaymentTypes[0];
+    Payment.PaymentMeansCode := ipmc_NotImplemented;
+    Payment.PaymentMeansCodeOther := '58';
+    Payment.FinancialAccount := '';
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-61'), 'BR-61 with code 58 as other text');
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-DE-23-a'), 'BR-DE-23-a with code 58 as other text');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-DE-30 (UBL): the seller global identifier with scheme SEPA }
+    FillComplete(Invoice);
+    Invoice.PaymentTypes[0].PaymentMeansCode := ipmc_SEPADirectDebit;
+    Invoice.PaymentMandateID := 'M-1';
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyer := 'DE98ZZZ09999999999';
+    Invoice.AccountingSupplierParty.GlobalIdentifierSellerBuyerSchemeID := 'SEPA';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-DE-30'), 'BR-DE-30: SEPA global identifier in UBL');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-DE-16 (CII): only the lines count }
+    FillComplete(Invoice);
+    Invoice.AccountingSupplierParty.VATCompanyID := '';
+    Invoice.InvoiceLines[0].TaxCategory := idtfcc_O_ServicesOutsideScopeOfTax;
+    AddAllowanceCharge(Invoice, False, True, True);
+    Check(RuleHolds(Invoice, tk_XRCII, 'BR-DE-16'), 'BR-DE-16: CII ignores the allowance');
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-DE-16'), 'BR-DE-16: UBL counts the allowance');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-DE-22: a tender reference (type 50) is no UBL attachment }
+    FillComplete(Invoice);
+    AddPdf(Invoice, 'T-1', 'a.pdf');
+    Invoice.Attachments[0].TypeCode := iatc_50;
+    AddPdf(Invoice, 'A-1', 'a.pdf');
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-DE-22'), 'BR-DE-22: UBL does not write the tender reference');
+    Check(not RuleHolds(Invoice, tk_XRCII, 'BR-DE-22'), 'BR-DE-22: CII writes both');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-51 counts code points: six digits outside the BMP are six }
+    FillComplete(Invoice);
+    Payment := Invoice.PaymentTypes[0];
+    Payment.PaymentMeansCode := ipmc_CreditCard;
+    Pan := '';
+    for I := 1 to 6 do
+      Pan := Pan + WideChar($D835) + WideChar($DFD9);
+    Payment.FinancialAccount := Pan;
+    Check(RuleHolds(Invoice, tk_XRCII, 'BR-51'), 'BR-51: six code points');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { UBL compares the category text normalized }
+    FillComplete(Invoice);
+    Invoice.InvoiceLines[0].TaxCategory := idtfcc_None;
+    Invoice.InvoiceLines[0].TaxCategoryOther := ' S ';
+    Invoice.InvoiceLines[0].TaxPercent := 0;
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-S-05'), 'BR-S-05 on '' S '' in UBL');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-DE-26 with type code 384 as other text }
+    FillComplete(Invoice);
+    Invoice.InvoiceTypeCode := itc_None;
+    Invoice.InvoiceTypeCodeOther := ' 384 ';
+    Check(not RuleHolds(Invoice, tk_XRCII, 'BR-DE-26'), 'BR-DE-26 with 384 as other text');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-AF-08: the CII Schematron never fails it, UBL compares }
+    FillComplete(Invoice);
+    Invoice.InvoiceLines[0].TaxCategory := idtfcc_L_CanaryIslandsGeneralIndirectTax;
+    Invoice.InvoiceLines[0].TaxPercent := 7;
+    Invoice.TaxAmountSubtotals[0].TaxCategory := idtfcc_L_CanaryIslandsGeneralIndirectTax;
+    Invoice.TaxAmountSubtotals[0].TaxPercent := 7;
+    Invoice.TaxAmountSubtotals[0].TaxableAmount := 99;
+    Check(RuleHolds(Invoice, tk_XRCII, 'BR-AF-08'), 'BR-AF-08 holds in CII');
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-AF-08'), 'BR-AF-08 fails in UBL');
+  finally
+    Invoice.Free;
+  end;
+
+  Invoice := TLandrixInvoice.Create;
+  try
+    { BR-DEX-09 replaces BR-CO-16 whenever the extension is written }
+    FillComplete(Invoice);
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'XR01';
+    Invoice.PayableAmount := 100;
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-09'), 'BR-DEX-09 without third-party payments');
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-CO-16'), 'BR-CO-16 gives way');
+  finally
+    Invoice.Free;
+  end;
+end;
+
 { PEPPOL-EN16931-R040 and R120 compare exactly within 0.02 (XRechnung: 0.5
   for HUF) on the values as written: the percentage with 4 decimals, on UBL
   line level with 2; R120 divides the price by the base quantity as Saxon
@@ -2740,6 +2947,7 @@ begin
   RegisterTest('Check.BlankValues', TestBlankValues);
   RegisterTest('Check.CompleteInvoice', TestCompleteInvoice);
   RegisterTest('Check.RuleCases', TestRuleCases);
+  RegisterTest('Check.ReviewCases', TestReviewCases);
   RegisterTest('Check.Boundaries', TestBoundaries);
   RegisterTest('Check.PayeeLikeSeller', TestPayeeLikeSeller);
   RegisterTest('Check.DirectDebitGroups', TestDirectDebitGroups);

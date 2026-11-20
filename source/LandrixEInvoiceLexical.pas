@@ -27,8 +27,9 @@
     down to 2 (0.001 stays 0.001);
   - percentages (BT-96, BT-119, BT-152): exactly 2 decimals;
   - dates: UBL xs:date YYYY-MM-DD, CII format 102 YYYYMMDD.
-  The decimal limits of EN 16931 (BR-DEC) are checked per business term by
-  the specification rules, not here.
+  These forms always meet the decimal limits of EN 16931 (BR-DEC) for the
+  written document; the rule check does not test them (a document as read
+  may break them, the validator judges that), except BR-DEC-15.
 
   Reading uses the Try functions: they return False for text that is not a
   valid value of the type (no locale forms such as '19,00', no exponent,
@@ -49,8 +50,10 @@
     2 gestrichen (0.001 bleibt 0.001);
   - Prozentsaetze (BT-96, BT-119, BT-152): genau 2 Nachkommastellen;
   - Datumswerte: UBL xs:date JJJJ-MM-TT, CII Format 102 JJJJMMTT.
-  Die Stellengrenzen der EN 16931 (BR-DEC) prueft das Regelwerk der
-  Zielspezifikation je Geschaeftsbegriff, nicht diese Unit.
+  Diese Formen halten die Stellengrenzen der EN 16931 (BR-DEC) fuer das
+  geschriebene Dokument immer ein; die Regelpruefung testet sie nicht (ein
+  gelesenes Dokument kann sie verletzen, das beurteilt der Validator),
+  ausser BR-DEC-15.
 
   Gelesen wird mit den Try-Funktionen: Sie liefern False fuer Text, der kein
   gueltiger Wert des Typs ist (keine Gebietsschema-Formen wie '19,00', kein

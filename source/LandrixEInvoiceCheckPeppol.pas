@@ -98,6 +98,12 @@ function LandrixEInvoiceCheckPeppolRule(AInvoice: TLandrixInvoice; const ASpec: 
   const ARuleID: TLandrixEInvoiceString; ADiagnostics: TLandrixEInvoiceDiagnostics; ASkip: Boolean;
   out AFound: Boolean): Boolean;
 
+{ True if AURI starts like an absolute URL: ^([a-zA-Z])([a-zA-Z0-9+.-])+:
+  (XR-URL-REGEX of XRechnung, DE-R-T02 of Peppol).
+  DE: True, wenn AURI wie eine absolute URL beginnt (XR-URL-REGEX von
+  XRechnung, DE-R-T02 von Peppol). }
+function LandrixEInvoiceAbsoluteURL(const AURI: TLandrixEInvoiceString): Boolean;
+
 implementation
 
 uses
@@ -1613,6 +1619,11 @@ begin
        (C = '+') or (C = '.') or (C = '-')) then
       Exit;
   end;
+end;
+
+function LandrixEInvoiceAbsoluteURL(const AURI: TLandrixEInvoiceString): Boolean;
+begin
+  Result := AbsoluteURL(AURI);
 end;
 
 { DE-R-019, DE-R-020: the IBAN check on the account without any blank.
