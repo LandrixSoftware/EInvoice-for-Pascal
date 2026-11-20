@@ -656,7 +656,9 @@ type
     HasRelationship: Boolean;
     Relationship: AnsiString;
     Description: TLandrixEInvoiceString;
-    { /EF has /F and /UF. DE: /EF hat /F und /UF. }
+    { /EF has /F and /UF that lead to an object (a reference to nothing
+      counts as absent). DE: /EF hat /F und /UF, die zu einem Objekt fuehren
+      (ein Verweis ins Leere gilt als fehlend). }
     HasEmbeddedF: Boolean;
     HasEmbeddedUF: Boolean;
     { The embedded file stream (/EF /F, else /UF, else /DOS), nil if there
@@ -5441,18 +5443,20 @@ begin
   Ef := FDoc.DGet(Spec, 'EF');
   if (Ef = nil) or not Ef.IsDictLike then
     Exit;
-  Item.HasEmbeddedF := Ef.RawGet('F') <> nil;
-  Item.HasEmbeddedUF := Ef.RawGet('UF') <> nil;
   { /F is the normal case, /UF the Unicode variant of the same stream; a
-    key whose reference leads nowhere counts as absent }
+    key whose reference leads nowhere or to null counts as absent }
+  O := FDoc.Resolve(Ef.RawGet('F'));
+  Item.HasEmbeddedF := (O <> nil) and (O.Kind <> pok_Null);
+  O := FDoc.Resolve(Ef.RawGet('UF'));
+  Item.HasEmbeddedUF := (O <> nil) and (O.Kind <> pok_Null);
   Raw := Ef.RawGet('F');
   O := FDoc.Resolve(Raw);
-  if O = nil then
+  if (O = nil) or (O.Kind = pok_Null) then
   begin
     Raw := Ef.RawGet('UF');
     O := FDoc.Resolve(Raw);
   end;
-  if O = nil then
+  if (O = nil) or (O.Kind = pok_Null) then
   begin
     Raw := Ef.RawGet('DOS');
     O := FDoc.Resolve(Raw);

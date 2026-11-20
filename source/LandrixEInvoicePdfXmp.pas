@@ -256,6 +256,8 @@ type
     FSeeded: array of Boolean;
     FCount: Integer;
     FOverflow: Boolean;
+    { property definitions looked at, against a crafted list of repeats }
+    FPropChecked: Integer;
     FPropUris: array of TLandrixEInvoiceString;
     FPropNames: array of TLandrixEInvoiceString;
     FPropTypes: array of TLandrixEInvoiceString;
@@ -347,7 +349,7 @@ type
   end;
 
   { A node of the packet's XML without comments; namespace declarations are
-    not attributes (HasNsDecl tells whether there were any). }
+    not attributes. }
   TDom = class(TObject)
   public
     Kind: TDomKind;
@@ -357,7 +359,6 @@ type
     Text: TLandrixEInvoiceString;
     Attrs: array of TDomAttr;
     AttrCount: Integer;
-    HasNsDecl: Boolean;
     Children: TObjectList;
     constructor Create(AKind: TDomKind);
     destructor Destroy; override;
@@ -693,9 +694,24 @@ function BuildDom(const AData: TLandrixEInvoicePdfBytes): TDom;
 var
   R: TLandrixXmlReader;
   Stack: TObjectList;
-  Cur, N: TDom;
-  I, Nodes: Integer;
+  Cur, N, TextNode: TDom;
+  I, Nodes, TextLen: Integer;
+  TextBuf, Piece: TLandrixEInvoiceString;
+
+  { the text of TextNode, gathered in TextBuf (text around comments joins:
+    appending to the node each time would copy it again and again) }
+  procedure FlushText;
+  begin
+    if TextNode <> nil then
+      TextNode.Text := Copy(TextBuf, 1, TextLen);
+    TextNode := nil;
+    TextLen := 0;
+  end;
+
 begin
+  TextNode := nil;
+  TextLen := 0;
+  TextBuf := '';
   Result := TDom.Create(dk_Element);
   R := TLandrixXmlReader.Create;
   Stack := TObjectList.Create(False);
@@ -710,6 +726,8 @@ begin
         Inc(Nodes);
         if Nodes > MaxDomNodes then
           NotDecided('more than ' + IntToStr(MaxDomNodes) + ' XML nodes');
+        if R.TokenType in [xttStartElement, xttEndElement, xttCData, xttProcessingInstruction] then
+          FlushText;
         case R.TokenType of
           xttStartElement:
             begin
@@ -720,9 +738,7 @@ begin
               N.Prefix := LandrixXmlUtf8ToWide(R.PrefixUtf8);
               SetLength(N.Attrs, R.AttributeCount);
               for I := 0 to R.AttributeCount - 1 do
-                if R.IsNamespaceDeclaration(I) then
-                  N.HasNsDecl := True
-                else
+                if not R.IsNamespaceDeclaration(I) then
                 begin
                   N.Attrs[N.AttrCount].Ns := LandrixXmlUtf8ToWide(R.AttributeNamespaceUriUtf8(I));
                   N.Attrs[N.AttrCount].Local := LandrixXmlUtf8ToWide(R.AttributeLocalNameUtf8(I));
@@ -741,10 +757,21 @@ begin
           xttText:
             begin
               { comments are dropped, so text around one joins }
-              if (Cur.Count > 0) and (Cur.Child(Cur.Count - 1).Kind = dk_Text) then
-                Cur.Child(Cur.Count - 1).Text := Cur.Child(Cur.Count - 1).Text + R.ValueW
-              else
-                Cur.Add(dk_Text).Text := R.ValueW;
+              if TextNode = nil then
+                TextNode := Cur.Add(dk_Text);
+              Piece := R.ValueW;
+              if Piece <> '' then
+              begin
+                if TextLen + Length(Piece) > Length(TextBuf) then
+                begin
+                  if TextLen + Length(Piece) > 2 * Length(TextBuf) then
+                    SetLength(TextBuf, TextLen + Length(Piece))
+                  else
+                    SetLength(TextBuf, 2 * Length(TextBuf));
+                end;
+                Move(Piece[1], TextBuf[TextLen + 1], Length(Piece) * SizeOf(WideChar));
+                Inc(TextLen, Length(Piece));
+              end;
             end;
           xttCData:
             Cur.Add(dk_CData).Text := R.ValueW;
@@ -760,6 +787,7 @@ begin
           { comments }
         end;
       end;
+      FlushText;
     except
       on E: ELandrixXmlError do
       begin
@@ -828,10 +856,9 @@ procedure TRdfReader.ReadRdf(ARoot: TDom);
 var
   I: Integer;
 begin
-  { the parser demands attributes on rdf:RDF; whether a namespace
-    declaration elsewhere would do is not known }
-  if (ARoot.AttrCount = 0) and not ARoot.HasNsDecl then
-    NotDecided('rdf:RDF without attributes');
+  { attributes on rdf:RDF are not needed: the XMPCore fork of veraPDF
+    1.30.4 (ParseRDF.rdf_RDF) reads the node elements without checking
+    them, unlike Adobe's XMPCore }
   for I := 0 to ARoot.Count - 1 do
     if not IsSpaceNode(ARoot.Child(I)) then
       NodeElement(nil, ARoot.Child(I), True);
@@ -2315,10 +2342,20 @@ begin
     Known := IsKnown(AEntry, VType);
     if Known = xmt_No then
       Continue;
+    { each definition is compared with every kept one: bound the work }
+    Inc(FPropChecked);
+    if FPropChecked > 4 * MaxSchemaProps then
+    begin
+      FOverflow := True;
+      Exit;
+    end;
     Found := False;
     for J := 0 to FPropCount - 1 do
       if (FPropNames[J] = Name) and (FPropUris[J] = FUris[AEntry]) then
+      begin
         Found := True;
+        Break;
+      end;
     if Found then
       Continue;
     if FPropCount >= MaxSchemaProps then
@@ -2366,6 +2403,7 @@ begin
   FPropEntries := nil;
   FPropUncertain := nil;
   FPropCount := 0;
+  FPropChecked := 0;
   FOverflow := AFurther and (AMain <> nil) and AMain.FOverflow;
   if FOverflow or (APacket.State <> xms_Valid) then
     Exit;

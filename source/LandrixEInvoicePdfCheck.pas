@@ -188,6 +188,12 @@ type
     FactsChecked: Boolean;
     InvoiceFacts: TLandrixEInvoicePdfInvoiceFacts;
     Profile: TLandrixEInvoiceProfile;
+    { Set by level 3: True if it could not decide everything (the status
+      then is incomplete unless it found an error).
+      DE: Von Ebene 3 gesetzt: True, wenn sie nicht alles entscheiden
+      konnte (der Status ist dann unvollstaendig, ausser sie fand einen
+      Fehler). }
+    MetadataIncomplete: Boolean;
     { Version from the header (e.g. 1.7) and /Version of the catalog ('' if
       absent).
       DE: Version aus dem Kopf (z. B. 1.7) und /Version des Katalogs ('',
@@ -458,6 +464,7 @@ begin
   InvoiceFileNameUF := '';
   InvoicePath := '';
   FactsChecked := False;
+  MetadataIncomplete := False;
   InvoiceFacts.Target.Standard := est_None;
   InvoiceFacts.Target.Syntax := esy_None;
   InvoiceFacts.Target.Profile := epr_None;
@@ -738,7 +745,13 @@ begin
         Inc(Score, 2);
       if FRootIsInvoice[I] then
         Inc(Score);
-      if Score > Best then
+      { a tie goes to the current names: a ZUGFeRD 1.0/2.0 attachment must
+        not hide a Factur-X or XRechnung invoice
+        DE: ein Gleichstand geht an die aktuellen Namen: ein Anhang von
+        ZUGFeRD 1.0/2.0 darf keine Factur-X- oder XRechnung-Rechnung
+        verdecken }
+      if (Score > Best) or ((Score = Best) and (KindOf(Result) in [ehk_ZUGFeRD10, ehk_ZUGFeRD20]) and
+         not (KindOf(I) in [ehk_ZUGFeRD10, ehk_ZUGFeRD20])) then
       begin
         Best := Score;
         Result := I;
@@ -877,10 +890,11 @@ begin
       ', not /EmbeddedFile');
   if F.Subtype = '' then
     Add(RuleEmbedding, eds_Error, APath + '/Subtype', 'The stream has no /Subtype (MIME type text/xml)')
-  else if F.Subtype = 'application/xml' then
+  { MIME types compare without case (RFC 2045, 5.1) }
+  else if AsciiLower(AnsiToText(F.Subtype)) = 'application/xml' then
     Add(RuleMimeType, eds_Warning, APath + '/Subtype', 'The MIME type is application/xml; the specification ' +
       'names text/xml')
-  else if F.Subtype <> 'text/xml' then
+  else if AsciiLower(AnsiToText(F.Subtype)) <> 'text/xml' then
     Add(RuleEmbedding, eds_Error, APath + '/Subtype', 'The MIME type is ' + AnsiToText(F.Subtype) +
       ', not text/xml');
   if not F.HasModDate then
@@ -940,8 +954,12 @@ begin
         Ofs := E.Offset;
         if Ofs < 0 then
           Ofs := 0;
-        Add(RuleEmbedding, eds_Error, Where + R.ElementPathW, 'The invoice XML is not well-formed: ' +
-          ToText(E.Message), E.Line, E.Column, Ofs);
+        if E.Code = xecLimit then
+          NoteLimit(Where + R.ElementPathW, 'The invoice XML exceeds a limit of the reader (too deep or too ' +
+            'large); its well-formedness is not checked: ' + ToText(E.Message))
+        else
+          Add(RuleEmbedding, eds_Error, Where + R.ElementPathW, 'The invoice XML is not well-formed: ' +
+            ToText(E.Message), E.Line, E.Column, Ofs);
       end;
     end;
   finally
@@ -1116,6 +1134,9 @@ type
     IsAttr: Boolean;
     { rdf:parseType="Resource" }
     IsResource: Boolean;
+    { an rdf:value attribute and its value }
+    HasValueAttr: Boolean;
+    ValueAttr: TLandrixEInvoiceString;
     constructor Create;
     destructor Destroy; override;
     function Add: TXmpNode;
@@ -1289,7 +1310,13 @@ begin
                     if (AttrLocal = 'parseType') and (R.AttributeValueW(I) = 'Resource') then
                       N.IsResource := True
                     else if AttrLocal = 'resource' then
+                      AppendText(N, R.AttributeValueW(I))
+                    else if AttrLocal = 'value' then
+                    begin
                       AppendText(N, R.AttributeValueW(I));
+                      N.HasValueAttr := True;
+                      N.ValueAttr := R.AttributeValueW(I);
+                    end;
                   end
                   else if (AttrNs <> '') and (AttrNs <> NsXml) then
                   begin
@@ -1393,12 +1420,43 @@ begin
     end;
 end;
 
-{ The value of a simple property; '' for one with elements or nil. }
+{ The simple value of AProp; a qualified value (RDF/XMP: rdf:value with
+  qualifiers, as element or attribute, directly with rdf:parseType
+  "Resource" or in an rdf:Description) gives its rdf:value, as the level 1
+  reader (FixupQualified).
+  DE: Der einfache Wert von AProp; ein qualifizierter Wert (rdf:value mit
+  Qualifiern, als Element oder Attribut, direkt mit rdf:parseType
+  "Resource" oder in einer rdf:Description) liefert sein rdf:value, wie der
+  Leser der Ebene 1. }
 function ValueOf(AProp: TXmpNode): TLandrixEInvoiceString;
+var
+  I: Integer;
+  C: TXmpNode;
 begin
   Result := '';
-  if (AProp <> nil) and not AProp.HasElements then
-    Result := AProp.Text;
+  if AProp = nil then
+    Exit;
+  if AProp.HasValueAttr then
+  begin
+    Result := AProp.ValueAttr;
+    Exit;
+  end;
+  if not AProp.HasElements then
+  begin
+    { text directly in an rdf:Description is no value (level 1 rejects it) }
+    if not IsRdf(AProp, 'Description') then
+      Result := AProp.Text;
+    Exit;
+  end;
+  for I := 0 to AProp.Count - 1 do
+  begin
+    C := AProp.Child(I);
+    if IsRdf(C, 'value') or IsRdf(C, 'Description') then
+    begin
+      Result := ValueOf(C);
+      Exit;
+    end;
+  end;
 end;
 
 { The container (rdf:Bag, rdf:Seq, rdf:Alt) of AProp; nil if it has none. }
@@ -1680,6 +1738,7 @@ end;
 procedure TMetadataCheck.CheckPdfAId;
 var
   Part, Conf: TLandrixEInvoiceString;
+  PartNo: Int64;
 begin
   Part := ValueOf(TopProp(NsPdfAId, 'part'));
   Conf := ValueOf(TopProp(NsPdfAId, 'conformance'));
@@ -1687,13 +1746,15 @@ begin
   FResult.PdfAConformance := Conf;
   CheckUnique(RuleNoPdfA, 'pdfaid', NsPdfAId, 'part');
   CheckUnique(RuleNoPdfA, 'pdfaid', NsPdfAId, 'conformance');
-  if Part = '3' then
+  { the part is an XMP Integer: '03' is 3, as level 1 reads it }
+  PartNo := LandrixEInvoicePdfAPartNumber(Part);
+  if PartNo = 3 then
   begin
     if (Conf <> 'A') and (Conf <> 'B') and (Conf <> 'U') then
       Add(RuleNoPdfA, eds_Error, 'XMP pdfaid:conformance', 'The XMP metadata claims PDF/A-3 with the conformance ' +
         'level "' + Conf + '"; expected A, B or U');
   end
-  else if Part = '4' then
+  else if PartNo = 4 then
   begin
     if Conf <> 'F' then
       Add(RuleNoPdfA, eds_Error, 'XMP pdfaid:conformance', 'The XMP metadata claims PDF/A-4 with the conformance ' +
@@ -1924,7 +1985,10 @@ begin
      (Version = '2p2') or ((Level = 'XRECHNUNG') and IsVersionNumber(Version))) then
     Add(RuleVersion, eds_Error, 'XMP fx:Version', 'fx:Version "' + Version + '" is not in the code list ' +
       'HybridDocumentVersion')
-  else if Version <> '1.0' then
+  { XRECHNUNG carries the XRechnung version (specification 7.7), not 1.0
+    DE: XRECHNUNG traegt die XRechnung-Version (Spezifikation 7.7), nicht
+    1.0 }
+  else if (Version <> '1.0') and not ((Level = 'XRECHNUNG') and IsVersionNumber(Version)) then
     Add(RuleVersionOne, eds_Warning, 'XMP fx:Version', 'fx:Version is ' + Version + '; the specification ' +
       'recommends 1.0');
 
@@ -2016,6 +2080,16 @@ begin
     try
       AFacts.Inspect(ADoc);
       Rules.Check(ADoc, AFacts);
+      { a PDF/A-4 claim that level 3 did not read (no hybrid, a legacy
+        ZUGFeRD attachment): the rules of PDF/A-3b do not apply
+        DE: ein PDF/A-4-Anspruch, den Ebene 3 nicht gelesen hat (kein
+        Hybrid, ein Legacy-ZUGFeRD-Anhang): die Regeln von PDF/A-3b gelten
+        nicht }
+      if Rules.ClaimedPart = 4 then
+      begin
+        AResult.Status[epl_PdfA] := eps_NotRun;
+        Exit;
+      end;
     except
       on E: Exception do
       begin
@@ -2167,14 +2241,15 @@ begin
       finally
         Meta.Free;
       end;
+      AResult.MetadataIncomplete := Incomplete or MetaIncomplete;
       AResult.Status[epl_Metadata] := LevelStatus(CountErrors(AResult.Diagnostics) - Errors,
-        Incomplete or MetaIncomplete);
+        AResult.MetadataIncomplete);
     end;
     { level 1 last, so that levels 2 and 3 count only their own errors; the
       rules of PDF/A-4 are not implemented
       DE: Ebene 1 zuletzt, damit die Ebenen 2 und 3 nur ihre eigenen Fehler
       zaehlen; die Regeln von PDF/A-4 sind nicht umgesetzt }
-    if AResult.PdfAPart <> '4' then
+    if LandrixEInvoicePdfAPartNumber(AResult.PdfAPart) <> 4 then
       CheckPdfA(Doc, Facts, AResult);
   finally
     Doc.Free;
@@ -2270,6 +2345,38 @@ begin
   end;
 end;
 
+{ BR-FX-DE-03: with seller and buyer in Germany a missing or wrong PDF/A
+  extension schema (BR-HYBRID-03) is a warning; level 3 is judged again
+  without those errors (its findings have paths starting with 'XMP ' or
+  /Root/Metadata). Returns the number of errors made warnings.
+  DE: BR-FX-DE-03: mit Verkaeufer und Kaeufer in Deutschland ist ein
+  fehlendes oder falsches PDF/A-Erweiterungsschema (BR-HYBRID-03) eine
+  Warnung; Ebene 3 wird ohne diese Fehler neu beurteilt (ihre Befunde haben
+  Pfade, die mit 'XMP ' beginnen, oder /Root/Metadata). Liefert die Zahl
+  der Fehler, die Warnungen wurden. }
+function DowngradeExtensionSchema(AResult: TLandrixEInvoicePdfCheckResult): Integer;
+var
+  I, Errors: Integer;
+  D: TLandrixEInvoiceDiagnostic;
+begin
+  Result := 0;
+  Errors := 0;
+  for I := 0 to Integer(AResult.Diagnostics.Count) - 1 do
+  begin
+    D := AResult.Diagnostics[I];
+    if (D.RuleID = RuleExtensionSchema) and (D.Severity = eds_Error) then
+    begin
+      D.Severity := eds_Warning;
+      D.Message := D.Message + ' (a warning with seller and buyer in Germany, BR-FX-DE-03)';
+      Inc(Result);
+    end
+    else if (D.Severity = eds_Error) and ((Copy(D.Path, 1, 4) = 'XMP ') or (D.Path = '/Root/Metadata')) then
+      Inc(Errors);
+  end;
+  if (Result > 0) and (AResult.Status[epl_Metadata] = eps_Failed) then
+    AResult.Status[epl_Metadata] := LevelStatus(Errors, AResult.MetadataIncomplete);
+end;
+
 function TLandrixEInvoicePdfChecker.CheckInvoiceFacts(AResult: TLandrixEInvoicePdfCheckResult;
   const AFacts: TLandrixEInvoicePdfInvoiceFacts): Integer;
 var
@@ -2300,6 +2407,10 @@ begin
     if (AFacts.SellerCountryCode = AFacts.BuyerCountryCode) and
        ((AFacts.SellerCountryCode = 'DE') or (AFacts.SellerCountryCode = 'FR')) then
       Country := AFacts.SellerCountryCode;
+    { the errors made warnings leave the count, so that a new error of the
+      facts rules still fails level 2 }
+    if Country = 'DE' then
+      Dec(Before, DowngradeExtensionSchema(AResult));
     { BR-HYBRID-DE-01/02: seller and buyer in Germany, no MINIMUM and no
       BASIC WL; BR-HYBRID-FR-01: in France, no XRECHNUNG.
       DE: BR-HYBRID-DE-01/02: Verkaeufer und Kaeufer in Deutschland, kein

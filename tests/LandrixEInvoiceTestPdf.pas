@@ -1265,7 +1265,7 @@ begin
     Check(Specs[1].Routes = [efr_AF], 'then /AF only');
     CheckEquals(0, Specs[1].AFIndex, 'index in /AF');
     Check(Specs[1].Stream = nil, 'no /EF, no stream');
-    Check(Specs[2].HasEmbeddedF and (Specs[2].StreamNum = 5), '/EF /F leads nowhere: /UF');
+    Check(not Specs[2].HasEmbeddedF and (Specs[2].StreamNum = 5), '/EF /F leads nowhere: /UF');
     Check(Specs[2].HasParams and not Specs[2].HasModDate and (Specs[2].ParamsSize = 10), '/Params without /ModDate');
     CheckEquals(10, Specs[3].StreamNum, '/EF /DOS');
     CheckEquals(1, Specs.NameTreeIssues.Count, 'issues: ' + Specs.NameTreeIssues.Text);
@@ -1982,14 +1982,49 @@ begin
     CheckXmp(R, RawReplace(Good, '<fx:Version>1.0</fx:Version>', '<fx:Version></fx:Version>'), eps_Failed, 1,
       'BR-HYBRID-09', 'fx:Version is missing', 'empty version');
 
+    { a qualified value is its rdf:value; pdfaid:part is an integer }
+    CheckXmp(R, RawReplace(Good, '<fx:Version>1.0</fx:Version>',
+      '<fx:Version rdf:parseType="Resource"><rdf:value>1.0</rdf:value></fx:Version>'), eps_Passed, 0, '', '',
+      'qualified fx:Version');
+    CheckXmp(R, RawReplace(Good, '<pdfaid:part>3<', '<pdfaid:part>03<'), eps_Passed, 0, '', '', 'pdfaid:part 03');
+    CheckXmp(R, RawReplace(Good, '<fx:Version>1.0</fx:Version>',
+      '<fx:Version><rdf:Description rdf:value="1.0"><q:Q xmlns:q="urn:q">q</q:Q></rdf:Description></fx:Version>'), eps_Passed, 0, '',
+      '', 'rdf:value attribute beside a qualifier');
+    CheckXmp(R, RawReplace(Good, '<fx:Version>1.0</fx:Version>',
+      '<fx:Version><rdf:Description>1.0</rdf:Description></fx:Version>'), eps_Failed, 1, 'BR-HYBRID-09',
+      'fx:Version is missing', 'text in an rdf:Description');
+
+    { MIME types compare without case }
+    RunCheck(SimplePdf(TreeAndAF, GoodSpec, RawReplace(GoodStream, '/text#2Fxml', '/Text#2FXML'), CheckXml), R);
+    Check(R.Status[epl_Embedding] = eps_Passed, 'Text/XML: ' + StatusText(R));
+
+    { BR-FX-DE-03: BR-HYBRID-03 is a warning with seller and buyer in Germany }
+    RunCheck(SimplePdfX(TreeAndAF, GoodSpec, GoodStream, CheckXml, RawReplace(RawReplace(Good, 'pdfaExtension:schemas>',
+      'pdfaExtension:schemaz>'), 'pdfaExtension:schemas>', 'pdfaExtension:schemaz>')), R);
+    Check(R.Status[epl_Metadata] = eps_Failed, 'no extension schema fails first');
+    Checker.CheckInvoiceFacts(R, FacturXFacts(epr_EN16931, 'DE', 'DE'));
+    CheckEquals(0, EmbeddingErrors(R), 'no level 2 error in DE');
+    Check(R.Status[epl_Metadata] = eps_Passed, 'a warning in DE: ' + MetadataStatusText(R));
+    CheckEquals(1, Findings(R, 'BR-HYBRID-03', 'BR-FX-DE-03'), 'downgraded: ' + MetadataStatusText(R));
+    RunCheck(SimplePdfX(TreeAndAF, GoodSpec, GoodStream, CheckXml, RawReplace(RawReplace(Good, 'pdfaExtension:schemas>',
+      'pdfaExtension:schemaz>'), 'pdfaExtension:schemas>', 'pdfaExtension:schemaz>')), R);
+    Checker.CheckInvoiceFacts(R, FacturXFacts(epr_EN16931, 'DE', 'FR'));
+    Check(R.Status[epl_Metadata] = eps_Failed, 'still an error across the border');
+    { the downgrade does not hide a new error of the facts rules }
+    RunCheck(SimplePdfX(TreeAndAF, GoodSpec, GoodStream, CheckXml, RawReplace(RawReplace(Good, 'pdfaExtension:schemas>',
+      'pdfaExtension:schemaz>'), 'pdfaExtension:schemas>', 'pdfaExtension:schemaz>')), R);
+    Checker.CheckInvoiceFacts(R, FacturXFacts(epr_BasicWL, 'DE', 'DE'));
+    CheckEquals(1, EmbeddingErrors(R), 'BASIC WL in DE');
+    Check(R.Status[epl_Embedding] = eps_Failed, 'BASIC WL in DE fails level 2: ' + StatusText(R));
+    Check(R.Status[epl_Metadata] = eps_Passed, 'BASIC WL in DE, level 3: ' + MetadataStatusText(R));
+
     { XRECHNUNG: a version like 3.0 is accepted }
     Pdf := SimplePdfX('/Names << /EmbeddedFiles << /Names [(xrechnung.xml) 4 0 R] >> >> /AF [4 0 R]',
       '<< /Type /Filespec /F (xrechnung.xml) /UF (xrechnung.xml) /EF << /F 5 0 R >> /AFRelationship /Alternative >>',
       GoodStream, CheckXml, RawReplace(XR, '<fx:Version>1.0<', '<fx:Version>3.0<'));
     RunCheck(Pdf, R);
     Check(R.Status[epl_Metadata] = eps_Passed, 'XRECHNUNG 3.0: ' + MetadataStatusText(R));
-    CheckEquals(1, MetadataCount(R), 'XRECHNUNG 3.0: ' + MetadataStatusText(R));
-    CheckEquals(1, Findings(R, 'BR-HYBRID-10', 'fx:Version is 3.0'), 'XRECHNUNG 3.0 warns');
+    CheckEquals(0, MetadataCount(R), 'XRECHNUNG 3.0 without BR-HYBRID-10: ' + MetadataStatusText(R));
     CheckEqualsInvoiceStr('xrechnung.xml', R.XmpDocumentFileName, 'XRechnung file name');
 
     { BR-HYBRID-14: the embedded name differs }

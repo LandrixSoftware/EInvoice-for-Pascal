@@ -2749,7 +2749,7 @@ begin
   end;
 
   { a wrong date in one page packet, while another page packet is not
-    decided (rdf:RDF without attributes) and may hold the occurrence
+    decided (an empty rdf:about after a non-empty one) and may hold the occurrence
     veraPDF judges: not decided }
   Pdf := BuildPdf(GoodHeader, [
     '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Metadata 20 0 R >>' + LF + 'endobj' + LF,
@@ -2759,8 +2759,9 @@ begin
     MetaObj(20, XmpHead + XmpPdfA3B + XmpTail),
     MetaObj(21, XmpHead + '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" ' +
       'xmp:CreateDate="never"/>' + LF + XmpTail),
-    MetaObj(22, '<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
-      '<rdf:RDF><rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmp:CreateDate="2020"/>' +
+    MetaObj(22, '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:Description rdf:about="a"/>' +
+      '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmp:CreateDate="2020"/>' +
       '</rdf:RDF></x:xmpmeta>')], LF, FileId, LF);
   Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
   Rules := TLandrixEInvoicePdfARuleCheck.Create;
@@ -2968,7 +2969,7 @@ begin
       'empty rdf:about after a non-empty one');
     Check(XmpState(P, '<!DOCTYPE x>' + XmpDesc('')) = xms_Unknown, 'document type');
     Check(XmpState(P, '<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
-      '<rdf:RDF><rdf:Description/></rdf:RDF></x:xmpmeta>') = xms_Unknown, 'rdf:RDF without attributes');
+      '<rdf:RDF><rdf:Description/></rdf:RDF></x:xmpmeta>') = xms_Valid, 'rdf:RDF without attributes (veraPDF reads it)');
     Check(XmpState(P, XmpDesc('<q:p>' + AnsiChar($C3) + '</q:p>')) = xms_Unknown, 'bytes that are no UTF-8');
     { encodings }
     Check(XmpState(P, '<?xml version="1.0" encoding="ISO-8859-1"?>' + XmpDesc('<q:p>x</q:p>')) = xms_Valid,

@@ -167,6 +167,7 @@ type
     { rules whose scope could not be walked to the end (a limit, no
       catalog, objects without envelope) }
     FIncomplete: array[TLandrixEInvoicePdfARule] of Boolean;
+    FClaimedPart: Int64;
     { pages and form fields walked for clause 6.1; annotations, actions,
       fields and outline items walked for stage B }
     FNodes: Integer;
@@ -296,6 +297,11 @@ type
     function RuleResult(ARule: TLandrixEInvoicePdfARule): TLandrixEInvoicePdfARuleResult;
     { At least one rule failed. DE: Mindestens eine Regel ist verletzt. }
     function AnyFailed: Boolean;
+    { pdfaid:part of the catalog's XMP after Check, as an integer; 0 when
+      it is absent or no integer.
+      DE: pdfaid:part des XMP des Katalogs nach Check, als ganze Zahl; 0,
+      wenn es fehlt oder keine ganze Zahl ist. }
+    property ClaimedPart: Int64 read FClaimedPart;
   end;
 
 { "6.1.2-1": clause and test number as veraPDF writes them.
@@ -312,6 +318,14 @@ function LandrixEInvoicePdfARuleText(ARule: TLandrixEInvoicePdfARule): string;
 
 { How far the rule is implemented. DE: Wie weit die Regel umgesetzt ist. }
 function LandrixEInvoicePdfARuleCoverage(ARule: TLandrixEInvoicePdfARule): TLandrixEInvoicePdfARuleCoverage;
+
+{ A value of pdfaid:part as an integer, read as veraPDF reads it (Java
+  Integer.parseInt: an optional sign and ASCII digits, '03' is 3); 0 when
+  it is no integer.
+  DE: Ein Wert von pdfaid:part als ganze Zahl, gelesen wie veraPDF ihn
+  liest (Java Integer.parseInt: ein optionales Vorzeichen und ASCII-
+  Ziffern, '03' ist 3); 0, wenn er keine ganze Zahl ist. }
+function LandrixEInvoicePdfAPartNumber(const AText: TLandrixEInvoiceString): Int64;
 
 implementation
 
@@ -815,6 +829,7 @@ procedure TLandrixEInvoicePdfARuleCheck.Reset;
 var
   R: TLandrixEInvoicePdfARule;
 begin
+  FClaimedPart := 0;
   for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
   begin
     FResults[R].Outcome := pro_NotChecked;
@@ -3081,6 +3096,14 @@ begin
   Result := (AValue >= -2147483648) and (AValue <= 2147483647);
 end;
 
+function LandrixEInvoicePdfAPartNumber(const AText: TLandrixEInvoiceString): Int64;
+var
+  Unknown: Boolean;
+begin
+  if not JavaInt(AText, Result, Unknown) then
+    Result := 0;
+end;
+
 { The rules of 6.6 cannot all be checked. }
 procedure TLandrixEInvoicePdfARuleCheck.MarkMetadata;
 var
@@ -3168,7 +3191,7 @@ const
 var
   Gen, I: Integer;
   Where: string;
-  Any, Unknown: Boolean;
+  Any, Unknown, IsInt: Boolean;
   P: TLandrixEInvoiceXmpNode;
   Part: Int64;
 begin
@@ -3192,7 +3215,11 @@ begin
   end;
   Unknown := False;
   P := APacket.Find(LandrixEInvoiceXmpNsPdfaId, 'part');
-  if (P = nil) or (P.Kind <> xmk_Simple) or not JavaInt(P.Value, Part, Unknown) or (Part <> 3) then
+  Part := 0;
+  IsInt := (P <> nil) and (P.Kind = xmk_Simple) and JavaInt(P.Value, Part, Unknown);
+  if IsInt then
+    FClaimedPart := Part;
+  if not IsInt or (Part <> 3) then
   begin
     if (P <> nil) and (P.Kind = xmk_Simple) and Unknown then
       FIncomplete[par_6_6_4_2] := True
