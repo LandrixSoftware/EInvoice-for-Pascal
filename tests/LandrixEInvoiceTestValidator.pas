@@ -1497,6 +1497,7 @@ begin
     R.Free;
     DV.Free;
   end;
+  CheckEquals(528, Files, 'PDFs of the corpus validated');
   WriteLn('  PDF corpus: ', Files, ' files, ', Rejected, ' rejected, ', Incomplete, ' incomplete');
 end;
 

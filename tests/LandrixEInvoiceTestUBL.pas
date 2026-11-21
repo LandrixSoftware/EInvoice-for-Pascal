@@ -521,7 +521,12 @@ begin
       try
         RoundTrip(LoadFile(Dir + SR.Name), nil);
       except
-        on ELandrixXmlError do ;
+        on E: ELandrixXmlError do
+          if XmlWellFormed(LoadFile(Dir + SR.Name)) then
+          begin
+            Inc(Failed);
+            WriteLn('  ', SR.Name, ': well-formed, but ', E.Message);
+          end;
         on E: Exception do
         begin
           Inc(Failed);
@@ -551,6 +556,10 @@ begin
     'empty attributes count as absent: ' + Diff);
   Check(not XmlEquivalent('<r><x a="1">1</x></r>', '<r><x>1</x></r>', Diff), 'attribute value differs');
   Check(not XmlEquivalent('<r><x>1</x></r>', '<r><x>1 </x></r>', Diff), 'text is compared exactly');
+  Check(XmlEquivalent('<r><x> </x><y>1</y></r>', '<r><y>1</y></r>', Diff),
+    'white-space-only content counts as absent: ' + Diff);
+  Check(XmlWellFormed('<r><x/></r>'), 'well-formed');
+  Check(not XmlWellFormed('<r><x></r>'), 'not well-formed');
   Check(not XmlEquivalent('<r><x/><y>1</y></r>', '<r><y>1</y><x>2</x></r>', Diff), 'order matters');
 end;
 

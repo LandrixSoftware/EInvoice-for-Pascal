@@ -219,7 +219,8 @@ begin
     Skip('no local golden files in ' + Dir);
     Exit;
   end;
-  OutDir := LocalDir('out');
+  { next to the test runner: each toolchain writes its own files }
+  OutDir := ExtractFilePath(ParamStr(0)) + 'compat-out' + PathDelim;
   ForceDirectories(OutDir);
   Files := 0;
   Failed := 0;
@@ -244,7 +245,16 @@ begin
           WriteLn('  ', SR.Name, ': ', string(Error));
           Continue;
         end;
+        { an output of an earlier run must not stand in for this one }
+        if FileExists(OutDir + SR.Name) then
+          Check(DeleteFile(OutDir + SR.Name), SR.Name + ': old output deleted');
         TXRechnungInvoiceAdapter.SaveToFile(Invoice, Version, TXRechnungString(OutDir + SR.Name));
+        if not FileExists(OutDir + SR.Name) then
+        begin
+          Inc(Failed);
+          WriteLn('  ', SR.Name, ': not written');
+          Continue;
+        end;
         if not XmlEquivalent(LoadFile(Dir + SR.Name), LoadFile(OutDir + SR.Name), Diff) then
         begin
           Inc(Failed);

@@ -3146,7 +3146,7 @@ var
   Rules: TLandrixEInvoicePdfARuleCheck;
   R: TLandrixEInvoicePdfARule;
   Failed: Boolean;
-  I, J, Files, Incomplete, Agree: Integer;
+  I, J, Files, Missing, Incomplete, Agree: Integer;
   Err: string;
 begin
   Local := RepositoryRoot + 'tests' + PathDelim + 'data' + PathDelim + 'local' + PathDelim;
@@ -3173,6 +3173,7 @@ begin
         Exceptions[I] := Copy(Exceptions[I], 1, J - 1);
       end;
     Files := 0;
+    Missing := 0;
     Incomplete := 0;
     Agree := 0;
     for I := 0 to Expected.Count - 1 do
@@ -3190,7 +3191,10 @@ begin
         ExpectedRules := '';
       FileName := Local + StringReplace(Path, '/', PathDelim, [rfReplaceAll]);
       if not FileExists(FileName) then
+      begin
+        Inc(Missing);
         Continue;
+      end;
       Inc(Files);
       Facts := TLandrixEInvoicePdfSyntaxFacts.Create;
       Doc := TLandrixEInvoicePdfDocument.Create;
@@ -3244,6 +3248,8 @@ begin
     for I := 0 to Exceptions.Count - 1 do
       Check(Used.IndexOf(Exceptions[I]) >= 0, 'unused exception ' + Exceptions[I]);
     Check(Files > 0, 'files of tests/data/verapdf-expected.txt found locally');
+    if Missing > 0 then
+      Skip(IntToStr(Missing) + ' files of tests/data/verapdf-expected.txt not found locally (tools/testdata/sync-local.py)');
     CheckEquals(Files, Agree, 'files that agree with veraPDF');
     WriteLn('  PDF/A against veraPDF: ', Files, ' files, ', Incomplete, ' with incomplete facts');
   finally

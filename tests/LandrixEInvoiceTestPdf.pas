@@ -1128,6 +1128,7 @@ begin
       FindClose(SR);
     end;
   Check(Files > 0, 'corpus without reference results');
+  CheckEquals(528, Files, 'PDFs with reference results (index.txt)');
   CheckEquals(0, Failed, IntToStr(Failed) + ' of ' + IntToStr(Files) + ' PDFs differ, first: ' + First);
 end;
 
@@ -2498,6 +2499,11 @@ end;
 
 procedure TestLimits;
 begin
+  CheckEquals(64 * 1024 * 1024, LandrixEInvoicePdfMaxStreamSize, 'stream size limit');
+  CheckEquals(192 * 1024 * 1024, LandrixEInvoicePdfMaxTotalSize, 'total size limit');
+  CheckEquals(512, LandrixEInvoicePdfMaxAttachments, 'attachment limit');
+  CheckEquals(64, LandrixEInvoicePdfMaxDepth, 'depth limit');
+  CheckEquals(512 * 1024 * 1024, LandrixEInvoicePdfMaxFileSize, 'file size limit');
   CheckEquals(LandrixEInvoicePdfMaxStreamSize, LandrixEInvoicePdfObjectMaxStreamSize, 'stream size');
   CheckEquals(LandrixEInvoicePdfMaxDepth, LandrixEInvoicePdfObjectMaxDepth, 'depth');
   CheckEquals(LandrixEInvoicePdfMaxFileSize, LandrixEInvoicePdfObjectMaxFileSize, 'file size');

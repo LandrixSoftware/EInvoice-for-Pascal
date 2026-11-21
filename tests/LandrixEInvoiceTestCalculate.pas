@@ -597,6 +597,9 @@ begin
         WriteLn('  unused exception: ', Exceptions[I]);
       end;
     WriteLn('  calculate oracle: ', Files, ' invoices with lines');
+    { the sweep corpora are pinned (tools/testdata/corpora.json); fewer
+      means invoices were skipped }
+    CheckEquals(152, Files, 'invoices with lines compared');
     Check(Files > 0, 'invoices recalculated');
     CheckEquals(0, Failed, 'deviations from the sweep invoices (tests/data/calc-exceptions.txt)');
   finally

@@ -73,6 +73,7 @@ var
   T: TInvoiceTypeCode;
 begin
   { the constants are the members of the new types, usable in case labels }
+  Check(itc_CreditNote = LandrixEInvoiceCodes.itc_CreditNote, 'type code constant');
   T := itc_CreditNote;
   case T of
     itc_CommercialInvoice: Fail('wrong branch');

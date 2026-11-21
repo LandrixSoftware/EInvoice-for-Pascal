@@ -1274,15 +1274,16 @@ begin
           RenderFolder(Name + PathDelim, AFiles, AFailed)
         else if LowerCase(ExtractFileExt(SR.Name)) = '.xml' then
         begin
-          Inc(AFiles);
           try
             Document := TLandrixEInvoice.LoadFromFile(TLandrixEInvoiceString(Name));
           except
-            { not readable as an invoice: the business of the reading tests }
+            { not readable as an invoice: the business of the reading tests;
+              not counted, so a reader that fails everywhere fails here too }
             Document := nil;
           end;
           if Document = nil then
             Continue;
+          Inc(AFiles);
           try
             try
               CheckPage(DocumentPageOf(Document, eln_English), Name + ' en');

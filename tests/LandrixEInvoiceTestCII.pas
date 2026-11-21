@@ -380,7 +380,12 @@ begin
       try
         ReadCII(LoadFile(Dir + SR.Name), nil).Free;
       except
-        on ELandrixXmlError do ;
+        on E: ELandrixXmlError do
+          if XmlWellFormed(LoadFile(Dir + SR.Name)) then
+          begin
+            Inc(Failed);
+            WriteLn('  ', SR.Name, ': well-formed, but ', E.Message);
+          end;
         on E: Exception do
         begin
           Inc(Failed);

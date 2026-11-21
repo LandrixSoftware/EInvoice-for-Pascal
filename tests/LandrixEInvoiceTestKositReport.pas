@@ -394,12 +394,13 @@ begin
       Viz.WriteHtml(Doc, S);
       Text := StreamText(S);
       Check(Contains(Text, '<html'), 'HTML');
-      Check(Contains(Text, 'Rechnung'), 'German page');
+      Check(Contains(Text, 'Rechnungsnummer') and not Contains(Text, 'Invoice number'), 'German page');
       S.Clear;
       Doc.Position := 0;
       Viz.Language := eln_English;
       Viz.WriteHtml(Doc, S);
-      Check(Contains(StreamText(S), 'Invoice'), 'English page');
+      Text := StreamText(S);
+      Check(Contains(Text, 'Invoice number') and not Contains(Text, 'Rechnungsnummer'), 'English page');
     finally
       Doc.Free;
     end;

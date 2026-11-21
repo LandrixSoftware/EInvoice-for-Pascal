@@ -1018,15 +1018,23 @@ begin
   end;
 end;
 
-{ Each rule case: the rule fires once for its target, also inside
-  LandrixEInvoiceCheckInvoice, and holds for a target it does not apply
-  to. }
+{ Each rule case: the rule fires once for its target with its severity
+  (WarningRules lists the warnings, as ID or as ID@Ord(target) where the
+  severity differs per syntax or standard; all others are errors), also inside
+  LandrixEInvoiceCheckInvoice, where an error counts, and holds for a
+  target it does not apply to. }
 procedure TestRuleCases;
+const
+  { BR-51 is a warning in UBL (Peppol: 3), PEPPOL-EN16931-R120, BR-CL-21 and
+    BR-CL-23 in XRechnung (1 UBL, 2 CII) }
+  WarningRules = ' BR-DE-17 BR-DE-19 BR-DE-20 BR-DE-26 BR-DE-27 BR-DE-28 BR-51@3 PEPPOL-EN16931-R120@2 ' +
+    'BR-CL-21@1 BR-CL-23@2 ';
 var
   Invoice: TLandrixInvoice;
   D: TLandrixEInvoiceDiagnostics;
-  I: Integer;
+  I, J, Errors, Counted: Integer;
   ID: string;
+  Severity: TLandrixEInvoiceDiagnosticSeverity;
 begin
   D := TLandrixEInvoiceDiagnostics.Create;
   try
@@ -1041,11 +1049,25 @@ begin
         Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(RuleCases[I].Target), TLandrixEInvoiceString(ID), D),
           ID + ' violated (case ' + IntToStr(I) + ')');
         CheckEquals(1, Integer(D.Count), ID + ' one diagnostic');
+        if (Pos(' ' + ID + ' ', WarningRules) > 0) or
+           (Pos(' ' + ID + '@' + IntToStr(Ord(RuleCases[I].Target)) + ' ', WarningRules) > 0) then
+          Severity := eds_Warning
+        else
+          Severity := eds_Error;
         if D.Count = 1 then
+        begin
           CheckEqualsInvoiceStr(TLandrixEInvoiceString(ID), D[0].RuleID, ID + ' rule of the diagnostic');
+          CheckEquals(Ord(Severity), Ord(D[0].Severity), ID + ' severity');
+        end;
         D.Clear;
-        LandrixEInvoiceCheckInvoice(Invoice, SpecOf(RuleCases[I].Target), D);
+        Errors := LandrixEInvoiceCheckInvoice(Invoice, SpecOf(RuleCases[I].Target), D);
         Check(HasRule(D, ID), ID + ' reported by LandrixEInvoiceCheckInvoice');
+        { the result counts exactly the errors among the diagnostics }
+        Counted := 0;
+        for J := 0 to D.Count - 1 do
+          if D[J].Severity = eds_Error then
+            Inc(Counted);
+        CheckEquals(Counted, Errors, ID + ' errors counted');
         if RuleCases[I].NotApplicable <> tk_None then
           Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(RuleCases[I].NotApplicable), TLandrixEInvoiceString(ID),
             nil), ID + ' does not apply (case ' + IntToStr(I) + ')');

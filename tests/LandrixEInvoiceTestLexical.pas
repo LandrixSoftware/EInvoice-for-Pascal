@@ -147,6 +147,8 @@ begin
   Check(LandrixEInvoiceTryCIIToDate('20261018', '102', D) and (D = EncodeDate(2026, 10, 18)), 'CII date');
   Check(LandrixEInvoiceTryCIIToDate('20261018', '', D), 'CII date without format');
   Check(not LandrixEInvoiceTryCIIToDate('202610', '610', D), 'format 610 not mapped');
+  Check(not LandrixEInvoiceTryCIIToDate('20261018', '610', D) and (D = 0), 'format 610 rejected for a full date');
+  Check(not LandrixEInvoiceTryCIIToDate('20261018', '616', D) and (D = 0), 'format 616 rejected for a full date');
   Check(not LandrixEInvoiceTryCIIToDate('20261318', '102', D), 'CII calendar check');
   { never raise: an unpaired surrogate, a number the writers cannot format }
   Check(not LandrixEInvoiceTryLexicalToDouble(TLandrixEInvoiceString('1') + WideChar($D800), F) and (F = 0),

@@ -20,8 +20,10 @@
   the XML declaration and the encoding. Elements without attributes, text
   and child elements (after this rule is applied to the children) count as
   absent, as in the syntax model, where empty text means "not present";
-  the same holds for attributes with an empty value. Text is compared
-  exactly. }
+  the same holds for attributes with an empty value. Text of white space
+  only counts as absent too, also as the content of a leaf element (the
+  generated readers and writers treat blank text as not present). Other
+  text is compared exactly. }
 
 unit LandrixEInvoiceTestXmlCompare;
 
@@ -35,6 +37,10 @@ uses
 { True if both UTF-8 documents are equivalent; otherwise False and a
   description of the first difference in ADifference. }
 function XmlEquivalent(const A, B: TLandrixXmlUtf8; out ADifference: string): Boolean;
+
+{ True if the UTF-8 document AXml is well-formed (the reader reads it to
+  the end without ELandrixXmlError). }
+function XmlWellFormed(const AXml: TLandrixXmlUtf8): Boolean;
 
 implementation
 
@@ -240,6 +246,26 @@ begin
     C.Free;
   end;
   SetLength(Result, Count);
+end;
+
+function XmlWellFormed(const AXml: TLandrixXmlUtf8): Boolean;
+var
+  R: TLandrixXmlReader;
+begin
+  R := TLandrixXmlReader.Create;
+  try
+    try
+      R.LoadFromUtf8(AXml);
+      while R.Read do
+        ;
+      Result := True;
+    except
+      on ELandrixXmlError do
+        Result := False;
+    end;
+  finally
+    R.Free;
+  end;
 end;
 
 function XmlEquivalent(const A, B: TLandrixXmlUtf8; out ADifference: string): Boolean;

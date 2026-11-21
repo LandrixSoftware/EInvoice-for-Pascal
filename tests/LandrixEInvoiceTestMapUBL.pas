@@ -375,10 +375,16 @@ begin
             CustomizationID := ReadAndMap(LoadFile(Dir + SR.Name), Invoice, D, Root);
             if not LandrixEInvoiceDetectSpec(TLandrixEInvoiceString(Root), CustomizationID, Spec, UsesExtension) or
                not Spec.CanWrite then
-              LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec);
+              Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL), Spec),
+                'XRechnung 3.0 UBL found');
             MapAndWrite(Invoice, Spec, D);
           except
-            on ELandrixXmlError do ;
+            on E: ELandrixXmlError do
+              if (K = 0) or XmlWellFormed(LoadFile(Dir + SR.Name)) then
+              begin
+                Inc(Failed);
+                WriteLn('  ', SR.Name, ': ', E.Message);
+              end;
             on E: Exception do
             begin
               Inc(Failed);

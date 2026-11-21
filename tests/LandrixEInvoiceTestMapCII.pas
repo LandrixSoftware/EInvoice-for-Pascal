@@ -1322,6 +1322,11 @@ begin
     Check(Pos('<ram:IssuerAssignedID>OBJ-2</ram:IssuerAssignedID>', Xml) > 0, 'second identifier in EXTENDED');
     CheckEquals(0, CountKind(D, edk_NotAllowed, '/ram:AdditionalReferencedDocument'), 'EXTENDED: no report');
     CheckEquals(2, Integer(Back.Attachments.Count), 'both read back');
+    if Back.Attachments.Count = 2 then
+    begin
+      CheckEqualsInvoiceStr('OBJ-2', Back.Attachments[1].ID, 'second identifier read back');
+      CheckEquals(Ord(iatc_130), Ord(Back.Attachments[1].TypeCode), 'second identifier: type code 130');
+    end;
     D.Clear;
     Xml := StripIndent(MapToCIIXml(Invoice, TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII), D, nil));
     Check(Pos('<ram:IssuerAssignedID>OBJ-1</ram:IssuerAssignedID>', Xml) > 0, 'first identifier in XRechnung');
