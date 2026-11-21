@@ -137,7 +137,15 @@ def zero_equals_absent(term):
     return tid in ZERO_EQUALS_ABSENT or (tid in SUB_LINE_ZERO and "BG-DEX-01" in path)
 
 
-def terms(path, cii):
+# attributes the XR stylesheets write in one syntax only (the scheme of the
+# VAT and tax identifiers, of the mandate reference and of the line object
+# identifier): compared within a syntax, not across
+ONE_SYNTAX_ATTRS = {"BT-18@scheme_identifier", "BT-31@scheme_identifier", "BT-32@scheme_identifier",
+                    "BT-48@scheme_identifier", "BT-63@scheme_identifier", "BT-90@scheme_identifier",
+                    "BT-128@scheme_identifier"}
+
+
+def terms(path, cii, same_syntax=True):
     """Flattened XR document: ['BG-25[2]/BT-129 = 10', ...]. Repeated groups
     are numbered after sorting them by their content, so their order does not
     count (sub lines may come before or after their parent line)."""
@@ -155,7 +163,21 @@ def terms(path, cii):
             if tid == "BT-8" and cii:
                 value = {"5": "3", "29": "35", "72": "432"}.get(value, "cii:" + value)
             return (tid, value, ())
-        children = [canon(c) for c in elem]
+        children = []
+        for c in elem:
+            item = canon(c)
+            # attributes of a value (scheme_identifier, mime_code, filename,
+            # ...) carry business data too: kept with their value, as written
+            if not len(c):
+                attrs = []
+                for key in sorted(c.attrib):
+                    name = "%s@%s" % (item[0], key.split("}")[-1])
+                    if key.startswith("{%s}" % XR) or (not same_syntax and name in ONE_SYNTAX_ATTRS):
+                        continue
+                    attrs.append(" @%s=%r" % (key.split("}")[-1], c.attrib[key]))
+                if attrs:
+                    item = (item[0], item[1] + "".join(attrs), item[2])
+            children.append(item)
         # XRechnung UBL carries the note subject code in the text ('#ADU#...'),
         # CII in its own element: compare both as BT-21 and BT-22
         if tid == "BG-1" and not any(c[0] == "BT-21" for c in children):
@@ -222,6 +244,9 @@ def main():
     # (sweep-cross/<source without .xml>-x<suffix>)
     pairs = []
     if os.path.isdir(srcdir) and os.path.isdir(outdir):
+        alone = sorted(set(os.listdir(srcdir)) ^ set(os.listdir(outdir)))
+        if alone:
+            sys.exit("sweep source or output without its pair: %s" % ", ".join(alone))
         for n in sorted(set(os.listdir(srcdir)) & set(os.listdir(outdir))):
             pairs.append((n, os.path.join(srcdir, n), os.path.join(outdir, n)))
     if os.path.isdir(crossdir):
@@ -248,8 +273,10 @@ def main():
     failed = 0
     for label, src, dst in pairs:
         n = label
-        a = collections.Counter(terms(xr[src], root_name(src) == "CrossIndustryInvoice"))
-        b = collections.Counter(terms(xr[dst], root_name(dst) == "CrossIndustryInvoice"))
+        src_cii = root_name(src) == "CrossIndustryInvoice"
+        dst_cii = root_name(dst) == "CrossIndustryInvoice"
+        a = collections.Counter(terms(xr[src], src_cii, src_cii == dst_cii))
+        b = collections.Counter(terms(xr[dst], dst_cii, src_cii == dst_cii))
         # a value 0 on one side only is no difference: amounts and quantities of
         # the model do not tell "absent" from 0
         lost = ["lost " + x for x in sorted((a - b).elements()) if not zero_equals_absent(x)]

@@ -133,6 +133,10 @@ def kosit_verdicts(docs, out):
             skipped.append(name + " (no report)")
             continue
         text = open(report, encoding="utf-8").read()
+        if "</rep:report>" not in text[-200:]:
+            # an interrupted write
+            skipped.append(name + " (no report)")
+            continue
         scenario = re.search(r"<rep:scenarioMatched>[\s\S]*?<s:name>([^<]*)</s:name>", text)
         custom = levels.get(scenario.group(1).strip(), {}) if scenario else {}
         # level "information" (also by customLevel, e.g. BR-CO-16 in the
@@ -196,7 +200,16 @@ def main():
             shutil.rmtree(OUT)
         validate(find_java(args.java), args.docs, OUT)
     kosit, skipped = kosit_verdicts(args.docs, OUT)
-    ours, unread = probe_verdicts(args.probe, args.docs)
+    # the probe reads a copy: some names are too long for MAX_PATH below the docs folder
+    copy = os.path.join(REPO, "build", "rule-oracle-docs")
+    if os.path.isdir(copy):
+        shutil.rmtree(copy)
+    os.makedirs(copy)
+    for f in glob.glob(os.path.join(args.docs, "*.xml")):
+        shutil.copyfile(f, os.path.join(copy, os.path.basename(f)))
+    ours, unread = probe_verdicts(args.probe, copy)
+    # a document KoSIT judged but the library could not read is not compared: not green
+    lost = [u for u in unread if u.split(" (", 1)[0] in kosit]
     exceptions = load_exceptions()
     findings = []
     compared = 0
@@ -233,8 +246,13 @@ def main():
     unused = [e for e in exceptions if not e[2]]
     for e in unused:
         print("  unused exception: %s\t%s" % (e[0], e[1]))
-    if findings or unused:
-        print("%d unexpected difference(s), %d unused exception(s)" % (len(findings), len(unused)))
+    # a missing report drops a document from the comparison: not green
+    missing = [s for s in skipped if s.endswith("(no report)")]
+    for u in lost:
+        print("  judged by KoSIT, not read: " + u)
+    if findings or unused or missing or lost:
+        print("%d unexpected difference(s), %d unused exception(s), %d missing report(s), %d not read" %
+              (len(findings), len(unused), len(missing), len(lost)))
         return 1
     print("no unexpected difference")
     return 0

@@ -26,7 +26,7 @@ ubl-*-br-de-24-test-bg-18-with-bg-19-*-identity.xml	missed BR-DE-24-b
 ubl-*-br-de-24-test-bg-18-with-bg-19-*-identity.xml	missed BR-DE-30
 ubl-*-br-de-25-test-bg-19-with-bg-17-*-identity.xml	missed BR-DE-25-b
 ubl-*-br-de-25-test-bg-19-with-bg-18-*-identity.xml	missed BR-DE-25-b
-ubl-inv-br-de-20-paymentmeans-code59-test-10[57]-identity.xml	missed BR-DE-25-b
+ubl-inv-br-de-20-paymentmeans-code59-test-10[567]-*.xml	missed BR-DE-25-b
 ubl-inv-contact-tests-*.xml	missed BR-DE-23-b
 # The one account then holds the number of the other group, and the output fails the format rule
 # of its payment means: a card number as credit transfer account (BR-DE-19) or as direct debit
@@ -78,13 +78,20 @@ ubl-inv-br-dex-14-test-30[67]-code-*.xml	extra BR-53
 # category was changed from O (no rate) to Z, E, AE, K, G, L or M therefore gets the rate 0, which
 # BR-xx-05 accepts (except BR-AF-05 in CII, where both sides report it); a breakdown without rate
 # (BR-DE-14 tests) gets 0 % and no longer matches the standard rated lines (BR-S-08).
-*-br-de-16-*-code-Z.xml	missed BR-Z-05
-*-br-de-16-*-code-E.xml	missed BR-E-05
-*-br-de-16-*-code-AE.xml	missed BR-AE-05
-*-br-de-16-*-code-K.xml	missed BR-IC-05
-*-br-de-16-*-code-G.xml	missed BR-G-05
-ubl-*-br-de-16-*-code-L.xml	missed BR-AF-05
-*-br-de-16-*-code-M.xml	missed BR-AG-05
+*-br-de-16-test-code-O-*-code-Z.xml	missed BR-Z-05
+ubl-inv-br-de-16-negative-test-bt-151-*-code-Z.xml	missed BR-Z-05
+*-br-de-16-test-code-O-*-code-E.xml	missed BR-E-05
+ubl-inv-br-de-16-negative-test-bt-151-*-code-E.xml	missed BR-E-05
+*-br-de-16-test-code-O-*-code-AE.xml	missed BR-AE-05
+ubl-inv-br-de-16-negative-test-bt-151-*-code-AE.xml	missed BR-AE-05
+*-br-de-16-test-code-O-*-code-K.xml	missed BR-IC-05
+ubl-inv-br-de-16-negative-test-bt-151-*-code-K.xml	missed BR-IC-05
+*-br-de-16-test-code-O-*-code-G.xml	missed BR-G-05
+ubl-inv-br-de-16-negative-test-bt-151-*-code-G.xml	missed BR-G-05
+ubl-*-br-de-16-test-code-O-*-code-L.xml	missed BR-AF-05
+ubl-inv-br-de-16-negative-test-bt-151-*-code-L.xml	missed BR-AF-05
+*-br-de-16-test-code-O-*-code-M.xml	missed BR-AG-05
+ubl-inv-br-de-16-negative-test-bt-151-*-code-M.xml	missed BR-AG-05
 *-br-de-14-test-*-remove.xml	extra BR-S-08
 
 # UBL chooses the root by the type code (LandrixEInvoiceUBLRootFor): 381 is written as

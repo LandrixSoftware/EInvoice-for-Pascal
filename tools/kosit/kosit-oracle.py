@@ -691,16 +691,31 @@ def main():
             for f in glob.glob(os.path.join(GENERATED, "*.xml")):
                 shutil.copyfile(f, os.path.join(copy, os.path.basename(f)))
         runs.append(("rep-gen", CONFIG, [copy]))
+    # copies of test run outputs: --keep reuses one only for the same toolchain
+    # (marker file), and a new copy is validated anew
+    fresh = set()
+
+    def copy_outputs(name, sub, patterns):
+        copy = os.path.join(OUT, name)
+        marker = os.path.join(copy, "toolchain.txt")
+        if args.keep and os.path.isfile(marker) and open(marker, encoding="utf-8").read() == args.toolchain:
+            return copy
+        for old in (copy, os.path.join(OUT, sub)):
+            if os.path.isdir(old):
+                shutil.rmtree(old)
+        os.makedirs(copy)
+        for folder in ("cross", "cases", "sweep"):
+            for pattern in patterns:
+                for f in glob.glob(os.path.join(REPO, "build", args.toolchain, folder, pattern)):
+                    shutil.copyfile(f, os.path.join(copy, folder + "_" + os.path.basename(f)))
+        if glob.glob(os.path.join(copy, "*.xml")):
+            with open(marker, "w", encoding="utf-8") as f:
+                f.write(args.toolchain)
+        fresh.add(sub)
+        return copy
+
     if args.corpus in ("outputs", "all"):
-        copy = os.path.join(OUT, "outputs")
-        if not args.keep or not os.path.isdir(copy):
-            if os.path.isdir(copy):
-                shutil.rmtree(copy)
-            os.makedirs(copy)
-            for folder in ("cross", "cases", "sweep"):
-                for pattern in ("*-ubl-30x.xml", "*-cii-30x.xml"):
-                    for f in glob.glob(os.path.join(REPO, "build", args.toolchain, folder, pattern)):
-                        shutil.copyfile(f, os.path.join(copy, folder + "_" + os.path.basename(f)))
+        copy = copy_outputs("outputs", "rep-out", ("*-ubl-30x.xml", "*-cii-30x.xml"))
         if not glob.glob(os.path.join(copy, "*.xml")):
             sys.exit("no XRechnung output in build/%s (run ./tools/build.ps1 first)" % args.toolchain)
         runs.append(("rep-out", CONFIG, [copy]))
@@ -725,28 +740,14 @@ def main():
                     tag = b'<CustomizationID xmlns="' + UBL_CBC + b'">' + PEPPOL_ID + b"</CustomizationID>"
                     data = data[:start.end()] + tag + data[start.end():]
                     open(os.path.join(unit, "id-" + os.path.basename(f)), "wb").write(data)
-        copy = os.path.join(OUT, "peppol-out")
-        if not args.keep or not os.path.isdir(copy):
-            if os.path.isdir(copy):
-                shutil.rmtree(copy)
-            os.makedirs(copy)
-            for folder in ("cross", "cases", "sweep"):
-                for f in glob.glob(os.path.join(REPO, "build", args.toolchain, folder, "*-peppol.xml")):
-                    shutil.copyfile(f, os.path.join(copy, folder + "_" + os.path.basename(f)))
+        copy = copy_outputs("peppol-out", "rep-peppol", ("*-peppol.xml",))
         runs.append(("rep-peppol", CONFIG_BIS, [PEPPOL_EXAMPLES, mutants, unit, copy]))
     if args.corpus in ("zugferd", "all"):
         if not os.path.isdir(ZF_EXAMPLES):
             sys.exit("missing ZUGFeRD examples: run tools/testdata/sync-local.py")
         mutants = os.path.join(OUT, "zugferd-mutants")
         make_mutants(mutants, ZF_MUTANTS, ZF_EXAMPLES)
-        copy = os.path.join(OUT, "zugferd-out")
-        if not args.keep or not os.path.isdir(copy):
-            if os.path.isdir(copy):
-                shutil.rmtree(copy)
-            os.makedirs(copy)
-            for folder in ("cross", "cases", "sweep"):
-                for f in glob.glob(os.path.join(REPO, "build", args.toolchain, folder, "*-cii*-25.xml")):
-                    shutil.copyfile(f, os.path.join(copy, folder + "_" + os.path.basename(f)))
+        copy = copy_outputs("zugferd-out", "rep-zugferd", ("*-cii*-25.xml",))
         runs.append(("rep-zugferd", CONFIG_ZF, [ZF_EXAMPLES, mutants, copy] +
                      [d for d in CII_EXAMPLES if os.path.isdir(d)]))
     pairs = []
@@ -759,7 +760,7 @@ def main():
         if len(set(os.path.basename(f) for f in files)) != len(files):
             sys.exit("file names of run %s are not unique" % sub)
         reports = os.path.join(OUT, sub)
-        if not args.keep or not os.path.isdir(reports) or (
+        if not args.keep or sub in fresh or not os.path.isdir(reports) or (
                 args.report_input and not glob.glob(os.path.join(reports, "*-reportInput.xml"))) or (
                 args.report and not glob.glob(os.path.join(reports, "*-report.html"))):
             if os.path.isdir(reports):

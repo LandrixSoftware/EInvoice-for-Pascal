@@ -164,31 +164,41 @@ def main():
     with open(MANIFEST, encoding="utf-8") as f:
         manifest = json.load(f)
     failed = 0
+    for corpus in sorted(set(SOURCES) ^ set(manifest)):
+        print("corpus %s is not in both SOURCES and corpora.json (run --update)" % corpus)
+        failed += 1
     for corpus, entry in sorted(manifest.items()):
+        if corpus not in SOURCES:
+            continue
         files = collect(args.docs, SOURCES[corpus])
         dest = os.path.join(LOCAL, *SOURCES[corpus].get("target", "sweep/" + corpus).split("/"))
+        # check every file first: a corpus that does not match keeps its old copy
+        problems = 0
+        for name, digest in sorted(entry["files"].items()):
+            src = files.get(name)
+            if src is None:
+                print("missing in the documentation folder: %s/%s" % (corpus, name))
+                problems += 1
+            elif sha256(src) != digest:
+                print("checksum differs: %s/%s" % (corpus, name))
+                problems += 1
+        extra = sorted(set(files) - set(entry["files"]))
+        for name in extra:
+            print("not in corpora.json (run --update): %s/%s" % (corpus, name))
+            problems += 1
+        if problems:
+            print("%-12s not copied, the old copy is kept" % corpus)
+            failed += problems
+            continue
         if os.path.isdir(dest):
             shutil.rmtree(dest)
         os.makedirs(dest)
         lines = []
         for name, digest in sorted(entry["files"].items()):
-            src = files.get(name)
-            if src is None:
-                print("missing in the documentation folder: %s/%s" % (corpus, name))
-                failed += 1
-                continue
-            if sha256(src) != digest:
-                print("checksum differs: %s/%s" % (corpus, name))
-                failed += 1
-                continue
             out = os.path.join(dest, *name.split("/"))
             os.makedirs(os.path.dirname(out), exist_ok=True)
-            shutil.copyfile(src, out)
+            shutil.copyfile(files[name], out)
             lines.append("%s  %s\n" % (digest, name))
-        extra = sorted(set(files) - set(entry["files"]))
-        for name in extra:
-            print("not in corpora.json (run --update): %s/%s" % (corpus, name))
-            failed += 1
         with open(os.path.join(dest, "MANIFEST.txt"), "w", encoding="utf-8", newline="\n") as f:
             f.writelines(lines)
         print("%-12s %3d files -> %s" % (corpus, len(lines), os.path.relpath(dest, REPO)))

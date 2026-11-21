@@ -108,6 +108,14 @@ foreach ($t in ($Toolchains -join ',').Split(',')) {
   if ($t -eq '') { continue }
   if ($Sets.ContainsKey($t)) { $expanded += $Sets[$t] } else { $expanded += $t }
 }
+if ($expanded.Count -eq 0) {
+  Write-Host 'no toolchain given' -ForegroundColor Red
+  exit 1
+}
+if ($Validate -and $NoRun) {
+  Write-Host '-Validate needs the test run; it cannot be combined with -NoRun' -ForegroundColor Red
+  exit 1
+}
 
 $IsTestRunner = ($Program -replace '\\', '/') -eq 'tests/LandrixEInvoiceTests.dpr'
 $Program = $Program -replace '\\', '/'
@@ -396,7 +404,13 @@ if ($Validate -and -not $NoRun) {
       # corpora); sweep-cross/ is not validated: a source with third-party payments (BG-DEX-09)
       # has no valid form in XRechnung CII and is reported as an error
       if (-not (Test-Path "build/$($source.Name)/$folder/*.xml")) {
+        # only sweep/ may be missing (no local corpora); it shows in the summary
         Write-Host "validation of $folder skipped: no output" -ForegroundColor Yellow
+        if ($folder -eq 'sweep' -and -not (Test-Path 'tests/data/local/sweep')) {
+          $results += @{ Name = "KoSIT validation $($source.Name)/sweep: no corpora"; Build = 0; Diag = 0; Run = 0 }
+        } else {
+          $results += @{ Name = "KoSIT validation $($source.Name)/$folder"; Build = 0; Diag = 0; Run = 1 }
+        }
         continue
       }
       Write-Host "=== KoSIT validation of $($source.Name)/$folder ===" -ForegroundColor Cyan

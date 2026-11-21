@@ -42,8 +42,9 @@ SUBMODULE = "external/landrix-xml"
 # fixed so the ZIP does not depend on the local configuration: line endings
 # only from the tag's .gitattributes (files without a rule as stored), no
 # global or system attributes, modes 644/755
+# core.bigFileThreshold: above it git archive skips the eol conversion of .gitattributes
 PINNED = ["-c", "core.autocrlf=false", "-c", "core.eol=lf", "-c", "tar.umask=0022",
-          "-c", "core.attributesFile=" + os.devnull]
+          "-c", "core.attributesFile=" + os.devnull, "-c", "core.bigFileThreshold=2047m"]
 ENV = dict((k, v) for k, v in os.environ.items()
            if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_ATTR_SOURCE"))
 ENV["GIT_ATTR_NOSYSTEM"] = "1"

@@ -78,6 +78,10 @@ FORBIDDEN_PATTERNS = [
 ]
 
 
+SAME_LINE_ONLY = {"class/record helper", "operator overloading", "class var", "class property/const",
+                  "class sealed/abstract", "generics"}
+
+
 class Violation(object):
     def __init__(self, path, line, message):
         self.path = path
@@ -144,6 +148,9 @@ def strip_comments(text):
             if j < 0:
                 j = n - 2
             chunk = text[i:j + 2]
+            if chunk.startswith("(*$"):
+                # the same directive as {$...}
+                directives.append((line, "{" + chunk[2:-2] + "}"))
             line += chunk.count("\n")
             out.append(blank(chunk))
             i = j + 2
@@ -279,6 +286,16 @@ def check_file(path, violations):
         for rx, msg in pattern_res:
             if rx.search(cl):
                 violations.append(Violation(path, no, msg))
+    # a construct split across lines (Pascal reads a line break as blank);
+    # not for patterns whose words may legally meet across a line break
+    # (a class body opening with property, var or const; a type named Helper;
+    # comparisons in two arguments such as A < B, C > D)
+    for rx, msg in pattern_res:
+        if msg in SAME_LINE_ONLY:
+            continue
+        for m in rx.finditer(code):
+            if "\n" in m.group(0):
+                violations.append(Violation(path, code.count("\n", 0, m.start()) + 1, msg))
 
 
 API_MARKER = re.compile(r"\{ API: (stable|internal)\.")
@@ -463,6 +480,9 @@ def main(argv):
     paths = argv[1:] or [os.path.join(root, d) for d in ("source", "tests", "examples")]
     files = []
     for p in paths:
+        if not os.path.exists(p):
+            print("check-forbidden: no such file or folder: %s" % p)
+            return 2
         if os.path.isfile(p):
             files.append(p)
         elif os.path.isdir(p):
@@ -471,6 +491,9 @@ def main(argv):
                 for fn in sorted(filenames):
                     if fn.lower().endswith(EXTENSIONS):
                         files.append(os.path.join(dirpath, fn))
+    if not files:
+        print("check-forbidden: no file to check")
+        return 1
     violations = []
     for f in files:
         check_file(f, violations)

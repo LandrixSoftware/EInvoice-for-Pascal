@@ -435,6 +435,10 @@ def main():
     with open(synth_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(build_synthetic(fields))
     synth = run_probe(args.probe, synth_path)
+    # a probe exception leaves no NotMapped rows: every field would count as mapped
+    failed = [r for r in synth if len(r) > 1 and r[1] == "exception"]
+    if failed:
+        sys.exit("the probe failed on the synthetic document: %s" % "\t".join(failed[0]))
 
     corpus = []
     corpus_count = 0

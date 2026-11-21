@@ -99,6 +99,10 @@ def kosit_verdicts(files, out, ids):
             skipped.append(name + " (no report)")
             continue
         text = open(report, encoding="utf-8").read()
+        if "</rep:report>" not in text[-200:]:
+            # an interrupted write
+            skipped.append(name + " (no report)")
+            continue
         scenario = re.search(r"<rep:scenarioMatched>[\s\S]*?<s:name>([^<]*)</s:name>", text)
         profile = SCENARIOS.get(scenario.group(1).strip()) if scenario else None
         if profile is None:
@@ -264,8 +268,11 @@ def main():
     unused = [e for e in exceptions if not e[2]]
     for e in unused:
         print("  unused exception: %s\t%s" % (e[0], e[1]))
-    if findings or m_findings or unused:
-        print("%d unexpected difference(s), %d unused exception(s)" % (len(findings) + len(m_findings), len(unused)))
+    # a missing report drops a document from the comparison: not green
+    missing = [s for s in skipped + m_skipped if s.endswith("(no report)")]
+    if findings or m_findings or unused or missing:
+        print("%d unexpected difference(s), %d unused exception(s), %d missing report(s)" %
+              (len(findings) + len(m_findings), len(unused), len(missing)))
         return 1
     print("no unexpected difference")
     return 0
