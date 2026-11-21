@@ -98,9 +98,9 @@ begin
       Doc.Free;
     end;
   except
-    { not well-formed, no invoice root, PDF without an invoice; a missing
-      file raises the usual file exception }
-    on E: ELandrixEInvoiceError do
+    { ELandrixEInvoiceError: not well-formed, no invoice root, PDF without
+      an invoice; others: e.g. a missing file }
+    on E: Exception do
     begin
       WriteLn('Not readable: ', E.Message);
       ExitCode := 1;

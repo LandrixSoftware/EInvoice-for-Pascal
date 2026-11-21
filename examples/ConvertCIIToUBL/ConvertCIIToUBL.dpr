@@ -40,6 +40,21 @@ uses
   LandrixEInvoiceSpecs,
   LandrixEInvoice;
 
+{ Reads the invoice; nil after printing why it cannot be read (not
+  well-formed, no invoice root, PDF without an invoice, missing file). }
+function LoadOrNil(const AFileName: TLandrixEInvoiceString): TLandrixEInvoiceDocument;
+begin
+  try
+    Result := TLandrixEInvoice.LoadFromFile(AFileName);
+  except
+    on E: Exception do
+    begin
+      WriteLn('Not readable: ', E.Message);
+      Result := nil;
+    end;
+  end;
+end;
+
 var
   Input, Output: TLandrixEInvoiceString;
   Doc: TLandrixEInvoiceDocument;
@@ -52,7 +67,12 @@ begin
     Input := TLandrixEInvoiceString(ParamStr(1));
   if ParamCount > 1 then
     Output := TLandrixEInvoiceString(ParamStr(2));
-  Doc := TLandrixEInvoice.LoadFromFile(Input);
+  Doc := LoadOrNil(Input);
+  if Doc = nil then
+  begin
+    ExitCode := 1;
+    Exit;
+  end;
   D := TLandrixEInvoiceDiagnostics.Create;
   try
     if (Doc.Info.Syntax <> esy_CII) or not Doc.Info.SpecFound then
@@ -69,7 +89,9 @@ begin
       TLandrixEInvoice.SaveToFile(Doc.Invoice, Output, Target, [], D);
       WriteLn('Written: ', string(Output), ' (', string(LandrixEInvoiceTargetToStr(Target)), ')');
     except
-      on E: ELandrixEInvoiceError do
+      { ELandrixEInvoiceError: refused or not convertible; others: the file
+        cannot be created }
+      on E: Exception do
       begin
         WriteLn('Not converted: ', E.Message);
         ExitCode := 1;

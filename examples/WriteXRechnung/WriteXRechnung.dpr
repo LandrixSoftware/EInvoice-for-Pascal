@@ -126,6 +126,12 @@ begin
         WriteLn(string(E.Diagnostics.ToText));
         Result := False;
       end;
+      { e.g. the folder does not exist }
+      on E: Exception do
+      begin
+        WriteLn('Not written: ', E.Message);
+        Result := False;
+      end;
     end;
   finally
     D.Free;

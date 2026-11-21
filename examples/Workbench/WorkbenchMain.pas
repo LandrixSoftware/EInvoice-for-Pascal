@@ -464,7 +464,14 @@ begin
   if not HasConfigurations(edKositConfig.Text) then
     edKositConfig.Text := FindUp('addons' + PathDelim + 'kosit');
   if HasConfigurations(edKositConfig.Text) then
-    LoadKosit
+  begin
+    Screen.Cursor := crHourGlass;
+    try
+      LoadKosit;
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  end
   else
     mmKosit.Lines.Text := T('No KoSIT folder found: only the library''s own rules run, the verdict stays ' +
       'INCOMPLETE. Run addons/kosit/install-kosit.ps1, enter its folder and click Load.',
@@ -697,6 +704,13 @@ begin
   end;
 end;
 
+{ True if AFolder holds the four files of the overall example. }
+function HasAttachments(const AFolder: string): Boolean;
+begin
+  Result := (AFolder <> '') and FileExists(AFolder + 'attachment.pdf') and FileExists(AFolder + 'attachment.png') and
+    FileExists(AFolder + 'attachment.jpg') and FileExists(AFolder + 'attachment.csv');
+end;
+
 procedure TWorkbenchForm.btCreateOverallClick(Sender: TObject);
 var
   Inv: TLandrixInvoice;
@@ -707,16 +721,14 @@ begin
   begin
     { next to the program, or in the repository }
     Attachments := FindUp('attachments');
-    if (Attachments <> '') and not FileExists(Attachments + 'attachment.pdf') then
-      Attachments := '';
-    if Attachments = '' then
+    if not HasAttachments(Attachments) then
       Attachments := FindUp('examples' + PathDelim + 'BusinessCases' + PathDelim + 'attachments');
-    if Attachments = '' then
+    if not HasAttachments(Attachments) then
     begin
       { ShowMessage, not MessageDlg: Delphi 2009+ inlines MessageDlg only
         with System.UITypes, which Delphi 6 lacks }
-      ShowMessage(T('Folder examples/BusinessCases/attachments not found.',
-        'Ordner examples/BusinessCases/attachments nicht gefunden.'));
+      ShowMessage(T('Folder examples/BusinessCases/attachments with attachment.pdf, .png, .jpg and .csv not found.',
+        'Ordner examples/BusinessCases/attachments mit attachment.pdf, .png, .jpg und .csv nicht gefunden.'));
       Exit;
     end;
   end;
@@ -1170,7 +1182,9 @@ begin
   Input := TMemoryStream.Create;
   try
     try
-      Input.WriteBuffer(PAnsiChar(FXmlUtf8)^, Length(FXmlUtf8));
+      { the original bytes: the visualization decodes them by their XML
+        declaration (FXmlUtf8 is converted but keeps the declaration) }
+      Input.WriteBuffer(PAnsiChar(FXml)^, Length(FXml));
       Input.Position := 0;
       Output := TFileStream.Create(FileName, fmCreate);
       try

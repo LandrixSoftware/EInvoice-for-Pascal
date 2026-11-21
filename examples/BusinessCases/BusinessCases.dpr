@@ -65,7 +65,8 @@ begin
     TLandrixEInvoice.SaveToFile(AInvoice, Run^.Folder + TLandrixEInvoiceString(AFileName), ATarget);
     Inc(Run^.Written);
   except
-    on E: ELandrixEInvoiceError do
+    { ELandrixEInvoiceError: refused; others: e.g. the file is locked }
+    on E: Exception do
     begin
       WriteLn(AFileName, ': ', E.Message);
       Inc(Run^.Failed);

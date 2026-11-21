@@ -66,10 +66,29 @@ begin
 
     { the old pre-write check; the codes are unit constants (ccOK ...) }
     if not TXRechnungInvoiceAdapter.ConsistencyCheck(Invoice, XRechnungVersion_30x_UNCEFACT) then
-      WriteLn('ConsistencyCheck failed');
+    begin
+      WriteLn('ConsistencyCheck failed: not written');
+      ExitCode := 1;
+      Exit;
+    end;
 
     FileName := TXRechnungString(ExtractFilePath(string(FileName))) + 'compat-cii.xml';
-    TXRechnungInvoiceAdapter.SaveToFile(Invoice, XRechnungVersion_30x_UNCEFACT, FileName);
+    { a file of an earlier run must not pass for this one }
+    if FileExists(string(FileName)) and not DeleteFile(string(FileName)) then
+    begin
+      WriteLn('Not written, old file in the way: ', string(FileName));
+      ExitCode := 1;
+      Exit;
+    end;
+    try
+      TXRechnungInvoiceAdapter.SaveToFile(Invoice, XRechnungVersion_30x_UNCEFACT, FileName);
+    except
+      on E: Exception do
+      begin
+        WriteLn('Not written: ', E.Message);
+        DeleteFile(string(FileName));
+      end;
+    end;
     if FileExists(string(FileName)) then
       WriteLn('Written: ', string(FileName))
     else
