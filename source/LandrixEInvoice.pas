@@ -647,6 +647,29 @@ begin
   end;
 end;
 
+{ Build; a value the writers cannot format (ELandrixXmlError, e.g. a number
+  of 1e23 or more written without the rule check, which reports it) is an
+  error finding instead of an exception: False, no bytes.
+  DE: Build; ein Wert, den die Writer nicht formatieren koennen
+  (ELandrixXmlError, z. B. eine Zahl ab 1e23 ohne Regelpruefung, die sie
+  meldet), ist ein Fehlerbefund statt einer Ausnahme: False, keine Bytes. }
+function TryBuild(AKind: TModelKind; AModel: TObject; const ASpec: TLandrixEInvoiceSpec;
+  AOptions: TLandrixEInvoiceOptions; ADiagnostics: TLandrixEInvoiceDiagnostics; out ABytes: TLandrixXmlUtf8): Boolean;
+begin
+  ABytes := '';
+  try
+    ABytes := Build(AKind, AModel, ASpec, AOptions, ADiagnostics);
+    Result := True;
+  except
+    on E: ELandrixXmlError do
+    begin
+      ADiagnostics.AddDiagnostic(edk_ConversionFailed, '', 0, 0, 0, 'A value cannot be written: ' +
+        TLandrixEInvoiceString(E.Message)).Severity := eds_Error;
+      Result := False;
+    end;
+  end;
+end;
+
 { The whole write path up to the bytes: resolve, check, build, refuse.
   DE: Der ganze Schreibweg bis zu den Bytes: aufloesen, pruefen, bauen,
   verweigern. }
@@ -657,6 +680,7 @@ var
   D, Own: TLandrixEInvoiceDiagnostics;
   Start: TLandrixEInvoiceListIndex;
   Errors: Integer;
+  Built: Boolean;
 begin
   if AModel = nil then
     raise ELandrixEInvoiceError.Create('TLandrixEInvoice: nothing to write (nil)');
@@ -670,9 +694,9 @@ begin
       D := Own;
     end;
     Start := D.Count;
-    Result := Build(AKind, AModel, Spec, AOptions, D);
+    Built := TryBuild(AKind, AModel, Spec, AOptions, D, Result);
     Errors := Finish(D, Start, AOptions);
-    if (Errors > 0) and not (eio_WriteDespiteErrors in AOptions) then
+    if (Errors > 0) and (not Built or not (eio_WriteDespiteErrors in AOptions)) then
       raise ELandrixEInvoiceWriteError.CreateWithDiagnostics(IntToStr(Errors) + ' error(s), nothing written for ' +
         string(LandrixEInvoiceTargetToStr(ATarget)), CopyDiagnostics(D, Start));
   finally
@@ -686,6 +710,7 @@ var
   Spec: TLandrixEInvoiceSpec;
   D, Own: TLandrixEInvoiceDiagnostics;
   Start: TLandrixEInvoiceListIndex;
+  Bytes: TLandrixXmlUtf8;
 begin
   if AModel = nil then
     raise ELandrixEInvoiceError.Create('TLandrixEInvoice: nothing to check (nil)');
@@ -699,7 +724,7 @@ begin
       D := Own;
     end;
     Start := D.Count;
-    Build(AKind, AModel, Spec, AOptions, D);
+    TryBuild(AKind, AModel, Spec, AOptions, D, Bytes);
     Result := Finish(D, Start, AOptions);
   finally
     Own.Free;

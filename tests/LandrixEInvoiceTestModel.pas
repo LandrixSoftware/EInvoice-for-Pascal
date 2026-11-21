@@ -395,6 +395,7 @@ end;
 procedure TestNotes;
 var
   Notes: TLandrixInvoiceNotes;
+  S: TLandrixEInvoiceString;
 begin
   Notes := TLandrixInvoiceNotes.Create;
   try
@@ -406,6 +407,14 @@ begin
     CheckEqualsInvoiceStr('c', Notes[0].Content, 'replaced content');
     Notes.ReplaceContentWith('');
     CheckEquals(0, Integer(Notes.Count), 'ReplaceContentWith with empty text');
+    { the content of an own note, built at run time }
+    S := 'note ' + TLandrixEInvoiceString(IntToStr(Notes.Count));
+    Notes.AddNote.Content := S;
+    S := '';
+    Notes.AddNote.Content := 'second';
+    Notes.ReplaceContentWith(Notes[0].Content);
+    CheckEquals(1, Integer(Notes.Count), 'own note kept');
+    CheckEqualsInvoiceStr('note 0', Notes[0].Content, 'own note content');
   finally
     Notes.Free;
   end;
@@ -437,6 +446,17 @@ begin
     Check(Taxes.AddTaxAmountIfTaxExists(19, 100, 19), 'existing rate');
     Check(Taxes[0].TaxableAmount = 100, 'taxable amount added');
     Check(Taxes[0].TaxAmount = 19, 'tax amount added');
+    { 0 %: by category }
+    Taxes.Clear;
+    Taxes.AddTaxAmount.TaxCategory := idtfcc_E_ExemptFromTax;
+    Taxes.AddTaxAmount.TaxCategory := idtfcc_Z_ZeroRatedGoods;
+    Check(Taxes.AddTaxAmountIfTaxExists(0, idtfcc_Z_ZeroRatedGoods, '', 50, 0), 'zero rated');
+    Check((Taxes[0].TaxableAmount = 0) and (Taxes[1].TaxableAmount = 50), 'added to Z, not to E');
+    Check(not Taxes.AddTaxAmountIfTaxExists(0, idtfcc_AE_VATReverseCharge, '', 50, 0), 'no AE entry');
+    Taxes.AddTaxAmount.TaxCategoryOther := 'X';
+    Check(Taxes.AddTaxAmountIfTaxExists(0, idtfcc_None, 'X', 7, 0) and (Taxes[2].TaxableAmount = 7),
+      'other category');
+    Check(not Taxes.AddTaxAmountIfTaxExists(0, idtfcc_None, 'Y', 7, 0), 'other category differs');
   finally
     Taxes.Free;
   end;
@@ -1159,6 +1179,27 @@ begin
   end;
 end;
 
+{ A line assigned from its own parent copies the parent as it was: P with
+  its child C, not P with P. }
+procedure TestLineAssignAncestor;
+var
+  Parent, Child: TLandrixInvoiceLine;
+begin
+  Parent := TLandrixInvoiceLine.Create;
+  try
+    Parent.ID := 'P';
+    Child := Parent.SubInvoiceLines.AddInvoiceLine;
+    Child.ID := 'C';
+    Child.Assign(Parent);
+    CheckEqualsInvoiceStr('P', Child.ID, 'child is now P');
+    CheckEquals(1, Integer(Child.SubInvoiceLines.Count), 'child has one sub-line');
+    if Child.SubInvoiceLines.Count = 1 then
+      CheckEqualsInvoiceStr('C', Child.SubInvoiceLines[0].ID, 'the copied sub-line is the old child');
+  finally
+    Parent.Free;
+  end;
+end;
+
 { Assign copies every field (completeness through FillInvoiceAll), deeply
   (changing the source afterwards does not change the copy) and replaces
   what the target held before (lists, fields set only there). }
@@ -1234,6 +1275,7 @@ begin
   RegisterTest('Model.CreateFullInvoice', TestCreateFullInvoice);
   RegisterTest('Model.ListExtract', TestListExtract);
   RegisterTest('Model.Notes', TestNotes);
+  RegisterTest('Model.LineAssignAncestor', TestLineAssignAncestor);
   RegisterTest('Model.PrecedingInvoiceReferences', TestPrecedingInvoiceReferences);
   RegisterTest('Model.TaxAmounts', TestTaxAmounts);
   RegisterTest('Model.UnitOfMeasure', TestUnitOfMeasure);

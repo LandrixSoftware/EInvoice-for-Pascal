@@ -203,6 +203,23 @@ begin
     TLandrixEInvoice.SaveToFile(Invoice, FileName, XRUBL, [eio_WriteDespiteErrors]);
     Check(Pos(AnsiString('CustomizationID'), ReadText(FileName)) > 0, 'written despite errors');
     Check(TLandrixEInvoice.SaveToUtf8(Invoice, XRUBL, [eio_NoRuleCheck]) <> '', 'no rule check');
+    { a number the writers cannot format: an error finding, also without
+      the rule check and despite errors }
+    Invoice.BuyerReference := 'LW-1';
+    Invoice.InvoiceLines[0].Quantity := 1E15;
+    Invoice.InvoiceLines[0].Quantity := Invoice.InvoiceLines[0].Quantity * 1E15;
+    D.Clear;
+    try
+      TLandrixEInvoice.SaveToUtf8(Invoice, XRUBL, [eio_NoRuleCheck, eio_WriteDespiteErrors], D);
+      FailNotRaised('ELandrixEInvoiceWriteError for 1e30');
+    except
+      on E: ELandrixEInvoiceWriteError do
+        Check(E.Diagnostics.Count > 0, 'diagnostics in the exception');
+    end;
+    Check((D.Count > 0) and (D[D.Count - 1].Kind = edk_ConversionFailed), 'conversion failed: ' + string(D.ToText));
+    Check(TLandrixEInvoice.Check(Invoice, XRUBL, [eio_NoRuleCheck], D) > 0, 'Check counts it');
+    Invoice.InvoiceLines[0].Quantity := 1;
+    Invoice.BuyerReference := '';
     { the details of a rule reach the caller's list and the exception }
     Invoice.BuyerReference := 'LW-1';
     Invoice.LineAmount := 99;

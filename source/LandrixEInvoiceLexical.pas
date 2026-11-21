@@ -21,7 +21,7 @@
   specification:
   - amounts (e.g. BT-106 to BT-115, BT-131): exactly 2 decimals;
   - prices (BT-146, BT-148): 2 decimals if the value has no more,
-    otherwise 4;
+    otherwise 4, more when the value has them (up to 10);
   - quantities (BT-129): at least 4 decimals, more when the value has
     them (up to 10), e.g. 1.23456 stays 1.23456;
   - base quantities (BT-149): up to 10 decimals, trailing zeros removed
@@ -35,7 +35,9 @@
 
   Reading uses the Try functions: they return False for text that is not a
   valid value of the type (no locale forms such as '19,00', no exponent,
-  full calendar check) and leave the result 0. They never guess.
+  full calendar check, no unpaired surrogate) and leave the result 0. They
+  never guess and never raise. A number the writers cannot format (1e23
+  and more) is read: the rule check reports it, and writing refuses it.
 
   DE: Umwandlung zwischen den typisierten Werten des Rechnungsmodells und
   dem lexikalischen Text der Syntaxmodelle. Unabhaengig vom Gebietsschema
@@ -46,7 +48,7 @@
   Zielspezifikation gleich:
   - Betraege (z. B. BT-106 bis BT-115, BT-131): genau 2 Nachkommastellen;
   - Preise (BT-146, BT-148): 2 Nachkommastellen, wenn der Wert nicht mehr
-    hat, sonst 4;
+    hat, sonst 4, mehr, wenn der Wert sie hat (bis 10);
   - Mengen (BT-129): mindestens 4 Nachkommastellen, mehr, wenn der Wert
     sie hat (bis 10), z. B. bleibt 1.23456 1.23456;
   - Basismengen (BT-149): bis zu 10 Nachkommastellen, Nullen am Ende bis auf
@@ -61,8 +63,10 @@
 
   Gelesen wird mit den Try-Funktionen: Sie liefern False fuer Text, der kein
   gueltiger Wert des Typs ist (keine Gebietsschema-Formen wie '19,00', kein
-  Exponent, volle Kalenderpruefung), und lassen das Ergebnis 0. Sie raten
-  nie. }
+  Exponent, volle Kalenderpruefung, kein ungepaartes Surrogat), und lassen
+  das Ergebnis 0. Sie raten nie und werfen keine Ausnahme. Eine Zahl, die
+  die Writer nicht formatieren koennen (ab 1e23), wird gelesen: die
+  Regelpruefung meldet sie, und das Schreiben verweigert sie. }
 
 { API: internal. May change in any release; use the facade LandrixEInvoice
   or the stable units instead.
@@ -196,6 +200,22 @@ begin
   Result := LandrixEInvoiceStringToUtf8(S);
 end;
 
+{ The UTF-8 form of S; False for text that has none (an unpaired
+  surrogate). }
+function TryUtf8(const S: TLandrixEInvoiceString; out AUtf8: TLandrixXmlUtf8): Boolean;
+begin
+  try
+    AUtf8 := Utf8(S);
+    Result := True;
+  except
+    on ELandrixXmlError do
+    begin
+      AUtf8 := '';
+      Result := False;
+    end;
+  end;
+end;
+
 function LandrixEInvoiceAmountToLexical(AValue: Currency): TLandrixEInvoiceString;
 begin
   Result := Text(LandrixXmlFormatCurrency(AValue, 2));
@@ -248,9 +268,9 @@ var
   S: TLandrixXmlUtf8;
 begin
   ARounded := False;
-  S := Utf8(AText);
-  Result := LandrixXmlTryParseCurrency(S, AValue, False);
-  if not Result then
+  AValue := 0;
+  Result := TryUtf8(AText, S) and LandrixXmlTryParseCurrency(S, AValue, False);
+  if not Result and (S <> '') then
   begin
     Result := LandrixXmlTryParseCurrency(S, AValue, True);
     ARounded := Result;
@@ -261,25 +281,34 @@ end;
 
 function LandrixEInvoiceTryLexicalToDouble(const AText: TLandrixEInvoiceString;
   out AValue: Double): Boolean;
+var
+  S: TLandrixXmlUtf8;
 begin
-  Result := LandrixXmlTryParseDouble(Utf8(AText), AValue);
+  AValue := 0;
+  Result := TryUtf8(AText, S) and LandrixXmlTryParseDouble(S, AValue);
   if not Result then
     AValue := 0;
 end;
 
 function LandrixEInvoiceTryUBLToDate(const AText: TLandrixEInvoiceString;
   out AValue: TDateTime): Boolean;
+var
+  S: TLandrixXmlUtf8;
 begin
-  Result := LandrixXmlTryParseDate(Utf8(AText), AValue);
+  AValue := 0;
+  Result := TryUtf8(AText, S) and LandrixXmlTryParseDate(S, AValue);
   if not Result then
     AValue := 0;
 end;
 
 function LandrixEInvoiceTryCIIToDate(const AText, AFormat: TLandrixEInvoiceString;
   out AValue: TDateTime): Boolean;
+var
+  S: TLandrixXmlUtf8;
 begin
-  Result := ((AFormat = '') or (AFormat = '102')) and
-    LandrixXmlTryParseCiiDate(Utf8(AText), AValue);
+  AValue := 0;
+  Result := ((AFormat = '') or (AFormat = '102')) and TryUtf8(AText, S) and
+    LandrixXmlTryParseCiiDate(S, AValue);
   if not Result then
     AValue := 0;
 end;

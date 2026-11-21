@@ -667,11 +667,24 @@ type
     property Items[Index: TLandrixEInvoiceListIndex]: TLandrixInvoiceTaxAmount read GetItem write SetItem; default;
   public
     { Adds the amounts to the first entry with the same VAT rate and returns
-      True; returns False if there is none.
+      True; returns False if there is none. The category is not compared
+      (as in intf.XRechnung): with several categories at the same rate
+      (E, Z, AE, K, G, O are all 0 %) use the overload with the category.
       DE: Addiert die Betraege zum ersten Eintrag mit demselben
-      Umsatzsteuersatz und liefert True; liefert False, wenn es keinen gibt. }
+      Umsatzsteuersatz und liefert True; liefert False, wenn es keinen gibt.
+      Die Kategorie wird nicht verglichen (wie in intf.XRechnung): bei
+      mehreren Kategorien mit demselben Satz (E, Z, AE, K, G, O haben alle
+      0 %) die Ueberladung mit der Kategorie verwenden. }
     function AddTaxAmountIfTaxExists(ATaxPercent: Double;
-      ATaxableAmount, ATaxAmount: Currency): Boolean;
+      ATaxableAmount, ATaxAmount: Currency): Boolean; overload;
+    { The same for the first entry with the same VAT rate and category
+      (BT-118; ATaxCategoryOther is compared while ATaxCategory is
+      idtfcc_None).
+      DE: Dasselbe fuer den ersten Eintrag mit demselben Satz und derselben
+      Kategorie (BT-118; ATaxCategoryOther zaehlt, solange ATaxCategory
+      idtfcc_None ist). }
+    function AddTaxAmountIfTaxExists(ATaxPercent: Double; ATaxCategory: TLandrixInvoiceDutyTaxFeeCategoryCode;
+      const ATaxCategoryOther: TLandrixEInvoiceString; ATaxableAmount, ATaxAmount: Currency): Boolean; overload;
     function AddTaxAmount: TLandrixInvoiceTaxAmount;
   end;
 
@@ -1312,16 +1325,16 @@ function LandrixEInvoiceLineStatusReasonCodeFromStr(const Code: TLandrixEInvoice
   words, e.g. Stk, Std, kg, Pauschale; see
   https://apps.datev.de/help-center/documents/1020477) to a unit code. Case
   is ignored, umlauts may be written as ae/oe/ue/ss, m2/m3 also as m and a
-  superscript digit. An empty text gives iuc_one. Returns ADefaultOnFailure
-  and ASuccess = False for an unknown or ambiguous text (e.g. x, mal as
-  usage count, Kopf/Tier, cubic feet).
+  superscript digit. An empty text gives iuc_one; mal gives one (C62),
+  Kopf a person (IE). Returns ADefaultOnFailure and ASuccess = False for
+  an unknown or ambiguous text (e.g. x, Tier, cubic feet).
   DE: Ordnet eine freie Mengeneinheit (deutsche und englische Abkuerzungen
   und Woerter, z. B. Stk, Std, kg, Pauschale) einem Einheitencode zu. Gross-
   und Kleinschreibung zaehlt nicht, Umlaute duerfen als ae/oe/ue/ss
   geschrieben sein, m2/m3 auch mit hochgestellter Ziffer. Ein leerer Text
-  ergibt iuc_one. Liefert ADefaultOnFailure und ASuccess = False bei
-  unbekanntem oder mehrdeutigem Text (z. B. x, mal als Nutzungsanzahl,
-  Kopf/Tier, Kubikfuss). }
+  ergibt iuc_one; mal ergibt eins (C62), Kopf eine Person (IE). Liefert
+  ADefaultOnFailure und ASuccess = False bei unbekanntem oder mehrdeutigem
+  Text (z. B. x, Tier, Kubikfuss). }
 function LandrixEInvoiceUnitCodeFromUnitOfMeasure(const AUnitOfMeasure: TLandrixEInvoiceString;
   out ASuccess: Boolean;
   ADefaultOnFailure: TLandrixInvoiceUnitCode = iuc_piece): TLandrixInvoiceUnitCode;
@@ -2205,13 +2218,39 @@ function TLandrixInvoiceTaxAmounts.AddTaxAmountIfTaxExists(ATaxPercent: Double;
   ATaxableAmount, ATaxAmount: Currency): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
+  Taxable, Tax: Currency;
 begin
   Result := False;
   for I := 0 to Count - 1 do
     if Items[I].TaxPercent = ATaxPercent then
     begin
-      Items[I].TaxableAmount := Items[I].TaxableAmount + ATaxableAmount;
-      Items[I].TaxAmount := Items[I].TaxAmount + ATaxAmount;
+      { both sums first: an overflow leaves the entry unchanged }
+      Taxable := Items[I].TaxableAmount + ATaxableAmount;
+      Tax := Items[I].TaxAmount + ATaxAmount;
+      Items[I].TaxableAmount := Taxable;
+      Items[I].TaxAmount := Tax;
+      Result := True;
+      Break;
+    end;
+end;
+
+function TLandrixInvoiceTaxAmounts.AddTaxAmountIfTaxExists(ATaxPercent: Double;
+  ATaxCategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const ATaxCategoryOther: TLandrixEInvoiceString;
+  ATaxableAmount, ATaxAmount: Currency): Boolean;
+var
+  I: TLandrixEInvoiceListIndex;
+  Taxable, Tax: Currency;
+begin
+  Result := False;
+  for I := 0 to Count - 1 do
+    if (Items[I].TaxPercent = ATaxPercent) and (Items[I].TaxCategory = ATaxCategory) and
+       ((ATaxCategory <> idtfcc_None) or (Items[I].TaxCategoryOther = ATaxCategoryOther)) then
+    begin
+      { both sums first: an overflow leaves the entry unchanged }
+      Taxable := Items[I].TaxableAmount + ATaxableAmount;
+      Tax := Items[I].TaxAmount + ATaxAmount;
+      Items[I].TaxableAmount := Taxable;
+      Items[I].TaxAmount := Tax;
       Result := True;
       Break;
     end;
@@ -2453,10 +2492,14 @@ begin
 end;
 
 procedure TLandrixInvoiceNotes.ReplaceContentWith(const AContent: TLandrixEInvoiceString);
+var
+  S: TLandrixEInvoiceString;
 begin
+  { AContent may be the content of an own note, which Clear frees }
+  S := Copy(AContent, 1, Length(AContent));
   Clear;
-  if AContent <> '' then
-    AddNote.Content := AContent;
+  if S <> '' then
+    AddNote.Content := S;
 end;
 
 { --- TLandrixInvoicePaymentType ----------------------------------------- }
@@ -2721,61 +2764,70 @@ var
 begin
   if ASource = Self then
     Exit;
-  ID := ASource.ID;
-  GlobalID_EAN_GTIN := ASource.GlobalID_EAN_GTIN;
-  StandardItemIdentifier := ASource.StandardItemIdentifier;
-  StandardItemIdentifierSchemeID := ASource.StandardItemIdentifierSchemeID;
-  Note := ASource.Note;
-  ObjectIdentifier := ASource.ObjectIdentifier;
-  ObjectIdentifierSchemeID := ASource.ObjectIdentifierSchemeID;
-  Name := ASource.Name;
-  Description := ASource.Description;
-  Quantity := ASource.Quantity;
-  UnitCode := ASource.UnitCode;
-  UnitCodeOther := ASource.UnitCodeOther;
-  SellersItemIdentification := ASource.SellersItemIdentification;
-  BuyersItemIdentification := ASource.BuyersItemIdentification;
-  OrderNumber := ASource.OrderNumber;
-  OrderDate := ASource.OrderDate;
-  OrderLineReference := ASource.OrderLineReference;
-  BuyerAccountingReference := ASource.BuyerAccountingReference;
-  TaxPercent := ASource.TaxPercent;
-  TaxCategory := ASource.TaxCategory;
-  TaxCategoryOther := ASource.TaxCategoryOther;
-  TaxExemptionReason := ASource.TaxExemptionReason;
-  GrossPriceAmount := ASource.GrossPriceAmount;
-  DiscountOnTheGrossPrice := ASource.DiscountOnTheGrossPrice;
-  NetPriceAmount := ASource.NetPriceAmount;
-  BaseQuantity := ASource.BaseQuantity;
-  BaseQuantityUnitCode := ASource.BaseQuantityUnitCode;
-  BaseQuantityUnitCodeOther := ASource.BaseQuantityUnitCodeOther;
-  LineAmount := ASource.LineAmount;
-  AllowanceCharges.Clear;
-  for I := 0 to ASource.AllowanceCharges.Count - 1 do
-    AllowanceCharges.AddAllowanceCharge.Assign(ASource.AllowanceCharges[I]);
-  InvoiceLinePeriodStartDate := ASource.InvoiceLinePeriodStartDate;
-  InvoiceLinePeriodEndDate := ASource.InvoiceLinePeriodEndDate;
-  ItemClassifications.Clear;
-  for I := 0 to ASource.ItemClassifications.Count - 1 do
-    ItemClassifications.AddItemClassification.Assign(ASource.ItemClassifications[I]);
-  OriginTradeCountry := ASource.OriginTradeCountry;
-  ItemAttributes.Clear;
-  for I := 0 to ASource.ItemAttributes.Count - 1 do
-    ItemAttributes.AddItemAttribute.Assign(ASource.ItemAttributes[I]);
-  DeliveryNoteNumber := ASource.DeliveryNoteNumber;
-  DeliveryNoteLineID := ASource.DeliveryNoteLineID;
-  DeliveryNoteDate := ASource.DeliveryNoteDate;
-  ActualDeliveryDate := ASource.ActualDeliveryDate;
-  LineStatusReasonCode := ASource.LineStatusReasonCode;
-  LineStatusReasonCodeOther := ASource.LineStatusReasonCodeOther;
-  { ASource may be one of the own sub-lines (promoting a sub-line): copy
-    into a new list first, free the old one (and with it ASource) last.
-    DE: ASource kann eine der eigenen Unterpositionen sein (Unterposition
-    hochstufen): erst in eine neue Liste kopieren, die alte (und damit
-    ASource) zuletzt freigeben. }
+  { The sub-lines first, into a new list: ASource may be one of the own
+    sub-lines (promoting a sub-line) or an ancestor of Self (Self is then
+    copied before it changes). The old list (and with it a sub-line
+    ASource) is freed last.
+    DE: Die Unterpositionen zuerst, in eine neue Liste: ASource kann eine
+    der eigenen Unterpositionen sein (Unterposition hochstufen) oder ein
+    Vorfahr von Self (Self wird dann kopiert, bevor es sich aendert). Die
+    alte Liste (und mit ihr eine Unterposition ASource) wird zuletzt
+    freigegeben. }
   Subs := TLandrixInvoiceLines.Create;
-  for I := 0 to ASource.SubInvoiceLines.Count - 1 do
-    Subs.AddInvoiceLine.Assign(ASource.SubInvoiceLines[I]);
+  try
+    for I := 0 to ASource.SubInvoiceLines.Count - 1 do
+      Subs.AddInvoiceLine.Assign(ASource.SubInvoiceLines[I]);
+    ID := ASource.ID;
+    GlobalID_EAN_GTIN := ASource.GlobalID_EAN_GTIN;
+    StandardItemIdentifier := ASource.StandardItemIdentifier;
+    StandardItemIdentifierSchemeID := ASource.StandardItemIdentifierSchemeID;
+    Note := ASource.Note;
+    ObjectIdentifier := ASource.ObjectIdentifier;
+    ObjectIdentifierSchemeID := ASource.ObjectIdentifierSchemeID;
+    Name := ASource.Name;
+    Description := ASource.Description;
+    Quantity := ASource.Quantity;
+    UnitCode := ASource.UnitCode;
+    UnitCodeOther := ASource.UnitCodeOther;
+    SellersItemIdentification := ASource.SellersItemIdentification;
+    BuyersItemIdentification := ASource.BuyersItemIdentification;
+    OrderNumber := ASource.OrderNumber;
+    OrderDate := ASource.OrderDate;
+    OrderLineReference := ASource.OrderLineReference;
+    BuyerAccountingReference := ASource.BuyerAccountingReference;
+    TaxPercent := ASource.TaxPercent;
+    TaxCategory := ASource.TaxCategory;
+    TaxCategoryOther := ASource.TaxCategoryOther;
+    TaxExemptionReason := ASource.TaxExemptionReason;
+    GrossPriceAmount := ASource.GrossPriceAmount;
+    DiscountOnTheGrossPrice := ASource.DiscountOnTheGrossPrice;
+    NetPriceAmount := ASource.NetPriceAmount;
+    BaseQuantity := ASource.BaseQuantity;
+    BaseQuantityUnitCode := ASource.BaseQuantityUnitCode;
+    BaseQuantityUnitCodeOther := ASource.BaseQuantityUnitCodeOther;
+    LineAmount := ASource.LineAmount;
+    AllowanceCharges.Clear;
+    for I := 0 to ASource.AllowanceCharges.Count - 1 do
+      AllowanceCharges.AddAllowanceCharge.Assign(ASource.AllowanceCharges[I]);
+    InvoiceLinePeriodStartDate := ASource.InvoiceLinePeriodStartDate;
+    InvoiceLinePeriodEndDate := ASource.InvoiceLinePeriodEndDate;
+    ItemClassifications.Clear;
+    for I := 0 to ASource.ItemClassifications.Count - 1 do
+      ItemClassifications.AddItemClassification.Assign(ASource.ItemClassifications[I]);
+    OriginTradeCountry := ASource.OriginTradeCountry;
+    ItemAttributes.Clear;
+    for I := 0 to ASource.ItemAttributes.Count - 1 do
+      ItemAttributes.AddItemAttribute.Assign(ASource.ItemAttributes[I]);
+    DeliveryNoteNumber := ASource.DeliveryNoteNumber;
+    DeliveryNoteLineID := ASource.DeliveryNoteLineID;
+    DeliveryNoteDate := ASource.DeliveryNoteDate;
+    ActualDeliveryDate := ASource.ActualDeliveryDate;
+    LineStatusReasonCode := ASource.LineStatusReasonCode;
+    LineStatusReasonCodeOther := ASource.LineStatusReasonCodeOther;
+  except
+    Subs.Free;
+    raise;
+  end;
   Old := SubInvoiceLines;
   SubInvoiceLines := Subs;
   Old.Free;

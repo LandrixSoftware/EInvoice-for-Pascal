@@ -136,6 +136,14 @@ begin
   Check(LandrixEInvoiceTryCIIToDate('20261018', '', D), 'CII date without format');
   Check(not LandrixEInvoiceTryCIIToDate('202610', '610', D), 'format 610 not mapped');
   Check(not LandrixEInvoiceTryCIIToDate('20261318', '102', D), 'CII calendar check');
+  { never raise: an unpaired surrogate, a number the writers cannot format }
+  Check(not LandrixEInvoiceTryLexicalToDouble(TLandrixEInvoiceString('1') + WideChar($D800), F) and (F = 0),
+    'double with an unpaired surrogate');
+  Check(not LandrixEInvoiceTryLexicalToCurrency(TLandrixEInvoiceString('1') + WideChar($D800), C, Rounded) and
+    (C = 0), 'currency with an unpaired surrogate');
+  Check(not LandrixEInvoiceTryUBLToDate(TLandrixEInvoiceString('2026-10-18') + WideChar($DC00), D), 'UBL date');
+  Check(not LandrixEInvoiceTryCIIToDate(TLandrixEInvoiceString('20261018') + WideChar($DC00), '102', D),
+    'CII date');
 end;
 
 { Blank: empty or XML white space only (normalize-space); a no-break space
