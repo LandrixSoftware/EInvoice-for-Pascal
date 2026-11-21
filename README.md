@@ -63,7 +63,7 @@ would write. Each family is compared with an official reference:
 | Target | Rules | Compared with |
 |---|---|---|
 | all EN 16931 targets | BR-01 to BR-65 (except those the writers always meet, see [Checking](docs/checking.md)), BR-CO-..., the VAT category rules BR-S-... to BR-AG-... | KoSIT XRechnung test suite |
-| XRechnung 3.0 | BR-DE-..., BR-DEX-09, the code lists BR-CL-01 to BR-CL-26, the PEPPOL-EN16931 rules of its schematron | KoSIT XRechnung test suite |
+| XRechnung 3.0 | BR-DE-..., BR-DEX-09, the code lists BR-CL-01 to BR-CL-26 (with the extension BR-DEX-01, BR-DEX-04 to BR-DEX-08), the PEPPOL-EN16931 rules of its schematron | KoSIT XRechnung test suite |
 | ZUGFeRD / Factur-X 1.09 | the EN 16931 rules per profile, BR-FXEXT-... (EXTENDED), the 366 code asserts FX-SCH-A-... | KoSIT validator on the ZUGFeRD examples and mutants |
 | Peppol BIS 3.0.22 | the whole Peppol schematron: PEPPOL-EN16931-..., PEPPOL-COMMON-... (identifier check digits), the national rules of DE, DK, GR, IS, IT, NL, NO and SE | OpenPEPPOL unit tests |
 

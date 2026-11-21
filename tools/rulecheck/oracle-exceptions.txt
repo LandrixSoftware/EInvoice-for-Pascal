@@ -119,6 +119,20 @@ ubl-inv-br-dex-05-schemeid-test-24[34]-*.xml	extra BR-CL-11
 ubl-inv-br-dex-06-schemeid-test-[34]-*-identity.xml	extra BR-CL-21
 ubl-inv-br-dex-07-schemeid-test-[34]-*-identity.xml	extra BR-CL-25
 ubl-inv-br-dex-08-schemeid-test-[34]-*-identity.xml	extra BR-CL-26
+# The same documents: KoSIT reports the extension rule (BR-DEX-01, 04 to 08) that replaces the code list
+# rule there; the library checks the standard XRechnung it writes, where that rule does not run.
+cii-br-dex-04-schemeid-test-[34]-*-identity.xml	missed BR-DEX-04
+cii-br-dex-04-schemeid-test-[34]-*-identity.xml	missed BR-DEX-06
+cii-br-dex-05-schemeid-test-[34]-*-identity.xml	missed BR-DEX-05
+cii-br-dex-06-schemeid-test-[34]-*-identity.xml	missed BR-DEX-06
+cii-br-dex-07-schemeid-test-[34]-*-identity.xml	missed BR-DEX-07
+cii-br-dex-08-schemeid-test-[34]-*-identity.xml	missed BR-DEX-08
+ubl-inv-br-dex-01-extension_mime_code_test-20[56]-*.xml	missed BR-DEX-01
+ubl-inv-br-dex-04-schemeid-test-[34]-*-identity.xml	missed BR-DEX-04
+ubl-inv-br-dex-05-schemeid-test-24[34]-*.xml	missed BR-DEX-05
+ubl-inv-br-dex-06-schemeid-test-[34]-*-identity.xml	missed BR-DEX-06
+ubl-inv-br-dex-07-schemeid-test-[34]-*-identity.xml	missed BR-DEX-07
+ubl-inv-br-dex-08-schemeid-test-[34]-*-identity.xml	missed BR-DEX-08
 
 # PEPPOL-EN16931-R005: the mappers write BT-6 only when it differs from BT-5.
 *-peppol-en16931-r005-*-code-EUR.xml	missed PEPPOL-EN16931-R005

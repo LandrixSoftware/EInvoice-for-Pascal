@@ -19,8 +19,8 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
   Codelistenregeln von XRechnung und Peppol (BR-CL-...), die Regeln von Factur-X EXTENDED
   (BR-FXEXT-...), die Syntaxregeln zu mehreren Zahlungsanweisungen (CII-SR-467, CII-SR-468,
   UBL-SR-47, UBL-SR-54, UBL-SR-55; der UBL-Writer schreibt BT-82 einmal, UBL-SR-46 hält daher
-  immer), BR-DEC-15 (CII), BR-TMP-2 und BR-DEX-14
-  (XRechnung). Jeder Verstoß ist ein Eintrag der Art
+  immer), BR-DEC-15 (CII), BR-TMP-2, BR-DEX-14 und die Codelisten der Extension (BR-DEX-01,
+  BR-DEX-04 bis BR-DEX-08) (XRechnung). Jeder Verstoß ist ein Eintrag der Art
   `edk_RuleViolation` mit der Regelkennung in `RuleID`.
 - Für Factur-X die Codeprüfungen des Factur-X-Schematrons (FX-SCH-A-...) auf dem
   CII-Syntaxmodell, wie es geschrieben wird, auch für ein CII-Modell, das Sie `Check` oder
@@ -42,8 +42,7 @@ Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dok
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
 Konfiguration bleiben der Maßstab, und die Bibliothek führt sie ebenfalls aus, ohne Java
 ([Validieren](validation.md)). Noch nicht geprüft werden unter anderem die übrigen
-FX-SCH-A-Regeln des Factur-X-Schematrons (Kardinalität, Pflichtattribute); die Codelisten der
-XRechnung-Extension (BR-DEX-01, BR-DEX-04 bis BR-DEX-08); die Stellenregeln BR-DEC außer
+FX-SCH-A-Regeln des Factur-X-Schematrons (Kardinalität, Pflichtattribute); die Stellenregeln BR-DEC außer
 BR-DEC-15, die das geschriebene Dokument immer einhält (die Writer schreiben Beträge mit zwei
 Nachkommastellen), ein gelesenes Dokument aber verletzen kann; dort urteilt der Validator. Die Formatregeln
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN-Prüfsumme), BR-DE-27, BR-DE-28 und BR-51 werden geprüft; bis
@@ -77,7 +76,9 @@ EAS-Codes 0219 und 0220 gelten, und in UBL fehlen die 18 neuesten Betreffcodes f
 Codes werden nach dem Entfernen umgebender Leerzeichen mit Unterscheidung von Groß- und
 Kleinschreibung verglichen, der Befreiungsgrund-Code (BR-CL-22) in Großbuchstaben und der
 MIME-Code (BR-CL-24) genau so, wie er geschrieben wird. XRechnung meldet BR-CL-21 und BR-CL-23 als Warnungen und, wenn die
-Rechnung mit der XRechnung-Extension geschrieben wird, BR-CL-10, 11, 21, 24, 25 und 26 nicht.
+Rechnung mit der XRechnung-Extension geschrieben wird, statt BR-CL-10, 11, 21, 24, 25 und 26 die Regeln
+BR-DEX-04, 05, 06, 01, 07 und 08 (dieselben Prüfungen, die Extension-Codes XR01 bis XR03 und der MIME-Code
+application/xml erlaubt; KoSIT führt diese BR-CL-Befunde im Bericht auf der Stufe Information).
 UBL schreibt die Rechnungsart 381 als `ubl:CreditNote` und jeden anderen Code als
 `ubl:Invoice`; ein Code der Gutschriftenliste wie 261 verletzt deshalb in UBL BR-CL-01.
 

@@ -2433,6 +2433,44 @@ begin
   Result := LandrixEInvoiceCheckRule(Invoice, SpecOf(AKind), TLandrixEInvoiceString(AID), nil);
 end;
 
+{ With the XRechnung extension the code list rules BR-CL-10, 11, 21, 24, 25
+  and 26 give way to BR-DEX-04, 05, 06, 01, 07 and 08: the same checks, the
+  extension codes allowed. }
+procedure TestExtensionCodeLists;
+var
+  Invoice: TLandrixInvoice;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := 'BAD';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-07'), 'no extension: BR-DEX-07 does not run');
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-CL-25'), 'no extension: BR-CL-25 runs');
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyer := 'seller-1';
+    Invoice.AccountingSupplierParty.ElectronicAddressSellerBuyerSchemeID := 'XR01';
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyer := 'buyer-1';
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := 'BAD';
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-07'), 'BAD fails BR-DEX-07 in UBL');
+    Check(not RuleHolds(Invoice, tk_XRCII, 'BR-DEX-07'), 'BAD fails BR-DEX-07 in CII');
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-CL-25'), 'BR-CL-25 gives way to BR-DEX-07');
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := 'XR02';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-07'), 'XR01 and XR02 pass BR-DEX-07');
+    Invoice.AccountingCustomerParty.ElectronicAddressSellerBuyerSchemeID := '9930';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-07'), 'an EAS code passes BR-DEX-07');
+    Invoice.AccountingCustomerParty.CompanyID := 'HRB 1';
+    Invoice.AccountingCustomerParty.CompanyIDSchemeID := 'BAD';
+    Check(not RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-05'), 'BAD fails BR-DEX-05');
+    Invoice.AccountingCustomerParty.CompanyIDSchemeID := 'XR03';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-05'), 'XR03 passes BR-DEX-05');
+    Invoice.AccountingCustomerParty.CompanyIDSchemeID := ' ';
+    Check(RuleHolds(Invoice, tk_XRUBL, 'BR-DEX-05'), 'white space passes BR-DEX-05 as in the schematron');
+    Invoice.AccountingCustomerParty.CompanyIDSchemeID := 'BAD';
+    Check(RuleHolds(Invoice, tk_Peppol, 'BR-DEX-05'), 'BR-DEX-05 is XRechnung only');
+  finally
+    Invoice.Free;
+  end;
+end;
+
 { The corrections of the review: rules that compare the value as written
   (payment code as other text, padded category text, type code as other
   text, code points), the attachments the writers leave out, the SEPA
@@ -2974,6 +3012,7 @@ begin
   RegisterTest('Check.CompleteInvoice', TestCompleteInvoice);
   RegisterTest('Check.RuleCases', TestRuleCases);
   RegisterTest('Check.ReviewCases', TestReviewCases);
+  RegisterTest('Check.ExtensionCodeLists', TestExtensionCodeLists);
   RegisterTest('Check.Boundaries', TestBoundaries);
   RegisterTest('Check.PayeeLikeSeller', TestPayeeLikeSeller);
   RegisterTest('Check.DirectDebitGroups', TestDirectDebitGroups);

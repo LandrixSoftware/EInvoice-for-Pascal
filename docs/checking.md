@@ -19,7 +19,8 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
   the rules of Factur-X EXTENDED (BR-FXEXT-...), the syntax rules on several payment instructions
   (CII-SR-467, CII-SR-468, UBL-SR-47, UBL-SR-54, UBL-SR-55; the UBL writer writes BT-82 once, so
   UBL-SR-46 always holds), BR-DEC-15 (CII),
-  BR-TMP-2 and BR-DEX-14 (XRechnung). Each violation is an entry of kind
+  BR-TMP-2, BR-DEX-14 and the code lists of the extension (BR-DEX-01, BR-DEX-04 to BR-DEX-08)
+  (XRechnung). Each violation is an entry of kind
   `edk_RuleViolation` with its rule identifier in `RuleID`.
 - For Factur-X, the code checks of the Factur-X Schematron (FX-SCH-A-...) on the CII syntax
   model as it is written, also for a CII model you pass to `Check` or `SaveTo*` directly.
@@ -39,8 +40,7 @@ The rule check predicts what the KoSIT validator would report for the written do
 does not replace the validator: schema and Schematron checks of the official configuration
 remain the reference, and the library runs them too, without Java
 ([Validating](validation.md)). Not checked yet, among others: the other FX-SCH-A rules of the Factur-X
-Schematron (cardinality, required attributes); the code lists of the XRechnung extension
-(BR-DEX-01, BR-DEX-04 to BR-DEX-08); the decimal rules BR-DEC except BR-DEC-15, which the
+Schematron (cardinality, required attributes); the decimal rules BR-DEC except BR-DEC-15, which the
 written document always meets (the writers write amounts with two decimals) but a document
 as read may break, so the validator judges them there. The format rules
 BR-DE-17, BR-DE-19, BR-DE-20 (IBAN check sum), BR-DE-27, BR-DE-28 and BR-51 are checked; all of
@@ -72,7 +72,9 @@ accepted, the EAS codes 0219 and 0220 are accepted, and in UBL the 18 newest not
 are not. Codes are compared case sensitively after removing blanks around them, the VAT
 exemption reason code (BR-CL-22) after upper-casing it and the MIME code (BR-CL-24) exactly as
 written. XRechnung reports BR-CL-21 and BR-CL-23 as warnings, and when the invoice is written
-with the XRechnung extension it does not report BR-CL-10, 11, 21, 24, 25 and 26. UBL writes the invoice type code 381 as
+with the XRechnung extension it reports BR-DEX-04, 05, 06, 01, 07 and 08 instead of BR-CL-10, 11, 21, 24,
+25 and 26 (the same checks, the extension codes XR01 to XR03 and the MIME code application/xml allowed;
+KoSIT keeps those BR-CL findings in its report at level information). UBL writes the invoice type code 381 as
 `ubl:CreditNote` and every other code as `ubl:Invoice`, so a code of the credit note list such as
 261 violates BR-CL-01 in UBL.
 

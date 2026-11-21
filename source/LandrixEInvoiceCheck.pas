@@ -55,8 +55,9 @@
   LandrixEInvoiceCheckCII); they use the lists of the validators, which
   differ slightly from the code lists of the library (see CodeListed), and
   the levels of the XRechnung configuration: BR-CL-21 and BR-CL-23 are
-  warnings there, and its extension scenario leaves out BR-CL-10, 11, 21,
-  24, 25 and 26.
+  warnings there, and its extension scenario replaces BR-CL-10, 11, 21,
+  24, 25 and 26 by BR-DEX-04, 05, 06, 01, 07 and 08 (the same checks with
+  the extension codes).
 
   The rules LX-CC-01 to LX-CC-12 are the checks of
   TXRechnungInvoiceAdapter.ConsistencyCheck of XRechnung-for-Delphi. They
@@ -109,8 +110,9 @@
   prueft, siehe LandrixEInvoiceCheckCII); sie verwenden die Listen der
   Validatoren, die geringfuegig von den Codelisten der Bibliothek abweichen
   (siehe CodeListed), und die Stufen der XRechnung-Konfiguration: BR-CL-21
-  und BR-CL-23 sind dort Warnungen, und ihr Extension-Szenario laesst
-  BR-CL-10, 11, 21, 24, 25 und 26 aus.
+  und BR-CL-23 sind dort Warnungen, und ihr Extension-Szenario ersetzt
+  BR-CL-10, 11, 21, 24, 25 und 26 durch BR-DEX-04, 05, 06, 01, 07 und 08
+  (dieselben Pruefungen mit den Extension-Codes).
 
   Die Regeln LX-CC-01 bis LX-CC-12 sind die Pruefungen von
   TXRechnungInvoiceAdapter.ConsistencyCheck aus XRechnung-for-Delphi. Es
@@ -275,7 +277,8 @@ type
     cr_BRFXEXT08, cr_BRDEX09, cr_BRDEX14,
     cr_BRCL01, cr_BRCL03, cr_BRCL04, cr_BRCL05, cr_BRCL06, cr_BRCL07, cr_BRCL08, cr_BRCL10, cr_BRCL11,
     cr_BRCL13, cr_BRCL14, cr_BRCL15, cr_BRCL16, cr_BRCL17, cr_BRCL18, cr_BRCL19, cr_BRCL20,
-    cr_BRCL21XR, cr_BRCL21BIS, cr_BRCL22, cr_BRCL23XR, cr_BRCL23BIS, cr_BRCL24, cr_BRCL25, cr_BRCL26);
+    cr_BRCL21XR, cr_BRCL21BIS, cr_BRCL22, cr_BRCL23XR, cr_BRCL23BIS, cr_BRCL24, cr_BRCL25, cr_BRCL26,
+    cr_BRDEX01, cr_BRDEX04, cr_BRDEX05, cr_BRDEX06, cr_BRDEX07, cr_BRDEX08);
 
   { One check row: identifier, the specifications it applies to, severity,
     business terms (the Terms of the diagnostic), message and origin. Legacy
@@ -1067,7 +1070,43 @@ const
     (ID: 'BR-CL-26'; Standards: CodeListStandards; Syntaxes: AllSyntaxes;
      Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-71';
      Message: 'the scheme of the deliver to location identifier (BT-71) shall be coded with ISO 6523 ICD';
-     Source: EN16931Source));
+     Source: EN16931Source),
+    { The XRechnung extension replaces BR-CL-24, 10, 11, 21, 25 and 26 by
+      the same checks with the extended lists: the schemes XR01 to XR03
+      and the MIME code application/xml.
+      DE: Die XRechnung-Extension ersetzt BR-CL-24, 10, 11, 21, 25 und 26
+      durch dieselben Pruefungen mit den erweiterten Listen: die Schemata
+      XR01 bis XR03 und der MIME-Code application/xml. }
+    (ID: 'BR-DEX-01'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-125';
+     Message: 'with the extension the MIME code of an attached document (BT-125) shall be one of BR-CL-24 or ' +
+       'application/xml';
+     Source: XRechnungSource),
+    (ID: 'BR-DEX-04'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-29, BT-46, BT-60';
+     Message: 'with the extension the scheme of a party identifier (BT-29, BT-46, BT-60) shall be coded with ' +
+       'ISO 6523 ICD or XR01 to XR03';
+     Source: XRechnungSource),
+    (ID: 'BR-DEX-05'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-30, BT-47, BT-61';
+     Message: 'with the extension the scheme of a legal registration identifier (BT-30, BT-47, BT-61) shall be ' +
+       'coded with ISO 6523 ICD or XR01 to XR03';
+     Source: XRechnungSource),
+    (ID: 'BR-DEX-06'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-157';
+     Message: 'with the extension the scheme of an item standard identifier (BT-157) shall be coded with ' +
+       'ISO 6523 ICD or XR01 to XR03';
+     Source: XRechnungSource),
+    (ID: 'BR-DEX-07'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-34, BT-49';
+     Message: 'with the extension the scheme of an electronic address (BT-34, BT-49) shall be coded with the ' +
+       'EAS list or XR01 to XR03';
+     Source: XRechnungSource),
+    (ID: 'BR-DEX-08'; Standards: [est_XRechnung]; Syntaxes: AllSyntaxes;
+     Profiles: AllProfiles; Severity: eds_Error; Legacy: False; Terms: 'BT-71';
+     Message: 'with the extension the scheme of the deliver to location identifier (BT-71) shall be coded ' +
+       'with ISO 6523 ICD or XR01 to XR03';
+     Source: XRechnungSource));
 
 function Applies(const ARow: TCheckRow; const ASpec: TLandrixEInvoiceSpec): Boolean;
 begin
@@ -3604,12 +3643,29 @@ begin
       AItem.ReasonCodeChargeOther), ACII);
 end;
 
+{ The extension codes XR01 to XR03 as a scheme the way the schematron
+  compares it (normalize-space), for BR-DEX-04 to BR-DEX-08. A scheme of
+  white space only passes too: the schematron looks for '  ' in the joined
+  lists ($DIGA-CODES ends, the ICD and EAS lists start with a blank).
+  DE: Die Extension-Codes XR01 bis XR03 als Schema, so verglichen wie im
+  Schematron (normalize-space), fuer BR-DEX-04 bis BR-DEX-08. Ein Schema
+  nur aus Leerraum besteht ebenfalls: das Schematron sucht '  ' in den
+  verketteten Listen. }
+function IsExtensionCode(const AScheme: TLandrixEInvoiceString): Boolean;
+var
+  S: TLandrixEInvoiceString;
+begin
+  S := NormalizedSpace(AScheme);
+  Result := (S = 'XR01') or (S = 'XR02') or (S = 'XR03') or ((S = '') and (AScheme <> ''));
+end;
+
 { The code list rules on the lines as written, sub lines included where
   ASubLines: BR-CL-07 (BT-128), 13, 15, 18, 19, 20, 21 and 23.
   DE: Die Codelistenregeln auf den Positionen, wie sie geschrieben werden,
   Unterpositionen eingeschlossen, wo ASubLines: BR-CL-07 (BT-128), 13, 15,
   18, 19, 20, 21 und 23. }
-function LineCodeViolated(AIndex: TCheckRuleIndex; ALines: TLandrixInvoiceLines; ACII, ASubLines: Boolean): Boolean;
+function LineCodeViolated(AIndex: TCheckRuleIndex; ALines: TLandrixInvoiceLines; ACII, ASubLines: Boolean;
+  AExtension: Boolean = False): Boolean;
 var
   I, J: TLandrixEInvoiceListIndex;
   Line: TLandrixInvoiceLine;
@@ -3644,7 +3700,7 @@ begin
             Exit;
       cr_BRCL21XR, cr_BRCL21BIS:
         if LandrixEInvoiceStandardItemIdentifierOf(Line, Value, Scheme, Conflict) and
-           BadAttribute(cl_ICD, Scheme, ACII) then
+           BadAttribute(cl_ICD, Scheme, ACII) and not (AExtension and IsExtensionCode(Scheme)) then
           Exit;
       cr_BRCL23XR, cr_BRCL23BIS:
         if BadAttribute(cl_Unit, WrittenCode(LandrixEInvoiceUnitCodeToStr(Line.UnitCode), Line.UnitCodeOther),
@@ -3657,7 +3713,7 @@ begin
       { no rule on the lines }
       Break;
     end;
-    if ASubLines and LineCodeViolated(AIndex, Line.SubInvoiceLines, ACII, True) then
+    if ASubLines and LineCodeViolated(AIndex, Line.SubInvoiceLines, ACII, True, AExtension) then
       Exit;
   end;
   Result := False;
@@ -3669,10 +3725,12 @@ end;
   DE: BR-CL-10: eine globale Kennung ohne Schema bekommt 0088 (ADefault),
   CII schreibt eine andere Kennung ohne Schema als ram:ID; UBL nimmt SEPA
   fuer Verkaeufer und Zahlungsempfaenger an (ASEPA). }
-function PartySchemeWrong(const AValue, AScheme: TLandrixEInvoiceString; ADefault, ASEPA, ACII: Boolean): Boolean;
+function PartySchemeWrong(const AValue, AScheme: TLandrixEInvoiceString; ADefault, ASEPA, ACII: Boolean;
+  AExtension: Boolean = False): Boolean;
 begin
   Result := Present(AValue) and not ((ADefault or ACII) and not Present(AScheme)) and
-    BadAttribute(cl_ICD, AScheme, ACII) and not (ASEPA and (NormalizedSpace(AScheme) = 'SEPA'));
+    BadAttribute(cl_ICD, AScheme, ACII) and not (ASEPA and (NormalizedSpace(AScheme) = 'SEPA')) and
+    not (AExtension and IsExtensionCode(AScheme));
 end;
 
 { True if code list rule AIndex is violated by the codes as the mappers
@@ -3685,17 +3743,35 @@ end;
 function CodeListViolated(AIndex: TCheckRuleIndex; AInvoice: TLandrixInvoice; const ASpec: TLandrixEInvoiceSpec): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
-  CII, SubLines, Written, TenderWritten, ObjectWritten: Boolean;
+  CII, SubLines, Written, TenderWritten, ObjectWritten, Ext: Boolean;
   Seller, Buyer: TLandrixInvoiceAccountingParty;
   Payee, TaxRepresentative, Invoicee: TLandrixInvoiceParty;
   Item: TLandrixInvoiceAllowanceCharge;
   Attachment: TLandrixInvoiceAttachment;
   Code, Scheme: TLandrixEInvoiceString;
+  { a scheme of an ICD or EAS rule, extension codes accepted for BR-DEX-* }
+  function BadScheme(AList: TCodeList; const AScheme: TLandrixEInvoiceString): Boolean;
+  begin
+    Result := BadAttribute(AList, AScheme, CII) and not (Ext and IsExtensionCode(AScheme));
+  end;
+
 begin
   Result := False;
-  if (AIndex in [cr_BRCL10, cr_BRCL11, cr_BRCL21XR, cr_BRCL24, cr_BRCL25, cr_BRCL26]) and
-     ExtensionWritten(AInvoice, ASpec) then
-    Exit;
+  { BR-DEX-01 and -04 to -08 run the code list rule they replace }
+  Ext := AIndex in [cr_BRDEX01..cr_BRDEX08];
+  if Ext or (AIndex in [cr_BRCL10, cr_BRCL11, cr_BRCL21XR, cr_BRCL24, cr_BRCL25, cr_BRCL26]) then
+    if Ext <> ExtensionWritten(AInvoice, ASpec) then
+      Exit
+    else if Ext then
+      case AIndex of
+        cr_BRDEX01: AIndex := cr_BRCL24;
+        cr_BRDEX04: AIndex := cr_BRCL10;
+        cr_BRDEX05: AIndex := cr_BRCL11;
+        cr_BRDEX06: AIndex := cr_BRCL21XR;
+        cr_BRDEX07: AIndex := cr_BRCL25;
+      else
+        AIndex := cr_BRCL26;
+      end;
   CII := ASpec.Target.Syntax = esy_CII;
   SubLines := LandrixEInvoiceSubLinesNested(AInvoice, ASpec);
   Seller := AInvoice.AccountingSupplierParty;
@@ -3785,23 +3861,25 @@ begin
       tax representative has one in EXTENDED only }
     cr_BRCL10:
       Result := PartySchemeWrong(Seller.GlobalIdentifierSellerBuyer, Seller.GlobalIdentifierSellerBuyerSchemeID,
-        True, not CII, CII) or
+        True, not CII, CII, Ext) or
         PartySchemeWrong(Buyer.GlobalIdentifierSellerBuyer, Buyer.GlobalIdentifierSellerBuyerSchemeID, True, False,
-        CII) or
-        (PartySet(Payee) and PartySchemeWrong(Payee.Identifier, Payee.IdentifierSchemeID, False, not CII, CII)) or
+        CII, Ext) or
+        (PartySet(Payee) and PartySchemeWrong(Payee.Identifier, Payee.IdentifierSchemeID, False, not CII, CII,
+        Ext)) or
         (CII and PartySet(TaxRepresentative) and not Forbidden(ASpec, LandrixEInvoiceRuleTaxRepresentativeExtended) and
-        PartySchemeWrong(TaxRepresentative.Identifier, TaxRepresentative.IdentifierSchemeID, False, False, CII)) or
+        PartySchemeWrong(TaxRepresentative.Identifier, TaxRepresentative.IdentifierSchemeID, False, False, CII,
+        Ext)) or
         (CIIInvoiceeWritten(AInvoice, ASpec) and
-        PartySchemeWrong(Invoicee.Identifier, Invoicee.IdentifierSchemeID, False, False, CII));
+        PartySchemeWrong(Invoicee.Identifier, Invoicee.IdentifierSchemeID, False, False, CII, Ext));
     cr_BRCL11:
-      Result := (Present(Seller.CompanyID) and BadAttribute(cl_ICD, Seller.CompanyIDSchemeID, CII)) or
-        (Present(Buyer.CompanyID) and BadAttribute(cl_ICD, Buyer.CompanyIDSchemeID, CII)) or
-        (Present(Payee.CompanyID) and BadAttribute(cl_ICD, Payee.CompanyIDSchemeID, CII)) or
+      Result := (Present(Seller.CompanyID) and BadScheme(cl_ICD, Seller.CompanyIDSchemeID)) or
+        (Present(Buyer.CompanyID) and BadScheme(cl_ICD, Buyer.CompanyIDSchemeID)) or
+        (Present(Payee.CompanyID) and BadScheme(cl_ICD, Payee.CompanyIDSchemeID)) or
         (CII and Present(TaxRepresentative.CompanyID) and
         not Forbidden(ASpec, LandrixEInvoiceRuleTaxRepresentativeExtended) and
-        BadAttribute(cl_ICD, TaxRepresentative.CompanyIDSchemeID, CII)) or
+        BadScheme(cl_ICD, TaxRepresentative.CompanyIDSchemeID)) or
         (CIIInvoiceeWritten(AInvoice, ASpec) and Present(Invoicee.CompanyID) and
-        BadAttribute(cl_ICD, Invoicee.CompanyIDSchemeID, CII));
+        BadScheme(cl_ICD, Invoicee.CompanyIDSchemeID));
     { the payee address in CII EXTENDED only }
     cr_BRCL14:
       Result := BadCode(cl_Country, Seller.Address.CountryCode, CII) or
@@ -3851,7 +3929,7 @@ begin
         Result := LineCodeViolated(AIndex, AInvoice.InvoiceLines, CII, SubLines);
       end;
     cr_BRCL13, cr_BRCL15, cr_BRCL21XR, cr_BRCL21BIS, cr_BRCL23XR, cr_BRCL23BIS:
-      Result := LineCodeViolated(AIndex, AInvoice.InvoiceLines, CII, SubLines);
+      Result := LineCodeViolated(AIndex, AInvoice.InvoiceLines, CII, SubLines, Ext);
     cr_BRCL22:
       begin
         for I := 0 to AInvoice.TaxAmountSubtotals.Count - 1 do
@@ -3885,7 +3963,14 @@ begin
           begin
             Code := WrittenCode(LandrixEInvoiceAttachmentTypeToStr(Attachment.AttachmentType),
               Attachment.AttachmentTypeOther);
-            if (Code <> '') and not InList(Code, AttachmentMimeCodes) then
+            { BR-CL-24 checks a written @mimeCode only, BR-DEX-01 every
+              binary object }
+            if Ext then
+            begin
+              if not InList(Code, AttachmentMimeCodes) and (Code <> 'application/xml') then
+                Exit;
+            end
+            else if (Code <> '') and not InList(Code, AttachmentMimeCodes) then
               Exit;
           end;
         end;
@@ -3897,19 +3982,19 @@ begin
         Scheme := Seller.ElectronicAddressSellerBuyerSchemeID;
         if not Present(Scheme) and not Forbidden(ASpec, LandrixEInvoiceRuleElectronicAddressDefaultEM) then
           Scheme := 'EM';
-        if Present(Seller.ElectronicAddressSellerBuyer) and BadAttribute(cl_EAS, Scheme, CII) then
+        if Present(Seller.ElectronicAddressSellerBuyer) and BadScheme(cl_EAS, Scheme) then
           Exit;
         Scheme := Buyer.ElectronicAddressSellerBuyerSchemeID;
         if not Present(Scheme) and not Forbidden(ASpec, LandrixEInvoiceRuleElectronicAddressDefaultEM) then
           Scheme := 'EM';
-        Result := Present(Buyer.ElectronicAddressSellerBuyer) and BadAttribute(cl_EAS, Scheme, CII);
+        Result := Present(Buyer.ElectronicAddressSellerBuyer) and BadScheme(cl_EAS, Scheme);
       end;
     { CII writes a location without scheme as ram:ID }
     cr_BRCL26:
       begin
         Scheme := AInvoice.DeliveryInformation.LocationIdentifierSchemeID;
         Result := Present(AInvoice.DeliveryInformation.LocationIdentifier) and (not CII or Present(Scheme)) and
-          BadAttribute(cl_ICD, Scheme, CII);
+          BadScheme(cl_ICD, Scheme);
       end;
   else
     Result := False;
@@ -4519,7 +4604,7 @@ begin
     cr_BRFXEXTCO10, cr_BRFXEXTCO11, cr_BRFXEXTCO12, cr_BRFXEXTCO13, cr_BRFXEXTCO15, cr_BRFXEXTCO16,
     cr_BRDEX09:
       Result := CalculationViolated(AIndex, AInvoice, ASpec, ADetail);
-    cr_BRCL01..cr_BRCL26:
+    cr_BRCL01..cr_BRDEX08:
       Result := CodeListViolated(AIndex, AInvoice, ASpec);
   end;
 end;
