@@ -8,6 +8,11 @@ Supported invoice standards are documented per release.
 ## [Unreleased]
 
 ### Added
+- `tools/upstream-check.py`: reports upstream releases newer than the pinned versions (CEN EN 16931
+  artefacts, KoSIT configurations, Schematron, visualization and validator, Peppol BIS, the ZUGFeRD
+  configuration, Mustang, veraPDF, qpdf, the JRE, commonmark.js, Unicode CLDR, LandrixXML) through the
+  `gh` CLI, and two files that pin different versions of one download; it changes nothing. Exit code 1
+  when something is newer or inconsistent, 2 when a pin or release cannot be read.
 - The document validation takes a file with up to 1024 bytes before `%PDF-` as a PDF, as PDF readers do
   (unless it starts like XML), and reports the bytes as LX-PDF-13 (warning, `pdfEmbedding`), also for a
   PDF/A-4 claim and when the PDF cannot be read; before, such a file went the XML way. `IsPdfStream`
