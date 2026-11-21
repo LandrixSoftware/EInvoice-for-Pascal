@@ -1867,6 +1867,28 @@ begin
   CheckOutcome(Pdf, par_6_1_13_1, pro_Failed, 'an empty node without /Count');
 end;
 
+{ The limits against hostile content: q beyond the kept levels still
+  counts, a dictionary operand with too many keys leaves the stream
+  undecided. }
+procedure TestPdfAContent10;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+var
+  Keys: AnsiString;
+  I: Integer;
+begin
+  CheckOutcome(ContentPdf(Saves(1001), '', '', '', NoExtra), par_6_1_13_8, pro_Failed, '1001 saves');
+  CheckOutcome(ContentPdf(Saves(1001) + 'Q ', '', '', '', NoExtra), par_6_1_13_8, pro_Incomplete,
+    'a Q back from beyond the kept levels');
+  Keys := '';
+  for I := 1 to 100 do
+    Keys := Keys + '/K' + AnsiString(IntToStr(I)) + ' 0 ';
+  CheckOutcome(ContentPdf('/Span << ' + Keys + '>> BDC EMC 2147483648 w', '', '', '', NoExtra), par_6_1_13_1,
+    pro_Failed, '100 keys');
+  CheckOutcome(ContentPdf('/Span << ' + Keys + '/K0 0 >> BDC EMC 2147483648 w', '', '', '', NoExtra), par_6_1_13_1,
+    pro_Incomplete, '101 keys: not decided');
+end;
+
 { Round 65 of the reviews: uncoloured tiling patterns, tiling patterns in
   colour space positions, a pattern resource with an underlying space. }
 procedure TestPdfAContent9;
@@ -3137,6 +3159,7 @@ begin
   RegisterTest('PdfA.Content7', TestPdfAContent7);
   RegisterTest('PdfA.Content8', TestPdfAContent8);
   RegisterTest('PdfA.Content9', TestPdfAContent9);
+  RegisterTest('PdfA.Content10', TestPdfAContent10);
   RegisterTest('PdfA.Graphics', TestPdfAGraphics);
   RegisterTest('PdfA.OutputIntents', TestPdfAOutputIntents);
   RegisterTest('PdfA.Colour', TestPdfAColour);

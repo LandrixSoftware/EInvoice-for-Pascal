@@ -202,7 +202,18 @@ type
     { a colour space was not followed somewhere: veraPDF may meet a shared
       one there first, so findings on shared objects are not certain }
     FSharedUnsure: Boolean;
+    { the decoding budget (MaxTotalBytes) ran out: nothing more is decoded }
+    FBudgetSpent: Boolean;
+    { Type3 glyph sets already replayed into a parse (key and parse) }
+    FType3Replayed: TStringList;
+    { page objects walked with their inherited resources }
+    FWalkedPages: TStringList;
+    { the stream list and key of a contents array object, by object }
+    FPartsCache: TStringList;
+    { sorted key indexes of large dictionaries, by object }
+    FDictIndex: TStringList;
     function ObjId(AObj: TLandrixEInvoicePdfObject): string;
+    function DictGet(ADict: TLandrixEInvoicePdfObject; const AKey: AnsiString): TLandrixEInvoicePdfObject;
     function ResolveRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
     function DGetRef(AObj: TLandrixEInvoicePdfObject; const AKey: AnsiString): TLandrixEInvoicePdfObject;
     function LastRefNum(ARaw: TLandrixEInvoicePdfObject): Integer;
@@ -307,6 +318,14 @@ const
   MaxCompoundDepth = 200;
   MaxPageDepth = 64;
   MaxPageNodes = 200000;
+  { keys of one dictionary operand (BDC, DP, an inline image); beyond, the
+    stream is not decided (the key search would grow quadratic) }
+  MaxDictKeys = 100;
+  { q levels kept; deeper ones are only counted (a Q back from there makes
+    the parse uncertain) }
+  MaxStack = 1000;
+  { dictionaries with more keys than this get a sorted key index }
+  DictIndexFrom = 16;
   { veraPDF looks one token ahead after EI and reads it back from a buffer
     of 2048 bytes that keeps at least 1024 bytes behind its position }
   MaxLookahead = 1000;
@@ -522,10 +541,15 @@ var
 begin
   Result := '';
   for I := 1 to Length(AName) do
+  begin
+    { only the first 40 characters are shown }
+    if Length(Result) > 40 then
+      Break;
     if (Ord(AName[I]) >= 32) and (Ord(AName[I]) < 127) then
       Result := Result + Char(AName[I])
     else
       Result := Result + '#' + IntToHex(Ord(AName[I]), 2);
+  end;
   if Length(Result) > 40 then
     Result := Copy(Result, 1, 40) + '...';
 end;
@@ -1046,7 +1070,7 @@ end;
 { A name: #xx with two hex digits stands for one byte, any other # stays. }
 function TContentLexer.ParseName: TCv;
 var
-  Start, Stop, I, V1, V2: Integer;
+  Start, Stop, I, V1, V2, N: Integer;
   S: AnsiString;
 begin
   Result := NewCv(cvk_Name);
@@ -1055,7 +1079,11 @@ begin
   while (FPos < FLen) and IsRegular(FBuf[FPos]) do
     Inc(FPos);
   Stop := FPos;
+  { one buffer of the longest result: appending a character at a time
+    would copy a long name again and again }
   S := '';
+  SetLength(S, Stop - Start);
+  N := 0;
   I := Start;
   while I < Stop do
   begin
@@ -1072,14 +1100,17 @@ begin
       V2 := HexDigit(FBuf[I + 2]);
       if (V1 >= 0) and (V2 >= 0) then
       begin
-        S := S + AnsiChar((V1 shl 4) or V2);
+        Inc(N);
+        S[N] := AnsiChar((V1 shl 4) or V2);
         Inc(I, 3);
         Continue;
       end;
     end;
-    S := S + AnsiChar(FBuf[I]);
+    Inc(N);
+    S[N] := AnsiChar(FBuf[I]);
     Inc(I);
   end;
+  SetLength(S, N);
   Result.Text := S;
 end;
 
@@ -1206,6 +1237,11 @@ begin
     if FStatus <> lxs_Ok then
       Exit;
     Result.Put(K, V);
+    if Length(Result.Keys) > MaxDictKeys then
+    begin
+      FStatus := lxs_Unknown;
+      Exit;
+    end;
   end;
 end;
 
@@ -1307,6 +1343,11 @@ begin
     if FStatus <> lxs_Ok then
       Exit;
     D.Put(K, V);
+    if Length(D.Keys) > MaxDictKeys then
+    begin
+      FStatus := lxs_Unknown;
+      Exit;
+    end;
   end;
   if (FPos < FLen) and IsWhite(FBuf[FPos]) then
     Inc(FPos);
@@ -1487,6 +1528,8 @@ type
 
   TGStack = array of TGState;
 
+  TIntArray = array of Integer;
+
   { One parse of a content stream in one context. }
   TContentParse = class(TObject)
   public
@@ -1497,8 +1540,14 @@ type
     Level: array[TLandrixEInvoicePdfContentCheck] of Integer;
     KeptSure: array[TLandrixEInvoicePdfContentCheck] of Integer;
     KeptMaybe: array[TLandrixEInvoicePdfContentCheck] of Integer;
-    Children: array of Integer;
-    Assoc: array of Integer;
+    Children: TIntArray;
+    { Children sorted, to find a value already there }
+    ChildSorted: TIntArray;
+    { the associated objects, AssocCount of them; duplicates are removed
+      (and the list sorted) when it has doubled and by CompactAssoc }
+    Assoc: TIntArray;
+    AssocCount: Integer;
+    AssocCompact: Integer;
     Group: Integer;
     Index: Integer;
     { no stream: something veraPDF validates once by its identity (an image,
@@ -1507,30 +1556,138 @@ type
     Virtual: Boolean;
     procedure AddChild(AIndex: Integer);
     procedure AddAssoc(ANum: Integer);
+    procedure CompactAssoc;
+    function HasAssoc(ANum: Integer): Boolean;
   end;
 
-procedure TContentParse.AddChild(AIndex: Integer);
+{ Inserts AValue into the sorted ASorted; False if it is there already
+  (binary search: a glyph set replayed for every text operator would make
+  a linear search quadratic). }
+function InsertSorted(var ASorted: TIntArray; AValue: Integer): Boolean;
 var
-  I: Integer;
+  Lo, Hi, Mid, N: Integer;
+begin
+  Result := False;
+  Lo := 0;
+  Hi := Integer(Length(ASorted)) - 1;
+  while Lo <= Hi do
+  begin
+    Mid := (Lo + Hi) div 2;
+    if ASorted[Mid] = AValue then
+      Exit;
+    if ASorted[Mid] < AValue then
+      Lo := Mid + 1
+    else
+      Hi := Mid - 1;
+  end;
+  N := Length(ASorted);
+  SetLength(ASorted, N + 1);
+  if Lo < N then
+    Move(ASorted[Lo], ASorted[Lo + 1], (N - Lo) * SizeOf(Integer));
+  ASorted[Lo] := AValue;
+  Result := True;
+end;
+
+procedure TContentParse.AddChild(AIndex: Integer);
 begin
   if AIndex < 0 then
     Exit;
-  for I := 0 to Integer(Length(Children)) - 1 do
-    if Children[I] = AIndex then
-      Exit;
+  if not InsertSorted(ChildSorted, AIndex) then
+    Exit;
   SetLength(Children, Length(Children) + 1);
   Children[High(Children)] := AIndex;
 end;
 
-procedure TContentParse.AddAssoc(ANum: Integer);
+{ Sorts the first ACount values of A (bottom-up merge sort: n log n for
+  any order). }
+procedure SortInts(var A: TIntArray; ACount: Integer);
 var
-  I: Integer;
+  Temp: TIntArray;
+  Width, Lo, Mid, Hi, L, R, K: Integer;
 begin
-  for I := 0 to Integer(Length(Assoc)) - 1 do
-    if Assoc[I] = ANum then
+  Temp := nil;
+  SetLength(Temp, ACount);
+  Width := 1;
+  while Width < ACount do
+  begin
+    Lo := 0;
+    while Lo < ACount do
+    begin
+      Mid := Lo + Width;
+      if Mid > ACount then
+        Mid := ACount;
+      Hi := Mid + Width;
+      if Hi > ACount then
+        Hi := ACount;
+      L := Lo;
+      R := Mid;
+      for K := Lo to Hi - 1 do
+        if (L < Mid) and ((R >= Hi) or (A[L] <= A[R])) then
+        begin
+          Temp[K] := A[L];
+          Inc(L);
+        end
+        else
+        begin
+          Temp[K] := A[R];
+          Inc(R);
+        end;
+      Lo := Hi;
+    end;
+    for K := 0 to ACount - 1 do
+      A[K] := Temp[K];
+    Width := Width * 2;
+  end;
+end;
+
+{ Appended; duplicates go when the list has doubled since the last
+  compaction (sorted insertion would be quadratic for numbers in falling
+  order). }
+procedure TContentParse.AddAssoc(ANum: Integer);
+begin
+  if AssocCount >= Length(Assoc) then
+    SetLength(Assoc, 2 * AssocCount + 8);
+  Assoc[AssocCount] := ANum;
+  Inc(AssocCount);
+  if AssocCount > 2 * AssocCompact + 64 then
+    CompactAssoc;
+end;
+
+procedure TContentParse.CompactAssoc;
+var
+  I, N: Integer;
+begin
+  SortInts(Assoc, AssocCount);
+  N := 0;
+  for I := 0 to AssocCount - 1 do
+    if (N = 0) or (Assoc[I] <> Assoc[N - 1]) then
+    begin
+      Assoc[N] := Assoc[I];
+      Inc(N);
+    end;
+  AssocCount := N;
+  AssocCompact := N;
+end;
+
+{ After CompactAssoc: binary search. }
+function TContentParse.HasAssoc(ANum: Integer): Boolean;
+var
+  Lo, Hi, Mid: Integer;
+begin
+  Result := True;
+  Lo := 0;
+  Hi := AssocCount - 1;
+  while Lo <= Hi do
+  begin
+    Mid := (Lo + Hi) div 2;
+    if Assoc[Mid] = ANum then
       Exit;
-  SetLength(Assoc, Length(Assoc) + 1);
-  Assoc[High(Assoc)] := ANum;
+    if Assoc[Mid] < ANum then
+      Lo := Mid + 1
+    else
+      Hi := Mid - 1;
+  end;
+  Result := False;
 end;
 
 function NullCs: TCsRef;
@@ -1571,6 +1728,8 @@ type
       reached from this stream with it }
     FInit: TGState;
     FStack: TGStack;
+    { q levels beyond MaxStack, only counted }
+    FStackOver: Integer;
     FOp: string;
     { graphics states, halftones and images checked by this parse }
     FSeen: TStringList;
@@ -1703,6 +1862,13 @@ begin
     is checked before anything is joined }
   Unc := False;
   Parts := nil;
+  if AWalk.FBudgetSpent then
+  begin
+    { decoded again and again, a large stream would cost time without end }
+    AWalk.FIncomplete := True;
+    P.Uncertain := True;
+    Exit;
+  end;
   SetLength(Parts, Length(AStreams));
   Total := 0;
   for I := 0 to Integer(High(AStreams)) do
@@ -1716,16 +1882,20 @@ begin
     if AWalk.FTotalBytes + Total > MaxTotalBytes then
     begin
       AWalk.FIncomplete := True;
+      AWalk.FBudgetSpent := True;
       Unc := True;
       Break;
     end;
   end;
+  { what was decoded counts, also when a later part fails }
+  Inc(AWalk.FTotalBytes, Total);
+  if AWalk.FTotalBytes > MaxTotalBytes then
+    AWalk.FBudgetSpent := True;
   if Unc then
   begin
     P.Uncertain := True;
     Exit;
   end;
-  Inc(AWalk.FTotalBytes, Total);
   N := 0;
   for I := 0 to Integer(High(Parts)) do
     Inc(N, Length(Parts[I]));
@@ -2718,7 +2888,7 @@ begin
     C := FWalk.DGetRef(R, ACategory);
     if (C = nil) or not C.IsDictLike then
       Continue;
-    ARaw := C.RawGet(AName);
+    ARaw := FWalk.DictGet(C, AName);
     Result := FWalk.ResolveRef(ARaw);
     { a pattern value nested beyond the depth limit: not decided }
     if (ACategory = 'Pattern') and (Result <> nil) and
@@ -2811,7 +2981,12 @@ begin
   Num := FWalk.FType3Seen.IndexOf(Key);
   if Num >= 0 then
   begin
-    { reached before from this page: the same glyph parses }
+    { reached before from this page: the same glyph parses, once into each
+      parse }
+    if (Length(TContentParse(FWalk.FType3Seen.Objects[Num]).Children) = 0) or
+       (FWalk.FType3Replayed.IndexOf(Key + '@' + IntToStr(FParse.Index)) >= 0) then
+      Exit;
+    FWalk.FType3Replayed.Add(Key + '@' + IntToStr(FParse.Index));
     for I := 0 to Integer(Length(TContentParse(FWalk.FType3Seen.Objects[Num]).Children)) - 1 do
       FParse.AddChild(TContentParse(FWalk.FType3Seen.Objects[Num]).Children[I]);
     Exit;
@@ -4132,13 +4307,25 @@ begin
       end;
     oc_Push:
       begin
-        SetLength(FStack, Length(FStack) + 1);
-        FStack[High(FStack)] := FState;
-        if Length(FStack) > MaxNesting then
-          Mark(pcc_Nesting, False, 'q nested ' + IntToStr(Length(FStack)) + ' levels deep');
+        if Length(FStack) < MaxStack then
+        begin
+          SetLength(FStack, Length(FStack) + 1);
+          FStack[High(FStack)] := FState;
+        end
+        else
+          { not kept: only counted }
+          Inc(FStackOver);
+        if Length(FStack) + FStackOver > MaxNesting then
+          Mark(pcc_Nesting, False, 'q nested ' + IntToStr(Length(FStack) + FStackOver) + ' levels deep');
       end;
     oc_Pop:
-      if Length(FStack) > 0 then
+      if FStackOver > 0 then
+      begin
+        { the state this Q restores was not kept }
+        Dec(FStackOver);
+        FParse.Uncertain := True;
+      end
+      else if Length(FStack) > 0 then
       begin
         FState := FStack[High(FStack)];
         SetLength(FStack, Length(FStack) - 1);
@@ -4400,6 +4587,25 @@ end;
 // TLandrixEInvoicePdfContentWalk
 //==============================================================================
 
+type
+  TObjArray = array of TLandrixEInvoicePdfObject;
+
+  { The parts of a contents array object as WalkPage reads them. }
+  TPartsEntry = class(TObject)
+  public
+    First: Integer;
+    Streams: TObjArray;
+  end;
+
+  { A sorted index of a dictionary's keys (DictGet). }
+  TKeyIndex = class(TObject)
+  public
+    Keys: array of AnsiString;
+    Vals: array of TLandrixEInvoicePdfObject;
+    procedure Build(ADict: TLandrixEInvoicePdfObject);
+    function Find(const AKey: AnsiString): TLandrixEInvoicePdfObject;
+  end;
+
 constructor TLandrixEInvoicePdfContentWalk.Create(ADoc: TLandrixEInvoicePdfDocument);
 begin
   inherited Create;
@@ -4414,6 +4620,16 @@ begin
   FType3Seen.Duplicates := dupIgnore;
   FIccCache := TStringList.Create;
   FIccCache.Sorted := True;
+  FType3Replayed := TStringList.Create;
+  FType3Replayed.Sorted := True;
+  FType3Replayed.Duplicates := dupIgnore;
+  FWalkedPages := TStringList.Create;
+  FWalkedPages.Sorted := True;
+  FWalkedPages.Duplicates := dupIgnore;
+  FPartsCache := TStringList.Create;
+  FPartsCache.Sorted := True;
+  FDictIndex := TStringList.Create;
+  FDictIndex.Sorted := True;
   { built at run time: literals of this size lose precision as Extended }
   FMaxReal := FloatOf('3.403e38');
   FMinReal := FloatOf('1.175e-38');
@@ -4436,6 +4652,14 @@ begin
   for I := 0 to FIccCache.Count - 1 do
     FIccCache.Objects[I].Free;
   FIccCache.Free;
+  for I := 0 to FPartsCache.Count - 1 do
+    FPartsCache.Objects[I].Free;
+  FPartsCache.Free;
+  for I := 0 to FDictIndex.Count - 1 do
+    FDictIndex.Objects[I].Free;
+  FDictIndex.Free;
+  FWalkedPages.Free;
+  FType3Replayed.Free;
   FActive.Free;
   FMemo.Free;
   FParses.Free;
@@ -4482,7 +4706,140 @@ begin
   Result := nil;
   if (AObj = nil) or not AObj.IsDictLike then
     Exit;
-  Result := ResolveRef(AObj.RawGet(AKey));
+  Result := ResolveRef(DictGet(AObj, AKey));
+end;
+
+{ Byte order of two keys (no locale): <0, 0, >0. }
+function CompareKeys(const A, B: AnsiString): Integer;
+var
+  I, N: Integer;
+begin
+  N := Length(A);
+  if Length(B) < N then
+    N := Length(B);
+  for I := 1 to N do
+    if A[I] <> B[I] then
+    begin
+      Result := Ord(A[I]) - Ord(B[I]);
+      Exit;
+    end;
+  Result := Length(A) - Length(B);
+end;
+
+procedure TKeyIndex.Build(ADict: TLandrixEInvoicePdfObject);
+var
+  P, Temp: TIntArray;
+  N, Width, Lo, Mid, Hi, L, R, K, I: Integer;
+begin
+  N := Integer(ADict.DVals.Count);
+  P := nil;
+  Temp := nil;
+  SetLength(P, N);
+  SetLength(Temp, N);
+  for I := 0 to N - 1 do
+    P[I] := I;
+  { stable merge sort of the positions by key: equal keys keep their order }
+  Width := 1;
+  while Width < N do
+  begin
+    Lo := 0;
+    while Lo < N do
+    begin
+      Mid := Lo + Width;
+      if Mid > N then
+        Mid := N;
+      Hi := Mid + Width;
+      if Hi > N then
+        Hi := N;
+      L := Lo;
+      R := Mid;
+      for K := Lo to Hi - 1 do
+        if (L < Mid) and ((R >= Hi) or (CompareKeys(ADict.DKeys[P[L]], ADict.DKeys[P[R]]) <= 0)) then
+        begin
+          Temp[K] := P[L];
+          Inc(L);
+        end
+        else
+        begin
+          Temp[K] := P[R];
+          Inc(R);
+        end;
+      Lo := Hi;
+    end;
+    for K := 0 to N - 1 do
+      P[K] := Temp[K];
+    Width := Width * 2;
+  end;
+  { of repeated keys the last one counts, as in RawGet }
+  SetLength(Keys, N);
+  SetLength(Vals, N);
+  K := 0;
+  for I := 0 to N - 1 do
+  begin
+    if (I + 1 < N) and (CompareKeys(ADict.DKeys[P[I]], ADict.DKeys[P[I + 1]]) = 0) then
+      Continue;
+    Keys[K] := ADict.DKeys[P[I]];
+    Vals[K] := TLandrixEInvoicePdfObject(ADict.DVals[P[I]]);
+    Inc(K);
+  end;
+  SetLength(Keys, K);
+  SetLength(Vals, K);
+end;
+
+function TKeyIndex.Find(const AKey: AnsiString): TLandrixEInvoicePdfObject;
+var
+  Lo, Hi, Mid, Cmp: Integer;
+begin
+  Result := nil;
+  Lo := 0;
+  Hi := Integer(Length(Keys)) - 1;
+  while Lo <= Hi do
+  begin
+    Mid := (Lo + Hi) div 2;
+    Cmp := CompareKeys(Keys[Mid], AKey);
+    if Cmp = 0 then
+    begin
+      Result := Vals[Mid];
+      Exit;
+    end;
+    if Cmp < 0 then
+      Lo := Mid + 1
+    else
+      Hi := Mid - 1;
+  end;
+end;
+
+{ ADict.RawGet(AKey) (the last of repeated keys); a dictionary with many
+  keys gets a sorted index once (a resource dictionary of thousands of
+  entries looked into for every Do would be quadratic).
+  DE: ADict.RawGet(AKey); ein Dictionary mit vielen Schluesseln bekommt
+  einmal einen sortierten Index. }
+function TLandrixEInvoicePdfContentWalk.DictGet(ADict: TLandrixEInvoicePdfObject;
+  const AKey: AnsiString): TLandrixEInvoicePdfObject;
+var
+  Idx: Integer;
+  L: TKeyIndex;
+  Id: string;
+begin
+  if Integer(ADict.DVals.Count) <= DictIndexFrom then
+  begin
+    Result := ADict.RawGet(AKey);
+    Exit;
+  end;
+  Id := IntToStr(ADict.Serial);
+  Idx := FDictIndex.IndexOf(Id);
+  if Idx < 0 then
+  begin
+    L := TKeyIndex.Create;
+    try
+      L.Build(ADict);
+    except
+      L.Free;
+      raise;
+    end;
+    Idx := FDictIndex.AddObject(Id, L);
+  end;
+  Result := TKeyIndex(FDictIndex.Objects[Idx]).Find(AKey);
 end;
 
 { A key of a parsed object for the memo: its serial number. }
@@ -4838,6 +5195,7 @@ var
   Kids, T, Inh: TLandrixEInvoicePdfObject;
   Count: Int64;
   I: Integer;
+  PageKey: string;
 begin
   Result := 0;
   if (ANode = nil) or not ANode.IsDictLike then
@@ -4885,6 +5243,13 @@ begin
     Exit;
   end;
   Result := 1;
+  { a page object reached again with the same resources gives the same
+    parses: walked once (a tree of many references to one page would
+    repeat the whole work) }
+  PageKey := ObjId(ANode) + '/' + ObjId(Inh);
+  if FWalkedPages.IndexOf(PageKey) >= 0 then
+    Exit;
+  FWalkedPages.Add(PageKey);
   WalkPage(ANode, Inh);
 end;
 
@@ -4927,9 +5292,11 @@ const
   ApKeys: array[0..2] of AnsiString = ('N', 'D', 'R');
 var
   PageRes, C, Raw, S, Annots, A, AP, V, Raw2, S2, Local: TLandrixEInvoicePdfObject;
-  Streams: array of TLandrixEInvoicePdfObject;
-  Key: string;
-  I, K, J, First: Integer;
+  Streams: TObjArray;
+  Key, CacheKey, Part: string;
+  I, K, J, First, KeyLen, Cached: Integer;
+  IsRef: Boolean;
+  Parts: TPartsEntry;
   Res, ApRes: TRes;
 begin
   Inc(FPageCount);
@@ -4955,7 +5322,10 @@ begin
   begin
     { an array object is one identity (shared by pages or not); a direct
       array belongs to its page }
-    if Raw.Kind = pok_Ref then
+    { an array object: its number is the key (its parts are the same each
+      time; a key of all parts would cost their number for every page) }
+    IsRef := Raw.Kind = pok_Ref;
+    if IsRef then
       Key := 'A' + IntToStr(Raw.RefNum)
     else
       Key := 'D' + IntToStr(FPageCount);
@@ -4966,21 +5336,53 @@ begin
       FLimitHit := True;
       Exit;
     end;
-    SetLength(Streams, C.ArrCount);
-    K := 0;
-    for I := 0 to C.ArrCount - 1 do
+    Cached := -1;
+    CacheKey := IntToStr(C.Serial);
+    if IsRef then
+      Cached := FPartsCache.IndexOf(CacheKey);
+    if Cached >= 0 then
     begin
-      Raw := C.ArrItem(I);
-      S := ResolveRef(Raw);
-      if (S = nil) or (S.Kind <> pok_Stream) or (Raw.Kind <> pok_Ref) then
-        Continue;
-      Streams[K] := S;
-      Inc(K);
-      Key := Key + ',' + IntToStr(Raw.RefNum);
-      if First < 0 then
-        First := Raw.RefNum;
+      { an array object shared by many pages: its parts once (the list is
+        only read) }
+      Parts := TPartsEntry(FPartsCache.Objects[Cached]);
+      Streams := Parts.Streams;
+      First := Parts.First;
+    end
+    else
+    begin
+      SetLength(Streams, C.ArrCount);
+      { the key in one buffer: ',' and at most 11 characters a part }
+      KeyLen := Length(Key);
+      SetLength(Key, KeyLen + 12 * C.ArrCount);
+      K := 0;
+      for I := 0 to C.ArrCount - 1 do
+      begin
+        Raw := C.ArrItem(I);
+        S := ResolveRef(Raw);
+        if (S = nil) or (S.Kind <> pok_Stream) or (Raw.Kind <> pok_Ref) then
+          Continue;
+        Streams[K] := S;
+        Inc(K);
+        if not IsRef then
+        begin
+          Part := ',' + IntToStr(Raw.RefNum);
+          for J := 1 to Length(Part) do
+            Key[KeyLen + J] := Part[J];
+          Inc(KeyLen, Length(Part));
+        end;
+        if First < 0 then
+          First := Raw.RefNum;
+      end;
+      SetLength(Key, KeyLen);
+      SetLength(Streams, K);
+      if IsRef then
+      begin
+        Parts := TPartsEntry.Create;
+        Parts.First := First;
+        Parts.Streams := Copy(Streams, 0, Length(Streams));
+        FPartsCache.AddObject(CacheKey, Parts);
+      end;
     end;
-    SetLength(Streams, K);
   end;
   if Length(Streams) > 0 then
     ParseStreams(Self, Key, First, Streams, Res, FreshState(Self, Res), True);
@@ -5300,6 +5702,9 @@ begin
 
   { a stream not read with certainty may reach any form, pattern or glyph
     in another context first, and may associate anything }
+  { the associations without duplicates, sorted (HasAssoc) }
+  for I := 0 to Integer(FParses.Count) - 1 do
+    TContentParse(FParses[I]).CompactAssoc;
   FAnyUncertain := False;
   for I := 0 to Integer(FParses.Count) - 1 do
     if TContentParse(FParses[I]).Uncertain then
@@ -5389,7 +5794,7 @@ begin
     for M := GroupStart[G] to GroupStart[G + 1] - 1 do
     begin
       P := TContentParse(FParses[Members[M]]);
-      for K := 0 to Integer(Length(P.Assoc)) - 1 do
+      for K := 0 to P.AssocCount - 1 do
       begin
         Num := P.Assoc[K];
         if (Num < 0) or (Num >= MaxNum) then
@@ -5401,11 +5806,7 @@ begin
         for J := GroupStart[G] to GroupStart[G + 1] - 1 do
         begin
           Q := TContentParse(FParses[Members[J]]);
-          Found := False;
-          for I := 0 to Integer(Length(Q.Assoc)) - 1 do
-            if Q.Assoc[I] = Num then
-              Found := True;
-          if not Found then
+          if not Q.HasAssoc(Num) then
             InAll := False;
         end;
         if InAll then
@@ -5417,7 +5818,8 @@ begin
   { the findings outside any parse: certain where the pages are. DE: die
     Befunde ausserhalb jeder Analyse: sicher, wo die Seiten es sind. }
   for I := 0 to FRCount - 1 do
-    if FPagesUnsure or FThrows then
+    { an uncertain stream may throw in veraPDF, which then reports nothing }
+    if FPagesUnsure or FThrows or FAnyUncertain then
       FUncertain[FRCheck[I]] := True
     else
     begin
