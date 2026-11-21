@@ -913,6 +913,11 @@ begin
     Check(Invoice.InvoiceDueDate = 0, 'no inference from an empty basis date');
     ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '0', 'DAY', '20261231')), Invoice, D);
     Check(Invoice.InvoiceDueDate = EncodeDate(2026, 12, 31), 'a period of 0 days ends on the basis date');
+    { a period beyond the calendar is reported, not wrapped }
+    ReadInvoiceXml(PaymentTermsXml('20261111', DiscountTermXml('20261111', '4294967297', 'DAY', '20261231')), Invoice,
+      D);
+    Check(D.CountOf(edk_ConversionFailed) = 1, 'period out of range reported: ' + string(D.ToText));
+    Check(Invoice.InvoiceDueDate = 0, 'no inference from a period out of range');
   finally
     Back.Free;
     Invoice.Free;

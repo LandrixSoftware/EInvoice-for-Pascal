@@ -273,6 +273,7 @@ type
     FSchemaFile: string;
     FSchematronFiles: TStringList;
     FCustomCodes: TStringList;
+    FCustomUtf8: array of TLandrixXmlUtf8;
     FCustomLevels: array of TLandrixEInvoiceValidationLevel;
     FScenarioXml: TLandrixXmlUtf8;
     FReportFile: string;
@@ -730,6 +731,11 @@ begin
     Location := ChildText(Resource, 'location');
   if Location = '' then
     ConfigError('resource without location');
+  { a location the native string cannot hold (Delphi 6-2007: a character
+    outside the system code page) would open another file }
+  if LandrixXmlStringToUtf8(LandrixXmlUtf8ToString(Location)) <> Location then
+    ConfigError('resource location not representable in the system code page: ' +
+      LandrixXmlUtf8ToString(Location));
   Result := ExpandFileName(ADir + StringReplace(LandrixXmlUtf8ToString(Location), '/', PathDelim, [rfReplaceAll]));
 end;
 
@@ -882,8 +888,9 @@ var
   I: Integer;
 begin
   Result := False;
+  { compared as UTF-8: the native string is lossy on Delphi 6-2007 }
   for I := 0 to FCustomCodes.Count - 1 do
-    if LandrixXmlStringToUtf8(FCustomCodes[I]) = LandrixEInvoiceStringToUtf8(ACode) then
+    if FCustomUtf8[I] = LandrixEInvoiceStringToUtf8(ACode) then
     begin
       ALevel := FCustomLevels[I];
       Result := True;
@@ -1023,6 +1030,8 @@ begin
             if Code <> '' then
             begin
               Scenario.FCustomCodes.Add(LandrixXmlUtf8ToString(Code));
+              SetLength(Scenario.FCustomUtf8, Scenario.FCustomCodes.Count);
+              Scenario.FCustomUtf8[Scenario.FCustomCodes.Count - 1] := Code;
               SetLength(Scenario.FCustomLevels, Scenario.FCustomCodes.Count);
               Scenario.FCustomLevels[Scenario.FCustomCodes.Count - 1] := Level;
             end;

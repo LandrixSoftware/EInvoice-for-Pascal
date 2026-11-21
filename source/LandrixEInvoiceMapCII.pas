@@ -2929,11 +2929,11 @@ var
   I: TLandrixEInvoiceListIndex;
   Path: TLandrixEInvoiceString;
   Days: Integer;
-  Percent, Period: Double;
+  Percent, Period, DayCount: Double;
   Base, Actual: Currency;
   Basis, Due, PeriodEnd: TDateTime;
   TermDues: array of TDateTime;
-  NetFound, InDays: Boolean;
+  NetFound, InDays, PeriodOk: Boolean;
   PeriodUnit: TLandrixEInvoiceString;
 begin
   Terms := ASettlement.SpecifiedTradePaymentTerms;
@@ -3000,13 +3000,30 @@ begin
         'cash discount period in unit ' + PeriodUnit);
     if (Discount.BasisPeriodMeasure.Value <> '') and InDays then
     begin
-      Days := Integer(Trunc(Decimal(Discount.BasisPeriodMeasure.Value, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure')));
-      if PeriodUnit = 'WEE' then
-        Days := Integer(Trunc(Decimal(Discount.BasisPeriodMeasure.Value,
-          Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure') * 7));
+      PeriodOk := True;
+      DayCount := Decimal(Discount.BasisPeriodMeasure.Value,
+        Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure');
+      { a period beyond the calendar (about 10,000 years) is no number of
+        days: Trunc would overflow or wrap differently per compiler; weeks
+        are checked before they are multiplied
+        DE: eine Frist jenseits des Kalenders (etwa 10.000 Jahre) ist keine
+        Zahl von Tagen: Trunc liefe je Compiler anders ueber; Wochen werden
+        vor dem Multiplizieren geprueft }
+      if (PeriodUnit = 'WEE') and (Abs(DayCount) <= 528000) then
+        Days := Integer(Trunc(DayCount * 7))
+      else if (PeriodUnit <> 'WEE') and (Abs(DayCount) <= 3700000) then
+        Days := Integer(Trunc(DayCount))
+      else
+      begin
+        Report(edk_ConversionFailed, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisPeriodMeasure',
+          'cash discount period "' + Discount.BasisPeriodMeasure.Value + '" out of range; not read', eds_Error);
+        Days := 0;
+        PeriodOk := False;
+      end;
       Basis := Date(Discount.BasisDateTime, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime');
       PeriodEnd := 0;
-      if LandrixEInvoiceTryLexicalToDouble(Discount.BasisPeriodMeasure.Value, Period) and (Period >= 0) then
+      if PeriodOk and LandrixEInvoiceTryLexicalToDouble(Discount.BasisPeriodMeasure.Value, Period) and
+         (Period >= 0) then
       begin
         if Basis > 0 then
           PeriodEnd := Trunc(Basis) + Days
@@ -3014,7 +3031,7 @@ begin
            (FInvoice.InvoiceIssueDate > 0) then
           PeriodEnd := Trunc(FInvoice.InvoiceIssueDate) + Days;
       end;
-      if (Basis > 0) and (FInvoice.InvoiceIssueDate > 0) then
+      if PeriodOk and (Basis > 0) and (FInvoice.InvoiceIssueDate > 0) then
         Days := Days + Integer(Trunc(Basis) - Trunc(FInvoice.InvoiceIssueDate));
       if (PeriodEnd > 0) and (Term.DueDateDateTime.Value <> '') then
       begin

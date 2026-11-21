@@ -966,7 +966,7 @@ begin
         'hyphen-minus', '', Shown(AValue));
     elp_CoarseLength:
       begin
-        Coarse := Pos(TLandrixEInvoiceString('-'), AValue) - 1;
+        Coarse := LandrixEInvoiceTextPos('-', AValue) - 1;
         AddHint(FDiagnostics, FCount, RuleLeitweg, APath, ASeverity, AWhat + ' has a coarse address of ' +
           IntToStr(Coarse) + ' digits, not 2, 3, 5, 8, 9 or 12', '', Shown(AValue));
       end;
@@ -1083,7 +1083,7 @@ begin
   Result := False;
   if not (LandrixEInvoiceLeitwegIDProblem(AValue, Expected) in [elp_None, elp_CheckDigits]) then
     Exit;
-  First := Pos(TLandrixEInvoiceString('-'), AValue);
+  First := LandrixEInvoiceTextPos('-', AValue);
   Hyphens := 0;
   for I := 1 to Length(AValue) do
     if AValue[I] = '-' then
@@ -1177,7 +1177,20 @@ end;
 
 function DateText(AValue: TDateTime): TLandrixEInvoiceString;
 begin
-  Result := TLandrixEInvoiceString(FormatDateTime('yyyy"-"mm"-"dd', AValue));
+  Result := LandrixEInvoiceDateToUBL(AValue);
+end;
+
+{ True for a set date (after 1899-12-30, as the model counts "set") the
+  writers can format: not NaN (by its bits), at most 9999-12-31.
+  DE: True fuer ein gesetztes Datum (nach dem 30.12.1899, wie das Modell
+  "gesetzt" zaehlt), das die Writer formatieren koennen: nicht NaN (an den
+  Bits), hoechstens 9999-12-31. }
+function UsableDate(AValue: TDateTime): Boolean;
+var
+  Bits: Int64;
+begin
+  Bits := PInt64(@AValue)^;
+  Result := ((Bits shr 52) and $7FF <> $7FF) and (AValue > 0) and (AValue < 2958466);
 end;
 
 { AValue without blanks (space, tab, line feed, carriage return).
@@ -1222,7 +1235,10 @@ end;
   bezahlten Rechnung (BT-113 ueber 0 und BT-115 hoechstens 0). }
 procedure TPlausibilityChecker.DueDate(A: TLandrixInvoice);
 begin
-  if (A.InvoiceDueDate <= 0) or (A.InvoiceIssueDate <= 0) or (Trunc(A.InvoiceDueDate) >= Trunc(A.InvoiceIssueDate)) or
+  { a date set in code may be NaN or out of range: no hint then (comparing
+    a NaN differs between x87 and SSE) }
+  if not UsableDate(A.InvoiceDueDate) or not UsableDate(A.InvoiceIssueDate) or
+     (Trunc(A.InvoiceDueDate) >= Trunc(A.InvoiceIssueDate)) or
      IsCreditNote(A) or (A.TaxInclusiveAmount < 0) or ((A.PrepaidAmount > 0) and (A.PayableAmount <= 0)) then
     Exit;
   AddHint(FDiagnostics, FCount, RuleDueDate, 'InvoiceDueDate', eds_Warning,

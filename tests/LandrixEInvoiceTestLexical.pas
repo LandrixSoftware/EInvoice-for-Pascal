@@ -48,6 +48,18 @@ begin
   CheckEqualsInvoiceStr(TLandrixEInvoiceString(AExpected), AActual, AMsg);
 end;
 
+{ UTF-16 text helpers: no ASCII look-alike for a fullwidth character. }
+procedure TestTextHelpers;
+begin
+  CheckEquals(3, LandrixEInvoiceTextPos('-', 'ab-c'), 'hyphen');
+  CheckEquals(0, LandrixEInvoiceTextPos('', 'ab'), 'empty');
+  CheckEquals(0, LandrixEInvoiceTextPos('-', TLandrixEInvoiceString('ab') + TLandrixEInvoiceString(WideChar($FF0D))),
+    'fullwidth hyphen');
+  CheckEquals(2, LandrixEInvoiceTextPos('bc', 'abcbc'), 'first of two');
+  CheckEqualsStr('A' + #1 + 'B', LandrixEInvoiceAsciiText(TLandrixEInvoiceString('A') +
+    TLandrixEInvoiceString(WideChar($FF24)) + TLandrixEInvoiceString('B')), 'fullwidth D');
+end;
+
 procedure TestAmount;
 begin
   CheckText('100.00', LandrixEInvoiceAmountToLexical(100), '100');
@@ -159,6 +171,7 @@ end;
 
 procedure Register;
 begin
+  RegisterTest('Lexical.TextHelpers', TestTextHelpers);
   RegisterTest('Lexical.Amount', TestAmount);
   RegisterTest('Lexical.Price', TestPrice);
   RegisterTest('Lexical.Quantity', TestQuantity);

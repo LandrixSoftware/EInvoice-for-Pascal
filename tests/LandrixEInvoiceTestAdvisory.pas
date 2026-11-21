@@ -510,6 +510,10 @@ begin
     CheckEqualsStr('LX-PL-01:InvoiceDueDate:BT-9:warning', PlHints(Inv, D, ''), 'due date before');
     CheckEqualsInvoiceStr('2026-11-19', D[0].Expected, 'due date: expected');
     CheckEqualsInvoiceStr('2026-11-18', D[0].Found, 'due date: found');
+    { a NaN issue date gives no hint on any compiler }
+    PInt64(@Inv.InvoiceIssueDate)^ := $7FF8000000000000;
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'NaN issue date');
+    Inv.InvoiceIssueDate := EncodeDate(2026, 11, 19);
     Inv.InvoiceTypeCode := itc_CreditNote;
     CheckEqualsStr('', PlHints(Inv, D, ''), 'credit note');
     Inv.InvoiceTypeCode := itc_None;

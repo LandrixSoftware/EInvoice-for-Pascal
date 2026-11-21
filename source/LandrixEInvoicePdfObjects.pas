@@ -780,6 +780,93 @@ begin
     Result := B;
 end;
 
+{ Val of a number token, the same on every compiler. A token of the PDF
+  number form ([sign] digits [. digits]) goes to Val without leading zeros
+  and with at most 40 significant decimals (FPC refuses tokens over 255
+  characters, Delphi 6 overflows on thousands of decimals); a fraction
+  with more than 100 leading zeros goes as mantissa and exponent, one with
+  400 or more is zero (below Double). More than 308 integer digits (beyond
+  Double) and an exponent (PDF has none) are no number. Any other token
+  goes to Val as it is.
+  DE: Val eines Zahl-Tokens, auf jedem Compiler gleich. Ein Token der
+  PDF-Zahlform geht ohne fuehrende Nullen und mit hoechstens 40
+  signifikanten Nachkommastellen an Val; ein Bruch mit mehr als 100
+  fuehrenden Nullen geht als Mantisse und Exponent, einer mit 400 oder
+  mehr ist null. Mehr als 308 Vorkommastellen und ein Exponent sind keine
+  Zahl. Jedes andere Token geht unveraendert an Val. }
+procedure PdfVal(const ATok: AnsiString; out AValue: Double; out ACode: Integer);
+var
+  I, IntFrom, IntTo, FracFrom, FracTo, Zeros: Integer;
+  Sign, Norm: AnsiString;
+begin
+  AValue := 0;
+  if (Pos('e', ATok) > 0) or (Pos('E', ATok) > 0) then
+  begin
+    ACode := 1;
+    Exit;
+  end;
+  I := 1;
+  Sign := '';
+  if (I <= Length(ATok)) and ((ATok[I] = '+') or (ATok[I] = '-')) then
+  begin
+    Sign := Copy(ATok, 1, 1);
+    Inc(I);
+  end;
+  while (I <= Length(ATok)) and (ATok[I] = '0') do
+    Inc(I);
+  IntFrom := I;
+  while (I <= Length(ATok)) and (ATok[I] >= '0') and (ATok[I] <= '9') do
+    Inc(I);
+  IntTo := I;
+  FracFrom := I;
+  FracTo := I;
+  if (I <= Length(ATok)) and (ATok[I] = '.') then
+  begin
+    Inc(I);
+    FracFrom := I;
+    while (I <= Length(ATok)) and (ATok[I] >= '0') and (ATok[I] <= '9') do
+      Inc(I);
+    FracTo := I;
+  end;
+  if (I <= Length(ATok)) or (Length(ATok) = Length(Sign)) or (ATok = Sign + '.') then
+  begin
+    { not of the number form: as before }
+    Val(AsciiToNative(ATok), AValue, ACode);
+    Exit;
+  end;
+  if IntTo - IntFrom > 308 then
+  begin
+    ACode := 1;
+    Exit;
+  end;
+  Zeros := 0;
+  if IntTo = IntFrom then
+    while (FracFrom + Zeros < FracTo) and (ATok[FracFrom + Zeros] = '0') do
+      Inc(Zeros);
+  if FracFrom + Zeros = FracTo then
+    Zeros := 0;
+  if Zeros >= 400 then
+  begin
+    ACode := 0;
+    Exit;
+  end;
+  if FracTo - FracFrom > Zeros + 40 then
+    FracTo := FracFrom + Zeros + 40;
+  if Zeros > 100 then
+  begin
+    Norm := Sign + '0.' + Copy(ATok, FracFrom + Zeros, FracTo - FracFrom - Zeros) + 'E-' +
+      AnsiString(IntToStr(Zeros));
+    Val(AsciiToNative(Norm), AValue, ACode);
+    Exit;
+  end;
+  Norm := Sign + Copy(ATok, IntFrom, IntTo - IntFrom);
+  if IntTo = IntFrom then
+    Norm := Norm + '0';
+  if FracTo > FracFrom then
+    Norm := Norm + '.' + Copy(ATok, FracFrom, FracTo - FracFrom);
+  Val(AsciiToNative(Norm), AValue, ACode);
+end;
+
 { Integer value of a token that Val reads as a number; False for other
   tokens and for values outside Integer. }
 function TokenToInt(const ATok: AnsiString; out AValue: Integer): Boolean;
@@ -791,7 +878,7 @@ begin
   Result := False;
   if ATok = '' then
     Exit;
-  Val(AsciiToNative(ATok), D, Code);
+  PdfVal(ATok, D, Code);
   if Code <> 0 then
     Exit;
   if (D > 2147483647.0) or (D < -2147483647.0) then
@@ -876,7 +963,7 @@ begin
   Result := False;
   if ATok = '' then
     Exit;
-  Val(AsciiToNative(ATok), D, Code);
+  PdfVal(ATok, D, Code);
   if Code <> 0 then
     Exit;
   if (D > 1.0e18) or (D < -1.0e18) then
@@ -3108,7 +3195,7 @@ begin
     FPos := SavePos;
     Exit;
   end;
-  Val(AsciiToNative(Tok), D, Code);
+  PdfVal(Tok, D, Code);
   if Code <> 0 then
   begin
     FPos := SavePos;
@@ -3127,7 +3214,7 @@ begin
     Save := FPos;
     SkipWhite;
     Tok := ReadToken;
-    Val(AsciiToNative(Tok), D2, Code);
+    PdfVal(Tok, D2, Code);
     if (Code = 0) and (Frac(D2) = 0) and (D2 >= 0) and (D2 < 65536) then
     begin
       SkipWhite;

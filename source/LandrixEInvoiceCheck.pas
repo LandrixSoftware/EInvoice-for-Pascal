@@ -3328,7 +3328,7 @@ begin
   Result := False;
   if not Present(AID) then
     Exit;
-  Prefix := string(Copy(AID, 1, 2));
+  Prefix := LandrixEInvoiceAsciiText(Copy(AID, 1, 2));
   if ASpec.Target.Syntax = esy_UBL then
     Result := (Prefix <> 'SS') and (Pos(Prefix, VATCountryPrefixes) = 0)
   else
@@ -3395,7 +3395,8 @@ const
   Wert ohne Leerzeichen. }
 function InList(const AValue, AList: TLandrixEInvoiceString): Boolean;
 begin
-  Result := (AValue <> '') and (Pos(' ', AValue) = 0) and (Pos(' ' + AValue + ' ', ' ' + AList + ' ') > 0);
+  Result := (AValue <> '') and (LandrixEInvoiceTextPos(' ', AValue) = 0) and
+    (LandrixEInvoiceTextPos(' ' + AValue + ' ', ' ' + AList + ' ') > 0);
 end;
 
 { True if AValue, normalized (normalize-space, one word), is in list AList

@@ -184,6 +184,22 @@ function LandrixEInvoiceTryLexicalToBoolean(const AText: TLandrixEInvoiceString;
   geschrieben und scheitert an einer Pflichtpruefung. }
 function LandrixEInvoiceIsBlank(const AText: TLandrixEInvoiceString): Boolean;
 
+{ Position of ASub in AText (1-based, 0 if absent), compared as UTF-16
+  units: no conversion to the native string, which is lossy on Delphi
+  6-2007 (a fullwidth letter would become its ASCII look-alike).
+  DE: Position von ASub in AText (ab 1, 0 wenn nicht enthalten), als
+  UTF-16-Einheiten verglichen: ohne Umwandlung in den nativen string, die
+  unter Delphi 6-2007 verlustbehaftet ist (ein vollbreiter Buchstabe wuerde
+  zu seinem ASCII-Gegenstueck). }
+function LandrixEInvoiceTextPos(const ASub, AText: TLandrixEInvoiceString): Integer;
+
+{ AText as a native string for comparing with ASCII text: every character
+  beyond ASCII becomes #1, so it matches no ASCII text on any compiler.
+  DE: AText als nativer string zum Vergleich mit ASCII-Text: jedes Zeichen
+  jenseits von ASCII wird #1, damit es unter keinem Compiler zu ASCII-Text
+  passt. }
+function LandrixEInvoiceAsciiText(const AText: TLandrixEInvoiceString): string;
+
 implementation
 
 uses
@@ -254,12 +270,14 @@ end;
 
 function LandrixEInvoiceDateToUBL(AValue: TDateTime): TLandrixEInvoiceString;
 begin
-  Result := Text(LandrixXmlFormatDate(AValue));
+  { the day of AValue: a time just before midnight must not round into the
+    next day differently per run-time library }
+  Result := Text(LandrixXmlFormatDate(Int(AValue)));
 end;
 
 function LandrixEInvoiceDateToCII(AValue: TDateTime): TLandrixEInvoiceString;
 begin
-  Result := Text(LandrixXmlFormatCiiDate(AValue, 102));
+  Result := Text(LandrixXmlFormatCiiDate(Int(AValue), 102));
 end;
 
 function LandrixEInvoiceTryLexicalToCurrency(const AText: TLandrixEInvoiceString;
@@ -353,6 +371,44 @@ begin
     if (AText[I] <> ' ') and (AText[I] <> #9) and (AText[I] <> #10) and (AText[I] <> #13) then
       Exit;
   Result := True;
+end;
+
+function LandrixEInvoiceTextPos(const ASub, AText: TLandrixEInvoiceString): Integer;
+var
+  I, K: Integer;
+  Same: Boolean;
+begin
+  Result := 0;
+  if ASub = '' then
+    Exit;
+  for I := 1 to Length(AText) - Length(ASub) + 1 do
+  begin
+    Same := True;
+    for K := 1 to Length(ASub) do
+      if AText[I + K - 1] <> ASub[K] then
+      begin
+        Same := False;
+        Break;
+      end;
+    if Same then
+    begin
+      Result := I;
+      Exit;
+    end;
+  end;
+end;
+
+function LandrixEInvoiceAsciiText(const AText: TLandrixEInvoiceString): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, Length(AText));
+  for I := 1 to Length(AText) do
+    if Ord(AText[I]) < 128 then
+      Result[I] := Char(Ord(AText[I]))
+    else
+      Result[I] := #1;
 end;
 
 end.

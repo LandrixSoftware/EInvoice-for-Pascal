@@ -927,6 +927,12 @@ var
 begin
   Result := False;
   AAmount := 0;
+  { NaN by its bits: comparing it differs between x87 and SSE }
+  if (PInt64(@ALine.BaseQuantity)^ shr 52) and $7FF = $7FF then
+  begin
+    CalcError(AState, 'BT-149', LineLabel(ALine) + ': the price base quantity cannot be written');
+    Exit;
+  end;
   if ALine.BaseQuantity < 0 then
   begin
     CalcError(AState, 'BT-149', LineLabel(ALine) + ': negative price base quantity');

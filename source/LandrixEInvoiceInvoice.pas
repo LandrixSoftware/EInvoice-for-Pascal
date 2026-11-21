@@ -153,12 +153,18 @@ type
       wenn die Datei nicht existiert. }
     procedure EmbedDataFromFile(const AFileName: string);
     { Replaces Data with the text encoded as UTF-8 without BOM. The TStrings
-      variant converts from the native string (on Delphi 6-2007 through the
-      system code page); the TLandrixEInvoiceString variant is lossless.
+      variant takes AValue.Text, so its line break is that of the platform
+      (or of TStrings.LineBreak), after the last line too unless
+      TrailingLineBreak is off, and converts
+      from the native string (on Delphi 6-2007 through the system code
+      page); the TLandrixEInvoiceString variant is lossless and keeps the
+      text as it is.
       DE: Ersetzt Data durch den Text als UTF-8 ohne BOM. Die
-      TStrings-Variante wandelt vom nativen string um (unter Delphi 6 bis
-      2007 ueber die Systemcodepage); die Variante mit
-      TLandrixEInvoiceString ist verlustfrei. }
+      TStrings-Variante nimmt AValue.Text, also den Zeilenumbruch der
+      Plattform (oder von TStrings.LineBreak), auch nach der letzten Zeile,
+      ausser TrailingLineBreak ist aus, und wandelt vom nativen string um (unter Delphi 6 bis 2007 ueber
+      die Systemcodepage); die Variante mit TLandrixEInvoiceString ist
+      verlustfrei und laesst den Text, wie er ist. }
     procedure EmbedDataFromText(const AValue: TStrings); overload;
     procedure EmbedDataFromText(const AValue: TLandrixEInvoiceString); overload;
     { Data as Base64 (RFC 4648, no line breaks); '' if Data is empty.

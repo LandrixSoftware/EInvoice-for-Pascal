@@ -2033,6 +2033,11 @@ begin
     Invoice.AccountingSupplierParty.VATCompanyID := 'AN123';
     Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-09', nil), 'UBL AN');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-09', nil), 'CII AN');
+    { a fullwidth DE is no country code, on every compiler }
+    Invoice.AccountingSupplierParty.VATCompanyID := TLandrixEInvoiceString(WideChar($FF24)) +
+      TLandrixEInvoiceString(WideChar($FF25)) + TLandrixEInvoiceString('123');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-09', nil), 'UBL fullwidth DE');
+    Check(not LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-09', nil), 'CII fullwidth DE');
     Invoice.AccountingSupplierParty.VATCompanyID := 'EL123';
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRCII), 'BR-CO-09', nil), 'CII EL');
     Check(LandrixEInvoiceCheckRule(Invoice, SpecOf(tk_XRUBL), 'BR-CO-09', nil), 'UBL EL');

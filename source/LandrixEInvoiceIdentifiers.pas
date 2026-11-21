@@ -227,6 +227,9 @@ function LandrixEInvoiceCashDiscountTextValid(const AText: TLandrixEInvoiceStrin
 
 implementation
 
+uses
+  LandrixEInvoiceLexical;
+
 function IsBlankChar(C: TLandrixEInvoiceChar): Boolean;
 begin
   Result := (C = #32) or (C = #9) or (C = #10) or (C = #13);
@@ -360,7 +363,7 @@ begin
   Check := Copy(AValue, Last + 1, 2);
   if not LandrixEInvoiceIsDigits(Check, 2) then
     Exit;
-  First := Pos(TLandrixEInvoiceString('-'), AValue);
+  First := LandrixEInvoiceTextPos('-', AValue);
   if First = Last then
   begin
     Coarse := Copy(AValue, 1, Last - 1);

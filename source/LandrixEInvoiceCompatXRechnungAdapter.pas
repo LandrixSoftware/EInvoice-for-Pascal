@@ -313,6 +313,13 @@ begin
   Result := TXRechnungString(S);
 end;
 
+{ True if S[I] separates folders in a file name: / and the path delimiter,
+  on Windows also the drive colon. }
+function IsFolderDelimiter(const S: TXRechnungString; I: Integer): Boolean;
+begin
+  Result := (S[I] = '/') or (S[I] = PathDelim) or ((S[I] = ':') and (PathDelim <> '/'));
+end;
+
 { The folder of a file name with its trailing delimiter, as ExtractFilePath;
   '' without folder. }
 function FolderOf(const S: TXRechnungString): TXRechnungString;
@@ -320,9 +327,15 @@ var
   I: Integer;
 begin
   I := Length(S);
-  while (I > 0) and (S[I] <> '/') and (S[I] <> PathDelim) and
-    ((S[I] <> ':') or (PathDelim = '/')) do
+  {$IF Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE)}
+  while (I > 0) and not IsFolderDelimiter(S, I) do
     Dec(I);
+  {$ELSE}
+  { Delphi 6-2007 with a DBCS code page: the second byte of a character
+    such as $955C looks like a backslash }
+  while (I > 0) and not (IsFolderDelimiter(S, I) and (ByteType(S, I) <> mbTrailByte)) do
+    Dec(I);
+  {$IFEND}
   Result := Copy(S, 1, I);
 end;
 

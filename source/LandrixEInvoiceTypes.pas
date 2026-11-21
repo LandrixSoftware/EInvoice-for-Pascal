@@ -218,8 +218,10 @@ type
     - Value raises ELandrixEInvoiceError when no value is set; ValueOr
       returns the given default instead.
     - Equals: two unset values are equal, unset differs from every value.
-      Quantity and Percent compare with a relative tolerance of 1e-12
-      (absolute 1e-12 for values below 1). Infinity and NaN are not
+      Quantity and Percent compare with a relative tolerance of about 1e-12
+      (absolute for values below 1); values within a few units of the last
+      place of that limit may compare differently per platform (x87 or
+      SSE). Infinity and NaN are not
       supported values (they do not occur in XML decimals).
     - None of these objects is exactly 8 bytes: Delphi 13 Win64 passes
       8-byte objects wrongly as value or const parameters (records are not
@@ -246,7 +248,9 @@ type
       ValueOr liefert stattdessen den Ersatzwert.
     - Equals: zwei leere Werte sind gleich, leer unterscheidet sich von jedem
       Wert. Quantity und Percent vergleichen mit einer relativen Toleranz von
-      1e-12 (absolut 1e-12 fuer Werte unter 1). Unendlich und NaN sind keine
+      etwa 1e-12 (absolut fuer Werte unter 1); Werte wenige Einheiten der
+      letzten Stelle an dieser Grenze koennen je Plattform (x87 oder SSE)
+      anders ausfallen. Unendlich und NaN sind keine
       zulaessigen Werte (in XML-Dezimalzahlen kommen sie nicht vor).
     - Keines dieser Objekte ist genau 8 Byte gross: Delphi 13 Win64 uebergibt
       8-Byte-Objekte als Wert- oder const-Parameter falsch (Records sind
