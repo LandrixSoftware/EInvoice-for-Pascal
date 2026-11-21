@@ -50,6 +50,7 @@ the compatibility layer at work.
 | `TXRechnungPdfAttachment.Data` as `TBytes` | a `TMemoryStream` owned by the attachment (the extractor functions still return `TBytes`) |
 | `TInvoiceEmptyLeitwegID.NON_EXISTENT` in constant expressions | a class function now; in constants use `LandrixEInvoiceLeitwegIDNonExistent` |
 | `TXRechnungInvoiceAdapter.ccOK` and the other `ConsistencyCheck` codes as class members | unit constants (`ccOK`, as in the Delphi 6 version) |
+| `TXRechnungPdfAttachmentKind.pakInvoice` and the other qualified `pak` names | the unqualified constants `pakInvoice` and so on: the kind is the library's enumeration (members `epa_...`) |
 | `GetXRechnungValidationHelperJava` | see the next table |
 
 ## Validation and visualization
@@ -85,7 +86,9 @@ Reading and writing:
   without invoice, exception), for nil arguments, an empty file name, a missing file and an empty
   XML string; otherwise True with an empty `_Error`. A failed load leaves the invoice unchanged.
   Messages are English; XML errors start with `Not valid XML: ` (from a PDF:
-  `Embedded file <name>: Not valid XML: `).
+  `Embedded file <name>: Not valid XML: `). A failed load adds no messages to `_Diagnostics`;
+  `_Error` has the message (empty for nil arguments and an empty XML string). `GetXRechnungVersion` and `GetXRechnungVersionFromString` read the whole document
+  and return `XRechnungVersion_Unknown` for one that is not well-formed.
 - `Save` writes what the mapping produced, as before; it raises `ELandrixEInvoiceError` for a
   version that cannot be written. It does not check the business rules: use
   `TLandrixEInvoice.Check` or the facade for that.
@@ -93,13 +96,19 @@ Reading and writing:
   `LoadFromXMLStr` takes bytes in the encoding of the declaration. Where `String` is Unicode,
   `LoadFromXMLStr` takes decoded text and does not consult the declaration.
 - File names are Unicode where `TXRechnungString` is Unicode (Delphi 2009+, Free Pascal).
-- As before, `SaveToFile` writes nothing for a file name without folder.
+- As before, `SaveToFile` writes nothing for a file name without folder. It also takes `/` as folder
+  separator on Windows (Free Pascal did so before).
 - `PaymentTermNetNote` no longer contains the `#SKONTO#` lines of a cash discount; they are in
   the payment terms of the model.
 - `ConsistencyCheck` returns `ccOK` instead of `ccSubInvoiceLinesNotSupported` (11) for line groups
   in a target that has none: they are written flat, and the diagnostics report each group
   (`edk_NotAllowed`). Code 11 remains for INFORMATION lines on the top level and for DETAIL lines with
   sub lines outside Factur-X EXTENDED.
+- `ConsistencyCheck` follows the rule table of the target for two more codes:
+  `ccTooManyPrecedingInvoices` (3) now also applies to Factur-X targets that allow one preceding
+  invoice only (e.g. `ZUGFeRDEN16931Version_250`), not only to XRechnung CII;
+  `ccPrepaidPaymentNotSupported` (8) is `ccOK` for Factur-X EXTENDED, which allows third-party
+  payments (BG-DEX-09).
 
 The model:
 
@@ -110,6 +119,13 @@ The model:
   ANSI on Delphi 6); `EmbedDataFromFile` no longer retries on locked files; invalid Base64 raises
   `ELandrixXmlError`; `TryAddAttachmentByExtension` sets the attachment to nil on failure.
 - `ClassName` returns the new names (`TLandrixInvoice`).
+- `InvoiceDueDate` (BT-9) counts for every date after 1899-12-30; the old writers left out the
+  values 1 to 100 (early 1900). Leave it 0 for no due date.
+- `BaseQuantity` (BT-149) is written without a unit (BT-150) too (UBL reports the missing
+  `unitCode`); the old writers wrote it only with a unit, so the price applied per item. Set it to 0
+  or set the unit.
+- After `Load` a GTIN is in `GlobalID_EAN_GTIN` and in `StandardItemIdentifier` (scheme 0160); the
+  latter wins when writing. To remove the GTIN, clear both.
 - Store enumerations by their code (`LandrixEInvoice...ToStr`), not by their ordinal value: the
   ordinals of the code lists are not stable between versions.
 

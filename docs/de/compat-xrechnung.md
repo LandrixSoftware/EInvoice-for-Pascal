@@ -51,6 +51,7 @@ zeigt die Kompatibilitätsschicht in Aktion.
 | `TXRechnungPdfAttachment.Data` als `TBytes` | ein `TMemoryStream`, der dem Anhang gehört (die Extraktor-Funktionen liefern weiter `TBytes`) |
 | `TInvoiceEmptyLeitwegID.NON_EXISTENT` in konstanten Ausdrücken | jetzt eine Klassenfunktion; in Konstanten `LandrixEInvoiceLeitwegIDNonExistent` verwenden |
 | `TXRechnungInvoiceAdapter.ccOK` und die übrigen `ConsistencyCheck`-Codes als Klassenelemente | Unit-Konstanten (`ccOK`, wie in der Delphi-6-Fassung) |
+| `TXRechnungPdfAttachmentKind.pakInvoice` und die anderen qualifizierten `pak`-Namen | die unqualifizierten Konstanten `pakInvoice` usw.: die Art ist die Aufzählung der Bibliothek (Elemente `epa_...`) |
 | `GetXRechnungValidationHelperJava` | siehe die nächste Tabelle |
 
 ## Prüfen und anzeigen
@@ -87,7 +88,9 @@ Lesen und Schreiben:
   Format, ein PDF ohne Rechnung, Ausnahme), bei nil-Argumenten, leerem Dateinamen, fehlender Datei
   und leerem XML-Text; sonst True mit leerem `_Error`. Ein gescheitertes Laden lässt die Rechnung
   unverändert. Meldungen sind englisch; XML-Fehler beginnen mit `Not valid XML: ` (aus einem PDF:
-  `Embedded file <Name>: Not valid XML: `).
+  `Embedded file <Name>: Not valid XML: `). Ein gescheitertes Laden fügt `_Diagnostics` keine
+  Meldungen hinzu; `_Error` enthält die Meldung (leer bei nil-Argumenten und leerem XML-Text). `GetXRechnungVersion` und `GetXRechnungVersionFromString` lesen das
+  ganze Dokument und liefern `XRechnungVersion_Unknown` für eines, das nicht wohlgeformt ist.
 - `Save` schreibt wie bisher, was die Abbildung ergibt; für eine Version, die sich nicht schreiben
   lässt, löst es `ELandrixEInvoiceError` aus. Es prüft die Geschäftsregeln nicht: dafür
   `TLandrixEInvoice.Check` oder die Fassade.
@@ -95,13 +98,19 @@ Lesen und Schreiben:
   `LoadFromXMLStr` nimmt Bytes in der Kodierung der Deklaration. Wo `String` Unicode ist, nimmt
   `LoadFromXMLStr` dekodierten Text und beachtet die Deklaration nicht.
 - Dateinamen sind Unicode, wo `TXRechnungString` Unicode ist (Delphi 2009+, Free Pascal).
-- Wie bisher schreibt `SaveToFile` nichts für einen Dateinamen ohne Ordner.
+- Wie bisher schreibt `SaveToFile` nichts für einen Dateinamen ohne Ordner. Es nimmt `/` auch unter
+  Windows als Ordnertrenner (Free Pascal tat das schon vorher).
 - `PaymentTermNetNote` enthält die `#SKONTO#`-Zeilen eines Skontos nicht mehr; sie stehen in den
   Zahlungsbedingungen des Modells.
 - `ConsistencyCheck` liefert `ccOK` statt `ccSubInvoiceLinesNotSupported` (11) für
   Positionsgruppen in einem Ziel ohne Gruppen: sie werden flach geschrieben, und die Meldungen
   nennen jede Gruppe (`edk_NotAllowed`). Code 11 bleibt für INFORMATION-Positionen auf oberster
   Ebene und für DETAIL-Positionen mit Unterpositionen außerhalb von Factur-X EXTENDED.
+- `ConsistencyCheck` folgt für zwei weitere Codes der Regeltabelle des Ziels:
+  `ccTooManyPrecedingInvoices` (3) gilt jetzt auch für Factur-X-Ziele, die nur eine vorausgegangene
+  Rechnung erlauben (z. B. `ZUGFeRDEN16931Version_250`), nicht nur für XRechnung CII;
+  `ccPrepaidPaymentNotSupported` (8) ist für Factur-X EXTENDED `ccOK`, das Zahlungen Dritter
+  (BG-DEX-09) erlaubt.
 
 Das Modell:
 
@@ -113,6 +122,13 @@ Das Modell:
   Base64 löst `ELandrixXmlError` aus; `TryAddAttachmentByExtension` setzt den Anhang bei einem
   Fehlschlag auf nil.
 - `ClassName` liefert die neuen Namen (`TLandrixInvoice`).
+- `InvoiceDueDate` (BT-9) gilt für jedes Datum nach dem 30.12.1899; die alten Writer ließen die
+  Werte 1 bis 100 (Anfang 1900) weg. Für kein Fälligkeitsdatum 0 lassen.
+- `BaseQuantity` (BT-149) wird auch ohne Einheit (BT-150) geschrieben (UBL meldet den fehlenden
+  `unitCode`); die alten Writer schrieben sie nur mit Einheit, der Preis galt dann je Stück. Auf 0
+  setzen oder die Einheit setzen.
+- Nach `Load` steht eine GTIN in `GlobalID_EAN_GTIN` und in `StandardItemIdentifier` (Schema 0160);
+  beim Schreiben hat Letzteres Vorrang. Um die GTIN zu entfernen, beide leeren.
 - Aufzählungen über ihren Code speichern (`LandrixEInvoice...ToStr`), nicht über ihren Ordinalwert:
   die Ordinalwerte der Codelisten sind zwischen Versionen nicht stabil.
 

@@ -408,7 +408,7 @@ end;
   substrings of the lower-case identifier.
   DE: Format nach Wurzelelement und BT-24, wie TXRechnungValidationHelper es
   tat: Teiltexte der klein geschriebenen Kennung. }
-function VersionOf(AReader: TLandrixXmlReader): TXRechnungVersion;
+function VersionOfRoot(AReader: TLandrixXmlReader): TXRechnungVersion;
 var
   ID: AnsiString;
 begin
@@ -444,6 +444,19 @@ begin
   end
   else if LandrixXmlSpanEquals(AReader.LocalNameSpan, 'CrossIndustryDocument') then
     Result := ZUGFeRDExtendedVersion_1_NotSupported;
+end;
+
+{ VersionOfRoot, then the rest of the document read: the old helper parsed
+  it whole, so one that is not well-formed raises (the callers answer
+  XRechnungVersion_Unknown).
+  DE: VersionOfRoot, danach der Rest des Dokuments gelesen: der alte Helper
+  las es ganz, ein nicht wohlgeformtes loest daher eine Ausnahme aus (die
+  Aufrufer antworten XRechnungVersion_Unknown). }
+function VersionOf(AReader: TLandrixXmlReader): TXRechnungVersion;
+begin
+  Result := VersionOfRoot(AReader);
+  while AReader.Read do
+    ;
 end;
 
 { The specification entry a writable version stands for.
@@ -562,6 +575,19 @@ begin
   end;
 end;
 
+{ Sets the position of AStream; False if the stream refuses.
+  DE: Setzt die Position von AStream; False, wenn der Stream sich weigert. }
+function RestorePosition(AStream: TStream; APosition: Int64): Boolean;
+begin
+  Result := True;
+  try
+    AStream.Position := APosition;
+  except
+    on Exception do
+      Result := False;
+  end;
+end;
+
 class function TXRechnungValidationHelper.GetXRechnungVersion(_Stream: TStream;
   _ProcessPdfFiles: Boolean): TXRechnungVersion;
 var
@@ -570,23 +596,50 @@ var
   Xml: TMemoryStream;
   Name: TLandrixEInvoiceString;
   Info: TLandrixEInvoicePdfExtractInfo;
+  IsPdf: Boolean;
 begin
   Result := XRechnungVersion_Unknown;
   if _Stream = nil then
     Exit;
-  Position := _Stream.Position;
-  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfStream(_Stream) then
+  { a stream that fails while it is read or cannot return to its position
+    has no version
+    DE: ein Stream, der beim Lesen scheitert oder nicht an seine Position
+    zurueckkehren kann, hat keine Version }
+  try
+    Position := _Stream.Position;
+  except
+    on Exception do
+      Exit;
+  end;
+  IsPdf := False;
+  if _ProcessPdfFiles then
+    try
+      IsPdf := TLandrixEInvoicePdfExtractor.IsPdfStream(_Stream);
+    except
+      on Exception do
+      begin
+        RestorePosition(_Stream, Position);
+        Exit;
+      end;
+    end;
+  if IsPdf then
   begin
     Xml := TMemoryStream.Create;
     try
-      if TLandrixEInvoicePdfExtractor.ExtractInvoiceFromStream(_Stream, Xml, Name, Info) then
-      begin
-        Xml.Position := 0;
-        Result := GetXRechnungVersion(Xml, False);
+      try
+        if TLandrixEInvoicePdfExtractor.ExtractInvoiceFromStream(_Stream, Xml, Name, Info) then
+        begin
+          Xml.Position := 0;
+          Result := GetXRechnungVersion(Xml, False);
+        end;
+      except
+        on Exception do
+          Result := XRechnungVersion_Unknown;
       end;
     finally
       Xml.Free;
-      _Stream.Position := Position;
+      if not RestorePosition(_Stream, Position) then
+        Result := XRechnungVersion_Unknown;
     end;
     Exit;
   end;
@@ -757,6 +810,21 @@ begin
   _XML := XmlText(SaveToUtf8(_Invoice, _Version, _Diagnostics));
 end;
 
+{ True if AStream starts like a PDF; a stream that fails while it is read
+  gives False and the message in AError.
+  DE: True, wenn AStream wie ein PDF beginnt; ein Stream, der beim Lesen
+  scheitert, ergibt False und die Meldung in AError. }
+function IsPdfOrError(AStream: TStream; var AError: TXRechnungString): Boolean;
+begin
+  Result := False;
+  try
+    Result := TLandrixEInvoicePdfExtractor.IsPdfStream(AStream);
+  except
+    on E: Exception do
+      AError := CompatText('Not readable: ' + E.Message);
+  end;
+end;
+
 class function TXRechnungInvoiceAdapter.LoadFromStream(_Invoice: TLandrixInvoice; _Stream: TStream;
   out _Error: TXRechnungString; _ProcessPdfFiles: Boolean; _Diagnostics: TLandrixEInvoiceDiagnostics): Boolean;
 var
@@ -766,11 +834,13 @@ begin
   _Error := '';
   if (_Invoice = nil) or (_Stream = nil) then
     Exit;
-  if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfStream(_Stream) then
+  if _ProcessPdfFiles and IsPdfOrError(_Stream, _Error) then
   begin
     Result := LoadFromPdfStream(_Invoice, _Stream, _Error, AttachmentName, _Diagnostics);
     Exit;
   end;
+  if _Error <> '' then
+    Exit;
   Result := ReadXmlStream(_Invoice, _Stream, _Error, _Diagnostics);
 end;
 
@@ -799,9 +869,9 @@ begin
     end;
   end;
   try
-    if _ProcessPdfFiles and TLandrixEInvoicePdfExtractor.IsPdfStream(Stream) then
+    if _ProcessPdfFiles and IsPdfOrError(Stream, _Error) then
       Result := LoadFromPdfStream(_Invoice, Stream, _Error, AttachmentName, _Diagnostics)
-    else
+    else if _Error = '' then
       Result := ReadXmlStream(_Invoice, Stream, _Error, _Diagnostics);
   finally
     Stream.Free;
@@ -844,6 +914,7 @@ var
   Xml: TMemoryStream;
   Name: TLandrixEInvoiceString;
   Info: TLandrixEInvoicePdfExtractInfo;
+  Found: Boolean;
 begin
   Result := False;
   _Error := '';
@@ -852,7 +923,16 @@ begin
     Exit;
   Xml := TMemoryStream.Create;
   try
-    if not TLandrixEInvoicePdfExtractor.ExtractInvoiceFromStream(_Stream, Xml, Name, Info) then
+    try
+      Found := TLandrixEInvoicePdfExtractor.ExtractInvoiceFromStream(_Stream, Xml, Name, Info);
+    except
+      on E: Exception do
+      begin
+        _Error := CompatText('PDF not readable: ' + E.Message);
+        Exit;
+      end;
+    end;
+    if not Found then
     begin
       _Error := TXRechnungString(Info.Error);
       if _Error = '' then

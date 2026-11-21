@@ -424,6 +424,13 @@ begin
       'unknown version');
     Check(TXRechnungValidationHelper.GetXRechnungVersionFromString('<rsm:CrossIndustryDocument xmlns:rsm="urn:x"/>') =
       ZUGFeRDExtendedVersion_1_NotSupported, 'ZUGFeRD 1 detected');
+    { the whole document is read, as by the old helper }
+    Check(TXRechnungValidationHelper.GetXRechnungVersionFromString(
+      '<Invoice><CustomizationID>xrechnung_3.0</CustomizationID></Invoice>') = XRechnungVersion_30x_UBL,
+      'version of a well-formed document');
+    Check(TXRechnungValidationHelper.GetXRechnungVersionFromString(
+      '<Invoice><CustomizationID>xrechnung_3.0</CustomizationID><A></B></Invoice>') = XRechnungVersion_Unknown,
+      'no version for a document that is not well-formed');
   finally
     Invoice.Free;
   end;
@@ -584,6 +591,10 @@ var
   Info: TXRechnungPdfExtractInfo;
   List: TXRechnungPdfAttachmentList;
   I: Integer;
+  {$IF Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE)}
+  UniName: TXRechnungString;
+  US: TStream;
+  {$IFEND}
 begin
   Invoice := TLandrixInvoice.Create;
   Back := TLandrixInvoice.Create;
@@ -655,6 +666,30 @@ begin
       Check(TXRechnungPdfExtractor.ExtractInvoiceFromFile(TXRechnungString(FileName), Bytes, Name, Info),
         'old names: from file');
     end;
+    {$IF Defined(FPC) or Defined(LANDRIXEINVOICE_UNICODE)}
+    { the old file entries take Unicode names where TXRechnungString is
+      Unicode }
+    UniName := TXRechnungString(ExtractFilePath(ParamStr(0))) + 'compat-' + WideChar($00FC) + WideChar($65E5) + '.pdf';
+    US := LandrixEInvoiceOpenFile(UniName, efm_Create);
+    try
+      US.WriteBuffer(PAnsiChar(Pdf)^, Length(Pdf));
+    finally
+      US.Free;
+    end;
+    Check(TXRechnungPdfExtractor.IsPdfFile(UniName), 'old names: PDF file with a Unicode name');
+    Check(TXRechnungPdfExtractor.ExtractInvoiceFromFile(UniName, Bytes, Name, Info),
+      'old names: from a file with a Unicode name: ' + string(Info.Error));
+    List := TXRechnungPdfAttachmentList.Create;
+    try
+      Check(TXRechnungPdfExtractor.ExtractAllFromFile(UniName, List, Info) and (List.Count > 0),
+        'old names: all from a file with a Unicode name');
+    finally
+      List.Free;
+    end;
+    {$IFEND}
+    Check(not TXRechnungPdfExtractor.IsPdfFile('no-such-file.pdf'), 'old names: missing file');
+    Check(not TXRechnungPdfExtractor.ExtractInvoiceFromFile('no-such-file.pdf', Bytes, Name, Info) and
+      (Pos('not found', string(Info.Error)) > 0), 'old names: missing file message');
     Check(not TXRechnungInvoiceAdapter.LoadFromPdfFile(Back, 'no-such-file.pdf', Error, Name), 'missing PDF');
     Check(Pos('not found', string(Error)) > 0, 'missing PDF message');
 

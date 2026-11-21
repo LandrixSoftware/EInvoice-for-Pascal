@@ -106,11 +106,34 @@ type
 implementation
 
 uses
-  LandrixEInvoiceTypes;
+  LandrixEInvoiceTypes,
+  LandrixEInvoiceFiles;
 
-function NativeFileName(const S: TXRechnungString): string;
+{ The file opened for reading with a Unicode name (nil and the message in
+  AInfo.Error when it is missing or not readable).
+  DE: Die Datei zum Lesen geoeffnet, mit Unicode-Namen (nil und die Meldung
+  in AInfo.Error, wenn sie fehlt oder nicht lesbar ist). }
+function OpenPdf(const AFileName: TXRechnungString; out AInfo: TXRechnungPdfExtractInfo): TStream;
 begin
-  Result := string(S);
+  Result := nil;
+  AInfo.UsedReconstruction := False;
+  AInfo.XrefSections := 0;
+  AInfo.Encrypted := False;
+  AInfo.PdfVersion := '';
+  AInfo.Error := '';
+  AInfo.SkippedAttachments := 0;
+  AInfo.Warning := '';
+  if not LandrixEInvoiceFileExists(AFileName) then
+  begin
+    AInfo.Error := 'File not found: ' + TLandrixEInvoiceString(AFileName);
+    Exit;
+  end;
+  try
+    Result := LandrixEInvoiceOpenFile(AFileName, efm_Read);
+  except
+    on E: Exception do
+      AInfo.Error := 'File not readable: ' + TLandrixEInvoiceString(E.Message);
+  end;
 end;
 
 function StreamToBytes(AStream: TMemoryStream): TXRechnungPdfBytes;
@@ -142,25 +165,35 @@ end;
 class function TXRechnungPdfExtractor.ExtractInvoiceFromFile(const _PdfFilename: TXRechnungString;
   out _Xml: TXRechnungPdfBytes; out _AttachmentName: TXRechnungString; out _Info: TXRechnungPdfExtractInfo): Boolean;
 var
-  Xml: TMemoryStream;
-  Name: TLandrixEInvoiceString;
+  Stream: TStream;
 begin
   _Xml := nil;
-  Xml := TMemoryStream.Create;
+  _AttachmentName := '';
+  Result := False;
+  Stream := OpenPdf(_PdfFilename, _Info);
+  if Stream = nil then
+    Exit;
   try
-    Result := TLandrixEInvoicePdfExtractor.ExtractInvoiceFromFile(NativeFileName(_PdfFilename), Xml, Name, _Info);
-    _AttachmentName := TXRechnungString(Name);
-    if Result then
-      _Xml := StreamToBytes(Xml);
+    Result := ExtractInvoiceFromStream(Stream, _Xml, _AttachmentName, _Info);
   finally
-    Xml.Free;
+    Stream.Free;
   end;
 end;
 
 class function TXRechnungPdfExtractor.ExtractAllFromFile(const _PdfFilename: TXRechnungString;
   _List: TXRechnungPdfAttachmentList; out _Info: TXRechnungPdfExtractInfo): Boolean;
+var
+  Stream: TStream;
 begin
-  Result := TLandrixEInvoicePdfExtractor.ExtractAllFromFile(NativeFileName(_PdfFilename), _List, _Info);
+  Result := False;
+  Stream := OpenPdf(_PdfFilename, _Info);
+  if Stream = nil then
+    Exit;
+  try
+    Result := ExtractAllFromStream(Stream, _List, _Info);
+  finally
+    Stream.Free;
+  end;
 end;
 
 class function TXRechnungPdfExtractor.ExtractAllFromStream(_Stream: TStream; _List: TXRechnungPdfAttachmentList;
@@ -175,8 +208,24 @@ begin
 end;
 
 class function TXRechnungPdfExtractor.IsPdfFile(const _PdfFilename: TXRechnungString): Boolean;
+var
+  Stream: TStream;
+  Info: TXRechnungPdfExtractInfo;
 begin
-  Result := TLandrixEInvoicePdfExtractor.IsPdfFile(NativeFileName(_PdfFilename));
+  Result := False;
+  Stream := OpenPdf(_PdfFilename, Info);
+  if Stream = nil then
+    Exit;
+  try
+    try
+      Result := TLandrixEInvoicePdfExtractor.IsPdfStream(Stream);
+    except
+      on Exception do
+        Result := False;
+    end;
+  finally
+    Stream.Free;
+  end;
 end;
 
 class function TXRechnungPdfExtractor.IsPdfStream(_Stream: TStream): Boolean;

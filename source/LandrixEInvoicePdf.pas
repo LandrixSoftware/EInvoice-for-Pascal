@@ -467,6 +467,12 @@ begin
     Specs.Collect;
     for I := 0 to Specs.Count - 1 do
       AddFilespec(Specs[I]);
+    { file specifications beyond the collector's limit are not read: an
+      invoice among them would be lost without a word
+      DE: Dateispezifikationen jenseits der Grenze des Sammlers werden nicht
+      gelesen: eine Rechnung darunter ginge sonst still verloren }
+    if Specs.LimitReached and (FWarning = '') then
+      FWarning := 'File specifications beyond the limit of the collector not read';
   finally
     Specs.Free;
   end;
