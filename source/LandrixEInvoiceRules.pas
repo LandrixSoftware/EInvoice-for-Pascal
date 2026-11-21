@@ -227,8 +227,8 @@ const
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-21';
      Source: 'line order number only in Factur-X EXTENDED'),
     (Key: LandrixEInvoiceRuleLineTaxExemptionReason; Standards: AnyStandard; Syntaxes: AnySyntax;
-     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-96';
-     Source: 'line exemption reason only in Factur-X EXTENDED'),
+     Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-X-96, BT-X-97';
+     Source: 'line exemption reason and code only in Factur-X EXTENDED'),
     (Key: LandrixEInvoiceRuleAllowanceChargeTaxExemptionReason; Standards: AnyStandard; Syntaxes: AnySyntax;
      Profiles: AnyProfile - [epr_Extended]; Level: erl_Forbidden; Terms: 'BT-173, BT-174';
      Source: 'exemption reason of document level allowances and charges only in Factur-X EXTENDED'),

@@ -1064,6 +1064,8 @@ begin
   T.Value(erf_InvoiceLines_BaseQuantityUnitCode, T.Code(ecl_UnitCode,
     LandrixEInvoiceUnitCodeToStr(ALine.BaseQuantityUnitCode)));
   T.Value(erf_InvoiceLines_BaseQuantityUnitCodeOther, ALine.BaseQuantityUnitCodeOther);
+  T.Value(erf_InvoiceLines_TaxExemptionReasonCode, T.Code(ecl_VATExemptionReasonCode,
+    ALine.TaxExemptionReasonCode));
   T.Value(erf_InvoiceLines_TaxExemptionReason, ALine.TaxExemptionReason);
   T.Value(erf_InvoiceLines_InvoiceLinePeriodStartDate, T.Date(ALine.InvoiceLinePeriodStartDate));
   T.Value(erf_InvoiceLines_InvoiceLinePeriodEndDate, T.Date(ALine.InvoiceLinePeriodEndDate));

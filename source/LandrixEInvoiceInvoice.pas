@@ -476,6 +476,11 @@ type
     { VAT exemption reason of the line. DE: Grund der Steuerbefreiung der
       Position. }
     TaxExemptionReason: TLandrixEInvoiceString;
+    { BT-X-97 VAT exemption reason code of the line (VATEX; Factur-X
+      EXTENDED only).
+      DE: BT-X-97 Code des Befreiungsgrunds der Position (VATEX; nur
+      Factur-X EXTENDED). }
+    TaxExemptionReasonCode: TLandrixEInvoiceString;
     { BT-148 item gross price (BG-29). Prices are Double, not Currency:
       EN 16931 limits their decimals not (e.g. 0.061232374 per kWh); exact
       up to 15 significant digits.
@@ -2100,6 +2105,7 @@ begin
   TaxCategory := idtfcc_None;
   TaxCategoryOther := '';
   TaxExemptionReason := '';
+  TaxExemptionReasonCode := '';
   GrossPriceAmount := 0;
   DiscountOnTheGrossPrice := 0;
   NetPriceAmount := 0;
@@ -2812,6 +2818,7 @@ begin
     TaxCategory := ASource.TaxCategory;
     TaxCategoryOther := ASource.TaxCategoryOther;
     TaxExemptionReason := ASource.TaxExemptionReason;
+    TaxExemptionReasonCode := ASource.TaxExemptionReasonCode;
     GrossPriceAmount := ASource.GrossPriceAmount;
     DiscountOnTheGrossPrice := ASource.DiscountOnTheGrossPrice;
     NetPriceAmount := ASource.NetPriceAmount;

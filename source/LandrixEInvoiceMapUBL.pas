@@ -1695,10 +1695,14 @@ begin
   if ALine.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax then
     Category.Percent := LandrixEInvoicePercentToLexical(ALine.TaxPercent);
   Category.TaxScheme.ID.Value := 'VAT';
-  if Present(ALine.TaxExemptionReason) and
+  if (Present(ALine.TaxExemptionReason) or Present(ALine.TaxExemptionReasonCode)) and
      Permit(LandrixEInvoiceRuleLineTaxExemptionReason, APath + '/cac:ClassifiedTaxCategory/cbc:TaxExemptionReason',
        'VAT exemption reason of line ' + ALine.ID) then
-    Category.TaxExemptionReason.Add(Txt(ALine.TaxExemptionReason));
+  begin
+    Category.TaxExemptionReasonCode.Value := ALine.TaxExemptionReasonCode;
+    if Present(ALine.TaxExemptionReason) then
+      Category.TaxExemptionReason.Add(Txt(ALine.TaxExemptionReason));
+  end;
   for I := 0 to ALine.ItemAttributes.Count - 1 do
   begin
     Attribute := AItem.AdditionalItemProperty.Add;
@@ -2933,9 +2937,12 @@ begin
     ALine.TaxPercent := Decimal(Category.Percent, APath + '/cac:ClassifiedTaxCategory/cbc:Percent');
     ALine.TaxExemptionReason := FirstText(Category.TaxExemptionReason,
       APath + '/cac:ClassifiedTaxCategory/cbc:TaxExemptionReason');
+    ALine.TaxExemptionReasonCode := CodeValue(Category.TaxExemptionReasonCode,
+      APath + '/cac:ClassifiedTaxCategory/cbc:TaxExemptionReasonCode');
     ReadTaxScheme(Category.TaxScheme, APath + '/cac:ClassifiedTaxCategory/cac:TaxScheme');
     Category.ListFilledChildren(FFilled);
-    Rest(APath + '/cac:ClassifiedTaxCategory', ['cbc:ID', 'cbc:Percent', 'cbc:TaxExemptionReason', 'cac:TaxScheme']);
+    Rest(APath + '/cac:ClassifiedTaxCategory', ['cbc:ID', 'cbc:Percent', 'cbc:TaxExemptionReasonCode',
+      'cbc:TaxExemptionReason', 'cac:TaxScheme']);
   end;
   Excess(AItem.ClassifiedTaxCategory.Count, APath + '/cac:ClassifiedTaxCategory');
   for I := 0 to AItem.AdditionalItemProperty.Count - 1 do

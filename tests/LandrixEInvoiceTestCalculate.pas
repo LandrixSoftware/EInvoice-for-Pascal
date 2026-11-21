@@ -236,6 +236,172 @@ begin
   end;
 end;
 
+{ Factur-X EXTENDED keeps breakdowns of one category and rate apart by
+  exemption reason, text and code as normalize-space reads them
+  (BR-FXEXT-xx-08b); EN 16931 and the call without target group by
+  category and rate, where two such breakdowns are an error. A breakdown
+  whose reason no line has keeps it and takes the whole category when it is
+  the only one; new breakdowns carry the reason, also for Z. }
+procedure TestTotalsByReason;
+var
+  Invoice: TLandrixInvoice;
+  Line: TLandrixInvoiceLine;
+  Tax: TLandrixInvoiceTaxAmount;
+  D: TLandrixEInvoiceDiagnostics;
+  Extended: TLandrixEInvoiceTarget;
+begin
+  Extended := TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended);
+  Invoice := TLandrixInvoice.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    AddLine(Invoice, '1', 1, 100, idtfcc_E_ExemptFromTax, 0).TaxExemptionReason := 'Reason A';
+    Line := AddLine(Invoice, '2', 1, 200, idtfcc_E_ExemptFromTax, 0);
+    Line.TaxExemptionReason := ' Reason B';
+    Line.TaxExemptionReasonCode := 'VATEX-EU-132';
+    AddLine(Invoice, '3', 1, 50, idtfcc_E_ExemptFromTax, 0).TaxExemptionReason := 'Reason  A ';
+    AddLine(Invoice, '4', 1, 10, idtfcc_S_StandardRate, 19);
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'lines');
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_E_ExemptFromTax;
+    Tax.TaxExemptionReason := 'Reason A';
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_E_ExemptFromTax;
+    Tax.TaxExemptionReason := 'Reason B';
+    Tax.TaxExemptionReasonCode := 'VATEX-EU-132';
+    CheckEquals(1, TLandrixEInvoice.CalculateTotals(Invoice, D), 'without target: E twice');
+    Check(Pos('occurs twice', string(D.ToText)) > 0, 'reported: ' + string(D.ToText));
+    D.Clear;
+    CheckEquals(1, TLandrixEInvoice.CalculateTotals(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_EN16931),
+      D), 'EN 16931: E twice');
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'EXTENDED: ' + string(D.ToText));
+    CheckEquals(3, Integer(Invoice.TaxAmountSubtotals.Count), 'E A, E B and S 19');
+    CheckAmount(150, Invoice.TaxAmountSubtotals[0].TaxableAmount, 'E reason A: 100 + 50 (blanks collapsed)');
+    CheckAmount(200, Invoice.TaxAmountSubtotals[1].TaxableAmount, 'E reason B with its code');
+    CheckAmount(360, Invoice.TaxExclusiveAmount, 'BT-109');
+    { the code is part of the reason: a breakdown without it does not match
+      line 2, the two E breakdowns then do not match the lines }
+    Invoice.TaxAmountSubtotals[1].TaxExemptionReasonCode := '';
+    D.Clear;
+    CheckEquals(1, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'code differs: ' + string(D.ToText));
+
+    { the only E breakdown, with a reason no line has: it takes all of E }
+    Invoice.TaxAmountSubtotals.Clear;
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_E_ExemptFromTax;
+    Tax.TaxExemptionReason := 'Kleinunternehmer';
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'aggregate: ' + string(D.ToText));
+    CheckEquals(2, Integer(Invoice.TaxAmountSubtotals.Count), 'E and S 19');
+    CheckEqualsInvoiceStr('Kleinunternehmer', Invoice.TaxAmountSubtotals[0].TaxExemptionReason, 'reason kept');
+    CheckAmount(350, Invoice.TaxAmountSubtotals[0].TaxableAmount, 'all of E');
+
+    { no breakdown: one per reason, carrying text and code, also for Z }
+    Invoice.TaxAmountSubtotals.Clear;
+    AddLine(Invoice, '5', 1, 30, idtfcc_Z_ZeroRatedGoods, 0).TaxExemptionReason := 'Zero A';
+    AddLine(Invoice, '6', 1, 40, idtfcc_Z_ZeroRatedGoods, 0).TaxExemptionReason := 'Zero B';
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'lines again');
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'new: ' + string(D.ToText));
+    CheckEquals(5, Integer(Invoice.TaxAmountSubtotals.Count), 'E A, E B, S 19, Z A, Z B');
+    Tax := Invoice.TaxAmountSubtotals[1];
+    CheckEqualsInvoiceStr(' Reason B', Tax.TaxExemptionReason, 'E B: the reason of the line');
+    CheckEqualsInvoiceStr('VATEX-EU-132', Tax.TaxExemptionReasonCode, 'E B: the code of the line');
+    CheckEqualsInvoiceStr('Zero B', Invoice.TaxAmountSubtotals[4].TaxExemptionReason, 'Z B carries its reason');
+    CheckAmount(40, Invoice.TaxAmountSubtotals[4].TaxableAmount, 'Z B');
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'stable: ' + string(D.ToText));
+    CheckEquals(5, Integer(Invoice.TaxAmountSubtotals.Count), 'the same breakdowns again');
+
+    { a blank breakdown over lines with different reasons stays blank: a
+      second call gives the same totals (no split, no other rounding) }
+    Invoice.InvoiceLines.Clear;
+    Invoice.TaxAmountSubtotals.Clear;
+    AddLine(Invoice, '1', 1, 0.03, idtfcc_S_StandardRate, 19).TaxExemptionReason := 'A';
+    AddLine(Invoice, '2', 1, 0.03, idtfcc_S_StandardRate, 19).TaxExemptionReason := 'B';
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'lines 0.03');
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_S_StandardRate;
+    Tax.TaxPercent := 19;
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'blank: ' + string(D.ToText));
+    CheckEqualsInvoiceStr('', Invoice.TaxAmountSubtotals[0].TaxExemptionReason, 'mixed reasons: none taken');
+    CheckAmount(Cents(7), Invoice.PayableAmount, 'BT-115 = 0.06 + 0.01');
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'blank again: ' + string(D.ToText));
+    CheckEquals(1, Integer(Invoice.TaxAmountSubtotals.Count), 'still one breakdown');
+    CheckAmount(Cents(7), Invoice.PayableAmount, 'BT-115 unchanged');
+
+    { a status given as text: INFORMATION does not count }
+    Invoice.InvoiceLines.Clear;
+    Invoice.TaxAmountSubtotals.Clear;
+    Line := AddLine(Invoice, '1', 1, 100, idtfcc_E_ExemptFromTax, 0);
+    Line.TaxExemptionReason := 'A';
+    Line.LineStatusReasonCodeOther := 'INFORMATION';
+    AddLine(Invoice, '2', 1, 20, idtfcc_E_ExemptFromTax, 0).TaxExemptionReason := 'A';
+    CheckEquals(0, TLandrixEInvoice.CalculateLineAmounts(Invoice), 'lines status text');
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'status text: ' + string(D.ToText));
+    CheckAmount(20, Invoice.LineAmount, 'BT-106 without the INFORMATION line');
+    CheckAmount(20, Invoice.TaxAmountSubtotals[0].TaxableAmount, 'E A');
+  finally
+    D.Free;
+    Invoice.Free;
+  end;
+end;
+
+{ By reason every DETAIL line counts with its own category and rate, also
+  below a GROUP with two rates (BR-FXEXT-CO-10, -08b), and a breakdown
+  whose reason and amounts are gone is removed. }
+procedure TestTotalsByReasonGroups;
+var
+  Invoice: TLandrixInvoice;
+  Group, Sub: TLandrixInvoiceLine;
+  Tax: TLandrixInvoiceTaxAmount;
+  D: TLandrixEInvoiceDiagnostics;
+  Extended: TLandrixEInvoiceTarget;
+begin
+  Extended := TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended);
+  Invoice := TLandrixInvoice.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    Group := AddLine(Invoice, '1', 1, 0, idtfcc_S_StandardRate, 19);
+    Group.LineStatusReasonCode := ilsrc_Group;
+    Sub := Group.SubInvoiceLines.AddInvoiceLine;
+    Sub.ID := '1.1';
+    Sub.LineStatusReasonCode := ilsrc_Detail;
+    Sub.LineAmount := 100;
+    Sub.TaxCategory := idtfcc_S_StandardRate;
+    Sub.TaxPercent := 19;
+    Sub := Group.SubInvoiceLines.AddInvoiceLine;
+    Sub.ID := '1.2';
+    Sub.LineStatusReasonCode := ilsrc_Detail;
+    Sub.LineAmount := 100;
+    Sub.TaxCategory := idtfcc_S_StandardRate;
+    Sub.TaxPercent := 7;
+    Group.LineAmount := 200;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'EXTENDED: ' + string(D.ToText));
+    CheckEquals(2, Integer(Invoice.TaxAmountSubtotals.Count), 'S 19 and S 7');
+    CheckAmount(100, Invoice.TaxAmountSubtotals[0].TaxableAmount, 'S 19');
+    CheckAmount(100, Invoice.TaxAmountSubtotals[1].TaxableAmount, 'S 7');
+    CheckAmount(200, Invoice.LineAmount, 'BT-106 from the DETAIL lines');
+    D.Clear;
+    CheckEquals(1, TLandrixEInvoice.CalculateTotals(Invoice, D), 'without target the group needs one rate');
+    { a stale breakdown of another reason: removed }
+    Tax := Invoice.TaxAmountSubtotals.AddTaxAmount;
+    Tax.TaxCategory := idtfcc_S_StandardRate;
+    Tax.TaxPercent := 19;
+    Tax.TaxExemptionReason := 'gone';
+    D.Clear;
+    CheckEquals(0, TLandrixEInvoice.CalculateTotals(Invoice, Extended, D), 'stale: ' + string(D.ToText));
+    CheckEquals(2, Integer(Invoice.TaxAmountSubtotals.Count), 'the stale breakdown removed');
+    Check(Pos('removed', string(D.ToText)) > 0, 'removal reported: ' + string(D.ToText));
+  finally
+    D.Free;
+    Invoice.Free;
+  end;
+end;
+
 { The calculation works with the numbers as written: rounding of half
   cents at any size, quantity and rate with the written decimals, category
   O without rate, nested groups without VAT data, ranges, invoices without
@@ -613,6 +779,8 @@ begin
   RegisterTest('Calculate.LineAmounts', TestLineAmounts);
   RegisterTest('Calculate.Groups', TestGroups);
   RegisterTest('Calculate.Totals', TestTotals);
+  RegisterTest('Calculate.TotalsByReason', TestTotalsByReason);
+  RegisterTest('Calculate.TotalsByReasonGroups', TestTotalsByReasonGroups);
   RegisterTest('Calculate.Precision', TestPrecision);
   RegisterTest('Calculate.PassesCheck', TestPassesCheck);
   RegisterTest('Calculate.SweepOracle', TestSweepOracle);

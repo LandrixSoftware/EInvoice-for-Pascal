@@ -100,6 +100,12 @@ TLandrixEInvoice.CalculateTotals(Invoice);        // BG-23 and BG-22
   a rate; existing entries keep their exemption reasons and take the one of the lines when they
   have none, missing ones are added, unused ones removed) and the document totals BT-106 to
   BT-110, BT-112 and BT-115. An invoice without lines (MINIMUM, BASIC WL) is an error.
+  `CalculateTotals(Invoice, Target)` with Factur-X EXTENDED also keeps breakdowns of the same
+  category and rate apart by exemption reason (text and code, BT-120/BT-121, from the DETAIL lines
+  BT-X-96/BT-X-97 and the allowances and charges), as BR-FXEXT-xx-08b allows; a new breakdown
+  carries its reason. An existing breakdown whose reason no line has keeps it and takes the whole
+  category and rate when it is the only one there. EN 16931 has no such rule, so there two
+  breakdowns of one category and rate are an error.
   BT-111 (tax currency), BT-113 (prepaid) and BT-114 (rounding) stay as you set them; BT-115
   includes third-party payments.
 

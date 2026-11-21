@@ -158,6 +158,7 @@
     "TLandrixInvoiceLine.TaxCategory": {"en": "VAT category", "de": "Steuerkategorie"},
     "TLandrixInvoiceLine.TaxCategoryOther": {"en": "VAT category", "de": "Steuerkategorie"},
     "TLandrixInvoiceLine.TaxExemptionReason": {"en": "VAT exemption reason", "de": "Grund der Steuerbefreiung"},
+    "TLandrixInvoiceLine.TaxExemptionReasonCode": {"en": "VAT exemption reason code", "de": "Code des Befreiungsgrunds"},
     "TLandrixInvoiceLine.GrossPriceAmount": {"en": "Gross price", "de": "Bruttopreis"},
     "TLandrixInvoiceLine.DiscountOnTheGrossPrice": {"en": "Price discount", "de": "Preisnachlass"},
     "TLandrixInvoiceLine.NetPriceAmount": {"en": "Net price", "de": "Nettopreis"},

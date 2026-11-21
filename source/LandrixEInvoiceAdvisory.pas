@@ -685,6 +685,7 @@ begin
     V.Visit(Q + '.BuyerAccountingReference', L.BuyerAccountingReference, fk_Identifier);
     V.Visit(Q + '.TaxCategoryOther', L.TaxCategoryOther, fk_Identifier);
     V.Visit(Q + '.TaxExemptionReason', L.TaxExemptionReason, fk_Text);
+    V.Visit(Q + '.TaxExemptionReasonCode', L.TaxExemptionReasonCode, fk_Identifier);
     V.Visit(Q + '.BaseQuantityUnitCodeOther', L.BaseQuantityUnitCodeOther, fk_Identifier);
     WalkAllowanceCharges(V, L.AllowanceCharges, Q + '.AllowanceCharges');
     for J := 0 to Integer(L.ItemClassifications.Count) - 1 do

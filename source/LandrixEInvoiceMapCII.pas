@@ -784,10 +784,13 @@ begin
   begin
     Tax := ASettlement.ApplicableTradeTax.Add;
     Tax.TypeCode := 'VAT';
-    if Present(ALine.TaxExemptionReason) and
+    if (Present(ALine.TaxExemptionReason) or Present(ALine.TaxExemptionReasonCode)) and
        Permit(LandrixEInvoiceRuleLineTaxExemptionReason, APath + '/ram:ApplicableTradeTax/ram:ExemptionReason',
          'VAT exemption reason of line ' + ALine.ID) then
+    begin
       Tax.ExemptionReason := Txt(ALine.TaxExemptionReason);
+      Tax.ExemptionReasonCode.Value := ALine.TaxExemptionReasonCode;
+    end;
     Tax.CategoryCode := Code(LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(ALine.TaxCategory), ALine.TaxCategoryOther,
       APath + '/ram:ApplicableTradeTax/ram:CategoryCode');
     if ALine.TaxCategory <> idtfcc_O_ServicesOutsideScopeOfTax then
@@ -2378,10 +2381,15 @@ begin
     ReadTaxCategory(Tax.CategoryCode, APath + '/ram:AppliedTradeTax/ram:CategoryCode', Item.TaxCategory,
       Item.TaxCategoryOther);
     Item.TaxPercent := Decimal(Tax.RateApplicablePercent, APath + '/ram:AppliedTradeTax/ram:RateApplicablePercent');
+    { BT-X-591/BT-X-592: the exemption reason of the charge }
+    Item.TaxExemptionReason := Tax.ExemptionReason;
+    Item.TaxExemptionReasonCode := CodeValue(Tax.ExemptionReasonCode,
+      APath + '/ram:AppliedTradeTax/ram:ExemptionReasonCode');
     if (Tax.TypeCode <> '') and (Tax.TypeCode <> 'VAT') then
       NotMapped(APath + '/ram:AppliedTradeTax/ram:TypeCode', 'tax type ' + Tax.TypeCode);
     Tax.ListFilledChildren(FFilled);
-    Rest(APath + '/ram:AppliedTradeTax', ['ram:TypeCode', 'ram:CategoryCode', 'ram:RateApplicablePercent']);
+    Rest(APath + '/ram:AppliedTradeTax', ['ram:TypeCode', 'ram:CategoryCode', 'ram:RateApplicablePercent',
+      'ram:ExemptionReason', 'ram:ExemptionReasonCode']);
     Excess(ACharge.AppliedTradeTax.Count, APath + '/ram:AppliedTradeTax');
   end;
   ACharge.ListFilledChildren(FFilled);
@@ -2406,14 +2414,16 @@ begin
   begin
     Tax := ASettlement.ApplicableTradeTax[0];
     ALine.TaxExemptionReason := Tax.ExemptionReason;
+    ALine.TaxExemptionReasonCode := CodeValue(Tax.ExemptionReasonCode,
+      APath + '/ram:ApplicableTradeTax/ram:ExemptionReasonCode');
     ReadTaxCategory(Tax.CategoryCode, APath + '/ram:ApplicableTradeTax/ram:CategoryCode', ALine.TaxCategory,
       ALine.TaxCategoryOther);
     ALine.TaxPercent := Decimal(Tax.RateApplicablePercent, APath + '/ram:ApplicableTradeTax/ram:RateApplicablePercent');
     if (Tax.TypeCode <> '') and (Tax.TypeCode <> 'VAT') then
       NotMapped(APath + '/ram:ApplicableTradeTax/ram:TypeCode', 'tax type ' + Tax.TypeCode);
     Tax.ListFilledChildren(FFilled);
-    Rest(APath + '/ram:ApplicableTradeTax', ['ram:TypeCode', 'ram:ExemptionReason', 'ram:CategoryCode',
-      'ram:RateApplicablePercent']);
+    Rest(APath + '/ram:ApplicableTradeTax', ['ram:TypeCode', 'ram:ExemptionReason', 'ram:ExemptionReasonCode',
+      'ram:CategoryCode', 'ram:RateApplicablePercent']);
     Excess(ASettlement.ApplicableTradeTax.Count, APath + '/ram:ApplicableTradeTax');
   end;
   ALine.InvoiceLinePeriodStartDate := Date(ASettlement.BillingSpecifiedPeriod.StartDateTime,

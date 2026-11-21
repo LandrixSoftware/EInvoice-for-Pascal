@@ -349,7 +349,17 @@ type
       berechnet. Liefert die Anzahl der Fehler (Gruende in ADiagnostics);
       bei Fehlern bleibt AInvoice unveraendert. }
     class function CalculateTotals(AInvoice: TLandrixInvoice;
-      ADiagnostics: TLandrixEInvoiceDiagnostics = nil): Integer;
+      ADiagnostics: TLandrixEInvoiceDiagnostics = nil): Integer; overload;
+    { CalculateTotals for the target the invoice will be written for: with
+      Factur-X EXTENDED a breakdown per category, rate and exemption reason
+      (text and code; BR-FXEXT-xx-08b, see
+      LandrixEInvoiceCalculateTotalsByReason), otherwise as above.
+      DE: CalculateTotals fuer das Ziel, fuer das die Rechnung geschrieben
+      wird: bei Factur-X EXTENDED eine Aufschluesselung je Kategorie, Satz
+      und Befreiungsgrund (Text und Code; BR-FXEXT-xx-08b, siehe
+      LandrixEInvoiceCalculateTotalsByReason), sonst wie oben. }
+    class function CalculateTotals(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+      ADiagnostics: TLandrixEInvoiceDiagnostics = nil): Integer; overload;
 
     { Runs the checks of SaveTo* without writing and returns the number of
       errors SaveTo* would refuse on.
@@ -1029,6 +1039,13 @@ class function TLandrixEInvoice.CalculateTotals(AInvoice: TLandrixInvoice;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 begin
   Result := LandrixEInvoiceCalculateTotals(AInvoice, ADiagnostics);
+end;
+
+class function TLandrixEInvoice.CalculateTotals(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
+  ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := LandrixEInvoiceCalculateTotalsByReason(AInvoice, ADiagnostics,
+    (ATarget.Standard = est_FacturX) and (ATarget.Profile = epr_Extended));
 end;
 
 class function TLandrixEInvoice.Check(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;

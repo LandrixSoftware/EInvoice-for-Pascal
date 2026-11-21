@@ -155,6 +155,14 @@ function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoice
   BT-110, BT-112 and BT-115 from the line amounts as they are. BT-111,
   BT-113 and BT-114 stay as given. An invoice without lines (MINIMUM,
   BASIC WL) is an error: its totals cannot be calculated.
+  LandrixEInvoiceCalculateTotalsByReason with AByReason (Factur-X EXTENDED,
+  BR-FXEXT-xx-08b) groups by category, rate and exemption reason (text and
+  code as normalize-space reads them: BT-120/BT-121, of the DETAIL lines
+  BT-X-96/BT-X-97, of the allowances and charges BT-173/BT-174 and
+  BT-175/BT-176), in every category; a new breakdown carries its reason. An
+  existing breakdown whose reason none of them has takes the whole category
+  and rate when it is the only one there (the aggregate branch of the rule),
+  otherwise that is an error.
   DE: Berechnung auf Aufruf (TLandrixEInvoice.CalculateLineAmounts und
   CalculateTotals). Beide rechnen zuerst alles aus und aendern AInvoice nur,
   wenn kein Fehler auftritt; sie liefern die Anzahl der Fehler, die Gruende
@@ -175,11 +183,22 @@ function LandrixEInvoiceTaxPointDateCodeFromCII(const ACIICode: TLandrixEInvoice
   werden entfernt) und die Belegsummen BT-106 bis BT-110, BT-112 und BT-115
   aus den Positionsbetraegen, wie sie sind. BT-111, BT-113 und BT-114
   bleiben wie gegeben. Eine Rechnung ohne Positionen (MINIMUM, BASIC WL)
-  ist ein Fehler: ihre Summen lassen sich nicht berechnen. }
+  ist ein Fehler: ihre Summen lassen sich nicht berechnen.
+  LandrixEInvoiceCalculateTotalsByReason mit AByReason (Factur-X EXTENDED,
+  BR-FXEXT-xx-08b) gruppiert nach Kategorie, Satz und Befreiungsgrund
+  (Text und Code, wie normalize-space sie liest: BT-120/BT-121, der
+  DETAIL-Positionen BT-X-96/BT-X-97, der Nachlaesse und Zuschlaege
+  BT-173/BT-174 und BT-175/BT-176), in jeder Kategorie; eine neue
+  Aufschluesselung traegt ihren Grund. Eine vorhandene Aufschluesselung,
+  deren Grund keiner davon hat, nimmt die ganze Kategorie und den ganzen
+  Satz, wenn sie dort die einzige ist (der Summenzweig der Regel), sonst
+  ist das ein Fehler. }
 function LandrixEInvoiceCalculateLineAmounts(AInvoice: TLandrixInvoice;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
 function LandrixEInvoiceCalculateTotals(AInvoice: TLandrixInvoice;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+function LandrixEInvoiceCalculateTotalsByReason(AInvoice: TLandrixInvoice;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; AByReason: Boolean): Integer;
 
 implementation
 
@@ -746,7 +765,12 @@ type
     Rate: Double;
     Taxable: Currency;
     Reason: TLandrixEInvoiceString;
+    ReasonCode: TLandrixEInvoiceString;
+    { the exemption reason the group is kept apart by (AByReason) }
+    Key: TLandrixEInvoiceString;
     Matched: Boolean;
+    { taken into another group of its category and rate }
+    Merged: Boolean;
   end;
   TVatGroups = array of TVatGroup;
 
@@ -1053,14 +1077,41 @@ begin
   Result := Result + ' ' + ARateText;
 end;
 
+{ The key of the exemption reason for BR-FXEXT-xx-08b (all categories):
+  text and code as normalize-space reads them; '' without AByReason.
+  DE: Der Schluessel des Befreiungsgrunds fuer BR-FXEXT-xx-08b (alle
+  Kategorien): Text und Code, wie normalize-space sie liest; '' ohne
+  AByReason. }
+function ReasonKey(AByReason: Boolean; const AReason, ACode: TLandrixEInvoiceString): TLandrixEInvoiceString;
+begin
+  if AByReason then
+    Result := NormalizeSpace(AReason) + #10 + NormalizeSpace(ACode)
+  else
+    Result := '';
+end;
+
+{ The category as written: the code of the list or the text as it is (the
+  writers and the rules take it literally).
+  DE: Die Kategorie, wie sie geschrieben wird: der Code der Liste oder der
+  Text, wie er ist (Writer und Regeln nehmen ihn woertlich). }
+function CategoryText(ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode;
+  const AOther: TLandrixEInvoiceString): TLandrixEInvoiceString;
+begin
+  if ACategory = idtfcc_None then
+    Result := AOther
+  else
+    Result := LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(ACategory);
+end;
+
 function FindGroup(const AGroups: TVatGroups; ACount: Integer;
-  ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther, ARateText: TLandrixEInvoiceString): Integer;
+  ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther, ARateText, AKey: TLandrixEInvoiceString): Integer;
 var
   I: Integer;
 begin
   for I := 0 to ACount - 1 do
-    if (AGroups[I].Category = ACategory) and (AGroups[I].RateText = ARateText) and
-       ((ACategory <> idtfcc_None) or (AGroups[I].CategoryOther = AOther)) then
+    if not AGroups[I].Merged and (AGroups[I].RateText = ARateText) and
+       (CategoryText(AGroups[I].Category, AGroups[I].CategoryOther) = CategoryText(ACategory, AOther)) and
+       (AGroups[I].Key = AKey) then
     begin
       Result := I;
       Exit;
@@ -1150,41 +1201,61 @@ end;
 
 procedure AddToGroup(var AState: TCalcState; var AGroups: TVatGroups; var ACount: Integer;
   ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode; const AOther, ARateText: TLandrixEInvoiceString;
-  ARate: Double; AAmount: Currency; const AReason: TLandrixEInvoiceString);
+  ARate: Double; AAmount: Currency; const AReason, ACode: TLandrixEInvoiceString; AByReason: Boolean);
 var
   G: Integer;
+  Key: TLandrixEInvoiceString;
 begin
-  G := FindGroup(AGroups, ACount, ACategory, AOther, ARateText);
+  Key := ReasonKey(AByReason, AReason, ACode);
+  G := FindGroup(AGroups, ACount, ACategory, AOther, ARateText, Key);
   if G < 0 then
   begin
     G := ACount;
     Inc(ACount);
+    if G >= Length(AGroups) then
+      SetLength(AGroups, G + 16);
     AGroups[G].Category := ACategory;
     AGroups[G].CategoryOther := AOther;
     AGroups[G].RateText := ARateText;
+    AGroups[G].Key := Key;
     if ACategory = idtfcc_O_ServicesOutsideScopeOfTax then
       AGroups[G].Rate := 0
     else
       AGroups[G].Rate := ARate;
     AGroups[G].Taxable := 0;
     AGroups[G].Reason := '';
+    AGroups[G].ReasonCode := '';
+    { by reason the group is the reason: its breakdown carries it, in any
+      category }
+    if AByReason then
+    begin
+      AGroups[G].Reason := AReason;
+      AGroups[G].ReasonCode := ACode;
+    end;
     AGroups[G].Matched := False;
+    AGroups[G].Merged := False;
   end;
   AddAmount(AState, AGroups[G].Taxable, AAmount, 'BT-116', 'the taxable amount of ' +
     CategoryLabel(ACategory, AOther, ARateText));
   { only categories that need an exemption reason get one (BR-S-10 and
     BR-Z-10 forbid it); a blank one does not hide a later reason }
-  if NeedsExemptionReason(ACategory) and LandrixEInvoiceIsBlank(AGroups[G].Reason) and
+  if not AByReason and NeedsExemptionReason(ACategory) and LandrixEInvoiceIsBlank(AGroups[G].Reason) and
      not LandrixEInvoiceIsBlank(AReason) then
     AGroups[G].Reason := AReason;
 end;
 
 function LandrixEInvoiceCalculateTotals(AInvoice: TLandrixInvoice;
   ADiagnostics: TLandrixEInvoiceDiagnostics): Integer;
+begin
+  Result := LandrixEInvoiceCalculateTotalsByReason(AInvoice, ADiagnostics, False);
+end;
+
+function LandrixEInvoiceCalculateTotalsByReason(AInvoice: TLandrixInvoice;
+  ADiagnostics: TLandrixEInvoiceDiagnostics; AByReason: Boolean): Integer;
 var
   State: TCalcState;
   Groups: TVatGroups;
-  GroupCount, G, I, J: Integer;
+  GroupCount, G, K, I, J, InClass: Integer;
   Taxes: array of Currency;
   Existing: array of Integer;
   Line, Source: TLandrixInvoiceLine;
@@ -1192,8 +1263,71 @@ var
   Sub: TLandrixInvoiceTaxAmount;
   Lines, Allowances, Charges, TaxTotal, Amount, Payable, Total: Currency;
   RateText: TLandrixEInvoiceString;
-  SubRates: array of TLandrixEInvoiceString;
+  SubRates, SubKeys: array of TLandrixEInvoiceString;
+  Unmatched: array of Boolean;
   TaxCents: Int64;
+
+  { existing breakdowns AJ and AI have the same category and rate as
+    written. DE: die vorhandenen Aufschluesselungen AJ und AI haben dieselbe
+    Kategorie und denselben Satz, wie geschrieben. }
+  function SameClass(AJ, AI: Integer): Boolean;
+  begin
+    Result := (SubRates[AJ] = SubRates[AI]) and
+      (CategoryText(AInvoice.TaxAmountSubtotals[AJ].TaxCategory, AInvoice.TaxAmountSubtotals[AJ].TaxCategoryOther) =
+      CategoryText(AInvoice.TaxAmountSubtotals[AI].TaxCategory, AInvoice.TaxAmountSubtotals[AI].TaxCategoryOther));
+  end;
+
+  { group AK is the group of an existing breakdown. DE: Gruppe AK ist die
+    Gruppe einer vorhandenen Aufschluesselung. }
+  function Taken(AK: Integer): Boolean;
+  var
+    E: Integer;
+  begin
+    Result := True;
+    for E := 0 to Length(Existing) - 1 do
+      if Existing[E] = AK then
+        Exit;
+    Result := False;
+  end;
+
+  { Factur-X EXTENDED (BR-FXEXT-CO-10, BR-FXEXT-xx-08b) counts every DETAIL
+    line as written, at any level and with its own category, rate and
+    exemption reason; GROUP and INFORMATION lines count with their DETAIL
+    lines only.
+    DE: Factur-X EXTENDED (BR-FXEXT-CO-10, BR-FXEXT-xx-08b) zaehlt jede
+    DETAIL-Position, wie sie geschrieben wird, auf jeder Ebene und mit
+    eigener Kategorie, eigenem Satz und Befreiungsgrund; GROUP- und
+    INFORMATION-Positionen zaehlen nur mit ihren DETAIL-Positionen. }
+  procedure AddDetails(ALine: TLandrixInvoiceLine; AIsSubLine: Boolean);
+  var
+    S: TLandrixEInvoiceListIndex;
+    Cents: Currency;
+    Status: TLandrixInvoiceLineStatusReasonCode;
+  begin
+    { a line without status and without sub lines is written without one
+      (or with the status text it has) and counts like DETAIL }
+    Status := LandrixEInvoiceLineStatusOf(ALine, AIsSubLine);
+    if (Status = ilsrc_Detail) or ((Status = ilsrc_None) and
+       (LandrixEInvoiceIsBlank(ALine.LineStatusReasonCodeOther) or
+       (ALine.LineStatusReasonCodeOther = 'DETAIL'))) then
+    begin
+      RateText := RateTextOf(ALine.TaxCategory, ALine.TaxPercent);
+      if not HasOwnTax(ALine) then
+        CalcError(State, 'BT-151', LineLabel(ALine) + ': no VAT category')
+      else if RateText = '' then
+        CalcError(State, 'BT-152', LineLabel(ALine) + ': the VAT rate cannot be written')
+      else
+      begin
+        Cents := CheckedCents(State, ALine.LineAmount, 'BT-131', LineLabel(ALine) + ': the line amount');
+        AddAmount(State, Lines, Cents, 'BT-106', 'the sum of the line amounts');
+        AddToGroup(State, Groups, GroupCount, ALine.TaxCategory, ALine.TaxCategoryOther, RateText,
+          ALine.TaxPercent, Cents, ALine.TaxExemptionReason, ALine.TaxExemptionReasonCode, True);
+      end;
+    end;
+    for S := 0 to ALine.SubInvoiceLines.Count - 1 do
+      AddDetails(ALine.SubInvoiceLines[S], True);
+  end;
+
 begin
   State.LineCount := 0;
   State.Errors := 0;
@@ -1202,6 +1336,8 @@ begin
   Existing := nil;
   Taxes := nil;
   SubRates := nil;
+  SubKeys := nil;
+  Unmatched := nil;
   SetLength(Groups, AInvoice.InvoiceLines.Count + AInvoice.AllowanceCharges.Count);
   GroupCount := 0;
   Lines := 0;
@@ -1226,6 +1362,14 @@ begin
   for I := 0 to Integer(AInvoice.InvoiceLines.Count) - 1 do
   begin
     Line := AInvoice.InvoiceLines[I];
+    if AByReason then
+    begin
+      if (LandrixEInvoiceLineStatusOf(Line, False) = ilsrc_Detail) and (Line.SubInvoiceLines.Count > 0) then
+        CalcError(State, 'BT-X-8', LineLabel(Line) + ': a line with sub lines must be a group (GROUP)')
+      else
+        AddDetails(Line, False);
+      Continue;
+    end;
     case LandrixEInvoiceLineStatusOf(Line, False) of
       ilsrc_Information:
         Continue;
@@ -1257,11 +1401,11 @@ begin
     end;
     Amount := CheckedCents(State, Line.LineAmount, 'BT-131', LineLabel(Line) + ': the line amount');
     AddAmount(State, Lines, Amount, 'BT-106', 'the sum of the line amounts');
-    AddToGroup(State, Groups, GroupCount, Source.TaxCategory, Source.TaxCategoryOther, RateText, Source.TaxPercent,
-      Amount, Source.TaxExemptionReason);
+    AddToGroup(State, Groups, GroupCount, Source.TaxCategory, Source.TaxCategoryOther, RateText,
+      Source.TaxPercent, Amount, Source.TaxExemptionReason, '', False);
   end;
 
-  { BG-20 and BG-21 }
+  { BG-20 and BG-21; their exemption reason counts by reason only }
   for I := 0 to Integer(AInvoice.AllowanceCharges.Count) - 1 do
   begin
     Item := AInvoice.AllowanceCharges[I];
@@ -1286,17 +1430,24 @@ begin
       AddAmount(State, Allowances, Amount, 'BT-107', 'the sum of the allowances');
       Amount := -Amount;
     end;
-    AddToGroup(State, Groups, GroupCount, Item.TaxCategory, Item.TaxCategoryOther, RateText, Item.TaxPercent,
-      Amount, '');
+    if AByReason then
+      AddToGroup(State, Groups, GroupCount, Item.TaxCategory, Item.TaxCategoryOther, RateText, Item.TaxPercent,
+        Amount, Item.TaxExemptionReason, Item.TaxExemptionReasonCode, True)
+    else
+      AddToGroup(State, Groups, GroupCount, Item.TaxCategory, Item.TaxCategoryOther, RateText, Item.TaxPercent,
+        Amount, '', '', False);
   end;
 
-  { the existing breakdowns: one per category and rate as written }
+  { the existing breakdowns: one per category and rate as written (by
+    reason: per category, rate and exemption reason) }
   SetLength(Existing, AInvoice.TaxAmountSubtotals.Count);
   SetLength(SubRates, AInvoice.TaxAmountSubtotals.Count);
+  SetLength(SubKeys, AInvoice.TaxAmountSubtotals.Count);
   for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
   begin
     Sub := AInvoice.TaxAmountSubtotals[I];
     SubRates[I] := RateTextOf(Sub.TaxCategory, Sub.TaxPercent);
+    SubKeys[I] := ReasonKey(AByReason, Sub.TaxExemptionReason, Sub.TaxExemptionReasonCode);
     if SubRates[I] = '' then
     begin
       CalcError(State, 'BT-119', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther, '') +
@@ -1304,12 +1455,80 @@ begin
       Existing[I] := -1;
       Continue;
     end;
-    Existing[I] := FindGroup(Groups, GroupCount, Sub.TaxCategory, Sub.TaxCategoryOther, SubRates[I]);
+    Existing[I] := FindGroup(Groups, GroupCount, Sub.TaxCategory, Sub.TaxCategoryOther, SubRates[I], SubKeys[I]);
     for J := 0 to I - 1 do
-      if (AInvoice.TaxAmountSubtotals[J].TaxCategory = Sub.TaxCategory) and (SubRates[J] = SubRates[I]) and
-         ((Sub.TaxCategory <> idtfcc_None) or (AInvoice.TaxAmountSubtotals[J].TaxCategoryOther = Sub.TaxCategoryOther)) then
+      if SameClass(J, I) and (SubKeys[J] = SubKeys[I]) then
         CalcError(State, 'BG-23', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
           SubRates[I]) + ' occurs twice');
+  end;
+
+  { by reason, a breakdown whose reason no line, allowance or charge has:
+    without amounts left in its category and rate it is removed; as the
+    only breakdown there it takes the whole category and rate (the other
+    branch of -08b) and keeps its reason, or gets the one of the lines;
+    otherwise the amounts cannot be allocated
+    DE: nach Grund eine Aufschluesselung, deren Grund keine Position, kein
+    Nachlass und kein Zuschlag hat: ohne verbleibende Betraege ihrer
+    Kategorie und ihres Satzes wird sie entfernt; als einzige dort nimmt
+    sie die ganze Kategorie und den ganzen Satz (der andere Zweig von -08b)
+    und behaelt ihren Grund oder erhaelt den der Positionen; sonst lassen
+    sich die Betraege nicht zuordnen }
+  if AByReason then
+  begin
+    SetLength(Unmatched, AInvoice.TaxAmountSubtotals.Count);
+    for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
+      Unmatched[I] := (Existing[I] < 0) and (SubRates[I] <> '');
+    for I := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
+    begin
+      if not Unmatched[I] then
+        Continue;
+      Sub := AInvoice.TaxAmountSubtotals[I];
+      { the groups of the class no other breakdown took }
+      G := -1;
+      for K := 0 to GroupCount - 1 do
+        if not Groups[K].Merged and (Groups[K].RateText = SubRates[I]) and
+           (CategoryText(Groups[K].Category, Groups[K].CategoryOther) =
+           CategoryText(Sub.TaxCategory, Sub.TaxCategoryOther)) and not Taken(K) then
+        begin
+          G := K;
+          Break;
+        end;
+      if G < 0 then
+        Continue;
+      InClass := 0;
+      for J := 0 to Integer(AInvoice.TaxAmountSubtotals.Count) - 1 do
+        if SameClass(J, I) then
+          Inc(InClass);
+      if InClass > 1 then
+      begin
+        CalcError(State, 'BG-23', 'VAT breakdowns ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
+          SubRates[I]) + ' do not match the exemption reasons (BT-120, BT-121) of the lines, allowances and ' +
+          'charges');
+        Continue;
+      end;
+      for K := G + 1 to GroupCount - 1 do
+        if not Groups[K].Merged and (Groups[K].RateText = Groups[G].RateText) and
+           (CategoryText(Groups[K].Category, Groups[K].CategoryOther) =
+           CategoryText(Groups[G].Category, Groups[G].CategoryOther)) then
+        begin
+          AddAmount(State, Groups[G].Taxable, Groups[K].Taxable, 'BT-116', 'the taxable amount of ' +
+            CategoryLabel(Groups[G].Category, Groups[G].CategoryOther, Groups[G].RateText));
+          Groups[K].Merged := True;
+          { reasons that differ give no reason for the whole: a blank
+            breakdown stays blank, so a second call finds it unmatched
+            again and gives the same totals
+            DE: verschiedene Gruende ergeben keinen Grund fuer das Ganze:
+            eine leere Aufschluesselung bleibt leer, damit ein zweiter Lauf
+            sie wieder ohne Treffer findet und dieselben Summen ergibt }
+          if Groups[K].Key <> Groups[G].Key then
+          begin
+            Groups[G].Reason := '';
+            Groups[G].ReasonCode := '';
+          end;
+        end;
+      Groups[G].Key := SubKeys[I];
+      Existing[I] := G;
+    end;
   end;
 
   { BT-117 per group: the taxable amount x the rate as written, exact,
@@ -1319,6 +1538,8 @@ begin
   for G := 0 to GroupCount - 1 do
   begin
     Taxes[G] := 0;
+    if Groups[G].Merged then
+      Continue;
     if ExactRoundCents(ExactDiv(ExactMul(CurrencyExact(Groups[G].Taxable), ExactOf(Groups[G].RateText)),
       ExactInt(100)), TaxCents) and (TaxCents < MaxRawAmount div 100) and (TaxCents > -(MaxRawAmount div 100)) then
       Taxes[G] := CentsToCurrency(TaxCents)
@@ -1356,8 +1577,12 @@ begin
     G := Existing[I];
     if G < 0 then
     begin
-      CalcWarning(State, 'BG-23', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
-        SubRates[I]) + ' removed: no line, allowance or charge has this category and rate');
+      if AByReason then
+        CalcWarning(State, 'BG-23', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
+          SubRates[I]) + ' removed: no line, allowance or charge has this category, rate and exemption reason')
+      else
+        CalcWarning(State, 'BG-23', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
+          SubRates[I]) + ' removed: no line, allowance or charge has this category and rate');
       AInvoice.TaxAmountSubtotals.Delete(I);
       Continue;
     end;
@@ -1370,14 +1595,18 @@ begin
       Sub.TaxPercent := 0;
     { a missing reason is taken from the lines, as for a new breakdown }
     if LandrixEInvoiceIsBlank(Sub.TaxExemptionReason) and LandrixEInvoiceIsBlank(Sub.TaxExemptionReasonCode) then
+    begin
       Sub.TaxExemptionReason := Groups[G].Reason;
+      if Groups[G].ReasonCode <> '' then
+        Sub.TaxExemptionReasonCode := Groups[G].ReasonCode;
+    end;
     if NeedsExemptionReason(Sub.TaxCategory) and LandrixEInvoiceIsBlank(Sub.TaxExemptionReason) and
        LandrixEInvoiceIsBlank(Sub.TaxExemptionReasonCode) then
       CalcWarning(State, 'BT-120', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
         SubRates[I]) + ' needs an exemption reason (BT-120 or BT-121)');
   end;
   for G := 0 to GroupCount - 1 do
-    if not Groups[G].Matched then
+    if not Groups[G].Matched and not Groups[G].Merged then
     begin
       Sub := AInvoice.TaxAmountSubtotals.AddTaxAmount;
       Sub.TaxCategory := Groups[G].Category;
@@ -1386,7 +1615,9 @@ begin
       Sub.TaxableAmount := Groups[G].Taxable;
       Sub.TaxAmount := Taxes[G];
       Sub.TaxExemptionReason := Groups[G].Reason;
-      if NeedsExemptionReason(Sub.TaxCategory) and LandrixEInvoiceIsBlank(Sub.TaxExemptionReason) then
+      Sub.TaxExemptionReasonCode := Groups[G].ReasonCode;
+      if NeedsExemptionReason(Sub.TaxCategory) and LandrixEInvoiceIsBlank(Sub.TaxExemptionReason) and
+         LandrixEInvoiceIsBlank(Sub.TaxExemptionReasonCode) then
         CalcWarning(State, 'BT-120', 'VAT breakdown ' + CategoryLabel(Sub.TaxCategory, Sub.TaxCategoryOther,
           Groups[G].RateText) + ' needs an exemption reason (BT-120 or BT-121)');
     end;

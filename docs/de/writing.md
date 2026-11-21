@@ -102,7 +102,14 @@ TLandrixEInvoice.CalculateTotals(Invoice);        // BG-23 und BG-22
   Bemessungsgrundlage gerundet; Kategorie O zählt ohne Satz; vorhandene Einträge behalten ihre
   Befreiungsgründe und übernehmen den der Positionen, wenn sie keinen haben, fehlende kommen
   dazu, nicht benutzte werden entfernt) und die Belegsummen BT-106 bis BT-110, BT-112 und
-  BT-115. Eine Rechnung ohne Positionen (MINIMUM, BASIC WL) ist ein Fehler. BT-111 (Steuerwährung), BT-113 (Vorauszahlung) und BT-114
+  BT-115. Eine Rechnung ohne Positionen (MINIMUM, BASIC WL) ist ein Fehler.
+  `CalculateTotals(Invoice, Target)` trennt bei Factur-X EXTENDED Aufschlüsselungen gleicher
+  Kategorie und gleichen Satzes zusätzlich nach Befreiungsgrund (Text und Code, BT-120/BT-121, aus
+  den DETAIL-Positionen BT-X-96/BT-X-97 und den Nachlässen und Zuschlägen), wie BR-FXEXT-xx-08b es
+  erlaubt; eine neue Aufschlüsselung trägt ihren Grund. Eine vorhandene Aufschlüsselung, deren
+  Grund keine Position hat, behält ihn und nimmt die ganze Kategorie und den ganzen Satz, wenn sie
+  dort die einzige ist. EN 16931 kennt diese Regel nicht, dort sind zwei Aufschlüsselungen einer
+  Kategorie und eines Satzes ein Fehler. BT-111 (Steuerwährung), BT-113 (Vorauszahlung) und BT-114
   (Rundung) bleiben, wie Sie sie setzen; BT-115 enthält Zahlungen Dritter.
 
 Beide überschreiben, was sie berechnen, liefern die Anzahl der Fehler und lassen die Rechnung
