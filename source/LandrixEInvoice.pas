@@ -525,25 +525,55 @@ begin
     Result.AddCopy(ASource[I]);
 end;
 
-{ BT-24 of a syntax model must belong to the entry it is written for.
-  DE: BT-24 eines Syntaxmodells muss zu dem Eintrag gehoeren, fuer den es
-  geschrieben wird. }
+{ True if S has an ASCII capital letter. }
+function HasUpperAscii(const S: TLandrixEInvoiceString): Boolean;
+var
+  I: Integer;
+begin
+  Result := True;
+  for I := 1 to Length(S) do
+    if (S[I] >= 'A') and (S[I] <= 'Z') then
+      Exit;
+  Result := False;
+end;
+
+{ BT-24 of a syntax model must be there (BR-01), belong to the entry it is
+  written for and be written in small letters like every identifier the
+  validators match (reading tolerates capitals and blanks around it, the
+  validators compare exactly; Peppol trims, so blanks are a warning).
+  AReportBlank is False where the writer reports a blank value itself.
+  DE: BT-24 eines Syntaxmodells muss vorhanden sein (BR-01), zu dem Eintrag
+  gehoeren, fuer den es geschrieben wird, und kleingeschrieben sein wie jede
+  Kennung, die die Validatoren vergleichen (das Lesen duldet Grossbuchstaben
+  und Leerraum darum, die Validatoren vergleichen genau; Peppol kuerzt
+  Leerraum, daher dort nur eine Warnung). AReportBlank ist False, wo der
+  Writer einen leeren Wert selbst meldet. }
 procedure CheckCustomization(const ARootName, ACustomizationID, APath: TLandrixEInvoiceString;
-  const ASpec: TLandrixEInvoiceSpec; ADiagnostics: TLandrixEInvoiceDiagnostics);
+  const ASpec: TLandrixEInvoiceSpec; AReportBlank: Boolean; ADiagnostics: TLandrixEInvoiceDiagnostics);
 var
   Found: TLandrixEInvoiceSpec;
   Extension: Boolean;
 begin
-  { a blank BT-24 is reported by the writer as missing }
   if LandrixEInvoiceIsBlank(ACustomizationID) then
+  begin
+    if AReportBlank then
+      ADiagnostics.AddDiagnostic(edk_MissingElement, APath, 0, 0, 0,
+        'The specification identifier (BT-24) is missing (BR-01)').Severity := eds_Error;
     Exit;
+  end;
   if not LandrixEInvoiceDetectSpec(ARootName, ACustomizationID, Found, Extension) then
     ADiagnostics.AddDiagnostic(edk_InvalidValue, APath, 0, 0, 0, 'Unknown specification identifier (BT-24) ''' +
       ACustomizationID + ''' for ' + LandrixEInvoiceTargetToStr(ASpec.Target)).Severity := eds_Error
   else if not LandrixEInvoiceSameTarget(Found.Target, ASpec.Target) then
     ADiagnostics.AddDiagnostic(edk_InvalidValue, APath, 0, 0, 0, 'BT-24 ''' + ACustomizationID +
       ''' belongs to ' + LandrixEInvoiceTargetToStr(Found.Target) + ', not to ' +
-      LandrixEInvoiceTargetToStr(ASpec.Target)).Severity := eds_Error;
+      LandrixEInvoiceTargetToStr(ASpec.Target)).Severity := eds_Error
+  else if HasUpperAscii(ACustomizationID) then
+    ADiagnostics.AddDiagnostic(edk_InvalidValue, APath, 0, 0, 0, 'BT-24 ''' + ACustomizationID +
+      ''' must be written in small letters').Severity := eds_Error
+  else if LandrixEInvoiceTrimXml(ACustomizationID) <> ACustomizationID then
+    ADiagnostics.AddDiagnostic(edk_InvalidValue, APath, 0, 0, 0, 'BT-24 ''' + ACustomizationID +
+      ''' has blanks around it').Severity := eds_Warning;
 end;
 
 const
@@ -617,7 +647,9 @@ begin
           CII := TLandrixCIIInvoice(AModel);
           CheckCustomization('CrossIndustryInvoice',
             CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value,
-            CIICustomizationPath, ASpec, ADiagnostics);
+            CIICustomizationPath, ASpec,
+            CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.SchemeID <> '',
+            ADiagnostics);
           LandrixEInvoiceCheckCIIProfile(CII, ASpec.Target.Profile, ADiagnostics);
           if not (eio_NoRuleCheck in AOptions) then
             LandrixEInvoiceCheckCIICodes(CII, ASpec.Target.Profile, ADiagnostics);
@@ -627,14 +659,14 @@ begin
         begin
           UBLInvoice := TLandrixUBLInvoice(AModel);
           CheckCustomization('Invoice', UBLInvoice.CustomizationID.Value, '/Invoice/cbc:CustomizationID', ASpec,
-            ADiagnostics);
+            True, ADiagnostics);
           LandrixEInvoiceWriteUBLInvoice(UBLInvoice, W, ADiagnostics);
         end;
       mk_UBLCreditNote:
         begin
           UBLCreditNote := TLandrixUBLCreditNote(AModel);
           CheckCustomization('CreditNote', UBLCreditNote.CustomizationID.Value, '/CreditNote/cbc:CustomizationID',
-            ASpec, ADiagnostics);
+            ASpec, True, ADiagnostics);
           LandrixEInvoiceWriteUBLCreditNote(UBLCreditNote, W, ADiagnostics);
         end;
     end;
@@ -827,7 +859,13 @@ begin
     D.AddDiagnostic(edk_UnknownCode, Path, 0, 0, 0, 'Unknown specification identifier (BT-24) ''' +
       ADocument.FInfo.CustomizationID + '''; read without a specification, no rule check').Severity := eds_Warning
   else if eio_CheckOnRead in AOptions then
+  begin
     LandrixEInvoiceCheckInvoice(ADocument.FInvoice, ADocument.FInfo.Spec, D);
+    { the Factur-X code asserts, as writing runs them
+      DE: die Factur-X-Code-Asserts, wie beim Schreiben }
+    if ADocument.FCII <> nil then
+      LandrixEInvoiceCheckCIICodes(ADocument.FCII, ADocument.FInfo.Spec.Target.Profile, D);
+  end;
   if eio_InvoiceOnly in AOptions then
     ADocument.FreeSyntaxModel;
 end;
@@ -960,18 +998,24 @@ end;
 class function TLandrixEInvoice.ToCII(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
   ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixCIIInvoice;
 begin
+  if AInvoice = nil then
+    raise ELandrixEInvoiceError.Create('TLandrixEInvoice: nothing to map (nil)');
   Result := LandrixEInvoiceInvoiceToCII(AInvoice, WritableSpec(ATarget, mk_CII), ADiagnostics);
 end;
 
 class function TLandrixEInvoice.ToUBLInvoice(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
   ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixUBLInvoice;
 begin
+  if AInvoice = nil then
+    raise ELandrixEInvoiceError.Create('TLandrixEInvoice: nothing to map (nil)');
   Result := LandrixEInvoiceInvoiceToUBLInvoice(AInvoice, WritableSpec(ATarget, mk_UBLInvoice), ADiagnostics);
 end;
 
 class function TLandrixEInvoice.ToUBLCreditNote(AInvoice: TLandrixInvoice; const ATarget: TLandrixEInvoiceTarget;
   ADiagnostics: TLandrixEInvoiceDiagnostics): TLandrixUBLCreditNote;
 begin
+  if AInvoice = nil then
+    raise ELandrixEInvoiceError.Create('TLandrixEInvoice: nothing to map (nil)');
   Result := LandrixEInvoiceInvoiceToUBLCreditNote(AInvoice, WritableSpec(ATarget, mk_UBLCreditNote), ADiagnostics);
 end;
 
@@ -1024,8 +1068,58 @@ begin
   end;
 end;
 
-class function TLandrixEInvoice.LoadFromStream(AStream: TStream;
-  AOptions: TLandrixEInvoiceOptions): TLandrixEInvoiceDocument;
+{ AStream if it can go back (the PDF test reads the start and returns);
+  else its rest read into ACopy.
+  DE: AStream, wenn er zurueckgehen kann (die PDF-Erkennung liest den
+  Anfang und kehrt zurueck); sonst sein Rest, in ACopy gelesen. }
+function SeekableStream(AStream: TStream; out ACopy: TMemoryStream): TStream;
+var
+  Buf: array of Byte;
+  N: Integer;
+  P: Int64;
+begin
+  ACopy := nil;
+  Result := AStream;
+  { a handle stream on a pipe answers -1 instead of raising; an input pipe
+    accepts its own position but no seek to the end }
+  try
+    P := AStream.Position;
+    if P >= 0 then
+    begin
+      AStream.Seek(0, soEnd);
+      AStream.Position := P;
+      if AStream.Position = P then
+        Exit;
+    end;
+  except
+    on Exception do
+      ;
+  end;
+  Buf := nil;
+  SetLength(Buf, 65536);
+  ACopy := TMemoryStream.Create;
+  try
+    repeat
+      N := AStream.Read(Buf[0], Length(Buf));
+      if N > 0 then
+      begin
+        { no invoice file is larger than the PDF limit }
+        if ACopy.Size + N > LandrixEInvoicePdfMaxFileSize then
+          raise ELandrixEInvoiceFormatError.Create('Stream too large to read (more than ' +
+            IntToStr(LandrixEInvoicePdfMaxFileSize) + ' bytes)');
+        ACopy.WriteBuffer(Buf[0], N);
+      end;
+    until N <= 0;
+  except
+    ACopy.Free;
+    ACopy := nil;
+    raise;
+  end;
+  ACopy.Position := 0;
+  Result := ACopy;
+end;
+
+function LoadDocumentStream(AStream: TStream; AOptions: TLandrixEInvoiceOptions): TLandrixEInvoiceDocument;
 var
   Xml: TMemoryStream;
   Name: TLandrixEInvoiceString;
@@ -1057,6 +1151,22 @@ begin
   except
     Result.Free;
     raise;
+  end;
+end;
+
+class function TLandrixEInvoice.LoadFromStream(AStream: TStream;
+  AOptions: TLandrixEInvoiceOptions): TLandrixEInvoiceDocument;
+var
+  Copied: TMemoryStream;
+begin
+  { a stream that cannot seek is read into memory for the PDF test }
+  Copied := nil;
+  if not (eio_NoPdf in AOptions) then
+    AStream := SeekableStream(AStream, Copied);
+  try
+    Result := LoadDocumentStream(AStream, AOptions);
+  finally
+    Copied.Free;
   end;
 end;
 

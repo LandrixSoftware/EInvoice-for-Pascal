@@ -359,7 +359,7 @@ const
      CanRead: True;
      CanWrite: True),
     (Target: (Standard: est_PeppolBIS; Syntax: esy_UBL; Profile: epr_None; Version: '3.0');
-     ExactVersion: '3.0';
+     ExactVersion: '3.0.22';
      CustomizationID: 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0';
      ExtensionCustomizationID: '';
      ProfileID: CPeppolProcess;
@@ -651,7 +651,9 @@ begin
         Result := True;
         Exit;
       end;
-      if (Specs[I].ExtensionCustomizationID <> '') and
+      { the XRechnung extension: KoSIT's scenarios take it on ubl:Invoice
+        and CII only, not on ubl:CreditNote }
+      if (Specs[I].ExtensionCustomizationID <> '') and (ARootLocalName <> 'CreditNote') and
          SameAsciiText(Specs[I].ExtensionCustomizationID, ID) then
       begin
         ASpec := Specs[I];

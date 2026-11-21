@@ -76,6 +76,7 @@ begin
   CheckEqualsInvoiceStr('urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended', Spec.CustomizationID, 'EXTENDED identifier');
   Check(LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.PeppolBIS('3.0'), Spec), 'Peppol BIS 3.0');
   CheckEqualsInvoiceStr('urn:fdc:peppol.eu:2017:poacc:billing:01:1.0', Spec.ProfileID, 'Peppol ProfileID');
+  CheckEqualsInvoiceStr('3.0.22', Spec.ExactVersion, 'Peppol exact version');
 
   { invalid targets }
   Check(not LandrixEInvoiceFindSpec(TLandrixEInvoiceTargets.XRechnung('', esy_UBL), Spec), 'empty version');

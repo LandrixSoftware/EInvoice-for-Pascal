@@ -53,6 +53,43 @@ begin
   Result := TLandrixEInvoiceTargets.XRechnung('3.0', esy_CII);
 end;
 
+type
+  { reads its source forward only; seeking raises, like a pipe }
+  TForwardStream = class(TStream)
+  private
+    FSource: TStream;
+    FSeekable: Boolean;
+  public
+    constructor Create(ASource: TStream);
+    function Read(var Buffer; Count: Longint): Longint; override;
+    function Write(const Buffer; Count: Longint): Longint; override;
+    function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
+  end;
+
+constructor TForwardStream.Create(ASource: TStream);
+begin
+  inherited Create;
+  FSource := ASource;
+  FSeekable := False;
+end;
+
+function TForwardStream.Read(var Buffer; Count: Longint): Longint;
+begin
+  Result := FSource.Read(Buffer, Count);
+end;
+
+function TForwardStream.Write(const Buffer; Count: Longint): Longint;
+begin
+  Result := FSource.Write(Buffer, Count);
+end;
+
+function TForwardStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int64;
+begin
+  if not FSeekable then
+    raise EStreamError.Create('cannot seek');
+  Result := FSource.Seek(Offset, Origin);
+end;
+
 function HasRule(D: TLandrixEInvoiceDiagnostics; const ARuleID: TLandrixEInvoiceString): Boolean;
 var
   I: TLandrixEInvoiceListIndex;
@@ -586,6 +623,148 @@ begin
   end;
 end;
 
+{ Review cases: BT-24 of a syntax model present and in small letters, the
+  XRechnung extension only on an invoice, the Factur-X code asserts on read, a stream that cannot seek, nil. }
+procedure TestReviewCases;
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+  UBL: TLandrixUBLInvoice;
+  CreditNote: TLandrixUBLCreditNote;
+  CII: TLandrixCIIInvoice;
+  Spec, Found: TLandrixEInvoiceSpec;
+  Extension: Boolean;
+  Xml: TLandrixXmlUtf8;
+  Doc: TLandrixEInvoiceDocument;
+  M: TMemoryStream;
+  F: TForwardStream;
+  Basic: TLandrixEInvoiceTarget;
+begin
+  Basic := TLandrixEInvoiceTargets.FacturX('1.09', epr_Basic);
+  Check(LandrixEInvoiceFindSpec(XRUBL, Spec), 'XRechnung UBL entry');
+  D := TLandrixEInvoiceDiagnostics.Create;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    UBL := TLandrixEInvoice.ToUBLInvoice(Invoice, XRUBL);
+    try
+      UBL.CustomizationID.Value := '';
+      D.Clear;
+      TLandrixEInvoice.Check(UBL, XRUBL, [], D);
+      CheckEquals(1, D.CountOf(edk_MissingElement), 'blank BT-24: ' + string(D.ToText));
+      UBL.CustomizationID.Value := ' ' + Spec.CustomizationID;
+      D.Clear;
+      CheckEquals(0, TLandrixEInvoice.Check(UBL, XRUBL, [], D), 'BT-24 with a blank is no error: ' + string(D.ToText));
+      CheckEquals(1, D.CountOf(edk_InvalidValue), 'BT-24 with a blank warned: ' + string(D.ToText));
+      UBL.CustomizationID.Value := 'URN' + Copy(Spec.CustomizationID, 4, Length(Spec.CustomizationID));
+      D.Clear;
+      CheckEquals(1, TLandrixEInvoice.Check(UBL, XRUBL, [], D), 'BT-24 in capitals: ' + string(D.ToText));
+      CheckEquals(1, D.CountOf(edk_InvalidValue), 'BT-24 in capitals reported: ' + string(D.ToText));
+      UBL.CustomizationID.Value := Spec.CustomizationID;
+      D.Clear;
+      CheckEquals(0, TLandrixEInvoice.Check(UBL, XRUBL, [], D), 'BT-24 exact: ' + string(D.ToText));
+    finally
+      UBL.Free;
+    end;
+
+    { KoSIT takes the extension identifier on ubl:Invoice only }
+    Check(LandrixEInvoiceDetectSpec('Invoice', Spec.ExtensionCustomizationID, Found, Extension) and Extension,
+      'extension on an invoice');
+    Check(not LandrixEInvoiceDetectSpec('CreditNote', Spec.ExtensionCustomizationID, Found, Extension),
+      'extension on a credit note');
+    Invoice.InvoiceTypeCode := itc_CreditNote;
+    CreditNote := TLandrixEInvoice.ToUBLCreditNote(Invoice, XRUBL);
+    try
+      CreditNote.CustomizationID.Value := Spec.ExtensionCustomizationID;
+      D.Clear;
+      TLandrixEInvoice.Check(CreditNote, XRUBL, [], D);
+      CheckEquals(1, D.CountOf(edk_InvalidValue), 'extension on a credit note: ' + string(D.ToText));
+    finally
+      CreditNote.Free;
+    end;
+    Invoice.InvoiceTypeCode := itc_CommercialInvoice;
+
+    { a blank ram:ID is reported once (by the writer) }
+    CII := TLandrixEInvoice.ToCII(Invoice, XRCII);
+    try
+      D.Clear;
+      CheckEquals(0, TLandrixEInvoice.Check(CII, XRCII, [], D), 'XRechnung CII: ' + string(D.ToText));
+      Spec.CustomizationID := CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value;
+      CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value := '';
+      D.Clear;
+      TLandrixEInvoice.Check(CII, XRCII, [], D);
+      CheckEquals(1, D.CountOf(edk_MissingElement), 'blank BT-24 of CII once: ' + string(D.ToText));
+    finally
+      CII.Free;
+    end;
+
+    { a ZUGFeRD alias in capitals is refused like the identifier itself }
+    CII := TLandrixEInvoice.ToCII(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Minimum));
+    try
+      CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value := 'urn:zugferd.de:2p0:minimum';
+      D.Clear;
+      TLandrixEInvoice.Check(CII, TLandrixEInvoiceTargets.FacturX('1.09', epr_Minimum), [eio_NoRuleCheck], D);
+      CheckEquals(0, D.CountOf(edk_InvalidValue), 'ZUGFeRD alias: ' + string(D.ToText));
+      CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value := 'URN:ZUGFERD.DE:2P0:MINIMUM';
+      D.Clear;
+      TLandrixEInvoice.Check(CII, TLandrixEInvoiceTargets.FacturX('1.09', epr_Minimum), [eio_NoRuleCheck], D);
+      CheckEquals(1, D.CountOf(edk_InvalidValue), 'ZUGFeRD alias in capitals: ' + string(D.ToText));
+    finally
+      CII.Free;
+    end;
+
+    { reading with eio_CheckOnRead runs the Factur-X code asserts: the
+      BASIC identifier in capitals is found, FX-SCH-A-000493 refuses it }
+    CII := TLandrixEInvoice.ToCII(Invoice, Basic);
+    try
+      Check(LandrixEInvoiceFindSpec(Basic, Found), 'BASIC entry');
+      CII.ExchangedDocumentContext.GuidelineSpecifiedDocumentContextParameter.ID.Value :=
+        'URN' + Copy(Found.CustomizationID, 4, Length(Found.CustomizationID));
+      Xml := TLandrixEInvoice.SaveToUtf8(CII, Basic, [eio_NoRuleCheck, eio_WriteDespiteErrors]);
+    finally
+      CII.Free;
+    end;
+    Doc := TLandrixEInvoice.LoadFromUtf8(Xml, [eio_CheckOnRead]);
+    try
+      Check(Doc.Info.SpecFound and LandrixEInvoiceSameTarget(Doc.Info.Spec.Target, Basic), 'BASIC found');
+      Check(HasRule(Doc.Diagnostics, 'FX-SCH-A-000493'), 'FX-SCH-A-000493 on read: ' + string(Doc.Diagnostics.ToText));
+    finally
+      Doc.Free;
+    end;
+
+    { a stream that cannot seek is read for the PDF test }
+    M := TMemoryStream.Create;
+    try
+      TLandrixEInvoice.SaveToStream(Invoice, M, XRUBL);
+      M.Position := 0;
+      F := TForwardStream.Create(M);
+      try
+        Doc := TLandrixEInvoice.LoadFromStream(F);
+        try
+          Check(Doc.Info.SpecFound and LandrixEInvoiceSameTarget(Doc.Info.Spec.Target, XRUBL),
+            'XRechnung UBL from a forward stream');
+        finally
+          Doc.Free;
+        end;
+      finally
+        F.Free;
+      end;
+    finally
+      M.Free;
+    end;
+
+    try
+      TLandrixEInvoice.ToCII(nil, Basic);
+      FailNotRaised('ELandrixEInvoiceError for nil');
+    except
+      on ELandrixEInvoiceError do ;
+    end;
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { A PDF with an embedded invoice is detected by content. }
 procedure TestPdf;
 var
@@ -659,6 +838,7 @@ begin
   RegisterTest('Facade.SyntaxModel', TestSyntaxModel);
   RegisterTest('Facade.ModelsAndFiles', TestModelsAndFiles);
   RegisterTest('Facade.Pdf', TestPdf);
+  RegisterTest('Facade.ReviewCases', TestReviewCases);
 end;
 
 end.
