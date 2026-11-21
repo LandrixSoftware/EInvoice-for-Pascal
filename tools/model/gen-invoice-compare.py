@@ -41,9 +41,34 @@ def fail(msg):
 
 
 def strip_comments(text):
-    text = re.sub(r"\{[^}]*\}", lambda m: "\n" * m.group(0).count("\n"), text)
-    text = re.sub(r"\(\*.*?\*\)", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
-    return re.sub(r"//[^\n]*", "", text)
+    """Blank {...}, (*...*) and // comments in source order (a brace in a
+    // comment or a string literal opens nothing); newlines are kept."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "'":
+            j = text.find("'", i + 1)
+            while j != -1 and j + 1 < n and text[j + 1] == "'":
+                j = text.find("'", j + 2)
+            if j == -1:
+                fail("unterminated string literal")
+            out.append(text[i:j + 1])
+            i = j + 1
+        elif ch == "{" or text.startswith("(*", i):
+            close = "}" if ch == "{" else "*)"
+            j = text.find(close, i + 1 if ch == "{" else i + 2)
+            if j == -1:
+                fail("unterminated comment")
+            j += len(close)
+            out.append(" " + "\n" * text.count("\n", i, j))
+            i = j
+        elif text.startswith("//", i):
+            j = text.find("\n", i)
+            i = n if j == -1 else j
+        else:
+            out.append(ch)
+            i += 1
+    return "".join(out)
 
 
 def split_statements(body):
@@ -67,7 +92,7 @@ def split_statements(body):
 
 def terms_of(raw_body, field):
     """BT/BG identifiers from the English part of the comment before a field."""
-    m = re.search(r"\{([^}]*)\}\s*\n\s*" + re.escape(field) + r"\s*[:,]", raw_body)
+    m = re.search(r"\{([^}]*)\}\s*\n\s*(?:\w+\s*,\s*)*" + re.escape(field) + r"\s*[:,]", raw_body)
     if not m:
         return ""
     english = m.group(1).split("DE:")[0]
@@ -110,7 +135,9 @@ def parse(text):
             word = st.split()[0].lower()
             if word == "class" and not re.match(r"^class\s+(procedure|function)\b", st, re.I):
                 fail("class-level declaration not supported in %s: %r" % (name, st))
-            if word in ("constructor", "destructor", "procedure", "function", "class", "property"):
+            if word == "property":
+                fail("property in model class %s not supported (no field to compare): %r" % (name, st))
+            if word in ("constructor", "destructor", "procedure", "function", "class"):
                 continue
             if word in DIRECTIVES:
                 continue

@@ -90,6 +90,12 @@ def load_files(entry):
     return files
 
 
+def once(node):
+    """True if a compositor occurs exactly once (minOccurs and maxOccurs 1)."""
+    return node.get("maxOccurs", "1") != "unbounded" and int(node.get("minOccurs", "1")) == 1 and \
+        int(node.get("maxOccurs", "1")) == 1
+
+
 class Schema(object):
     def __init__(self, files, main):
         self.files = files
@@ -158,6 +164,8 @@ class Schema(object):
         if model.tag in (XS + "sequence", XS + "choice"):
             if model.tag == XS + "choice" and len(list(model)) != 1:
                 fail("%s: choice with more than one branch" % path)
+            if not once(model):
+                fail("%s: occurrence on %s not supported" % (path, model.tag))
             children = []
             for el in model:
                 if el.tag != XS + "element":
@@ -184,6 +192,8 @@ class Schema(object):
             for a in ext:
                 if a.tag != XS + "attribute":
                     fail("%s: unsupported %s" % (path, a.tag))
+                if a.get("use") not in (None, "optional", "required") or a.get("fixed") is not None:
+                    fail("%s/@%s: use or fixed not supported" % (path, a.get("name")))
                 attributes.append({"name": a.get("name"),
                                    "required": a.get("use") == "required",
                                    "default": a.get("default")})
@@ -301,6 +311,8 @@ class UblSchema(object):
             fail("%s: expected one content model" % qn)
         model = items[0]
         if model.tag == XS + "sequence":
+            if not once(model):
+                fail("%s: occurrence on the sequence not supported" % qn)
             children = []
             for el in model:
                 if el.tag == XS + "annotation":
@@ -324,6 +336,8 @@ class UblSchema(object):
                 continue
             if a.tag != XS + "attribute":
                 fail("%s: unsupported %s" % (qn, a.tag))
+            if a.get("use") not in (None, "optional", "required") or a.get("fixed") is not None:
+                fail("%s/@%s: use or fixed not supported" % (qn, a.get("name")))
             attributes[a.get("name")] = a.get("use") == "required"
         kind = "extension" if d.tag == XS + "extension" else "restriction"
         self.simple[qn] = (kind, self.qname(d.get("base"), nsmap), attributes)

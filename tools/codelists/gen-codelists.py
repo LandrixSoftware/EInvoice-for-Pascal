@@ -102,6 +102,12 @@ def pascal_string(s):
     return "'" + s.replace("'", "''") + "'"
 
 
+def require_hashed(manifest, src_name, fname):
+    """Stop unless <src_name>/<fname> is a file of the manifest with a hash."""
+    if fname not in manifest["sources"].get(src_name, {}).get("files", {}):
+        fail("source file %s/%s is not in the manifest" % (src_name, fname))
+
+
 def load(manifest):
     # verify the sources
     for name, src in sorted(manifest["sources"].items()):
@@ -132,6 +138,7 @@ def load(manifest):
 
         if lst["source"]:
             src_name, fname = lst["source"].split("/", 1)
+            require_hashed(manifest, src_name, fname)
             rows = read_genericode(os.path.join(HERE, "src", src_name, fname))
         else:
             rows = [(code, "") for code in aliases if code != ""]
@@ -494,8 +501,18 @@ def german_names(manifest, lists):
             if not name.strip():
                 fail("names-de.json: empty name for %s %r" % (func, code))
         result[func] = dict(entries)
+    gaps = data.get("cldr_gaps", {})
+    for func, entries in sorted(gaps.items()):
+        if func not in cfg["cldr"]:
+            fail("names-de.json: cldr_gaps for %s, which does not come from CLDR" % func)
+        for code, name in entries.items():
+            if code not in by_func[func]["raw_names"]:
+                fail("names-de.json: cldr_gaps %s has no code %r" % (func, code))
+            if not name.strip():
+                fail("names-de.json: empty name for %s %r" % (func, code))
     for func, src in sorted(cfg["cldr"].items()):
         src_name, fname = src["file"].split("/", 1)
+        require_hashed(manifest, src_name, fname)
         doc = json.load(io.open(os.path.join(HERE, "src", src_name, fname), encoding="utf-8"))
         node = doc
         for key in src["path"]:
@@ -508,8 +525,15 @@ def german_names(manifest, lists):
             value = node.get(code)
             if isinstance(value, dict):
                 value = value.get(src.get("field", ""))
+            gap = gaps.get(func, {}).get(code)
+            if value and gap is not None:
+                fail("names-de.json: cldr_gaps %s %r, CLDR has it now" % (func, code))
             if value:
                 names[code] = value
+            elif gap is not None:
+                names[code] = gap
+            else:
+                fail("%s %r has no German name in CLDR; add it to cldr_gaps of names-de.json" % (func, code))
     return result
 
 

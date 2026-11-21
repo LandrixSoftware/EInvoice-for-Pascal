@@ -91,6 +91,7 @@ type
     procedure SkipUnknown;
     procedure SkipDuplicate;
     procedure CheckNoAttributes(AllowSchemaLocation: Boolean);
+    function IsBlankText: Boolean;
     function AttributeValue(const ALocalName: TLandrixXmlUtf8;
       const AKnown: array of TLandrixXmlUtf8): TLandrixEInvoiceString;
     function ReadLeaf(const ALexical: string): TLandrixEInvoiceString;
@@ -180,6 +181,23 @@ function TCIIReader.IsElement(const ANamespace: TLandrixXmlUtf8; const ALocalNam
 begin
   Result := LandrixXmlSpanEquals(FReader.LocalNameSpan, ALocalName) and
     LandrixXmlSpanEquals(FReader.NamespaceUriSpan, ANamespace);
+end;
+
+{ True if the current text or CDATA is whitespace only, also when written
+  as character references (&#10;). }
+function TCIIReader.IsBlankText: Boolean;
+var
+  V: TLandrixXmlUtf8;
+  K: Integer;
+begin
+  Result := FReader.IsWhitespace;
+  if Result then
+    Exit;
+  V := FReader.ValueUtf8;
+  for K := 1 to Length(V) do
+    if (V[K] <> #9) and (V[K] <> #10) and (V[K] <> #13) and (V[K] <> ' ') then
+      Exit;
+  Result := True;
 end;
 
 procedure TCIIReader.SkipUnknown;
@@ -398,7 +416,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -435,7 +453,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -472,7 +490,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -528,7 +546,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -590,7 +608,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -649,7 +667,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -687,7 +705,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -736,7 +754,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -774,7 +792,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -812,7 +830,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -885,7 +903,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -989,7 +1007,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1047,7 +1065,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1096,7 +1114,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1273,7 +1291,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1381,7 +1399,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1569,7 +1587,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1627,7 +1645,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1686,7 +1704,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1802,7 +1820,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -1930,7 +1948,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2004,7 +2022,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2057,7 +2075,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2096,7 +2114,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2155,7 +2173,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2204,7 +2222,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2274,7 +2292,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2323,7 +2341,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2434,7 +2452,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2541,7 +2559,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2610,7 +2628,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2637,7 +2655,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2675,7 +2693,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2753,7 +2771,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2815,7 +2833,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2853,7 +2871,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -2902,7 +2920,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3006,7 +3024,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3127,7 +3145,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3218,7 +3236,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3257,7 +3275,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3328,7 +3346,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3377,7 +3395,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3427,7 +3445,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3539,7 +3557,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3618,7 +3636,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3697,7 +3715,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3796,7 +3814,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -3858,7 +3876,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4033,7 +4051,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4081,7 +4099,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4130,7 +4148,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4245,7 +4263,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4330,7 +4348,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4430,7 +4448,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4573,7 +4591,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }
@@ -4622,7 +4640,7 @@ begin
         else
           SkipUnknown;
       xttText, xttCData:
-        if not FReader.IsWhitespace then
+        if not IsBlankText then
           Report(edk_UnexpectedText, 'unexpected text ignored');
     else
       ; { comments and processing instructions are skipped }

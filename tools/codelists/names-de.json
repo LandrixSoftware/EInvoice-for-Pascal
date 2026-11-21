@@ -1,5 +1,5 @@
 {
-  "comment": "German names of codes, hand-written for the rendering of invoices (own wording, not an official translation). Keyed by the func of the list in manifest.json, then by code. Codes missing here fall back to the English name of the source. Country and currency names come from Unicode CLDR (source cldr-47 in manifest.json), not from this file.",
+  "comment": "German names of codes, hand-written for the rendering of invoices (own wording, not an official translation). Keyed by the func of the list in manifest.json, then by code. Codes missing here fall back to the English name of the source. Country and currency names come from Unicode CLDR (source cldr-47 in manifest.json), not from this file. cldr_gaps names the countries and currencies CLDR has no German name for; the generator stops on any other gap and on an entry CLDR covers.",
   "lists": {
     "DutyTaxFeeCategoryCode": {
       "S": "Normalsatz",
@@ -270,6 +270,18 @@
       "XRO": "Rolle",
       "XBG": "Beutel",
       "XKG": "Fässchen"
+    }
+  },
+  "cldr_gaps": {
+    "CountryCode": {
+      "1A": "Kosovo",
+      "XI": "Vereinigtes Königreich (Nordirland)"
+    },
+    "CurrencyCode": {
+      "UYW": "Uruguayische Lohnindex-Einheit",
+      "VED": "Venezolanischer Bolívar Soberano (neue Bewertung)",
+      "XCG": "Karibischer Gulden",
+      "ZWG": "Simbabwe-Gold"
     }
   }
 }

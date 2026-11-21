@@ -194,6 +194,8 @@ class Model(object):
             child = self.types[name]["children"][0]
             ct = child["type"]
             if ct.startswith("xs:"):
+                if ct in ("xs:decimal", "xs:base64Binary", "xs:date", "xs:time", "xs:dateTime"):
+                    fail("wrapper %s around %s not supported (no lexical check)" % (name, ct))
                 self.wrapped[name] = (child, "string", {"xs:boolean": "boolean"}.get(ct, "string"))
             else:
                 inner = self.types[ct]
@@ -209,6 +211,13 @@ class Model(object):
                     fail("Pascal name %s for %s and %s" % (p, name, seen[p.lower()]))
                 seen[p.lower()] = name
                 self.pascal[name] = p
+        for name in self.records():
+            names = {"value"}
+            for f, a, _ in self.record_fields(name):
+                low = f.lower()
+                if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", f) or low in names or low in PASCAL_KEYWORDS:
+                    fail("attribute %s of %s not usable as a field" % (a, name))
+                names.add(low)
         for k in ("class", "record"):
             for t in self.repeated_types(k):
                 lp = (self.pascal[t] + "List").lower()
@@ -217,6 +226,11 @@ class Model(object):
         for name, k in self.kind.items():
             if k != "class":
                 continue
+            for c in self.types[name]["children"]:
+                ct = c["type"]
+                if c["max"] != 1 and not ct.startswith("xs:") and self.kind.get(ct) == "wrapper" and \
+                        self.wrapped[ct][1] == "string":
+                    fail("repeated wrapper %s in %s not supported" % (c["name"], name))
             names = set()
             for c in self.types[name]["children"]:
                 c["pname"] = CFG["name_overrides"].get((name, c["name"]), c["name"])
@@ -643,6 +657,7 @@ READER_RUNTIME = """type
     procedure SkipUnknown;
     procedure SkipDuplicate;
     procedure CheckNoAttributes(AllowSchemaLocation: Boolean);
+    function IsBlankText: Boolean;
     function AttributeValue(const ALocalName: TLandrixXmlUtf8;
       const AKnown: array of TLandrixXmlUtf8): TLandrixEInvoiceString;
     function ReadLeaf(const ALexical: string): TLandrixEInvoiceString;
@@ -669,6 +684,23 @@ function TCIIReader.IsElement(const ANamespace: TLandrixXmlUtf8; const ALocalNam
 begin
   Result := LandrixXmlSpanEquals(FReader.LocalNameSpan, ALocalName) and
     LandrixXmlSpanEquals(FReader.NamespaceUriSpan, ANamespace);
+end;
+
+{ True if the current text or CDATA is whitespace only, also when written
+  as character references (&#10;). }
+function TCIIReader.IsBlankText: Boolean;
+var
+  V: TLandrixXmlUtf8;
+  K: Integer;
+begin
+  Result := FReader.IsWhitespace;
+  if Result then
+    Exit;
+  V := FReader.ValueUtf8;
+  for K := 1 to Length(V) do
+    if (V[K] <> #9) and (V[K] <> #10) and (V[K] <> #13) and (V[K] <> ' ') then
+      Exit;
+  Result := True;
 end;
 
 procedure TCIIReader.SkipUnknown;
@@ -833,7 +865,7 @@ end;
 """
 
 
-DATE_FUNC = """function IsDigitRun(const S: TLandrixEInvoiceString; AFrom, ACount: Integer): Boolean;
+LEXICAL_HELPERS = """function IsDigitRun(const S: TLandrixEInvoiceString; AFrom, ACount: Integer): Boolean;
 var
   K: Integer;
 begin
@@ -846,27 +878,126 @@ begin
   Result := True;
 end;
 
-{ xsd:date: [-]YYYY-MM-DD with an optional time zone (Z or +hh:mm, -hh:mm). }
-function IsXsdDate(const S: TLandrixEInvoiceString): Boolean;
+function DigitsValue(const S: TLandrixEInvoiceString; AFrom, ACount: Integer): Integer;
 var
-  I, N: Integer;
+  K: Integer;
 begin
-  Result := False;
+  Result := 0;
+  for K := AFrom to AFrom + ACount - 1 do
+    Result := Result * 10 + Ord(S[K]) - Ord('0');
+end;
+
+{ The optional time zone from position I on: empty, Z or +hh:mm / -hh:mm
+  (at most 14:00). }
+function IsXsdZone(const S: TLandrixEInvoiceString; I: Integer): Boolean;
+var
+  N: Integer;
+begin
   N := Length(S);
-  I := 1;
-  if (N > 0) and (S[1] = '-') then
-    I := 2;
-  if not (IsDigitRun(S, I, 4) and (I + 4 <= N) and (S[I + 4] = '-') and
-    IsDigitRun(S, I + 5, 2) and (I + 7 <= N) and (S[I + 7] = '-') and IsDigitRun(S, I + 8, 2)) then
-    Exit;
-  I := I + 10;
   if I > N then
     Result := True
   else if S[I] = 'Z' then
     Result := I = N
   else
     Result := ((S[I] = '+') or (S[I] = '-')) and (N = I + 5) and IsDigitRun(S, I + 1, 2) and
-      (S[I + 3] = ':') and IsDigitRun(S, I + 4, 2);
+      (S[I + 3] = ':') and IsDigitRun(S, I + 4, 2) and (DigitsValue(S, I + 4, 2) <= 59) and
+      ((DigitsValue(S, I + 1, 2) < 14) or ((DigitsValue(S, I + 1, 2) = 14) and (DigitsValue(S, I + 4, 2) = 0)));
+end;
+
+"""
+
+
+DATE_FUNC = """{ xsd:date: [-]YYYY-MM-DD (four or more year digits, no leading zero beyond
+  four, year 0000 not allowed) with a day that exists (proleptic Gregorian,
+  leap years) and an optional time zone. }
+function IsXsdDate(const S: TLandrixEInvoiceString): Boolean;
+var
+  I, N, Y, M, D, K, A, Last: Integer;
+  AllZero, Leap: Boolean;
+begin
+  Result := False;
+  N := Length(S);
+  I := 1;
+  if (N > 0) and (S[1] = '-') then
+    I := 2;
+  Y := I;
+  while (Y <= N) and (S[Y] >= '0') and (S[Y] <= '9') do
+    Inc(Y);
+  { Y is the position after the year }
+  if (Y - I < 4) or ((Y - I > 4) and (S[I] = '0')) then
+    Exit;
+  if not ((Y <= N) and (S[Y] = '-') and IsDigitRun(S, Y + 1, 2) and (Y + 3 <= N) and (S[Y + 3] = '-') and
+    IsDigitRun(S, Y + 4, 2)) then
+    Exit;
+  AllZero := True;
+  for K := I to Y - 1 do
+    if S[K] <> '0' then
+      AllZero := False;
+  if AllZero then
+    Exit;
+  { leap year from the last four digits of the year: divisible by 4 and
+    not by 100 unless by 400; XSD 1.0 has no year 0000, so -0001 is the
+    year before 0001 (astronomical 0) and leap }
+  A := DigitsValue(S, Y - 4, 4);
+  if I = 2 then
+    A := (A + 399) mod 400
+  else
+    A := A mod 400;
+  Leap := (A mod 4 = 0) and ((A mod 100 <> 0) or (A = 0));
+  M := DigitsValue(S, Y + 1, 2);
+  D := DigitsValue(S, Y + 4, 2);
+  case M of
+    1, 3, 5, 7, 8, 10, 12:
+      Last := 31;
+    4, 6, 9, 11:
+      Last := 30;
+    2:
+      if Leap then
+        Last := 29
+      else
+        Last := 28;
+  else
+    Exit;
+  end;
+  if (D < 1) or (D > Last) then
+    Exit;
+  Result := IsXsdZone(S, Y + 6);
+end;
+
+"""
+
+
+TIME_FUNC = """{ xsd:time: hh:mm:ss with optional fraction (24:00:00 only with zeros, 60
+  seconds for a leap second) and an optional time zone. }
+function IsXsdTime(const S: TLandrixEInvoiceString): Boolean;
+var
+  I, N: Integer;
+  Zero: Boolean;
+begin
+  Result := False;
+  N := Length(S);
+  if not (IsDigitRun(S, 1, 2) and (N >= 8) and (S[3] = ':') and IsDigitRun(S, 4, 2) and (S[6] = ':') and
+    IsDigitRun(S, 7, 2)) then
+    Exit;
+  if (DigitsValue(S, 4, 2) > 59) or (DigitsValue(S, 7, 2) > 60) or (DigitsValue(S, 1, 2) > 24) then
+    Exit;
+  Zero := (DigitsValue(S, 4, 2) = 0) and (DigitsValue(S, 7, 2) = 0);
+  I := 9;
+  if (I <= N) and (S[I] = '.') then
+  begin
+    Inc(I);
+    if not IsDigitRun(S, I, 1) then
+      Exit;
+    while (I <= N) and (S[I] >= '0') and (S[I] <= '9') do
+    begin
+      if S[I] <> '0' then
+        Zero := False;
+      Inc(I);
+    end;
+  end;
+  if (DigitsValue(S, 1, 2) = 24) and not Zero then
+    Exit;
+  Result := IsXsdZone(S, I);
 end;
 
 """
@@ -1039,12 +1170,14 @@ const""")
                     "    FReader.Skip;\n"
                     "    Exit;\n"
                     "  end;\n") % (sk["ns"].upper(), sk["name"])
-    uses_date = m.uses_lexical("date")
+    uses_date = m.uses_lexical("date") or m.uses_lexical("time")
     L.extend(syn_text(READER_RUNTIME % {
         "decls": "\n".join(decls),
         "skipext": skipext,
-        "datefunc": DATE_FUNC if uses_date else "",
-        "datecheck": "\n  else if ALexical = 'date' then\n    Ok := IsXsdDate(V)" if uses_date else "",
+        "datefunc": (LEXICAL_HELPERS if uses_date else "") + (DATE_FUNC if m.uses_lexical("date") else "") +
+                     (TIME_FUNC if m.uses_lexical("time") else ""),
+        "datecheck": ("\n  else if ALexical = 'date' then\n    Ok := IsXsdDate(V)" if m.uses_lexical("date") else "") +
+                     ("\n  else if ALexical = 'time' then\n    Ok := IsXsdTime(V)" if m.uses_lexical("time") else ""),
     }).split("\n"))
     # record readers
     for n in m.records():
@@ -1084,7 +1217,7 @@ const""")
             w("        else")
             w("          SkipUnknown;")
             w("      xttText, xttCData:")
-            w("        if not FReader.IsWhitespace then")
+            w("        if not IsBlankText then")
             w("          Report(edk_UnexpectedText, 'unexpected text ignored');")
             w("    else")
             w("      ; { comments and processing instructions are skipped }")
@@ -1130,7 +1263,7 @@ const""")
         w("        else")
         w("          SkipUnknown;")
         w("      xttText, xttCData:")
-        w("        if not FReader.IsWhitespace then")
+        w("        if not IsBlankText then")
         w("          Report(edk_UnexpectedText, 'unexpected text ignored');")
         w("    else")
         w("      ; { comments and processing instructions are skipped }")
@@ -1215,7 +1348,7 @@ const""")
         else:
             w("        SkipUnknown;")
         w("      xttText, xttCData:")
-        w("        if not FReader.IsWhitespace then")
+        w("        if not IsBlankText then")
         w("          Report(edk_UnexpectedText, 'unexpected text ignored');")
         w("    else")
         w("      ; { comments and processing instructions are skipped }")
@@ -2817,6 +2950,16 @@ def main(argv):
         else:
             with open(path, "wb") as f:
                 f.write(data_out)
+    orphans = []
+    for name in sorted(os.listdir(os.path.join(ROOT, "source"))):
+        rel = "source/" + name
+        if name.endswith(".pas") and rel not in outputs:
+            with io.open(os.path.join(ROOT, rel), encoding="utf-8", errors="replace") as f:
+                if "GENERATED by tools/syntaxmodel/gen-syntaxmodel.py" in f.read():
+                    orphans.append(rel)
+    if orphans:
+        sys.stderr.write("gen-syntaxmodel: generated units no syntax writes any more: %s\n" % ", ".join(orphans))
+        return 1
     if check:
         if stale:
             sys.stderr.write("gen-syntaxmodel: not up to date: %s\n" % ", ".join(stale))

@@ -196,6 +196,12 @@ begin
     'FC de');
   CheckEqualsInvoiceStr('Freight service', LandrixEInvoiceCodeName(ecl_SpecialServiceDescriptionCode, 'FC',
     eln_English), 'FC en');
+  { CLDR 47 has no German name: names-de.json, cldr_gaps }
+  CheckEqualsInvoiceStr(Wide([Ord('V'), Ord('e'), Ord('r'), Ord('e'), Ord('i'), Ord('n'), Ord('i'), Ord('g'), Ord('t'),
+    Ord('e'), Ord('s'), Ord(' '), Ord('K'), $F6, Ord('n'), Ord('i'), Ord('g'), Ord('r'), Ord('e'), Ord('i'), Ord('c'),
+    Ord('h'), Ord(' '), Ord('('), Ord('N'), Ord('o'), Ord('r'), Ord('d'), Ord('i'), Ord('r'), Ord('l'), Ord('a'),
+    Ord('n'), Ord('d'), Ord(')')]), LandrixEInvoiceCodeName(ecl_CountryCode, 'XI', eln_German), 'XI de');
+  CheckEqualsInvoiceStr('Simbabwe-Gold', LandrixEInvoiceCodeName(ecl_CurrencyCode, 'ZWG', eln_German), 'ZWG de');
   { no German name: the English one }
   CheckEqualsInvoiceStr('Koshering', LandrixEInvoiceCodeName(ecl_SpecialServiceDescriptionCode, 'KO', eln_German),
     'KO fallback');

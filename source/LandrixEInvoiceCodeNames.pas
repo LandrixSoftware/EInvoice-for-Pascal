@@ -3034,7 +3034,7 @@ const
   );
 
   CountryCodeNames: array[0..250] of TCodeName = (
-    (Code: '1A'; En: 'Kosovo'; De: ''),
+    (Code: '1A'; En: 'Kosovo'; De: 'Kosovo'),
     (Code: 'AD'; En: 'Andorra'; De: 'Andorra'),
     (Code: 'AE'; En: 'United Arab Emirates'; De: 'Vereinigte Arabische Emirate'),
     (Code: 'AF'; En: 'Afghanistan'; De: 'Afghanistan'),
@@ -3279,7 +3279,7 @@ const
     (Code: 'VU'; En: 'Vanuatu'; De: 'Vanuatu'),
     (Code: 'WF'; En: 'Wallis and Futuna'; De: 'Wallis und Futuna'),
     (Code: 'WS'; En: 'Samoa'; De: 'Samoa'),
-    (Code: 'XI'; En: 'United Kingdom (Northern Ireland)'; De: ''),
+    (Code: 'XI'; En: 'United Kingdom (Northern Ireland)'; De: 'Vereinigtes K\00F6nigreich (Nordirland)'),
     (Code: 'YE'; En: 'Yemen'; De: 'Jemen'),
     (Code: 'YT'; En: 'Mayotte'; De: 'Mayotte'),
     (Code: 'ZA'; En: 'South Africa'; De: 'S\00FCdafrika'),
@@ -3437,9 +3437,9 @@ const
     (Code: 'USN'; En: 'US Dollar (Next day)'; De: 'US Dollar (N\00E4chster Tag)'),
     (Code: 'UYI'; En: 'Uruguay Peso en Unidades Indexadas (UI)'; De: 'Uruguayischer Peso (Indexierte Rechnungseinheiten)'),
     (Code: 'UYU'; En: 'Peso Uruguayo'; De: 'Uruguayischer Peso'),
-    (Code: 'UYW'; En: 'Unidad Previsional'; De: ''),
+    (Code: 'UYW'; En: 'Unidad Previsional'; De: 'Uruguayische Lohnindex-Einheit'),
     (Code: 'UZS'; En: 'Uzbekistan Sum'; De: 'Usbekistan-Sum'),
-    (Code: 'VED'; En: 'Bol\00EDvar Soberano, new valuation'; De: ''),
+    (Code: 'VED'; En: 'Bol\00EDvar Soberano, new valuation'; De: 'Venezolanischer Bol\00EDvar Soberano (neue Bewertung)'),
     (Code: 'VES'; En: 'Bol\00EDvar Soberano'; De: 'Venezolanischer Bol\00EDvar'),
     (Code: 'VND'; En: 'Dong'; De: 'Vietnamesischer Dong'),
     (Code: 'VUV'; En: 'Vatu'; De: 'Vanuatu-Vatu'),
@@ -3452,7 +3452,7 @@ const
     (Code: 'XBC'; En: 'Bond Markets Unit European Unit of Account 9 (E.U.A.-9)'; De: 'Europ\00E4ische Rechnungseinheit (XBC)'),
     (Code: 'XBD'; En: 'Bond Markets Unit European Unit of Account 17 (E.U.A.-17)'; De: 'Europ\00E4ische Rechnungseinheit (XBD)'),
     (Code: 'XCD'; En: 'East Caribbean Dollar'; De: 'Ostkaribischer Dollar'),
-    (Code: 'XCG'; En: 'Caribbean guilder'; De: ''),
+    (Code: 'XCG'; En: 'Caribbean guilder'; De: 'Karibischer Gulden'),
     (Code: 'XDR'; En: 'SDR (Special Drawing Right)'; De: 'Sonderziehungsrechte'),
     (Code: 'XOF'; En: 'CFA Franc BCEAO'; De: 'CFA-Franc (BCEAO)'),
     (Code: 'XPD'; En: 'Palladium'; De: 'Unze Palladium'),
@@ -3465,7 +3465,7 @@ const
     (Code: 'YER'; En: 'Yemeni Rial'; De: 'Jemen-Rial'),
     (Code: 'ZAR'; En: 'Rand'; De: 'S\00FCdafrikanischer Rand'),
     (Code: 'ZMW'; En: 'Zambian Kwacha'; De: 'Kwacha'),
-    (Code: 'ZWG'; En: 'Zimbabwe Gold'; De: '')
+    (Code: 'ZWG'; En: 'Zimbabwe Gold'; De: 'Simbabwe-Gold')
   );
 
   ElectronicAddressSchemeNames: array[0..102] of TCodeName = (

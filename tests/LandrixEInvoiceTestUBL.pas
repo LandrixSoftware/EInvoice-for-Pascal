@@ -316,6 +316,56 @@ begin
   end;
 end;
 
+{ Diagnostics of reading an invoice with this issue date, start time and
+  text between ID and issue date. }
+function ReadDiagnostics(const AIssueDate, AStartTime, ABetween: TLandrixXmlUtf8;
+  AKind: TLandrixEInvoiceDiagnosticKind): Integer;
+var
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    ReadInvoice(TLandrixXmlUtf8('<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" ' + NsDecl +
+      '><cbc:ID>R-1</cbc:ID>') + ABetween + TLandrixXmlUtf8('<cbc:IssueDate>') + AIssueDate +
+      TLandrixXmlUtf8('</cbc:IssueDate><cac:InvoicePeriod><cbc:StartTime>') + AStartTime +
+      TLandrixXmlUtf8('</cbc:StartTime></cac:InvoicePeriod></Invoice>'), D).Free;
+    Result := D.CountOf(AKind);
+  finally
+    D.Free;
+  end;
+end;
+
+{ xsd:date with the calendar and long years, xsd:time, whitespace written
+  as a character reference or CDATA. }
+procedure TestLexical;
+const
+  GoodDates: array[0..7] of string = ('2024-02-29', '2000-02-29', '10000-01-01', '-0001-02-29',
+    '2026-10-18Z', '2026-10-18+14:00', '2026-12-31-05:30', '-0005-02-29');
+  BadDates: array[0..8] of string = ('2026-02-30', '2023-02-29', '1900-02-29', '0000-01-01',
+    '02026-01-01', '2026-13-01', '2026-10-18+14:30', '2026-04-31', '-0004-02-29');
+  GoodTimes: array[0..5] of string = ('12:00:00', '24:00:00', '23:59:59.5', '10:00:00Z', '00:00:00.000+01:00',
+    '23:59:60Z');
+  BadTimes: array[0..6] of string = ('noon', '24:00:01', '12:60:00', '24:00:00.1', '12:00', '12:00:00.', '12:00:61');
+var
+  I: Integer;
+begin
+  for I := Low(GoodDates) to High(GoodDates) do
+    CheckEquals(0, ReadDiagnostics(TLandrixXmlUtf8(GoodDates[I]), '12:00:00', '', edk_InvalidValue),
+      'date ' + GoodDates[I]);
+  for I := Low(BadDates) to High(BadDates) do
+    CheckEquals(1, ReadDiagnostics(TLandrixXmlUtf8(BadDates[I]), '12:00:00', '', edk_InvalidValue),
+      'date ' + BadDates[I]);
+  for I := Low(GoodTimes) to High(GoodTimes) do
+    CheckEquals(0, ReadDiagnostics('2026-10-18', TLandrixXmlUtf8(GoodTimes[I]), '', edk_InvalidValue),
+      'time ' + GoodTimes[I]);
+  for I := Low(BadTimes) to High(BadTimes) do
+    CheckEquals(1, ReadDiagnostics('2026-10-18', TLandrixXmlUtf8(BadTimes[I]), '', edk_InvalidValue),
+      'time ' + BadTimes[I]);
+  CheckEquals(0, ReadDiagnostics('2026-10-18', '12:00:00', '&#10;&#9; <![CDATA[ ]]><![CDATA[]]>',
+    edk_UnexpectedText), 'whitespace as references and CDATA');
+  CheckEquals(1, ReadDiagnostics('2026-10-18', '12:00:00', '&#10;x', edk_UnexpectedText), 'text');
+end;
+
 procedure TestWrongRoot;
 begin
   try
@@ -513,6 +563,7 @@ begin
   RegisterTest('UBL.SkippedExtension', TestSkippedExtension);
   RegisterTest('UBL.Diagnostics', TestDiagnostics);
   RegisterTest('UBL.WrongRoot', TestWrongRoot);
+  RegisterTest('UBL.Lexical', TestLexical);
   RegisterTest('UBL.RoundTripLocalFiles', TestRoundTripLocalFiles);
   RegisterTest('UBL.ReadLocalInvalidFiles', TestReadLocalInvalidFiles);
   RegisterTest('UBL.CompareRules', TestCompareRules);
