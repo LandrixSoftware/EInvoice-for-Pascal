@@ -316,6 +316,7 @@ uses
   SysUtils,
   LandrixXmlBase,
   LandrixEInvoiceCodes,
+  LandrixEInvoiceLexical,
   LandrixEInvoiceRender;
 
 const
@@ -990,6 +991,22 @@ begin
   T.DoCloseTable;
 end;
 
+{ Category O (outside the scope of VAT), also as other text: no VAT rate
+  (BR-O-05, BR-O-14).
+  DE: Kategorie O (nicht steuerbar), auch als anderer Text: kein
+  Umsatzsteuersatz (BR-O-05, BR-O-14). }
+function IsOutsideScope(ACategory: TLandrixInvoiceDutyTaxFeeCategoryCode;
+  const AOther: TLandrixEInvoiceString): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+begin
+  Code := LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(ACategory);
+  if Code = '' then
+    Code := LandrixEInvoiceTrimXml(AOther);
+  Result := Code = 'O';
+end;
+
+
 procedure WriteLine(T: TLandrixEInvoiceRenderTarget; ALine: TLandrixInvoiceLine; AContainer: TLandrixEInvoiceRenderField);
 var
   I: Integer;
@@ -1016,7 +1033,10 @@ begin
   T.Value(erf_InvoiceLines_TaxCategory, T.Code(ecl_DutyTaxFeeCategoryCode,
     LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(ALine.TaxCategory)));
   T.Value(erf_InvoiceLines_TaxCategoryOther, ALine.TaxCategoryOther);
-  T.Value(erf_InvoiceLines_TaxPercent, T.Percent(ALine.TaxPercent));
+  { no rate for category O (BR-O-05) unless one is set
+    DE: kein Satz bei Kategorie O (BR-O-05), ausser einer ist gesetzt }
+  if not IsOutsideScope(ALine.TaxCategory, ALine.TaxCategoryOther) or (ALine.TaxPercent <> 0) then
+    T.Value(erf_InvoiceLines_TaxPercent, T.Percent(ALine.TaxPercent));
   T.Value(erf_InvoiceLines_LineAmount, T.Amount(ALine.LineAmount));
   T.Close;
   T.OpenGroup(erg_Pairs, AContainer);
@@ -1153,7 +1173,10 @@ begin
       LandrixEInvoiceDutyTaxFeeCategoryCodeToStr(V.TaxCategory)));
     Span(erf_TaxAmountSubtotals_TaxCategoryOther, V.TaxCategoryOther);
     T.DoCloseCell;
-    Cell(erf_TaxAmountSubtotals_TaxPercent, T.Percent(V.TaxPercent));
+    if not IsOutsideScope(V.TaxCategory, V.TaxCategoryOther) or (V.TaxPercent <> 0) then
+      Cell(erf_TaxAmountSubtotals_TaxPercent, T.Percent(V.TaxPercent))
+    else
+      Cell(erf_TaxAmountSubtotals_TaxPercent, '');
     Cell(erf_TaxAmountSubtotals_TaxableAmount, T.Amount(V.TaxableAmount));
     Cell(erf_TaxAmountSubtotals_TaxAmount, T.Amount(V.TaxAmount));
     Cell(erf_TaxAmountSubtotals_TaxExemptionReasonCode, T.Code(ecl_VATExemptionReasonCode,
@@ -1165,9 +1188,12 @@ begin
   T.Close;
 end;
 
-{ the totals EN 16931 requires are shown even when 0
-  DE: die Summen, die EN 16931 verlangt, erscheinen auch bei 0 }
-procedure WriteTotals(T: TLandrixEInvoiceRenderTarget; AInvoice: TLandrixInvoice);
+{ the totals EN 16931 requires are shown even when 0; the sum of the line
+  amounts (BT-106) not for Factur-X MINIMUM, which has no element for it
+  DE: die Summen, die EN 16931 verlangt, erscheinen auch bei 0; die Summe
+  der Positionsbetraege (BT-106) nicht bei Factur-X MINIMUM, das kein
+  Element dafuer hat }
+procedure WriteTotals(T: TLandrixEInvoiceRenderTarget; AInvoice: TLandrixInvoice; AMinimum: Boolean);
 var
   I: Integer;
   R: TLandrixInvoicePrepaidPayment;
@@ -1182,7 +1208,7 @@ begin
   T.OpenSection(ers_Totals);
   T.OpenGroup(erg_Pairs, erf_LineAmount);
   Cur := AInvoice.InvoiceCurrencyCode;
-  T.Money(erf_LineAmount, AInvoice.LineAmount, True, erf_InvoiceCurrencyCode, Cur);
+  T.Money(erf_LineAmount, AInvoice.LineAmount, not AMinimum, erf_InvoiceCurrencyCode, Cur);
   T.Money(erf_AllowanceTotalAmount, AInvoice.AllowanceTotalAmount, False, erf_InvoiceCurrencyCode, Cur);
   T.Money(erf_ChargeTotalAmount, AInvoice.ChargeTotalAmount, False, erf_InvoiceCurrencyCode, Cur);
   T.Money(erf_TaxExclusiveAmount, AInvoice.TaxExclusiveAmount, True, erf_InvoiceCurrencyCode, Cur);
@@ -1397,14 +1423,30 @@ begin
   T.DoEndDocument(Shown);
 end;
 
+{ BT-3 is a credit note type: the codes of the Peppol credit note list
+  (UNCL1001 subset of ubl:CreditNote).
+  DE: BT-3 ist eine Gutschriftart: die Codes der Peppol-Gutschriftliste. }
+function IsCreditNoteType(A: TLandrixInvoice): Boolean;
+var
+  Code: TLandrixEInvoiceString;
+begin
+  if A.InvoiceTypeCode <> itc_None then
+    Code := LandrixEInvoiceTypeCodeToStr(A.InvoiceTypeCode)
+  else
+    Code := LandrixEInvoiceTrimXml(A.InvoiceTypeCodeOther);
+  Result := (Code = '81') or (Code = '83') or (Code = '261') or (Code = '262') or (Code = '296') or
+    (Code = '308') or (Code = '381') or (Code = '396') or (Code = '420') or (Code = '458') or (Code = '502') or
+    (Code = '503') or (Code = '532');
+end;
+
 procedure WalkInvoice(T: TLandrixEInvoiceRenderTarget; AInvoice: TLandrixInvoice;
   ADocument: TLandrixEInvoiceDocument; const ADocumentName: TLandrixEInvoiceString);
 begin
-  { a credit note (BT-3 = 381, as the UBL writer decides ubl:CreditNote)
-    is titled so; every other type is an invoice
-    DE: eine Gutschrift (BT-3 = 381, wie der UBL-Writer ubl:CreditNote
-    waehlt) heisst so; jede andere Art ist eine Rechnung }
-  if AInvoice.InvoiceTypeCode = itc_CreditNote then
+  { a credit note type (the codes of the Peppol credit note list, e.g. 381
+    and 396) is titled so; every other type is an invoice
+    DE: eine Gutschriftart (die Codes der Peppol-Gutschriftliste, z. B. 381
+    und 396) heisst so; jede andere Art ist eine Rechnung }
+  if IsCreditNoteType(AInvoice) then
     T.DoBeginPage(erc_CreditNote, ADocumentName)
   else
     T.DoBeginPage(erc_Invoice, ADocumentName);
@@ -1414,7 +1456,8 @@ begin
   WriteLines(T, AInvoice);
   WriteDocumentAllowanceCharges(T, AInvoice);
   WriteVat(T, AInvoice);
-  WriteTotals(T, AInvoice);
+  WriteTotals(T, AInvoice, (ADocument <> nil) and ADocument.Info.SpecFound and
+    (ADocument.Info.Spec.Target.Profile = epr_Minimum));
   WritePayment(T, AInvoice);
   WriteNotes(T, AInvoice);
   WriteAttachments(T, AInvoice);
@@ -1447,10 +1490,23 @@ begin
 end;
 
 procedure Emit(AOutput: TMemoryStream; AStream: TStream);
+var
+  P: PAnsiChar;
+  Left, N: Int64;
 begin
   try
-    if AOutput.Size > 0 then
-      AStream.WriteBuffer(AOutput.Memory^, Integer(AOutput.Size));
+    { in pieces: a size beyond 2 GiB does not fit one Integer count }
+    P := AOutput.Memory;
+    Left := AOutput.Size;
+    while Left > 0 do
+    begin
+      N := Left;
+      if N > $40000000 then
+        N := $40000000;
+      AStream.WriteBuffer(P^, Integer(N));
+      Inc(P, Integer(N));
+      Dec(Left, N);
+    end;
   finally
     AOutput.Free;
   end;
@@ -1464,11 +1520,20 @@ begin
 end;
 
 procedure SaveOutput(AOutput: TMemoryStream; const AFileName: string);
+var
+  F: TFileStream;
 begin
   try
-    AOutput.SaveToFile(AFileName);
-  finally
+    F := TFileStream.Create(AFileName, fmCreate);
+  except
     AOutput.Free;
+    raise;
+  end;
+  try
+    { Emit writes in pieces and frees AOutput }
+    Emit(AOutput, F);
+  finally
+    F.Free;
   end;
 end;
 
@@ -1477,6 +1542,8 @@ var
   S: TLandrixXmlUtf8;
 begin
   try
+    if AOutput.Size > MaxInt then
+      raise ELandrixEInvoiceError.Create('The rendered page is too large for a string');
     S := '';
     SetLength(S, Integer(AOutput.Size));
     if AOutput.Size > 0 then

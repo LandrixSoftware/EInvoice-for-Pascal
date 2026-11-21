@@ -252,16 +252,6 @@ begin
   Result := LandrixEInvoiceTryLexicalToDouble(A, X) and LandrixEInvoiceTryLexicalToDouble(B, Y) and (X = Y);
 end;
 
-{ An xs:boolean indicator; the schema collapses white space around it, and
-  text that is no boolean (reported by the reader) counts as false.
-  DE: Ein xs:boolean-Kennzeichen; das Schema ignoriert Leerraum darum, und
-  Text, der kein Boolean ist (vom Leser gemeldet), gilt als false. }
-function IsTrue(const AText: TLandrixEInvoiceString): Boolean;
-begin
-  if not LandrixEInvoiceTryLexicalToBoolean(AText, Result) then
-    Result := False;
-end;
-
 function BoolText(AValue: Boolean): TLandrixEInvoiceString;
 begin
   if AValue then
@@ -1762,6 +1752,7 @@ type
     procedure Report(AKind: TLandrixEInvoiceDiagnosticKind; const APath, AMessage: TLandrixEInvoiceString;
       ASeverity: TLandrixEInvoiceDiagnosticSeverity);
     procedure NotMapped(const APath, AWhat: TLandrixEInvoiceString);
+    function Indicator(const AText, APath: TLandrixEInvoiceString): Boolean;
     procedure Rest(const APath: TLandrixEInvoiceString; const ATaken: array of string);
     procedure Excess(ACount: TLandrixEInvoiceListIndex; const APath: TLandrixEInvoiceString);
     function Amount(const AValue: TLandrixCIIAmount; const APath: TLandrixEInvoiceString): Currency;
@@ -1835,6 +1826,20 @@ procedure TCIIReadMapper.Report(AKind: TLandrixEInvoiceDiagnosticKind;
 begin
   if FDiagnostics <> nil then
     FDiagnostics.AddDiagnostic(AKind, APath, 0, 0, 0, AMessage).Severity := ASeverity;
+end;
+
+{ A charge indicator (xs:boolean); another text is reported and taken as
+  False (an allowance).
+  DE: Ein Zuschlagskennzeichen (xs:boolean); ein anderer Text wird gemeldet
+  und als False (Abschlag) genommen. }
+function TCIIReadMapper.Indicator(const AText, APath: TLandrixEInvoiceString): Boolean;
+begin
+  if not LandrixEInvoiceTryLexicalToBoolean(AText, Result) then
+  begin
+    Result := False;
+    Report(edk_ConversionFailed, APath, 'charge indicator "' + AText + '" is no xs:boolean; taken as an ' +
+      'allowance', eds_Warning);
+  end;
 end;
 
 procedure TCIIReadMapper.NotMapped(const APath, AWhat: TLandrixEInvoiceString);
@@ -2237,7 +2242,8 @@ begin
     if Gross.AppliedTradeAllowanceCharge.Count > 0 then
     begin
       Discount := Gross.AppliedTradeAllowanceCharge[0];
-      if IsTrue(Discount.ChargeIndicator) then
+      if Indicator(Discount.ChargeIndicator,
+        APath + '/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge/ram:ChargeIndicator/udt:Indicator') then
         NotMapped(APath + '/ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge',
           'charge on the gross price')
       else
@@ -2309,7 +2315,7 @@ procedure TCIIReadMapper.ReadAllowanceCharge(AItem: TLandrixInvoiceAllowanceChar
 var
   Tax: TLandrixCIITradeTax;
 begin
-  AItem.ChargeIndicator := IsTrue(ACharge.ChargeIndicator);
+  AItem.ChargeIndicator := Indicator(ACharge.ChargeIndicator, APath + '/ram:ChargeIndicator/udt:Indicator');
   AItem.MultiplierFactorNumeric := Decimal(ACharge.CalculationPercent, APath + '/ram:CalculationPercent');
   AItem.BaseAmount := Amount(ACharge.BasisAmount, APath + '/ram:BasisAmount');
   AItem.Amount := Amount(ACharge.ActualAmount, APath + '/ram:ActualAmount');

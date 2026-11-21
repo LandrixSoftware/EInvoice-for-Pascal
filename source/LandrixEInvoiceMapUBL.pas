@@ -441,16 +441,6 @@ begin
     ((S[3] = 'T') or (S[3] = 't'));
 end;
 
-{ An xs:boolean indicator; the schema collapses white space around it, and
-  text that is no boolean (reported by the reader) counts as false.
-  DE: Ein xs:boolean-Kennzeichen; das Schema ignoriert Leerraum darum, und
-  Text, der kein Boolean ist (vom Leser gemeldet), gilt als false. }
-function IsTrue(const AText: TLandrixEInvoiceString): Boolean;
-begin
-  if not LandrixEInvoiceTryLexicalToBoolean(AText, Result) then
-    Result := False;
-end;
-
 function BoolText(AValue: Boolean): TLandrixEInvoiceString;
 begin
   if AValue then
@@ -1763,6 +1753,7 @@ type
     procedure Report(AKind: TLandrixEInvoiceDiagnosticKind; const APath, AMessage: TLandrixEInvoiceString;
       ASeverity: TLandrixEInvoiceDiagnosticSeverity);
     procedure NotMapped(const APath, AWhat: TLandrixEInvoiceString);
+    function Indicator(const AText, APath: TLandrixEInvoiceString): Boolean;
     procedure Rest(const APath: TLandrixEInvoiceString; const ATaken: array of string);
     procedure Excess(ACount: TLandrixEInvoiceListIndex; const APath: TLandrixEInvoiceString);
     function Amount(const AValue: TLandrixUBLAmount; const APath: TLandrixEInvoiceString): Currency;
@@ -1829,6 +1820,20 @@ procedure TUBLReadMapper.Report(AKind: TLandrixEInvoiceDiagnosticKind;
 begin
   if FDiagnostics <> nil then
     FDiagnostics.AddDiagnostic(AKind, APath, 0, 0, 0, AMessage).Severity := ASeverity;
+end;
+
+{ A charge indicator (xs:boolean); another text is reported and taken as
+  False (an allowance).
+  DE: Ein Zuschlagskennzeichen (xs:boolean); ein anderer Text wird gemeldet
+  und als False (Abschlag) genommen. }
+function TUBLReadMapper.Indicator(const AText, APath: TLandrixEInvoiceString): Boolean;
+begin
+  if not LandrixEInvoiceTryLexicalToBoolean(AText, Result) then
+  begin
+    Result := False;
+    Report(edk_ConversionFailed, APath, 'charge indicator "' + AText + '" is no xs:boolean; taken as an ' +
+      'allowance', eds_Warning);
+  end;
 end;
 
 procedure TUBLReadMapper.NotMapped(const APath, AWhat: TLandrixEInvoiceString);
@@ -2667,7 +2672,7 @@ var
   Category: TLandrixUBLTaxCategory;
   Taken: array[0..6] of string;
 begin
-  AItem.ChargeIndicator := IsTrue(ACharge.ChargeIndicator);
+  AItem.ChargeIndicator := Indicator(ACharge.ChargeIndicator, APath + '/cbc:ChargeIndicator');
   ReadReason(AItem, ACharge.AllowanceChargeReasonCode, APath + '/cbc:AllowanceChargeReasonCode');
   AItem.Reason := FirstText(ACharge.AllowanceChargeReason, APath + '/cbc:AllowanceChargeReason');
   AItem.MultiplierFactorNumeric := Decimal(ACharge.MultiplierFactorNumeric, APath + '/cbc:MultiplierFactorNumeric');
@@ -2962,7 +2967,7 @@ begin
   if APrice.AllowanceCharge.Count > 0 then
   begin
     Discount := APrice.AllowanceCharge[0];
-    if IsTrue(Discount.ChargeIndicator) then
+    if Indicator(Discount.ChargeIndicator, APath + '/cac:AllowanceCharge/cbc:ChargeIndicator') then
       NotMapped(APath + '/cac:AllowanceCharge', 'charge on the price')
     else
     begin

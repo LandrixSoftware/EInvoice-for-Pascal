@@ -58,12 +58,13 @@ function LandrixEInvoiceRenderAmount(AValue: Currency;
 { A decimal number with at least AMinDecimals (0..18) and at most 18
   decimals, as short as the stored value allows (15 significant digits),
   grouped like an amount; '?' for a value that has no such form (NaN,
-  infinite, 1e23 and above, or not 0 but below 1e-18), never a rounded 0.
+  infinite, 1e23 and above, or not 0 but rounding to 0 at 18 decimals),
+  never a rounded 0.
   DE: Eine Dezimalzahl mit mindestens AMinDecimals (0..18) und hoechstens 18
   Nachkommastellen, so kurz, wie der gespeicherte Wert es erlaubt (15
   signifikante Stellen), gruppiert wie ein Betrag; '?' fuer einen Wert ohne
-  solche Form (NaN, unendlich, ab 1e23 oder ungleich 0, aber unter 1e-18),
-  nie eine gerundete 0. }
+  solche Form (NaN, unendlich, ab 1e23 oder ungleich 0, aber auf 18 Stellen
+  gerundet 0), nie eine gerundete 0. }
 function LandrixEInvoiceRenderDecimal(AValue: Double; AMinDecimals: Integer;
   ALanguage: TLandrixEInvoiceReportLanguage): TLandrixEInvoiceString;
 
@@ -199,13 +200,16 @@ function LandrixEInvoiceRenderDate(AValue: TDateTime;
 var
   Y, M, D: Word;
 begin
-  { -693593 is 0001-01-01, 2958465 is 9999-12-31; NaN fails both tests }
-  if not ((AValue >= -693593) and (AValue < 2958466)) then
+  { -693593 is 0001-01-01 (a time of that day is -693593.x), 2958465 is
+    9999-12-31; NaN fails both tests }
+  if not ((AValue > -693594) and (AValue < 2958466)) then
   begin
     Result := '?';
     Exit;
   end;
-  DecodeDate(AValue, Y, M, D);
+  { the day only: a time just before midnight must not round into the next
+    day (or below 0001-01-01) }
+  DecodeDate(Int(AValue), Y, M, D);
   if ALanguage = eln_German then
     Result := Digits(D, 2) + '.' + Digits(M, 2) + '.' + Digits(Y, 4)
   else

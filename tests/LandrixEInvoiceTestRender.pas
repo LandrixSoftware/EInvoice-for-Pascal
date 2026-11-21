@@ -45,6 +45,7 @@ uses
   SysUtils,
   Classes,
   Contnrs,
+  LandrixEInvoiceCalc,
   LandrixXmlBase,
   LandrixXmlDom,
   LandrixEInvoiceTypes,
@@ -595,6 +596,8 @@ begin
   CheckEqualsInvoiceStr('31.12.2026', LandrixEInvoiceRenderDate(EncodeDate(2026, 12, 31), eln_German), 'date de');
   CheckEqualsInvoiceStr('2026-01-05', LandrixEInvoiceRenderDate(EncodeDate(2026, 1, 5), eln_English), 'date en');
   CheckEqualsInvoiceStr('?', LandrixEInvoiceRenderDate(3000000, eln_English), 'date out of range');
+  CheckEqualsInvoiceStr('0001-01-01', LandrixEInvoiceRenderDate(EncodeDate(1, 1, 1) - 0.5, eln_English),
+    'noon of 0001-01-01');
   CheckEqualsInvoiceStr('Germany (DE)', LandrixEInvoiceRenderCode(ecl_CountryCode, 'DE', eln_English), 'code');
   CheckEqualsInvoiceStr('XX', LandrixEInvoiceRenderCode(ecl_CountryCode, 'XX', eln_German), 'unknown code');
   CheckEqualsInvoiceStr('', LandrixEInvoiceRenderCode(ecl_CountryCode, '', eln_German), 'no code');
@@ -1131,6 +1134,128 @@ begin
   end;
 end;
 
+{ Category O shows no rate; a credit note type other than 381 is titled a
+  credit note; sub-lines are built at most 64 levels deep. }
+procedure TestReviewCases;
+var
+  Inv: TLandrixInvoice;
+  Html: TLandrixXmlUtf8;
+  Lines, NoAmount: TObjectList;
+  IDs: TLandrixEInvoiceStringList;
+  Line: TLandrixInvoiceLine;
+  D: TLandrixEInvoiceDiagnostics;
+  I, K, Depth, Before: Integer;
+
+  function Occurrences(const AText, AWhat: AnsiString): Integer;
+  var
+    P: Integer;
+    Rest: AnsiString;
+  begin
+    Result := 0;
+    Rest := AText;
+    P := Pos(AWhat, Rest);
+    while P > 0 do
+    begin
+      Inc(Result);
+      Rest := Copy(Rest, P + Length(AWhat), Length(Rest));
+      P := Pos(AWhat, Rest);
+    end;
+  end;
+
+begin
+  Inv := TLandrixInvoice.Create;
+  try
+    BuildFullInvoice(Inv);
+    Before := Occurrences(PageOf(Inv, eln_English, False), 'data-field="InvoiceLines[].TaxPercent"');
+    Inv.InvoiceLines[0].TaxCategory := idtfcc_O_ServicesOutsideScopeOfTax;
+    Inv.InvoiceLines[0].TaxPercent := 0;
+    Html := PageOf(Inv, eln_English, False);
+    CheckEquals(Before - 1, Occurrences(Html, 'data-field="InvoiceLines[].TaxPercent"'), 'no rate for category O');
+    Inv.InvoiceTypeCode := itc_396;
+    Html := PageOf(Inv, eln_English, False);
+    Check(Pos(AnsiString('Credit note'), Html) > 0, '396 is a credit note');
+  finally
+    Inv.Free;
+  end;
+  { a chain of 70 lines, each the parent of the next }
+  Inv := TLandrixInvoice.Create;
+  Lines := TObjectList.Create(False);
+  NoAmount := TObjectList.Create(False);
+  IDs := TLandrixEInvoiceStringList.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    for I := 1 to 70 do
+    begin
+      Line := Inv.InvoiceLines.AddInvoiceLine;
+      Line.ID := TLandrixEInvoiceString(IntToStr(I));
+      Lines.Add(Line);
+      if I = 1 then
+        IDs.Add('')
+      else
+        IDs.Add(TLandrixEInvoiceString(IntToStr(I - 1)));
+    end;
+    LandrixEInvoiceBuildSubLines(Inv, Lines, IDs, NoAmount, D);
+    Depth := 0;
+    Line := Inv.InvoiceLines[0];
+    while Line.SubInvoiceLines.Count > 0 do
+    begin
+      Line := Line.SubInvoiceLines[0];
+      Inc(Depth);
+    end;
+    CheckEquals(64, Depth, 'sub-lines 64 levels deep');
+    { line 66 stays on the top level and keeps 67 to 70 below it }
+    CheckEquals(2, Integer(Inv.InvoiceLines.Count), 'line 66 stays on the top level');
+    CheckEquals(1, Integer(D.Count), 'reported once');
+  finally
+    D.Free;
+    IDs.Free;
+    NoAmount.Free;
+    Lines.Free;
+    Inv.Free;
+  end;
+  { the same chain with every child before its parent: the levels below a
+    line count too }
+  Inv := TLandrixInvoice.Create;
+  Lines := TObjectList.Create(False);
+  NoAmount := TObjectList.Create(False);
+  IDs := TLandrixEInvoiceStringList.Create;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    for I := 1 to 70 do
+    begin
+      Line := Inv.InvoiceLines.AddInvoiceLine;
+      Line.ID := TLandrixEInvoiceString(IntToStr(I));
+      Lines.Add(Line);
+      if I = 70 then
+        IDs.Add('')
+      else
+        IDs.Add(TLandrixEInvoiceString(IntToStr(I + 1)));
+    end;
+    LandrixEInvoiceBuildSubLines(Inv, Lines, IDs, NoAmount, D);
+    Depth := 0;
+    for I := 0 to Integer(Inv.InvoiceLines.Count) - 1 do
+    begin
+      Line := Inv.InvoiceLines[I];
+      K := 0;
+      while Line.SubInvoiceLines.Count > 0 do
+      begin
+        Line := Line.SubInvoiceLines[0];
+        Inc(K);
+      end;
+      if K > Depth then
+        Depth := K;
+    end;
+    CheckEquals(64, Depth, 'reversed: at most 64 levels');
+    CheckEquals(2, Integer(Inv.InvoiceLines.Count), 'reversed: line 65 stays on the top level');
+  finally
+    D.Free;
+    IDs.Free;
+    NoAmount.Free;
+    Lines.Free;
+    Inv.Free;
+  end;
+end;
+
 { --- Render.Corpus ------------------------------------------------------------ }
 
 procedure RenderFolder(const ADir: string; var AFiles, AFailed: Integer);
@@ -1209,6 +1334,7 @@ begin
   RegisterTest('Render.Mutations', TestMutations);
   RegisterTest('Render.Golden', TestGolden);
   RegisterTest('Render.Corpus', TestCorpus);
+  RegisterTest('Render.ReviewCases', TestReviewCases);
 end;
 
 end.

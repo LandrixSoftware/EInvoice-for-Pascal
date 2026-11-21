@@ -398,32 +398,30 @@ end;
   einem Leerzeichen zusammengefasst (so vergleichen BR-FXEXT-08 und -11). }
 function NormalizeSpace(const S: TLandrixEInvoiceString): TLandrixEInvoiceString;
 var
-  I: Integer;
+  I, N: Integer;
   Pending: Boolean;
 begin
+  { one buffer: appending a character at a time copies the text each time
+    on Delphi 6 }
   Result := '';
+  SetLength(Result, Length(S));
+  N := 0;
   Pending := False;
   for I := 1 to Length(S) do
     if IsSpace(S[I]) then
       Pending := True
     else
     begin
-      if Pending and (Result <> '') then
-        Result := Result + ' ';
-      Result := Result + S[I];
+      if Pending and (N > 0) then
+      begin
+        Inc(N);
+        Result[N] := ' ';
+      end;
+      Inc(N);
+      Result[N] := S[I];
       Pending := False;
     end;
-end;
-
-function ContainsLine(ALine, ACandidate: TLandrixInvoiceLine): Boolean;
-var
-  I: TLandrixEInvoiceListIndex;
-begin
-  Result := True;
-  for I := 0 to ALine.SubInvoiceLines.Count - 1 do
-    if (ALine.SubInvoiceLines[I] = ACandidate) or ContainsLine(ALine.SubInvoiceLines[I], ACandidate) then
-      Exit;
-  Result := False;
+  SetLength(Result, N);
 end;
 
 function GroupAmount(ALine: TLandrixInvoiceLine; ANoAmountLines: TObjectList): Currency;
@@ -455,56 +453,184 @@ begin
     end;
 end;
 
+{ Byte order of two texts (no locale). }
+function CompareIDs(const A, B: TLandrixEInvoiceString): Integer;
+var
+  I, N: Integer;
+begin
+  N := Length(A);
+  if Length(B) < N then
+    N := Length(B);
+  for I := 1 to N do
+    if A[I] <> B[I] then
+    begin
+      Result := Ord(A[I]) - Ord(B[I]);
+      Exit;
+    end;
+  Result := Length(A) - Length(B);
+end;
+
 procedure LandrixEInvoiceBuildSubLines(AInvoice: TLandrixInvoice; ALines: TObjectList;
   AParentIDs: TLandrixEInvoiceStringList; ANoAmountLines: TObjectList;
   ADiagnostics: TLandrixEInvoiceDiagnostics);
+const
+  { sub-line levels below a top line; deeper ones stay where they are (the
+    writers and the rendering recurse per level) }
+  MaxSubLineDepth = 64;
 var
-  I, J, K: TLandrixEInvoiceListIndex;
+  I, J, K, N, Lo, Hi, Mid, L, R, Width, P, Depth, H: Integer;
   Line, Parent: TLandrixInvoiceLine;
   ParentID: TLandrixEInvoiceString;
-  ChildHasCode: Boolean;
+  ChildHasCode, Cycle, AnyParent: Boolean;
+  X, Y: TLandrixEInvoiceListIndex;
+  IDs: array of TLandrixEInvoiceString;
+  Order, Temp, ParentOf, Height: array of Integer;
+  Problem: TLandrixEInvoiceString;
 begin
-  for I := 0 to ALines.Count - 1 do
+  N := Integer(ALines.Count);
+  { without any parent identifier there is nothing to build }
+  AnyParent := False;
+  for I := 0 to N - 1 do
+    if NormalizeSpace(AParentIDs[I]) <> '' then
+      AnyParent := True;
+  if not AnyParent then
+    N := 0;
+  { the identifiers sorted (stable: document order among equal ones), to
+    find a parent by binary search instead of a scan per line }
+  IDs := nil;
+  Order := nil;
+  Temp := nil;
+  ParentOf := nil;
+  Height := nil;
+  SetLength(IDs, N);
+  SetLength(Order, N);
+  SetLength(Temp, N);
+  SetLength(ParentOf, N);
+  SetLength(Height, N);
+  for I := 0 to N - 1 do
+  begin
+    IDs[I] := NormalizeSpace(TLandrixInvoiceLine(ALines[I]).ID);
+    Order[I] := I;
+    ParentOf[I] := -1;
+    Height[I] := 0;
+  end;
+  Width := 1;
+  while Width < N do
+  begin
+    Lo := 0;
+    while Lo < N do
+    begin
+      Mid := Lo + Width;
+      if Mid > N then
+        Mid := N;
+      Hi := Mid + Width;
+      if Hi > N then
+        Hi := N;
+      L := Lo;
+      R := Mid;
+      for K := Lo to Hi - 1 do
+        if (L < Mid) and ((R >= Hi) or (CompareIDs(IDs[Order[L]], IDs[Order[R]]) <= 0)) then
+        begin
+          Temp[K] := Order[L];
+          Inc(L);
+        end
+        else
+        begin
+          Temp[K] := Order[R];
+          Inc(R);
+        end;
+      Lo := Hi;
+    end;
+    for K := 0 to N - 1 do
+      Order[K] := Temp[K];
+    Width := Width * 2;
+  end;
+  for I := 0 to N - 1 do
   begin
     ParentID := NormalizeSpace(AParentIDs[I]);
     if ParentID = '' then
       Continue;
     Line := TLandrixInvoiceLine(ALines[I]);
-    Parent := nil;
-    for J := 0 to ALines.Count - 1 do
-      if (J <> I) and (NormalizeSpace(TLandrixInvoiceLine(ALines[J]).ID) = ParentID) then
+    { the first other line in document order with that identifier }
+    Lo := 0;
+    Hi := N;
+    while Lo < Hi do
+    begin
+      Mid := (Lo + Hi) div 2;
+      if CompareIDs(IDs[Order[Mid]], ParentID) < 0 then
+        Lo := Mid + 1
+      else
+        Hi := Mid;
+    end;
+    P := -1;
+    if (Lo < N) and (IDs[Order[Lo]] = ParentID) then
+    begin
+      if Order[Lo] <> I then
+        P := Order[Lo]
+      else if (Lo + 1 < N) and (IDs[Order[Lo + 1]] = ParentID) then
+        P := Order[Lo + 1];
+    end;
+    Problem := '';
+    if P < 0 then
+      Problem := 'not found'
+    else
+    begin
+      { a cycle: the line is an ancestor of the parent; the depth: the
+        parent's ancestors, the parent and the levels below the line }
+      Cycle := False;
+      Depth := 1;
+      J := P;
+      while ParentOf[J] >= 0 do
       begin
-        Parent := TLandrixInvoiceLine(ALines[J]);
-        Break;
+        if ParentOf[J] = I then
+          Cycle := True;
+        J := ParentOf[J];
+        Inc(Depth);
       end;
-    if (Parent = nil) or ContainsLine(Line, Parent) then
+      if Cycle or (P = I) then
+        Problem := 'a cycle'
+      else if Depth + Height[I] > MaxSubLineDepth then
+        Problem := 'more than 64 levels deep (MaxSubLineDepth)';
+    end;
+    if Problem <> '' then
     begin
       if ADiagnostics <> nil then
         ADiagnostics.AddDiagnostic(edk_ConversionFailed,
           '/rsm:CrossIndustryInvoice/rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem/' +
           'ram:AssociatedDocumentLineDocument/ram:ParentLineID', 0, 0, 0,
-          'parent line ' + ParentID + ' of line ' + Line.ID +
-          ' not found or a cycle; the line stays on its level').Severity := eds_Warning;
+          'parent line ' + ParentID + ' of line ' + Line.ID + ': ' + Problem +
+          '; the line stays on its level').Severity := eds_Warning;
       Continue;
     end;
+    Parent := TLandrixInvoiceLine(ALines[P]);
     AInvoice.InvoiceLines.Extract(Line);
     Parent.SubInvoiceLines.Add(Line);
+    ParentOf[I] := P;
+    { the levels below each ancestor }
+    H := Height[I] + 1;
+    J := P;
+    while (J >= 0) and (Height[J] < H) do
+    begin
+      Height[J] := H;
+      Inc(H);
+      J := ParentOf[J];
+    end;
   end;
-  for I := 0 to ALines.Count - 1 do
+  for X := 0 to ALines.Count - 1 do
   begin
-    Line := TLandrixInvoiceLine(ALines[I]);
+    Line := TLandrixInvoiceLine(ALines[X]);
     if (Line.SubInvoiceLines.Count = 0) or (Line.LineStatusReasonCode <> ilsrc_None) then
       Continue;
     ChildHasCode := False;
-    for K := 0 to Line.SubInvoiceLines.Count - 1 do
-      if Line.SubInvoiceLines[K].LineStatusReasonCode <> ilsrc_None then
+    for Y := 0 to Line.SubInvoiceLines.Count - 1 do
+      if Line.SubInvoiceLines[Y].LineStatusReasonCode <> ilsrc_None then
         ChildHasCode := True;
     if ChildHasCode then
       Line.LineStatusReasonCode := ilsrc_Detail;
   end;
-  for I := 0 to ANoAmountLines.Count - 1 do
-    TLandrixInvoiceLine(ANoAmountLines[I]).LineAmount :=
-      GroupAmount(TLandrixInvoiceLine(ANoAmountLines[I]), ANoAmountLines);
+  for X := 0 to ANoAmountLines.Count - 1 do
+    TLandrixInvoiceLine(ANoAmountLines[X]).LineAmount :=
+      GroupAmount(TLandrixInvoiceLine(ANoAmountLines[X]), ANoAmountLines);
 end;
 
 function LandrixEInvoiceCashDiscountNotesSet(AInvoice: TLandrixInvoice): Boolean;
