@@ -283,6 +283,12 @@ begin
     Inv.PaymentTypes.AddPaymentType.PaymentMeansCode := ipmc_DirectDebit;
     CheckEqualsStr('', Hints(Inv, D), 'mandate with a general direct debit too');
     Inv.PaymentTypes.Delete(1);
+    { a known code kept as other text is that code }
+    Pay.PaymentMeansCode := ipmc_NotImplemented;
+    Pay.PaymentMeansCodeOther := ' 59 ';
+    CheckEqualsStr('LX-ID-05:PaymentMandateID:BT-89:warning', Hints(Inv, D), 'SEPA direct debit as other text');
+    Pay.PaymentMeansCodeOther := '';
+    Pay.PaymentMeansCode := ipmc_SEPADirectDebit;
     Inv.PaymentMandateID := '';
     { the remittance information is text }
     Inv.PaymentID := With_('Fatura ', [$200F]) + '12';
@@ -605,6 +611,12 @@ begin
     CheckEqualsStr('', PlHints(Inv, D, ''), 'Swedish clearing identifier');
     Pay.FinancialInstitutionBranch := 'RBIS0NEFTHY';
     CheckEqualsStr('', PlHints(Inv, D, ''), 'Indian IFSC');
+    Pay.FinancialInstitutionBranch := 'A1BC0DE1234';
+    CheckEqualsStr('LX-PL-03:PaymentTypes[0].FinancialInstitutionBranch:BT-86:warning', PlHints(Inv, D, ''),
+      'no IFSC: a digit in the bank prefix');
+    Pay.FinancialInstitutionBranch := 'RBIS0NEFThY';
+    CheckEqualsStr('LX-PL-03:PaymentTypes[0].FinancialInstitutionBranch:BT-86:warning', PlHints(Inv, D, ''),
+      'no IFSC: a small letter in the branch');
     Pay.FinancialInstitutionBranch := '';
     { account holder }
     Inv.AccountingSupplierParty.RegistrationName := 'Muster GmbH & Co. KG';
@@ -629,6 +641,8 @@ begin
     CheckEqualsStr('LX-PL-04:PaymentTypes[0].FinancialAccountName:BT-85/BT-88:info', PlHints(Inv, D, ''),
       'holder with a C1 control');
     CheckEqualsInvoiceStr('Anders<U+0085> AG', D[0].Found, 'holder masked');
+    Pay.FinancialAccountName := TLandrixEInvoiceString(StringOfChar('A', 2000));
+    CheckEqualsStr('', PlHints(Inv, D, ''), 'a very long holder: inconclusive');
     Pay.FinancialAccountName := '';
     { SEPA direct debit }
     Pay.PaymentMeansCode := ipmc_SEPADirectDebit;

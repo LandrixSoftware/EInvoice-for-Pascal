@@ -80,9 +80,6 @@ DK_Validation_DKR013-1[2356].xml	missed DK-R-013
 # scheme TAX with Foretaksregisteret.
 NO-R-002-0[123].xml	extra NO-R-002
 
-UBL-IN_DE-R-024-03.xml	missed DE-R-024-2
-UBL-IN_DE-R-025-03.xml	missed DE-R-025-2
-
 # The last cash discount line has no line feed after it; the mapper writes every cash discount
 # line with one (LandrixEInvoicePaymentTermsText), so DE-R-018 holds for the output.
 UBL-IN_DE-R-018-02.xml	missed DE-R-018

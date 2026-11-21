@@ -492,12 +492,8 @@ begin
     Payment.FinancialAccount := ''
   else if AID = 'DE-R-024-1' then
     SetPayment(Invoice, '48', '')
-  else if AID = 'DE-R-024-2' then
-    SetPayment(Invoice, '48', 'DE02120300000000202051')
   else if AID = 'DE-R-025-1' then
     SetPayment(Invoice, '59', '')
-  else if AID = 'DE-R-025-2' then
-    SetPayment(Invoice, '59', 'DE02120300000000202051')
   else if AID = 'DE-R-026' then
     Invoice.InvoiceTypeCode := itc_CorrectedInvoice
   else if AID = 'DE-R-027' then
@@ -512,7 +508,7 @@ end;
 
 const
   { Every rule of LandrixEInvoiceCheckPeppol. }
-  PeppolRules: array[0..134] of string = (
+  PeppolRules: array[0..132] of string = (
     'PEPPOL-EN16931-R002', 'PEPPOL-EN16931-R007', 'PEPPOL-EN16931-P0100', 'PEPPOL-EN16931-P0104',
     'PEPPOL-EN16931-P0105', 'PEPPOL-EN16931-P0106', 'PEPPOL-EN16931-P0107', 'PEPPOL-EN16931-P0108',
     'PEPPOL-EN16931-P0109', 'PEPPOL-EN16931-P0110', 'PEPPOL-EN16931-P0111', 'PEPPOL-EN16931-P0112',
@@ -537,7 +533,7 @@ const
     'NL-R-001', 'NL-R-002', 'NL-R-003', 'NL-R-004', 'NL-R-005', 'NL-R-006', 'NL-R-007', 'NL-R-008', 'NL-R-009',
     'DE-R-001', 'DE-R-002', 'DE-R-003', 'DE-R-004', 'DE-R-005', 'DE-R-006', 'DE-R-007', 'DE-R-008', 'DE-R-009',
     'DE-R-010', 'DE-R-011', 'DE-R-015', 'DE-R-016', 'DE-R-017', 'DE-R-018', 'DE-R-019', 'DE-R-020', 'DE-R-022',
-    'DE-R-023-1', 'DE-R-024-1', 'DE-R-024-2', 'DE-R-025-1', 'DE-R-025-2', 'DE-R-026', 'DE-R-027', 'DE-R-028',
+    'DE-R-023-1', 'DE-R-024-1', 'DE-R-025-1', 'DE-R-026', 'DE-R-027', 'DE-R-028',
     'DE-R-030', 'DE-R-031', 'DE-R-T02');
 
   PeppolWarnings = ' PEPPOL-COMMON-R044 PEPPOL-COMMON-R045 PEPPOL-COMMON-R046 PEPPOL-COMMON-R047 ' +
@@ -804,6 +800,95 @@ end;
 { SE-R-013 checks the first ten digits only (u:checkSEOrgnr), SE-R-004
   the length; a preceding invoice reference with its date only exists for
   DE-R-026, not for NL-R-001 (cbc:ID). }
+{ Values as XPath reads them: digits are ASCII, string-length counts
+  characters, xs:integer drops the blanks around it; the tax representative
+  and the file names as the UBL mapper writes them. }
+procedure TestReviewCases;
+var
+  Invoice: TLandrixInvoice;
+  I: Integer;
+  S: TLandrixEInvoiceString;
+begin
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Mutate(Invoice, 'SE-R-002');
+    S := 'SE';
+    for I := 1 to 12 do
+      S := S + TLandrixEInvoiceChar($FF11);
+    Invoice.AccountingSupplierParty.VATCompanyID := S;
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'SE-R-002', nil), 'SE-R-002 fullwidth digits');
+    Invoice.AccountingSupplierParty.VATCompanyID := 'SE556036079301';
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'SE-R-002', nil), 'SE-R-002 ASCII digits');
+    Invoice.AccountingSupplierParty.CompanyID := TLandrixEInvoiceString(StringOfChar('9', 400));
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'SE-R-003', nil), 'SE-R-003 400 digits are a number');
+    Invoice.AccountingSupplierParty.CompanyID := '1e999';
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'SE-R-003', nil), 'SE-R-003 1e999 is a number');
+    Invoice.AccountingSupplierParty.CompanyID := '+INF';
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'SE-R-003', nil), 'SE-R-003 +INF is a number');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Mutate(Invoice, 'DK-R-010');
+    Invoice.PaymentID := '71#1';
+    { seven digits and U+1D7D8: eight characters }
+    Invoice.PaymentTypes[0].FinancialAccount := TLandrixEInvoiceString('1234567') + TLandrixEInvoiceChar($D835) +
+      TLandrixEInvoiceChar($DFD8);
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'DK-R-010', nil), 'DK-R-010 counts characters');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Mutate(Invoice, 'GR-R-001-4');
+    Invoice.InvoiceNumber := '094014201|20/10/2026| 5 |1.1|A|1';
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'GR-R-001-4', nil), 'GR-R-001-4 blanks around');
+    Invoice.InvoiceNumber := '094014201|20/10/2026|5 1|1.1|A|1';
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'GR-R-001-4', nil), 'GR-R-001-4 blank inside');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    Mutate(Invoice, 'DE-R-016');
+    Invoice.TaxRepresentativeParty.ContactName := 'Contact';
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'DE-R-016', nil), 'DE-R-016 contact is not written');
+    Invoice.TaxRepresentativeParty.Name := 'Representative';
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'DE-R-016', nil), 'DE-R-016 with a name');
+  finally
+    Invoice.Free;
+  end;
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    AddPdf(Invoice, 'A-1', 'b.pdf');
+    AddPdf(Invoice, 'A-2', 'a.pdf');
+    AddPdf(Invoice, 'A-3', 'c.pdf');
+    AddPdf(Invoice, 'A-4', 'A.pdf');
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'DE-R-022', nil), 'DE-R-022 different names');
+    AddPdf(Invoice, 'A-5', 'a.pdf');
+    Check(not LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'DE-R-022', nil), 'DE-R-022 a.pdf twice');
+  finally
+    Invoice.Free;
+  end;
+  { a SEPA direct debit as other text is written with its mandate }
+  Invoice := TLandrixInvoice.Create;
+  try
+    FillComplete(Invoice);
+    SetPayment(Invoice, ' 59 ', 'DE89370400440532013000');
+    Invoice.PaymentMandateID := 'M-1';
+    Invoice.AccountingSupplierParty.BankAssignedCreditorIdentifier := 'DE98ZZZ09999999999';
+    Check(LandrixEInvoiceCheckRule(Invoice, PeppolSpec, 'DE-R-025-1', nil), 'DE-R-025-1 59 as other text');
+  finally
+    Invoice.Free;
+  end;
+end;
+
 procedure TestEdgeCases;
 var
   Invoice: TLandrixInvoice;
@@ -860,6 +945,7 @@ begin
   RegisterTest('CheckPeppol.RuleLookup', TestRuleLookup);
   RegisterTest('CheckPeppol.Payments', TestPayments);
   RegisterTest('CheckPeppol.EdgeCases', TestEdgeCases);
+  RegisterTest('CheckPeppol.ReviewCases', TestReviewCases);
 end;
 
 end.

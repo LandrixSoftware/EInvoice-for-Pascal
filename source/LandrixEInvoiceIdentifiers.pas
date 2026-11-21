@@ -249,21 +249,30 @@ end;
 
 function LandrixEInvoiceNormalizeSpace(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
 var
-  I: Integer;
+  I, N: Integer;
   Pending: Boolean;
 begin
+  { written into a buffer of the input's length: appending a character at
+    a time copies the whole text each time on Delphi 6 }
   Result := '';
+  SetLength(Result, Length(AValue));
+  N := 0;
   Pending := False;
   for I := 1 to Length(AValue) do
     if IsBlankChar(AValue[I]) then
-      Pending := Result <> ''
+      Pending := N > 0
     else
     begin
       if Pending then
-        Result := Result + ' ';
+      begin
+        Inc(N);
+        Result[N] := ' ';
+      end;
       Pending := False;
-      Result := Result + AValue[I];
+      Inc(N);
+      Result[N] := AValue[I];
     end;
+  SetLength(Result, N);
 end;
 
 function LandrixEInvoiceIsDigits(const AValue: TLandrixEInvoiceString; ALength: Integer): Boolean;
@@ -466,14 +475,61 @@ begin
   Result := True;
 end;
 
-function LandrixEInvoiceCodiceFiscaleValid(const AValue: TLandrixEInvoiceString): Boolean;
+{ The text with each surrogate pair as one U+FFFD: positions and length
+  as XPath counts them (code points).
+  DE: Der Text mit jedem Ersatzpaar als ein U+FFFD: Positionen und Laenge,
+  wie XPath sie zaehlt (Codepunkte). }
+function CodePoints(const AValue: TLandrixEInvoiceString): TLandrixEInvoiceString;
+var
+  I, N: Integer;
 begin
-  if Length(AValue) = 16 then
-    Result := Letters(AValue, 1, 6) and LandrixEInvoiceIsInteger(Copy(AValue, 7, 2)) and Letters(AValue, 9, 1) and
-      LandrixEInvoiceIsInteger(Copy(AValue, 10, 2)) and LandrixEInvoiceIsInteger(Copy(AValue, 15, 1)) and
-      Letters(AValue, 16, 1)
+  Result := AValue;
+  N := 0;
+  I := 1;
+  while I <= Length(AValue) do
+  begin
+    Inc(N);
+    if (Ord(AValue[I]) >= $D800) and (Ord(AValue[I]) <= $DBFF) and (I < Length(AValue)) and
+       (Ord(AValue[I + 1]) >= $DC00) and (Ord(AValue[I + 1]) <= $DFFF) then
+    begin
+      Result[N] := TLandrixEInvoiceChar($FFFD);
+      Inc(I, 2);
+    end
+    else
+    begin
+      Result[N] := AValue[I];
+      Inc(I);
+    end;
+  end;
+  SetLength(Result, N);
+end;
+
+{ castable as xs:integer: the blanks at the edges do not count.
+  DE: castable as xs:integer: Leerraum am Rand zaehlt nicht. }
+function CastableInteger(const AValue: TLandrixEInvoiceString): Boolean;
+var
+  First, Last: Integer;
+begin
+  First := 1;
+  Last := Length(AValue);
+  while (First <= Last) and IsBlankChar(AValue[First]) do
+    Inc(First);
+  while (Last >= First) and IsBlankChar(AValue[Last]) do
+    Dec(Last);
+  Result := LandrixEInvoiceIsInteger(Copy(AValue, First, Last - First + 1));
+end;
+
+function LandrixEInvoiceCodiceFiscaleValid(const AValue: TLandrixEInvoiceString): Boolean;
+var
+  V: TLandrixEInvoiceString;
+begin
+  { u:checkCF counts characters (string-length) }
+  V := CodePoints(AValue);
+  if Length(V) = 16 then
+    Result := Letters(V, 1, 6) and CastableInteger(Copy(V, 7, 2)) and Letters(V, 9, 1) and
+      CastableInteger(Copy(V, 10, 2)) and CastableInteger(Copy(V, 15, 1)) and Letters(V, 16, 1)
   else
-    Result := (Length(AValue) = 11) and LandrixEInvoiceIsInteger(AValue);
+    Result := (Length(V) = 11) and LandrixEInvoiceIsInteger(V);
 end;
 
 function LandrixEInvoicePartitaIVAValid(const AValue: TLandrixEInvoiceString): Boolean;

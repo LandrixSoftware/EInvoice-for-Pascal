@@ -200,6 +200,7 @@ implementation
 uses
   SysUtils,
   LandrixEInvoiceCodes,
+  LandrixEInvoiceLexical,
   LandrixEInvoiceIdentifiers,
   LandrixEInvoiceRenderLabels;
 
@@ -732,6 +733,17 @@ begin
     IsDigitLike(Ord(AValue[3])) and IsDigitLike(Ord(AValue[4]));
 end;
 
+{ The payment means code as written: the enumeration, else the other text.
+  DE: Der Code der Zahlungsart, wie geschrieben: die Aufzaehlung, sonst der
+  andere Text. }
+function PaymentCode(P: TLandrixInvoicePaymentType): TLandrixEInvoiceString;
+begin
+  if P.PaymentMeansCode <> ipmc_NotImplemented then
+    Result := LandrixEInvoicePaymentMeansCodeToStr(P.PaymentMeansCode)
+  else
+    Result := LandrixEInvoiceTrimXml(P.PaymentMeansCodeOther);
+end;
+
 { ASCII by their schemes: country and currency codes (ISO 3166, ISO 4217),
   the account of a SEPA payment (58, 59) or an account that starts like an
   IBAN, the payment service provider (BT-86, a BIC or a national bank code),
@@ -751,6 +763,7 @@ var
   Q: string;
   Account, Mandate: TFieldKind;
   General: Boolean;
+  Code: TLandrixEInvoiceString;
 begin
   V.Visit('ProfileID', A.ProfileID, fk_Identifier);
   V.Visit('InvoiceNumber', A.InvoiceNumber, fk_Identifier);
@@ -786,12 +799,13 @@ begin
   for I := 0 to Integer(A.PaymentTypes.Count) - 1 do
   begin
     Q := Item('PaymentTypes', I);
-    if A.PaymentTypes[I].PaymentMeansCode = ipmc_SEPADirectDebit then
+    { the code as written: also a known code kept as other text }
+    Code := PaymentCode(A.PaymentTypes[I]);
+    if Code = '59' then
       Mandate := fk_Ascii
-    else if A.PaymentTypes[I].PaymentMeansCode = ipmc_DirectDebit then
+    else if Code = '49' then
       General := True;
-    if (A.PaymentTypes[I].PaymentMeansCode in [ipmc_SEPACreditTransfer, ipmc_SEPADirectDebit]) or
-       LooksLikeIban(A.PaymentTypes[I].FinancialAccount) then
+    if (Code = '58') or (Code = '59') or LooksLikeIban(A.PaymentTypes[I].FinancialAccount) then
       Account := fk_Ascii
     else
       Account := fk_Identifier;
@@ -1200,17 +1214,6 @@ begin
     (Code = '503') or (Code = '532');
 end;
 
-{ The payment means code as written: the enumeration, else the other text.
-  DE: Der Code der Zahlungsart, wie geschrieben: die Aufzaehlung, sonst der
-  andere Text. }
-function PaymentCode(P: TLandrixInvoicePaymentType): TLandrixEInvoiceString;
-begin
-  if P.PaymentMeansCode <> ipmc_NotImplemented then
-    Result := LandrixEInvoicePaymentMeansCodeToStr(P.PaymentMeansCode)
-  else
-    Result := LandrixEInvoiceNormalizeSpace(P.PaymentMeansCodeOther);
-end;
-
 { LX-PL-01: the due date (BT-9) before the invoice date (BT-2), except for
   a credit note, a negative total and an invoice paid in advance (BT-113
   above 0 and BT-115 at most 0).
@@ -1329,8 +1332,15 @@ begin
   { an Indian IFSC: four letters, 0, six letters or digits
     DE: ein indischer IFSC: vier Buchstaben, 0, sechs Buchstaben oder
     Ziffern }
-  if (Length(Value) = 11) and (Value[5] = '0') then
-    Exit;
+  if (Length(Value) = 11) and (Value[5] = '0') and IsCapital(Value[1]) and IsCapital(Value[2]) and
+     IsCapital(Value[3]) and IsCapital(Value[4]) then
+  begin
+    Valid := True;
+    for I := 6 to 11 do
+      Valid := Valid and IsCapitalOrDigit(Value[I]);
+    if Valid then
+      Exit;
+  end;
   Valid := (Length(Value) = 8) or (Length(Value) = 11);
   for I := 1 to Length(Value) do
     if (I = 5) or (I = 6) then
@@ -1354,20 +1364,39 @@ begin
       ', which is no ISO 3166 country', '', Value);
 end;
 
+const
+  { names longer than this are not compared (the comparison would be
+    quadratic in their length) }
+  NameKeyMax = 1024;
+
 { The name as a comparison key: capital letters and digits of ASCII and
   Latin-1, umlauts as AE, OE, UE and sharp s as SS; ok False when the name
-  has other characters, so the comparison is inconclusive.
+  has other characters or more than NameKeyMax, so the comparison is
+  inconclusive.
   DE: Der Name als Vergleichsschluessel: Grossbuchstaben und Ziffern aus
   ASCII und Latin-1, Umlaute als AE, OE, UE und scharfes s als SS; ok
-  False, wenn der Name andere Zeichen hat, der Vergleich also nichts
-  aussagt. }
+  False, wenn der Name andere Zeichen oder mehr als NameKeyMax hat, der
+  Vergleich also nichts aussagt. }
 function NameKey(const AValue: TLandrixEInvoiceString; out AOk: Boolean): TLandrixEInvoiceString;
 var
-  I: Integer;
+  I, N: Integer;
   C: Cardinal;
+  Key: TLandrixEInvoiceString;
+
+  procedure Put(AChar: Cardinal);
+  begin
+    Inc(N);
+    Key[N] := TLandrixEInvoiceChar(AChar);
+  end;
+
 begin
   Result := '';
-  AOk := True;
+  AOk := Length(AValue) <= NameKeyMax;
+  if not AOk then
+    Exit;
+  Key := '';
+  SetLength(Key, 2 * Length(AValue));
+  N := 0;
   for I := 1 to Length(AValue) do
   begin
     C := Ord(AValue[I]);
@@ -1380,25 +1409,39 @@ begin
       C := C - 32;
     case C of
       $C4:
-        Result := Result + 'AE';
+        begin
+          Put(Ord('A'));
+          Put(Ord('E'));
+        end;
       $D6:
-        Result := Result + 'OE';
+        begin
+          Put(Ord('O'));
+          Put(Ord('E'));
+        end;
       $DC:
-        Result := Result + 'UE';
+        begin
+          Put(Ord('U'));
+          Put(Ord('E'));
+        end;
       $DF:
-        Result := Result + 'SS';
+        begin
+          Put(Ord('S'));
+          Put(Ord('S'));
+        end;
     else
       if ((C >= Ord('0')) and (C <= Ord('9'))) or ((C >= Ord('A')) and (C <= Ord('Z'))) or
          ((C >= $C0) and (C <= $DE) and (C <> $D7)) then
-        Result := Result + TLandrixEInvoiceChar(C);
+        Put(C);
     end;
   end;
+  Result := Copy(Key, 1, N);
 end;
 
 { 1 if one name contains the other, 0 if not, -1 if inconclusive (a name
-  with characters NameKey does not know, or empty).
+  with characters NameKey does not know, too long, or empty).
   DE: 1, wenn ein Name den anderen enthaelt, 0, wenn nicht, -1, wenn nichts
-  aussagt (ein Name mit Zeichen, die NameKey nicht kennt, oder leer). }
+  aussagt (ein Name mit Zeichen, die NameKey nicht kennt, zu lang oder
+  leer). }
 function NamesMatch(const A, B: TLandrixEInvoiceString): Integer;
 var
   KA, KB: TLandrixEInvoiceString;

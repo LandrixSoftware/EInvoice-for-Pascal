@@ -28,6 +28,7 @@ procedure Register;
 implementation
 
 uses
+  LandrixEInvoiceTypes,
   LandrixEInvoiceIdentifiers,
   LandrixEInvoiceTestFramework;
 
@@ -66,6 +67,14 @@ begin
   Check(LandrixEInvoiceCodiceFiscaleValid('12345678901'), 'Codice Fiscale numeric');
   Check(not LandrixEInvoiceCodiceFiscaleValid('RSSMRA8XT10A562S'), 'Codice Fiscale letter in the year');
   Check(not LandrixEInvoiceCodiceFiscaleValid('RSSMRA85T10A56'), 'Codice Fiscale too short');
+  { u:checkCF counts characters: a surrogate pair is one }
+  Check(not LandrixEInvoiceCodiceFiscaleValid(TLandrixEInvoiceString('RSSMRA85T10') + TLandrixEInvoiceChar($D83D) + TLandrixEInvoiceChar($DE00) +
+    'A2B'), 'Codice Fiscale of 15 characters in 16 units');
+  Check(LandrixEInvoiceCodiceFiscaleValid(TLandrixEInvoiceString('RSSMRA85T10') + TLandrixEInvoiceChar($D83D) + TLandrixEInvoiceChar($DE00) +
+    'A52B'), 'Codice Fiscale of 16 characters in 17 units');
+  Check(LandrixEInvoiceCodiceFiscaleValid('RSSMRA8 T10A562S'), 'Codice Fiscale: xs:integer drops the blank of 8');
+  CheckEqualsInvoiceStr('a b', LandrixEInvoiceNormalizeSpace(' a  ' + #9 + ' b '), 'normalize-space');
+  CheckEqualsInvoiceStr('', LandrixEInvoiceNormalizeSpace('  '), 'normalize-space of blanks');
   Check(LandrixEInvoicePartitaIVAValid('IT00743110157'), 'Partita IVA');
   Check(LandrixEInvoicePartitaIVAValid('it00743110157'), 'Partita IVA lower case prefix');
   Check(not LandrixEInvoicePartitaIVAValid('IT12345678901'), 'Partita IVA check digit');

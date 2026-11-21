@@ -23,11 +23,13 @@
   enumeration or else the other text, and a rule the mapper always meets
   has no row: PEPPOL-EN16931-R004 (the specification identifier comes from
   the specification), R051 (every amount carries the invoice currency
-  except BT-111), R080 (one project reference), R100 (one object
+  except BT-111; without BT-5, BR-05 rejects the invoice), R080 (one project reference), R100 (one object
   identifier per line), F001 (dates are written as YYYY-MM-DD), P0101
   (ubl:CreditNote is written for type 381 only), DE-R-014 (every VAT
-  breakdown has its rate) and DE-R-023-2 (the codes 30 and 58 come with
-  the payee account only). The national rules test the country variables
+  breakdown has its rate), DE-R-023-2 (the codes 30 and 58 come with
+  the payee account only), DE-R-024-2 and DE-R-025-2 (the card codes 48,
+  54 and 55 come with the card account only, 49 and 59 with the mandate
+  only: the groups follow the written code). The national rules test the country variables
   of the schematron, some as written, some after upper-case and
   normalize-space.
 
@@ -45,8 +47,11 @@
   traegt die Rechnungswaehrung ausser BT-111), R080 (ein Projektverweis),
   R100 (eine Objektkennung je Position), F001 (Daten werden als JJJJ-MM-TT
   geschrieben), P0101 (ubl:CreditNote wird nur fuer Art 381 geschrieben),
-  DE-R-014 (jede Steueraufschluesselung hat ihren Satz) und DE-R-023-2 (die
-  Codes 30 und 58 kommen nur mit dem Konto des Zahlungsempfaengers). Die
+  DE-R-014 (jede Steueraufschluesselung hat ihren Satz), DE-R-023-2 (die
+  Codes 30 und 58 kommen nur mit dem Konto des Zahlungsempfaengers),
+  DE-R-024-2 und DE-R-025-2 (die Kartencodes 48, 54 und 55 kommen nur mit
+  dem Kartenkonto, 49 und 59 nur mit dem Mandat: die Gruppen folgen dem
+  geschriebenen Code). Die
   nationalen Regeln pruefen die Laendervariablen des Schematrons, manche
   wie geschrieben, manche nach upper-case und normalize-space. }
 
@@ -137,7 +142,7 @@ type
     pr_NLR001, pr_NLR002, pr_NLR003, pr_NLR004, pr_NLR005, pr_NLR006, pr_NLR007, pr_NLR008, pr_NLR009,
     pr_DER001, pr_DER002, pr_DER003, pr_DER004, pr_DER005, pr_DER006, pr_DER007, pr_DER008, pr_DER009, pr_DER010,
     pr_DER011, pr_DER015, pr_DER016, pr_DER017, pr_DER018, pr_DER019, pr_DER020, pr_DER022, pr_DER0231,
-    pr_DER0241, pr_DER0242, pr_DER0251, pr_DER0252, pr_DER026, pr_DER027, pr_DER028, pr_DER030, pr_DER031,
+    pr_DER0241, pr_DER0251, pr_DER026, pr_DER027, pr_DER028, pr_DER030, pr_DER031,
     pr_DERT02);
 
   { One rule: identifier, severity (fatal: eds_Error), business terms (the
@@ -543,15 +548,8 @@ const
     (ID: 'DE-R-024-1'; Severity: eds_Error; Terms: 'BG-18';
      Message: 'between German parties a card payment (48, 54, 55) shall have card data (BG-18)';
      Source: PeppolSource),
-    (ID: 'DE-R-024-2'; Severity: eds_Error; Terms: 'BG-17, BG-19';
-     Message: 'between German parties a card payment (48, 54, 55) shall have no credit transfer or direct debit ' +
-       'data';
-     Source: PeppolSource),
     (ID: 'DE-R-025-1'; Severity: eds_Error; Terms: 'BG-19';
      Message: 'between German parties a SEPA direct debit (59) shall have direct debit data (BG-19)';
-     Source: PeppolSource),
-    (ID: 'DE-R-025-2'; Severity: eds_Error; Terms: 'BG-17, BG-18';
-     Message: 'between German parties a SEPA direct debit (59) shall have no credit transfer or card data';
      Source: PeppolSource),
     (ID: 'DE-R-026'; Severity: eds_Warning; Terms: 'BG-3';
      Message: 'between German parties a corrected invoice (384) should reference the preceding invoice (BG-3)';
@@ -1006,11 +1004,18 @@ begin
     APayment.PaymentMeansCodeOther);
 end;
 
+{ The group follows the written code without blanks at the edges, as the
+  UBL mapper (WrittenPaymentCode) does.
+  DE: Die Gruppe folgt dem geschriebenen Code ohne Leerraum am Rand, wie
+  beim UBL-Mapper. }
 function PaymentGroup(APayment: TLandrixInvoicePaymentType): TPaymentGroup;
+var
+  Code: TLandrixEInvoiceString;
 begin
-  if APayment.PaymentMeansCode in [ipmc_DirectDebit, ipmc_SEPADirectDebit] then
+  Code := LandrixEInvoiceTrimXml(PaymentCode(APayment));
+  if (Code = '49') or (Code = '59') then
     Result := pg_Mandate
-  else if APayment.PaymentMeansCode in [ipmc_BankCard, ipmc_CreditCard, ipmc_DebitCard] then
+  else if (Code = '48') or (Code = '54') or (Code = '55') then
     Result := pg_Card
   else
     Result := pg_Payee;
@@ -1072,23 +1077,27 @@ begin
 end;
 
 { XPath number() of a text: NaN is False. xs:double after collapsing the
-  blanks around it: sign, digits with an optional fraction, an optional
-  exponent, or INF.
-  DE: XPath number() eines Texts: NaN ist False. }
+  blanks around it: sign, ASCII digits with an optional fraction, an
+  optional exponent, or INF. The form is checked on the UTF-16 text (a
+  conversion to string could turn fullwidth digits into ASCII ones);
+  AValue is the number for texts of up to 64 characters (beyond Double
+  +-1E22, as for INF; False if Val does not take the form), else 0.
+  DE: XPath number() eines Texts: NaN ist False. Die Form wird am
+  UTF-16-Text geprueft; AValue ist die Zahl fuer Texte bis 64 Zeichen. }
 function XPathNumber(const AText: TLandrixEInvoiceString; out AValue: Double): Boolean;
 var
-  S: string;
+  S: TLandrixEInvoiceString;
   I, Code: Integer;
   Digits, Exponent: Boolean;
 begin
   Result := False;
   AValue := 0;
-  S := string(LandrixEInvoiceNormalizeSpace(AText));
-  if (S = 'INF') or (S = '-INF') then
+  S := LandrixEInvoiceNormalizeSpace(AText);
+  if (S = 'INF') or (S = '+INF') or (S = '-INF') then
   begin
     Result := True;
     { any value beyond the ranges the rules test; 1E22 is exact as Double }
-    if S = 'INF' then
+    if S <> '-INF' then
       AValue := 1E22
     else
       AValue := -1E22;
@@ -1120,8 +1129,27 @@ begin
   end;
   if not Digits then
     Exit;
-  Val(S, AValue, Code);
-  Result := Code = 0;
+  Result := True;
+  if Length(S) > 64 then
+    Exit;
+  try
+    Val(string(S), AValue, Code);
+    if Code <> 0 then
+    begin
+      { a form Val does not take: no value to rely on }
+      AValue := 0;
+      Result := False;
+    end;
+  except
+    on EMathError do
+      { beyond Double: a negative exponent is about 0, else +-INF }
+      if (Pos('e-', S) > 0) or (Pos('E-', S) > 0) then
+        AValue := 0
+      else if S[1] = '-' then
+        AValue := -1E22
+      else
+        AValue := 1E22;
+  end;
 end;
 
 function IsXPathNumber(const AText: TLandrixEInvoiceString): Boolean;
@@ -1367,9 +1395,9 @@ var
   P: TLandrixInvoiceParty;
 begin
   P := AInvoice.TaxRepresentativeParty;
-  Result := Present(P.Name) or Present(P.Identifier) or Present(P.CompanyID) or Present(P.VATCompanyID) or
-    AddressWritten(P.Address) or Present(P.ContactName) or Present(P.ContactDepartment) or
-    Present(P.ContactTelephone) or Present(P.ContactElectronicMail);
+  { the UBL mapper writes the name, the address and the VAT identifier
+    only (identifiers and contact are reported as left out) }
+  Result := Present(P.Name) or Present(P.VATCompanyID) or AddressWritten(P.Address);
 end;
 
 function ContactWritten(AParty: TLandrixInvoiceAccountingParty): Boolean;
@@ -1580,21 +1608,86 @@ end;
   Dateiname eine fruehere schon hat. }
 function GermanDuplicateFilename(AInvoice: TLandrixInvoice): Boolean;
 var
-  I, K: TLandrixEInvoiceListIndex;
+  Names, Temp: array of TLandrixEInvoiceString;
+  I, N, Width, Lo, Mid, Hi, L, R, K: Integer;
   A: TLandrixInvoiceAttachment;
+  Seen130, Written: Boolean;
 begin
-  Result := True;
-  for I := 0 to AInvoice.Attachments.Count - 1 do
+  Result := False;
+  { the file names of the written binary objects (ReferenceWritten in one
+    pass: only the first 130 with an identifier is written), sorted }
+  Names := nil;
+  Temp := nil;
+  SetLength(Names, Integer(AInvoice.Attachments.Count));
+  N := 0;
+  Seen130 := False;
+  for I := 0 to Integer(AInvoice.Attachments.Count) - 1 do
   begin
     A := AInvoice.Attachments[I];
-    if not ReferenceWritten(AInvoice, I) or not A.ContainsBinaryObject or (A.Filename = '') then
-      Continue;
-    for K := 0 to I - 1 do
-      if ReferenceWritten(AInvoice, K) and AInvoice.Attachments[K].ContainsBinaryObject and
-         (AInvoice.Attachments[K].Filename = A.Filename) then
-        Exit;
+    Written := A.TypeCode <> iatc_50;
+    if A.TypeCode = iatc_130 then
+    begin
+      Written := Present(A.ID) and not Seen130;
+      if Present(A.ID) then
+        Seen130 := True;
+    end;
+    if Written and A.ContainsBinaryObject and (A.Filename <> '') then
+    begin
+      Names[N] := A.Filename;
+      Inc(N);
+    end;
   end;
-  Result := False;
+  SetLength(Temp, N);
+  Width := 1;
+  while Width < N do
+  begin
+    Lo := 0;
+    while Lo < N do
+    begin
+      Mid := Lo + Width;
+      if Mid > N then
+        Mid := N;
+      Hi := Mid + Width;
+      if Hi > N then
+        Hi := N;
+      L := Lo;
+      R := Mid;
+      for K := Lo to Hi - 1 do
+        if (L < Mid) and ((R >= Hi) or not (Names[R] < Names[L])) then
+        begin
+          Temp[K] := Names[L];
+          Inc(L);
+        end
+        else
+        begin
+          Temp[K] := Names[R];
+          Inc(R);
+        end;
+      Lo := Hi;
+    end;
+    for K := 0 to N - 1 do
+      Names[K] := Temp[K];
+    Width := Width * 2;
+  end;
+  for I := 1 to N - 1 do
+    if Names[I] = Names[I - 1] then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ XPath string-length: a surrogate pair is one character.
+  DE: XPath string-length: ein Ersatzpaar ist ein Zeichen. }
+function XPathLength(const AText: TLandrixEInvoiceString): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 1 to Length(AText) do
+    if (Ord(AText[I]) < $DC00) or (Ord(AText[I]) > $DFFF) or (I = 1) or (Ord(AText[I - 1]) < $D800) or
+       (Ord(AText[I - 1]) > $DBFF) then
+      Inc(Result);
 end;
 
 { DE-R-T02: the pattern ^([a-zA-Z])([a-zA-Z0-9+.-])+: of an absolute URL.
@@ -1668,13 +1761,13 @@ begin
       Result := (Raw = '50') and not (((Copy(ID, 1, 3) = '01#') or (Copy(ID, 1, 3) = '04#') or
         (Copy(ID, 1, 3) = '15#')) and (LandrixEInvoiceIsDigits(Account, 7) or LandrixEInvoiceIsDigits(Account, 8)));
     pr_DKR009:
-      Result := (Raw = '50') and ((Copy(ID, 1, 3) = '04#') or (Copy(ID, 1, 3) = '15#')) and (Length(ID) <> 19);
+      Result := (Raw = '50') and ((Copy(ID, 1, 3) = '04#') or (Copy(ID, 1, 3) = '15#')) and (XPathLength(ID) <> 19);
     pr_DKR010:
       Result := (Raw = '93') and not (((Copy(ID, 1, 3) = '71#') or (Copy(ID, 1, 3) = '73#') or
-        (Copy(ID, 1, 3) = '75#')) and (Length(Account) = 8));
+        (Copy(ID, 1, 3) = '75#')) and (XPathLength(Account) = 8));
     pr_DKR011:
       Result := (Raw = '93') and ((Copy(ID, 1, 3) = '71#') or (Copy(ID, 1, 3) = '75#')) and
-        not ((Length(ID) = 18) or (Length(ID) = 19));
+        not ((XPathLength(ID) = 18) or (XPathLength(ID) = 19));
     pr_SER007, pr_SER008, pr_SER009, pr_SER010:
       if (Code = '30') and (Account <> '') and
          (((AIndex in [pr_SER007, pr_SER010]) and
@@ -1685,11 +1778,11 @@ begin
           pr_SER007, pr_SER008:
             Result := not IsXPathNumber(Account);
           pr_SER009:
-            Result := not ((Length(LandrixEInvoiceNormalizeSpace(Account)) = 7) or
-              (Length(LandrixEInvoiceNormalizeSpace(Account)) = 8));
+            Result := not ((XPathLength(LandrixEInvoiceNormalizeSpace(Account)) = 7) or
+              (XPathLength(LandrixEInvoiceNormalizeSpace(Account)) = 8));
         else
-          Result := not ((Length(LandrixEInvoiceNormalizeSpace(Account)) >= 2) and
-            (Length(LandrixEInvoiceNormalizeSpace(Account)) <= 8));
+          Result := not ((XPathLength(LandrixEInvoiceNormalizeSpace(Account)) >= 2) and
+            (XPathLength(LandrixEInvoiceNormalizeSpace(Account)) <= 8));
         end;
     pr_SER011:
       Result := (Raw = '50') or (Raw = '56');
@@ -1707,12 +1800,8 @@ begin
       DE: cac:CardAccount nur mit Kartennummer (der UBL-Writer) }
     pr_DER0241:
       Result := InList(Code, '48 54 55') and not ((Group = pg_Card) and Present(APayment.FinancialAccount));
-    pr_DER0242:
-      Result := InList(Code, '48 54 55') and ((Account <> '') or Mandate);
     pr_DER0251:
       Result := (Code = '59') and not Mandate;
-    pr_DER0252:
-      Result := (Code = '59') and ((Account <> '') or ((Group = pg_Card) and Present(APayment.FinancialAccount)));
   else
     { the other rules are no payment rules }
     ;
@@ -1748,7 +1837,7 @@ begin
     if not PaymentWritten(P) or (PaymentCode(P) <> ACode) then
       Continue;
     Found := True;
-    if (PayeeAccount(P) <> '') and (Length(LandrixEInvoiceNormalizeSpace(PayeeAccount(P))) = 12) then
+    if (PayeeAccount(P) <> '') and (XPathLength(LandrixEInvoiceNormalizeSpace(PayeeAccount(P))) = 12) then
       Exit;
   end;
   Result := Found;
@@ -1912,7 +2001,7 @@ begin
       if (SellerRaw = 'SE') and Present(Seller.VATCompanyID) and (Copy(Seller.VATCompanyID, 1, 2) = 'SE') then
       begin
         if AIndex = pr_SER001 then
-          Result := Length(LandrixEInvoiceNormalizeSpace(Seller.VATCompanyID)) <> 14
+          Result := XPathLength(LandrixEInvoiceNormalizeSpace(Seller.VATCompanyID)) <> 14
         else
           Result := not IsXPathNumber(Copy(Seller.VATCompanyID, 3, 12));
       end;
@@ -1922,7 +2011,7 @@ begin
           pr_SER003:
             Result := not IsXPathNumber(Seller.CompanyID);
           pr_SER004:
-            Result := Length(LandrixEInvoiceNormalizeSpace(Seller.CompanyID)) <> 10;
+            Result := XPathLength(LandrixEInvoiceNormalizeSpace(Seller.CompanyID)) <> 10;
         else
           { u:checkSEOrgnr: digits only, the first ten checked }
           Result := not (LandrixEInvoiceIsDigits(LandrixEInvoiceNormalizeSpace(Seller.CompanyID), 0) and
@@ -1955,8 +2044,10 @@ begin
           pr_GRR0013:
             Result := not GreekDateValid(AInvoice, SegmentAt(ID, 2));
           pr_GRR0014:
+            { number() and xs:integer() drop the blanks around the value }
             Result := (LandrixEInvoiceNormalizeSpace(SegmentAt(ID, 3)) = '') or
-              not LandrixEInvoiceIsInteger(SegmentAt(ID, 3)) or (AmountSignOf(SegmentAt(ID, 3)) < 0);
+              not LandrixEInvoiceIsInteger(LandrixEInvoiceTrimXml(SegmentAt(ID, 3))) or
+              (AmountSignOf(LandrixEInvoiceTrimXml(SegmentAt(ID, 3))) < 0);
           pr_GRR0015:
             Result := not InList(SegmentAt(ID, 4), '1.1 1.6 2.1 2.4 5.1 5.2');
           pr_GRR0016:
@@ -2114,7 +2205,7 @@ begin
       Result := BothDE and not InList(TypeCode, '326 380 384 389 381 875 876 877');
     pr_DER018:
       Result := BothDE and not LandrixEInvoiceCashDiscountTextValid(TermsText(AInvoice));
-    pr_DER019, pr_DER020, pr_DER0231..pr_DER0252:
+    pr_DER019, pr_DER020, pr_DER0231..pr_DER0251:
       Result := BothDE and AnyPaymentViolated(AIndex, AInvoice);
     pr_DER022:
       Result := BothDE and GermanDuplicateFilename(AInvoice);

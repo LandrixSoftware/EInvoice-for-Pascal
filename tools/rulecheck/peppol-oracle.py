@@ -43,7 +43,8 @@ VEFA = "{http://difi.no/xsd/vefa/validator/1.0}"
 # LandrixEInvoiceCheck and LandrixEInvoiceCheckPeppol); not compared
 ALWAYS_MET = set(["PEPPOL-EN16931-R001", "PEPPOL-EN16931-R004", "PEPPOL-EN16931-R043", "PEPPOL-EN16931-R044",
                   "PEPPOL-EN16931-R051", "PEPPOL-EN16931-R080", "PEPPOL-EN16931-R100", "PEPPOL-EN16931-R101",
-                  "PEPPOL-EN16931-F001", "PEPPOL-EN16931-P0101", "DE-R-014", "DE-R-023-2"])
+                  "PEPPOL-EN16931-F001", "PEPPOL-EN16931-P0101", "DE-R-014", "DE-R-023-2",
+                  "DE-R-024-2", "DE-R-025-2"])
 
 sys.path.insert(0, HERE)
 oracle = __import__("rule-oracle")
