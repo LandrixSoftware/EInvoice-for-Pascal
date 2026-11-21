@@ -14,6 +14,7 @@
 
 { Checks of a hybrid invoice PDF (ZUGFeRD 2.5.2 / Factur-X 1.09.2), levels
   1 to 3. Level 1, PDF/A-3b: the rules of clauses 6.1 (file structure),
+  6.2 (graphics in part: not yet fonts and JPEG 2000 images, among others),
   6.3 to 6.5 (annotations, forms, actions), 6.6 (XMP metadata) and 6.8 to
   6.11 (embedded files, optional content,
   presentations, requirements) of LandrixEInvoicePdfARules on the raw syntax collected while the document
@@ -50,7 +51,8 @@
 
   DE: Pruefungen eines hybriden Rechnungs-PDFs (ZUGFeRD 2.5.2 / Factur-X
   1.09.2), Ebenen 1 bis 3. Ebene 1, PDF/A-3b: die Regeln der Abschnitte 6.1
-  (Dateistruktur), 6.3 bis 6.5 (Annotationen, Formulare, Aktionen), 6.6
+  (Dateistruktur), 6.2 (Grafik teilweise: unter anderem noch nicht
+  Schriften und JPEG-2000-Bilder), 6.3 bis 6.5 (Annotationen, Formulare, Aktionen), 6.6
   (XMP-Metadaten) und 6.8 bis 6.11 (eingebettete
   Dateien, optionale Inhalte, Praesentationen, Anforderungen) aus
   LandrixEInvoicePdfARules auf der rohen Syntax, die

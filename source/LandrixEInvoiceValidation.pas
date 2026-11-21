@@ -24,7 +24,8 @@
   marked Predicted). Without a configuration an XML document gets no
   verdict (Incomplete), a PDF only a rejection by levels 2 and 3; reading
   and the rule check still run. PDF/A (level 1, so far the rules of clauses
-  6.1, 6.3 to 6.6 and 6.8 to 6.11) is
+  6.1, 6.2 in part (not yet fonts and JPEG 2000 images, among others), 6.3
+  to 6.6 and 6.8 to 6.11) is
   reported with its findings and status but does not count for the
   verdict. The advisory checks (LandrixEInvoiceAdvisory, Options.Advisory)
   run on the invoice as read and never count for the verdict either. One
@@ -43,8 +44,8 @@
   als Predicted markiert). Ohne Konfiguration bekommt ein XML-Dokument
   kein Urteil (Incomplete), ein PDF nur eine Ablehnung durch die Ebenen 2
   und 3; Lesen und Regelpruefung laufen trotzdem. PDF/A (Ebene 1, bisher
-  die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis
-  6.11) wird mit Befunden und Status gemeldet,
+  die Regeln der Abschnitte 6.1, 6.2 teilweise (unter anderem noch nicht
+  Schriften und JPEG-2000-Bilder), 6.3 bis 6.6 und 6.8 bis 6.11) wird mit Befunden und Status gemeldet,
   zaehlt aber nicht fuer das Urteil. Die Hinweispruefungen
   (LandrixEInvoiceAdvisory, Options.Advisory) laufen auf der gelesenen
   Rechnung und zaehlen ebenfalls nie fuer das Urteil. Eine flache
@@ -438,8 +439,10 @@ type
       (a hybrid PDF if %PDF- is within its first 1024 bytes and it does not
       start like XML, XML otherwise), fills AResult
       and returns AResult.Verdict (see Verdict). For XML: with
-      Options.Configuration the verdict is the KoSIT assessment; without it
-      KoSIT stays evr_NotRun and the verdict is ev_Incomplete. Reading and
+      Options.Configuration, or with configurations registered with
+      AddConfiguration (chosen per document), the verdict is the KoSIT
+      assessment; with neither KoSIT stays evr_NotRun and the verdict is
+      ev_Incomplete. Reading and
       the own rule check run on the same bytes unless KoSIT finds the
       document not well-formed; without KoSIT, reading reports a document
       that is not well-formed. For a PDF: levels 2 and 3 first, then the
@@ -455,8 +458,10 @@ type
       zum Ende (ein hybrides PDF, wenn %PDF- in seinen ersten 1024 Bytes
       steht und es nicht wie XML beginnt, sonst XML),
       fuellt AResult und liefert AResult.Verdict (siehe Verdict). Bei XML:
-      mit Options.Configuration ist das Urteil die Bewertung von KoSIT;
-      ohne bleibt KoSIT evr_NotRun und das Urteil ist ev_Incomplete. Lesen
+      mit Options.Configuration oder mit per AddConfiguration
+      registrierten Konfigurationen (Wahl je Dokument) ist das Urteil die
+      Bewertung von KoSIT; ohne beides bleibt KoSIT evr_NotRun und das
+      Urteil ist ev_Incomplete. Lesen
       und eigene Regelpruefung laufen auf denselben Bytes, ausser KoSIT
       findet das Dokument nicht wohlgeformt; ohne KoSIT meldet das Lesen
       ein nicht wohlgeformtes Dokument. Bei einem PDF: zuerst die Ebenen 2

@@ -57,7 +57,7 @@ gelesen hat, steht in `Doc.Diagnostics`. Siehe [Lesen](reading.md).
 | `Extended` | `TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_Extended)` |
 | `XRechnung` | `TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_XRechnung)` (= XRechnung 3.0 CII) |
 | `XRechnung1`, `EReporting` | keines |
-| Format `UBL` (Profil XRechnung) | `TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL)` oder `TLandrixEInvoiceTargets.PeppolBIS('3.0')` |
+| Format `UBL` (Profil XRechnung) | `TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL)` (`TLandrixEInvoiceTargets.PeppolBIS('3.0')` schreibt stattdessen Peppol BIS, eine andere Spezifikationskennung) |
 
 Geschrieben wird nur ZUGFeRD 2.5 / Factur-X 1.09: `ZUGFeRD('2.0', ...)` oder `('2.3', ...)` ergibt
 ein Ziel, das das Schreiben ablehnt (`ELandrixEInvoiceTargetError`). Wer weiterhin ZUGFeRD 1.0,
@@ -82,8 +82,11 @@ holt nur das XML heraus und liefert False mit dem Grund in seiner Info. Die Bibl
 PDF: Für ein hybrides PDF bettet Ihre PDF-Bibliothek das XML unter dem Anhangsnamen des Ziels ein
 (`Spec.AttachmentFileName`: `factur-x.xml`, `xrechnung.xml` bei XRechnung CII; XRechnung UBL und
 Peppol BIS haben keinen), mit den
-XMP-Metadaten von `LandrixEInvoicePdfXmpDescription(Target)`. `Spec` ist `Doc.Info.Spec` eines
-gelesenen Dokuments oder kommt aus `LandrixEInvoiceFindSpec(Target, Spec)`.
+XMP-Metadaten von `LandrixEInvoicePdfXmpDescription(Target)` in `rdf:RDF` und dem
+Erweiterungsschema `LandrixEInvoicePdfXmpSchema` (ein `rdf:li`) im `rdf:Bag` von
+`pdfaExtension:schemas` (ohne es scheitert das PDF an BR-HYBRID-03; mit Verkäufer und Käufer in
+Deutschland ist das eine Warnung, BR-FX-DE-03). `Spec` ist `Doc.Info.Spec` eines gelesenen Dokuments oder kommt aus
+`LandrixEInvoiceFindSpec(Target, Spec)`.
 
 ## Unterschiede im Modell
 

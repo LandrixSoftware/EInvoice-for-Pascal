@@ -78,4 +78,7 @@ ZUGFeRD- und Factur-X-PDFs tragen die Rechnung als eingebettete Datei. `LoadFrom
 `LoadFromStream` erkennen ein PDF am Inhalt und lesen die eingebettete Rechnung;
 `Info.Source` ist `eso_Pdf`, `Info.PdfAttachmentName` der Name der eingebetteten Datei und
 `Info.Pdf` die Angaben der Extraktion. Alle eingebetteten Dateien (auch Anhänge der Rechnung)
-liefert `TLandrixEInvoicePdfExtractor` in der Unit `LandrixEInvoicePdf`.
+liefert `TLandrixEInvoicePdfExtractor` in der Unit `LandrixEInvoicePdf`; eine Datei, deren Stream
+sich nicht dekodieren lässt oder die eine Grenze überschreitet, fehlt dann, gezählt in
+`Info.Pdf.SkippedAttachments`; `Info.Pdf.Warning` nennt die erste (eine Grenze beim Gang durch
+die Dateispezifikationen gibt eine Warnung ohne Zählung).

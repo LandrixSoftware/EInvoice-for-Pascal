@@ -66,7 +66,7 @@ The version may carry a patch level (`'3.0.2'`); only major and minor count.
 
 ```pascal
 uses
-  LandrixEInvoiceTypes, LandrixEInvoiceCodes, LandrixEInvoiceSpecs,
+  SysUtils, LandrixEInvoiceTypes, LandrixEInvoiceCodes, LandrixEInvoiceSpecs,
   LandrixEInvoiceInvoice, LandrixEInvoice;
 
 var
@@ -84,7 +84,7 @@ begin
   finally
     Invoice.Free;
   end;
-end;
+end.
 ```
 
 The complete program is [examples/WriteXRechnung](../examples/WriteXRechnung/WriteXRechnung.dpr).

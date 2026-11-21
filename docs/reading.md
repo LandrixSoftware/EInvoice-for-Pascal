@@ -76,4 +76,7 @@ ZUGFeRD and Factur-X PDFs carry the invoice as an embedded file. `LoadFromFile` 
 `LoadFromStream` detect a PDF by its content and read the embedded invoice; `Info.Source` is
 `eso_Pdf`, `Info.PdfAttachmentName` the name of the embedded file and `Info.Pdf` the facts of
 the extraction. All embedded files (attachments of the invoice too) are available through
-`TLandrixEInvoicePdfExtractor` in unit `LandrixEInvoicePdf`.
+`TLandrixEInvoicePdfExtractor` in unit `LandrixEInvoicePdf`; a file whose stream cannot be decoded
+or that exceeds a limit is left out and counted in `Info.Pdf.SkippedAttachments`;
+`Info.Pdf.Warning` names the first one (a limit of the walk through the file specifications
+gives a warning without a count).

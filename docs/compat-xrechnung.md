@@ -62,8 +62,8 @@ The Java helper is not needed any more; validation and display run in the progra
 |---|---|
 | `Validate`, `ValidateFile` (KoSIT validator, XML and HTML report) | `TLandrixEInvoiceDocumentValidator` with the KoSIT files of `addons/kosit/install-kosit.ps1`; reports `TLandrixEInvoiceValidationReportWriter` (XML) and `TLandrixEInvoiceValidationHtmlWriter` (HTML) |
 | `Visualize`, `VisualizeFile`, `PeppolVisualize`, `PeppolVisualizeFile`, `MustangVisualizeFile` (HTML) | `TLandrixEInvoiceRenderHtmlWriter`, `TLandrixEInvoiceRenderMarkdownWriter`: the library's own layout, English or German |
-| `MustangValidateFile` | partly: the PDF check of `TLandrixEInvoiceDocumentValidator` (embedding and XMP metadata); PDF/A-3b only in part (the rules of clauses 6.1, 6.3 to 6.6 and 6.8 to 6.11: file structure, annotations, forms, actions, XMP metadata, embedded files, optional content, presentations, requirements; shown, not part of the verdict) |
-| `VisualizeAsPdf`, `VisualizeFileAsPdf`, `MustangVisualizeFileAsPdf`, `MustangCombinePdfAndXML`, `MustangUpgradeToPDFA3Only` | none: the library does not write PDF. It gives the XMP metadata and the attachment name for a PDF library of your choice (`ZUGFeRDPdfXmpInfo`, `ZUGFeRDPdfFilename` of the adapter; `LandrixEInvoicePdfXmpDescription(Target)` and `Spec.AttachmentFileName` in `LandrixEInvoiceSpecs`) |
+| `MustangValidateFile` | partly: the PDF check of `TLandrixEInvoiceDocumentValidator` (embedding and XMP metadata); PDF/A-3b only in part (the rules of clauses 6.1, 6.2, 6.3 to 6.6 and 6.8 to 6.11: file structure, graphics in part (not yet fonts and JPEG 2000 images), annotations, forms, actions, XMP metadata, embedded files, optional content, presentations, requirements; shown, not part of the verdict) |
+| `VisualizeAsPdf`, `VisualizeFileAsPdf`, `MustangVisualizeFileAsPdf`, `MustangCombinePdfAndXML`, `MustangUpgradeToPDFA3Only` | none: the library does not write PDF. It gives the XMP metadata and the attachment name for a PDF library of your choice (`ZUGFeRDPdfXmpInfo`, `ZUGFeRDPdfFilename` of the adapter; `LandrixEInvoicePdfXmpDescription(Target)` with the extension schema `LandrixEInvoicePdfXmpSchema` and `Spec.AttachmentFileName` in `LandrixEInvoiceSpecs`) |
 | `ValitoolValidate`, `ValitoolValidateDirectory` | none |
 
 The configuration methods of the helper (`SetJavaRuntimeEnvironmentPath`, `SetValidatorLibPath` and
@@ -140,7 +140,7 @@ The model:
 | `PeppolBillingVersion_30` | `TLandrixEInvoiceTargets.PeppolBIS('3.0')` |
 | `LoadFromFile(Inv, Name, Error)` | `Doc := TLandrixEInvoice.LoadFromFile(Name)` (exceptions instead of `Error`); the invoice is `Doc.Invoice`, `Doc.DetachInvoice` hands it over; free `Doc` (`try ... finally Doc.Free; end`) |
 | `GetXRechnungVersion(Name)` | after reading: `if Doc.Info.SpecFound then Target := Doc.Info.Spec.Target` |
-| `ConsistencyCheck(Inv, Version, Code)` | `TLandrixEInvoice.Check(Inv, Target) = 0` (all business rules, with diagnostics) |
+| `ConsistencyCheck(Inv, Version, Code)` | `TLandrixEInvoice.Check(Inv, Target, [], Diagnostics) = 0` (all business rules, findings in `Diagnostics`); the checks of the old codes (LX-CC-01 to LX-CC-12) are not part of it: keep `ConsistencyCheck` where you rely on them |
 
 The facade checks the business rules before writing and refuses an invalid invoice; see
 [Writing](writing.md). The compatibility layer writes with `[eio_NoRuleCheck,

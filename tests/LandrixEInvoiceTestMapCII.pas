@@ -926,7 +926,7 @@ begin
 end;
 
 { BT-7 and BT-8 when writing: BT-8 once in UNTDID 2475, an unknown code
-  unchanged, BT-8 left out next to BT-7 (BR-CO-3), both left out without a
+  unchanged, BT-8 left out next to BT-7 (BR-CO-03), both left out without a
   VAT breakdown. }
 procedure TestTaxPointDateWrite;
 var
@@ -970,7 +970,7 @@ begin
     Invoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
     Xml := MapToCIIXml(Invoice, Target, D, nil);
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/ram:ApplicableTradeTax/ram:DueDateTypeCode'),
-      'BT-8 next to BT-7 left out (BR-CO-3)');
+      'BT-8 next to BT-7 left out (BR-CO-03)');
     CheckEquals(0, Occurrences('<ram:DueDateTypeCode>', Xml), 'no BT-8 next to BT-7');
     CheckEquals(1, Occurrences('<ram:TaxPointDate>', Xml), 'BT-7 written once');
     D.Clear;

@@ -56,7 +56,7 @@ with a target from `TLandrixEInvoiceTargets`; `AOptions` (default `[]`) and `ADi
 | `Extended` | `TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_Extended)` |
 | `XRechnung` | `TLandrixEInvoiceTargets.ZUGFeRD('2.5', epr_XRechnung)` (= XRechnung 3.0 CII) |
 | `XRechnung1`, `EReporting` | none |
-| format `UBL` (XRechnung profile) | `TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL)`, or `TLandrixEInvoiceTargets.PeppolBIS('3.0')` |
+| format `UBL` (XRechnung profile) | `TLandrixEInvoiceTargets.XRechnung('3.0', esy_UBL)` (`TLandrixEInvoiceTargets.PeppolBIS('3.0')` writes Peppol BIS instead, another specification identifier) |
 
 Written is ZUGFeRD 2.5 / Factur-X 1.09 only: `ZUGFeRD('2.0', ...)` or `('2.3', ...)` gives a target
 that writing refuses (`ELandrixEInvoiceTargetError`). Who must still send ZUGFeRD 1.0, 2.0, 2.3,
@@ -81,8 +81,10 @@ only extracts the XML and returns False with the reason in its info. The library
 PDF: for a hybrid PDF, your PDF library embeds the XML under the attachment name of the target
 (`Spec.AttachmentFileName`: `factur-x.xml`, `xrechnung.xml` for XRechnung CII; XRechnung UBL and Peppol
 BIS have none) with the XMP
-metadata of `LandrixEInvoicePdfXmpDescription(Target)`. `Spec` is `Doc.Info.Spec` of a read
-document or comes from `LandrixEInvoiceFindSpec(Target, Spec)`.
+metadata of `LandrixEInvoicePdfXmpDescription(Target)` in `rdf:RDF` and the extension schema
+`LandrixEInvoicePdfXmpSchema` (one `rdf:li`) in the `rdf:Bag` of `pdfaExtension:schemas` (without
+it the PDF fails BR-HYBRID-03; with seller and buyer in Germany that is a warning, BR-FX-DE-03).
+`Spec` is `Doc.Info.Spec` of a read document or comes from `LandrixEInvoiceFindSpec(Target, Spec)`.
 
 ## Differences in the model
 

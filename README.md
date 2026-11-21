@@ -21,9 +21,10 @@ ZUGFeRD / Factur-X, Peppol BIS Billing, UBL and CII.
   - `TLandrixInvoice`: the semantic invoice model (business terms `BT-...` / `BG-...`),
     independent of the syntax. This is the model known as `TInvoice` from
     XRechnung-for-Delphi.
-  - `TLandrixCII...` and `TLandrixUBL...`: syntax models generated from the schemas, for
-    everything the semantic model does not cover: CII with everything Factur-X EXTENDED has,
-    UBL with the elements of EN 16931, XRechnung and Peppol (an extensible positive list).
+  - `TLandrixCII...`: the CII syntax model generated from the schema, with everything Factur-X
+    EXTENDED has, for what the semantic model does not cover.
+  - `TLandrixUBL...`: the UBL syntax model generated from the schema, with the elements of
+    EN 16931, XRechnung and Peppol (an extensible positive list).
 - Validation without Java: documents are checked against the official KoSIT configurations
   (XML schema and Schematron) natively, with the same verdict as the KoSIT validator (one
   documented Peppol exception, see the validation guide); the
@@ -61,7 +62,7 @@ would write. Each family is compared with an official reference:
 
 | Target | Rules | Compared with |
 |---|---|---|
-| all EN 16931 targets | BR-01 to BR-65, BR-CO-..., the VAT category rules BR-S-... to BR-AG-... | KoSIT XRechnung test suite |
+| all EN 16931 targets | BR-01 to BR-65 (except those the writers always meet, see [Checking](docs/checking.md)), BR-CO-..., the VAT category rules BR-S-... to BR-AG-... | KoSIT XRechnung test suite |
 | XRechnung 3.0 | BR-DE-..., BR-DEX-09, the code lists BR-CL-01 to BR-CL-26, the PEPPOL-EN16931 rules of its schematron | KoSIT XRechnung test suite |
 | ZUGFeRD / Factur-X 1.09 | the EN 16931 rules per profile, BR-FXEXT-... (EXTENDED), the 366 code asserts FX-SCH-A-... | KoSIT validator on the ZUGFeRD examples and mutants |
 | Peppol BIS 3.0.22 | the whole Peppol schematron: PEPPOL-EN16931-..., PEPPOL-COMMON-... (identifier check digits), the national rules of DE, DK, GR, IS, IT, NL, NO and SE | OpenPEPPOL unit tests |
@@ -99,11 +100,11 @@ its level in a comment before its `unit` line (`API: stable` or `API: internal`)
   still change before 1.0): `LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
   `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceReportHtml`,
   `LandrixEInvoiceRenderHtml`, `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`,
-  `LandrixEInvoiceKositReport`, `LandrixEInvoiceKositVisualization`.
+  `LandrixEInvoiceKositReport`, `LandrixEInvoiceKositVisualization`, `LandrixEInvoiceAdvisory`.
 - **Internal** (may change in any release): `LandrixEInvoiceMapCII`, `LandrixEInvoiceMapUBL`,
   `LandrixEInvoiceCheck`, `LandrixEInvoiceCheckPeppol`, `LandrixEInvoiceIdentifiers`,
   `LandrixEInvoiceCodeNames`, `LandrixEInvoiceRenderLabels`, `LandrixEInvoiceRender`,
-  `LandrixEInvoiceRenderWalk`, `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceSubLines`, `LandrixEInvoicePdfObjects`, `LandrixEInvoicePdfSyntax`, `LandrixEInvoicePdfARules`, `LandrixEInvoicePdfCheck`, `LandrixEInvoiceLexical`, `LandrixEInvoiceExact`, `LandrixEInvoiceFiles`,
+  `LandrixEInvoiceRenderWalk`, `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceSubLines`, `LandrixEInvoicePdfObjects`, `LandrixEInvoicePdfSyntax`, `LandrixEInvoicePdfARules`, `LandrixEInvoicePdfCheck`, `LandrixEInvoicePdfContent`, `LandrixEInvoicePdfXmp`, `LandrixEInvoiceLexical`, `LandrixEInvoiceExact`, `LandrixEInvoiceFiles`,
   `LandrixEInvoiceCIIProfiles`, `LandrixEInvoiceCIICodeRules`, and the
   readers and writers `LandrixEInvoiceCIIReader`, `LandrixEInvoiceCIIWriter`,
   `LandrixEInvoiceUBLReader`, `LandrixEInvoiceUBLWriter`. What they offer for reading, writing,

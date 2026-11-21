@@ -904,7 +904,7 @@ begin
 end;
 
 { BT-8 alone goes into the invoice period; next to BT-7 it is left out
-  (BR-CO-3). A credit note carries BT-7 and BT-111 like an invoice. }
+  (BR-CO-03). A credit note carries BT-7 and BT-111 like an invoice. }
 procedure TestTaxPointDate;
 var
   Invoice, Back: TLandrixInvoice;
@@ -931,7 +931,7 @@ begin
     Invoice.TaxPointDate.SetValue(EncodeDate(2026, 10, 1));
     Text := LandrixXmlUtf8ToString(MapAndWrite(Invoice, Spec, D));
     CheckEquals(1, CountKind(D, edk_NotAllowed, '/cac:InvoicePeriod/cbc:DescriptionCode'),
-      'BT-8 next to BT-7 left out (BR-CO-3)');
+      'BT-8 next to BT-7 left out (BR-CO-03)');
     Check(Pos('<cbc:DescriptionCode>', Text) = 0, 'no BT-8 next to BT-7');
     Check(Pos('<cbc:TaxPointDate>2026-10-01</cbc:TaxPointDate>', Text) > 0, 'BT-7 written');
     D.Clear;

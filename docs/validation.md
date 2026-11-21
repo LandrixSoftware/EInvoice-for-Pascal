@@ -22,10 +22,10 @@ configuration.
 
 > **Preview.** Document validation, the reports and the invoice rendering live in units marked
 > `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
-> `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
-> `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`, `LandrixEInvoiceKositReport`,
-> `LandrixEInvoiceKositVisualization`). They work and are tested, but names and signatures may change
-> before 1.0. [examples/Workbench](../examples/Workbench/WorkbenchMain.pas) uses all of them.
+> `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceReportHtml`,
+> `LandrixEInvoiceRenderHtml`, `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`,
+> `LandrixEInvoiceKositReport`, `LandrixEInvoiceKositVisualization`, `LandrixEInvoiceAdvisory`). They work and are tested, but names and signatures may change
+> before 1.0. [examples/Workbench](../examples/Workbench/WorkbenchMain.pas) uses most of them.
 
 ## Getting the KoSIT files
 
@@ -120,8 +120,8 @@ begin
 
     case Validator.ValidateFile('invoice.xml', Res) of    { XML or ZUGFeRD / Factur-X PDF }
       ev_Accepted: WriteLn('accepted (', string(Res.ScenarioName), ')');
-      ev_Rejected: WriteLn('rejected');
-      ev_Incomplete: WriteLn('no verdict: no configuration registered');
+      ev_Rejected: WriteLn('rejected');                   { also: no registered configuration matches }
+      ev_Incomplete: WriteLn('no verdict (no configuration, or the embedding or XMP check is incomplete)');
     end;
     for I := 0 to Res.FindingCount - 1 do
       if not Res[I].Predicted then
@@ -182,8 +182,10 @@ end.
 
 - `Res.Status[Part]` per part: `evp_Read` (reading through the facade), `evp_KoSIT`,
   `evp_ModelCheck` (the library's own rules), `evp_PdfEmbedding` and `evp_PdfMetadata` (PDF
-  levels 2 and 3), `evp_PdfA` (PDF/A-3b, level 1: so far the rules of clauses 6.1 (file structure), 6.3 to 6.5
-  (annotations, forms, actions), 6.6 (XMP metadata: packets, properties, extension schemas, PDF/A
+  levels 2 and 3), `evp_PdfA` (PDF/A-3b, level 1: so far the rules of clauses 6.1 (file structure), 6.2
+  (graphics in part: not yet fonts, JPEG 2000 images, overprint, Separation consistency, the
+  blending colour space of transparency groups and implicit resources), 6.3 to 6.5 (annotations, forms,
+  actions), 6.6 (XMP metadata: packets, properties, extension schemas, PDF/A
   identification) and 6.8 to 6.11 (embedded
   files, optional content, presentations, requirements);
   `evr_Failed` on a violation, otherwise `evr_Incomplete`, as not every PDF/A rule is implemented;
@@ -311,7 +313,7 @@ The KoSIT XRechnung visualization is available too, run with the XSLT engine of 
 the XR form and an HTML page, the same as with Saxon, byte for byte.
 
 ```pascal
-uses LandrixEInvoiceKositVisualization;
+uses LandrixEInvoiceReportHtml, LandrixEInvoiceKositVisualization;
 
 Viz := TLandrixEInvoiceKositVisualizer.Create;
 try

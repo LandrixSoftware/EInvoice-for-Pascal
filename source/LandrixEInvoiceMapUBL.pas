@@ -819,12 +819,12 @@ begin
   if FInvoice.TaxPointDate.HasValue then
   begin
     FDoc.TaxPointDate^ := LandrixEInvoiceDateToUBL(FInvoice.TaxPointDate.Value);
-    { BR-CO-3: BT-7 and BT-8 are mutually exclusive; the date wins.
-      DE: BR-CO-3: BT-7 und BT-8 schliessen sich aus; das Datum gewinnt. }
+    { BR-CO-03: BT-7 and BT-8 are mutually exclusive; the date wins.
+      DE: BR-CO-03: BT-7 und BT-8 schliessen sich aus; das Datum gewinnt. }
     if Present(PointCode) then
     begin
       Report(edk_NotAllowed, FDoc.Path + '/cac:InvoicePeriod/cbc:DescriptionCode', 'VAT point date code ' +
-        PointCode + ' (BT-8) left out: the VAT point date (BT-7) is set (BR-CO-3)', eds_Warning);
+        PointCode + ' (BT-8) left out: the VAT point date (BT-7) is set (BR-CO-03)', eds_Warning);
       PointCode := '';
     end;
   end;

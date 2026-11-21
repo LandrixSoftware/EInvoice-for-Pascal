@@ -29,6 +29,15 @@ Fehler, bei denen `SaveTo*` verweigern würde. Überladungen gibt es für die dr
   aufnehmen kann (`edk_NotAllowed`), fehlender Pflichtinhalt (`edk_MissingElement`), Werte,
   die sich nicht umwandeln lassen.
 
+Regeln, die die Writer beim Abbilden einer `TLandrixInvoice` immer einhalten (das Modell kann
+nicht aufnehmen, was sie verbieten, oder der Writer leitet den Wert ab), haben keine Zeile;
+`Check` und `eio_CheckOnRead` melden sie daher nicht. Der Kopf von
+`source/LandrixEInvoiceCheck.pas` nennt sie (die Peppol-Regeln der Kopf von
+`source/LandrixEInvoiceCheckPeppol.pas`). Einige solcher Regeln behalten eine Zeile, weil das
+Modell Daten halten kann, die der Writer verwerfen würde (etwa BR-CO-03). Ein Syntaxmodell, das
+Sie selbst füllen und direkt prüfen, deckt diese Zusage nicht ab. Für ein fremdes Dokument prüft der
+Validator sie an der Datei selbst.
+
 Die Regelprüfung sagt voraus, was der KoSIT-Validator für das geschriebene Dokument melden
 würde. Sie ersetzt den Validator nicht: Schema- und Schematron-Prüfung der offiziellen
 Konfiguration bleiben der Maßstab, und die Bibliothek führt sie ebenfalls aus, ohne Java

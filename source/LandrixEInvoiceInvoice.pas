@@ -814,10 +814,17 @@ type
     { BT-34/BT-49 electronic address, required. DE: BT-34/BT-49
       elektronische Adresse, Pflicht. }
     ElectronicAddressSellerBuyer: TLandrixEInvoiceString;
-    { BT-34-1/BT-49-1 scheme of the electronic address, required: EM email
-      (not with Peppol, https://docs.peppol.eu/poacc/billing/3.0/codelist/eas/),
-      9930 Peppol ID. DE: BT-34-1/BT-49-1 Schema der elektronischen Adresse,
-      Pflicht: EM E-Mail (nicht bei Peppol), 9930 Peppol-ID. }
+    { BT-34-1/BT-49-1 scheme of the electronic address: the EAS code under
+      which the address is registered (with Peppol the scheme part of the
+      participant ID, https://docs.peppol.eu/poacc/billing/3.0/codelist/eas/),
+      e.g. 9930 German VAT number, 0088 GLN, 0204 Leitweg-ID, EM email (not
+      with Peppol). Empty with an address: the writers use EM where the
+      target allows it.
+      DE: BT-34-1/BT-49-1 Schema der elektronischen Adresse: der EAS-Code,
+      unter dem die Adresse registriert ist (bei Peppol der Schemateil der
+      Teilnehmer-ID), z. B. 9930 deutsche USt-IdNr., 0088 GLN, 0204
+      Leitweg-ID, EM E-Mail (nicht bei Peppol). Leer bei gesetzter Adresse:
+      die Writer setzen EM, wo das Ziel es erlaubt. }
     ElectronicAddressSellerBuyerSchemeID: TLandrixEInvoiceString;
   public
     constructor Create;
@@ -1118,9 +1125,9 @@ type
       Umsatzsteuer. }
     TaxCurrencyCode: TLandrixEInvoiceString;
     { BT-7 VAT point date, if it differs from the issue date; excludes BT-8
-      (BR-CO-3). CII carries it in the first VAT breakdown.
+      (BR-CO-03). CII carries it in the first VAT breakdown.
       DE: BT-7 Steuerdatum, wenn es vom Rechnungsdatum abweicht; schliesst
-      BT-8 aus (BR-CO-3). CII traegt es in der ersten
+      BT-8 aus (BR-CO-03). CII traegt es in der ersten
       Steueraufschluesselung. }
     TaxPointDate: TLandrixEInvoiceDate;
     { BT-8 VAT point date code, UNTDID 2005: 3 issue date, 35 delivery date,

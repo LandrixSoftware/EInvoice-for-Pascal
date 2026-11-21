@@ -22,11 +22,11 @@ Konfiguration veröffentlicht.
 
 > **Vorschau.** Dokumentvalidierung, Berichte und Darstellung der Rechnung liegen in Units mit
 > der Markierung `API: internal` (`LandrixEInvoiceValidator`, `LandrixEInvoiceValidation`,
-> `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceRenderHtml`,
-> `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`, `LandrixEInvoiceKositReport`,
-> `LandrixEInvoiceKositVisualization`). Sie funktionieren und sind getestet, Namen und Signaturen können
+> `LandrixEInvoiceValidationReport`, `LandrixEInvoiceValidationHtml`, `LandrixEInvoiceReportHtml`,
+> `LandrixEInvoiceRenderHtml`, `LandrixEInvoiceRenderMarkdown`, `LandrixEInvoiceKositReportInput`,
+> `LandrixEInvoiceKositReport`, `LandrixEInvoiceKositVisualization`, `LandrixEInvoiceAdvisory`). Sie funktionieren und sind getestet, Namen und Signaturen können
 > sich aber bis 1.0 noch ändern. [examples/Workbench](../../examples/Workbench/WorkbenchMain.pas) nutzt
-> sie alle.
+> die meisten davon.
 
 ## Die KoSIT-Dateien besorgen
 
@@ -122,8 +122,8 @@ begin
 
     case Validator.ValidateFile('rechnung.xml', Res) of   { XML oder ZUGFeRD-/Factur-X-PDF }
       ev_Accepted: WriteLn('angenommen (', string(Res.ScenarioName), ')');
-      ev_Rejected: WriteLn('abgelehnt');
-      ev_Incomplete: WriteLn('kein Urteil: keine Konfiguration registriert');
+      ev_Rejected: WriteLn('abgelehnt');                   { auch: keine registrierte Konfiguration passt }
+      ev_Incomplete: WriteLn('kein Urteil (keine Konfiguration, oder die Prüfung von Einbettung oder XMP unvollständig)');
     end;
     for I := 0 to Res.FindingCount - 1 do
       if not Res[I].Predicted then
@@ -185,8 +185,10 @@ end.
 
 - `Res.Status[Teil]` je Teil: `evp_Read` (Lesen über die Fassade), `evp_KoSIT`, `evp_ModelCheck`
   (die eigenen Regeln der Bibliothek), `evp_PdfEmbedding` und `evp_PdfMetadata` (PDF-Ebenen 2 und
-  3), `evp_PdfA` (PDF/A-3b, Ebene 1: bisher die Regeln der Abschnitte 6.1 (Dateistruktur), 6.3
-  bis 6.5 (Annotationen, Formulare, Aktionen), 6.6 (XMP-Metadaten: Pakete, Eigenschaften,
+  3), `evp_PdfA` (PDF/A-3b, Ebene 1: bisher die Regeln der Abschnitte 6.1 (Dateistruktur), 6.2
+  (Grafik teilweise: noch nicht Schriften, JPEG-2000-Bilder, Überdrucken, Separation-Konsistenz,
+  der Mischfarbraum von Transparenzgruppen und implizite Ressourcen), 6.3 bis 6.5 (Annotationen,
+  Formulare, Aktionen), 6.6 (XMP-Metadaten: Pakete, Eigenschaften,
   Erweiterungsschemas, PDF/A-Kennung) und 6.8 bis 6.11
   (eingebettete Dateien, optionale Inhalte, Präsentationen, Anforderungen);
   `evr_Failed` bei einem Verstoß, sonst `evr_Incomplete`, weil nicht jede PDF/A-Regel umgesetzt
@@ -319,7 +321,7 @@ LandrixXML (Modul `visualization` des Installers): Eine UBL-Rechnung, UBL-Gutsch
 CII-Rechnung wird zur XR-Form und zu einer HTML-Seite, wie mit Saxon, Byte für Byte.
 
 ```pascal
-uses LandrixEInvoiceKositVisualization;
+uses LandrixEInvoiceReportHtml, LandrixEInvoiceKositVisualization;
 
 Viz := TLandrixEInvoiceKositVisualizer.Create;
 try

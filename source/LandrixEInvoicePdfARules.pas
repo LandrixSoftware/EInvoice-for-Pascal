@@ -15,7 +15,9 @@
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.2 (graphics: content
   stream operators, graphics states, rendering intents, images, XObjects,
   blend modes, output intents, device colour spaces, ICC input profiles and
-  DeviceN colourants; not yet overprint, Separation consistency and fonts),
+  DeviceN colourants; not yet overprint, Separation consistency, fonts,
+  JPEG 2000 images, the blending colour space of transparency groups and
+  implicit resources),
   6.3 (annotations),
   6.4 (interactive forms), 6.5 (actions), 6.6 (XMP metadata: packets,
   properties, extension schemas, PDF/A identification), 6.8
@@ -42,7 +44,8 @@
   Operatoren in Content-Streams, Grafikzustaende, Rendering-Intents, Bilder,
   XObjects, Blend-Modes, Output-Intents, Geraetefarbraeume,
   ICC-Eingangsprofile und DeviceN-Farbmittel; noch nicht Ueberdrucken,
-  Separation-Konsistenz und Schriften),
+  Separation-Konsistenz, Schriften, JPEG-2000-Bilder, der Mischfarbraum
+  von Transparenzgruppen und implizite Ressourcen),
   6.3 (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
   (XMP-Metadaten: Pakete, Eigenschaften, Erweiterungsschemas,
   PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10
@@ -85,10 +88,11 @@ uses
   LandrixEInvoicePdfXmp;
 
 type
-  { The rules of clauses 6.1, 6.2 (without colour and fonts), 6.3 to 6.6
+  { The rules of clauses 6.1, 6.2 (in part, see the unit header), 6.3 to 6.6
     and 6.8 to 6.11 in the veraPDF profile PDF/A-3B, named after clause and
     test number.
-    DE: Die Regeln der Abschnitte 6.1, 6.2 (ohne Farbe und Schriften), 6.3
+    DE: Die Regeln der Abschnitte 6.1, 6.2 (teilweise, siehe Kopf der
+    Unit), 6.3
     bis 6.6 und 6.8 bis 6.11 im veraPDF-Profil PDF/A-3B,
     benannt nach Abschnitt und Testnummer. }
   TLandrixEInvoicePdfARule = (

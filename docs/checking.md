@@ -27,6 +27,14 @@ Errors := TLandrixEInvoice.Check(Invoice, Target, [], Diagnostics);
   (`edk_NotAllowed`), required content that is missing (`edk_MissingElement`), values that
   cannot be converted.
 
+Rules the writers always meet when they map a `TLandrixInvoice` (the model cannot hold what they
+forbid, or the writer derives the value) have no row, so `Check` and `eio_CheckOnRead` do not
+report them; the header of `source/LandrixEInvoiceCheck.pas` names them (the Peppol ones the header
+of `source/LandrixEInvoiceCheckPeppol.pas`). A few such rules keep a row because the model can
+hold data the writer would drop (BR-CO-03, for example). A syntax model you fill and check
+directly is not covered by this guarantee. For a document from elsewhere, the validator checks
+them on the file itself.
+
 The rule check predicts what the KoSIT validator would report for the written document. It
 does not replace the validator: schema and Schematron checks of the official configuration
 remain the reference, and the library runs them too, without Java

@@ -63,8 +63,8 @@ Der Java-Helper wird nicht mehr gebraucht; Prüfung und Anzeige laufen im Progra
 |---|---|
 | `Validate`, `ValidateFile` (KoSIT-Validator, XML- und HTML-Bericht) | `TLandrixEInvoiceDocumentValidator` mit den KoSIT-Dateien von `addons/kosit/install-kosit.ps1`; Berichte `TLandrixEInvoiceValidationReportWriter` (XML) und `TLandrixEInvoiceValidationHtmlWriter` (HTML) |
 | `Visualize`, `VisualizeFile`, `PeppolVisualize`, `PeppolVisualizeFile`, `MustangVisualizeFile` (HTML) | `TLandrixEInvoiceRenderHtmlWriter`, `TLandrixEInvoiceRenderMarkdownWriter`: eigenes Layout der Bibliothek, englisch oder deutsch |
-| `MustangValidateFile` | teilweise: die PDF-Prüfung von `TLandrixEInvoiceDocumentValidator` (Einbettung und XMP-Metadaten); PDF/A-3b nur teilweise (die Regeln der Abschnitte 6.1, 6.3 bis 6.6 und 6.8 bis 6.11: Dateistruktur, Annotationen, Formulare, Aktionen, XMP-Metadaten, eingebettete Dateien, optionale Inhalte, Präsentationen, Anforderungen; angezeigt, nicht Teil des Urteils) |
-| `VisualizeAsPdf`, `VisualizeFileAsPdf`, `MustangVisualizeFileAsPdf`, `MustangCombinePdfAndXML`, `MustangUpgradeToPDFA3Only` | keiner: die Bibliothek schreibt kein PDF. Sie liefert XMP-Metadaten und Anhangsnamen für eine PDF-Bibliothek Ihrer Wahl (`ZUGFeRDPdfXmpInfo`, `ZUGFeRDPdfFilename` des Adapters; `LandrixEInvoicePdfXmpDescription(Target)` und `Spec.AttachmentFileName` in `LandrixEInvoiceSpecs`) |
+| `MustangValidateFile` | teilweise: die PDF-Prüfung von `TLandrixEInvoiceDocumentValidator` (Einbettung und XMP-Metadaten); PDF/A-3b nur teilweise (die Regeln der Abschnitte 6.1, 6.2, 6.3 bis 6.6 und 6.8 bis 6.11: Dateistruktur, Grafik teilweise (noch nicht Schriften und JPEG-2000-Bilder), Annotationen, Formulare, Aktionen, XMP-Metadaten, eingebettete Dateien, optionale Inhalte, Präsentationen, Anforderungen; angezeigt, nicht Teil des Urteils) |
+| `VisualizeAsPdf`, `VisualizeFileAsPdf`, `MustangVisualizeFileAsPdf`, `MustangCombinePdfAndXML`, `MustangUpgradeToPDFA3Only` | keiner: die Bibliothek schreibt kein PDF. Sie liefert XMP-Metadaten und Anhangsnamen für eine PDF-Bibliothek Ihrer Wahl (`ZUGFeRDPdfXmpInfo`, `ZUGFeRDPdfFilename` des Adapters; `LandrixEInvoicePdfXmpDescription(Target)` mit dem Erweiterungsschema `LandrixEInvoicePdfXmpSchema` und `Spec.AttachmentFileName` in `LandrixEInvoiceSpecs`) |
 | `ValitoolValidate`, `ValitoolValidateDirectory` | keiner |
 
 Die Einstellmethoden des Helpers (`SetJavaRuntimeEnvironmentPath`, `SetValidatorLibPath` usw.)
@@ -143,7 +143,7 @@ Das Modell:
 | `PeppolBillingVersion_30` | `TLandrixEInvoiceTargets.PeppolBIS('3.0')` |
 | `LoadFromFile(Inv, Name, Error)` | `Doc := TLandrixEInvoice.LoadFromFile(Name)` (Ausnahmen statt `Error`); die Rechnung ist `Doc.Invoice`, `Doc.DetachInvoice` übergibt sie; `Doc` freigeben (`try ... finally Doc.Free; end`) |
 | `GetXRechnungVersion(Name)` | nach dem Lesen: `if Doc.Info.SpecFound then Target := Doc.Info.Spec.Target` |
-| `ConsistencyCheck(Inv, Version, Code)` | `TLandrixEInvoice.Check(Inv, Target) = 0` (alle Geschäftsregeln, mit Meldungen) |
+| `ConsistencyCheck(Inv, Version, Code)` | `TLandrixEInvoice.Check(Inv, Target, [], Diagnostics) = 0` (alle Geschäftsregeln, Meldungen in `Diagnostics`); die Prüfungen der alten Codes (LX-CC-01 bis LX-CC-12) gehören nicht dazu: `ConsistencyCheck` behalten, wo Sie sich auf sie verlassen |
 
 Die Fassade prüft vor dem Schreiben die Geschäftsregeln und verweigert eine ungültige Rechnung;
 siehe [Schreiben](writing.md). Die Kompatibilitätsschicht schreibt mit `[eio_NoRuleCheck,
