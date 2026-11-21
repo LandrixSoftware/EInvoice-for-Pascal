@@ -1732,6 +1732,132 @@ begin
   Result := IntToAnsi(ANum) + ' 0 obj' + LF + ABody + LF + 'endobj' + LF;
 end;
 
+{ A document whose pages object is APages (object 2) with the page APage
+  (object 3) and further objects AExtra. }
+function PagesPdf(const APages, APage: AnsiString; const AExtra: array of AnsiString): AnsiString;
+var
+  Objs: array of AnsiString;
+  I: Integer;
+begin
+  Objs := nil;
+  SetLength(Objs, 3);
+  Objs[0] := ObjText(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  Objs[1] := ObjText(2, APages);
+  Objs[2] := ObjText(3, APage);
+  for I := 0 to Integer(High(AExtra)) do
+  begin
+    SetLength(Objs, Length(Objs) + 1);
+    Objs[High(Objs)] := AExtra[I];
+  end;
+  Result := BuildPdf(GoodHeader, Objs, LF, FileId, LF);
+end;
+
+{ Review cases of the PDF/A rules as veraPDF 1.30.4 reads them: an empty
+  Crypt parameter dictionary, dangling references in /PresSteps and
+  /AlternatePresentations, a stream in /Annots, /F as a string, a fifth
+  /Rect entry, boxes read by their first four entries, a /Count that does
+  not match, a kid without /Type, a stale action generation, a duplicate
+  name of an embedded file and a large appearance dictionary. }
+procedure TestPdfAReview;
+const
+  Annot = '<< /Type /Annot /Subtype /Text /Rect [0 0 10 10] /AP << /N 11 0 R >>';
+var
+  Ap: AnsiString;
+  I: Integer;
+begin
+  CheckOutcome(ContentPdf('', ' /Filter /Crypt /DecodeParms << >>', '', '', []), par_6_1_7_2_1, pro_Failed,
+    'Crypt with an empty parameter dictionary');
+  CheckOutcome(ContentPdf('', ' /Filter /Crypt /DecodeParms << /Name /Identity >>', '', '', []), par_6_1_7_2_1,
+    pro_Passed, 'Crypt Identity');
+  CheckOutcome(ContentPdf('', '', '/PresSteps 99 0 R', '', []), par_6_10_2, pro_Failed,
+    '/PresSteps to no object');
+  CheckOutcome(ContentPdf('', '', '/PresSteps 10 0 R', '', [ObjText(10, 'null')]), par_6_10_2, pro_Passed,
+    '/PresSteps to a null object');
+  CheckOutcome(CatalogPdf('/Names << /AlternatePresentations 99 0 R >>', '', '', '', '', []), par_6_10_1, pro_Failed,
+    '/AlternatePresentations to no object');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '',
+    [StreamObj(10, '', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_3_1_1, pro_Passed,
+    'a stream in /Annots is no annotation');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '', [ObjText(10, Annot + ' /F (abcd) >>'),
+    StreamObj(11, '', ' /BBox [0 0 1 1]')]), par_6_3_2_1, pro_Passed, '/F (abcd) is 4');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '', [ObjText(10, Annot + ' /F (abcd) >>'),
+    StreamObj(11, '', ' /BBox [0 0 1 1]')]), par_6_3_2_2, pro_Passed, '/F (abcd) is Print');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '',
+    [ObjText(10, '<< /Type /Annot /Subtype /Text /Rect [0 0 0 0 (a)] /F 4 >>')]), par_6_3_3_1, pro_Passed,
+    'a fifth /Rect entry that is a string');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '',
+    [ObjText(10, '<< /Type /Annot /Subtype /Text /Rect [0 0 (a) 0] /F 4 >>')]), par_6_3_3_1, pro_Failed,
+    'a string in /Rect counts its length: (a) is 1 wide');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '',
+    [ObjText(10, '<< /Type /Annot /Subtype /Text /Rect [0 0 0 0 ()] /F 4 >>')]), par_6_3_3_1, pro_Passed,
+    'an empty string in /Rect is 0');
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '',
+    [ObjText(10, '<< /Type /Annot /Subtype /Text /Rect [0 0 0 0 /Bad] /F 4 >>')]), par_6_3_3_1, pro_Failed,
+    'a name in /Rect makes it no rectangle');
+  CheckOutcome(ContentPdf('', '', '/CropBox [0 0 2]', '', []), par_6_1_13_11, pro_Failed,
+    'a box of three entries');
+  CheckOutcome(ContentPdf('', '', '/CropBox [0 0 612 792 (a)]', '', []), par_6_1_13_11, pro_Passed,
+    'a fifth box entry is not read');
+  CheckOutcome(ContentPdf('', '', '/CropBox [0 0 612 /Foo]', '', []), par_6_1_13_11, pro_Failed,
+    'a box entry that is no number is 0');
+  CheckOutcome(ContentPdf('', '', '/CropBox [10 0 R 0 11 100]', '', [ObjText(10, '10')]), par_6_1_13_11, pro_Passed,
+    'a reference in a box is 0');
+  CheckOutcome(ContentPdf('', ' /Filter /Crypt /DecodeParms 10 0 R', '', '', [ObjText(10, '<< >>')]), par_6_1_7_2_1,
+    pro_Passed, 'an indirect Crypt parameter dictionary is none');
+  CheckOutcome(ContentPdf('', ' /Filter [/Crypt] /DecodeParms << >>', '', '', []), par_6_1_7_2_1, pro_Failed,
+    'one filter in an array with a direct parameter dictionary');
+
+  { veraPDF finds pages through /Count: a page it may not see leaves the
+    page rules undecided }
+  CheckOutcome(PagesPdf('<< /Type /Pages /Kids [3 0 R] /Count 0 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [10 0 R] >>',
+    [ObjText(10, Annot + ' >>'), StreamObj(11, '', ' /BBox [0 0 1 1]')]), par_6_3_2_1, pro_Incomplete,
+    '/Count 0');
+  CheckOutcome(PagesPdf('<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [10 0 R] >>',
+    [ObjText(10, Annot + ' >>'), StreamObj(11, '', ' /BBox [0 0 1 1]')]), par_6_3_2_1, pro_Failed,
+    '/Count 1');
+  CheckOutcome(PagesPdf('<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Parent 2 0 R /MediaBox [0 0 2 2] >>', []),
+    par_6_1_13_11, pro_Incomplete, 'a kid without /Type is not judged');
+
+  { an action whose object header carries another generation is no action
+    veraPDF reads }
+  CheckOutcome(CatalogPdf('/OpenAction 10 0 R', '', '', '', '',
+    ['10 1 obj' + LF + '<< /S /Named /N /Print >>' + LF + 'endobj' + LF]), par_6_5_1_2, pro_Passed,
+    'stale generation');
+  CheckOutcome(CatalogPdf('/OpenAction 10 0 R', '', '', '', '', [ObjText(10, '<< /S /Named /N /Print >>')]),
+    par_6_5_1_2, pro_Failed, 'named action Print');
+
+  { of two values of one name the last counts }
+  CheckOutcome(CatalogPdf('/Names << /EmbeddedFiles << /Names [(a) 10 0 R (a) 11 0 R] >> >> /AF [11 0 R]', '', '',
+    '', '', [ObjText(10, '<< /F (a) /EF << /F 12 0 R >> >>'),
+    ObjText(11, '<< /Type /Filespec /F (a) /UF (a) /AFRelationship /Data /EF << /F 12 0 R >> >>'),
+    StreamObj(12, 'x', ' /Type /EmbeddedFile /Subtype /text#2Fxml')]), par_6_8_3, pro_Passed,
+    'the superseded file specification is not judged');
+  CheckOutcome(CatalogPdf('/Names << /EmbeddedFiles << /Names [(a) 11 0 R (a) 10 0 R] >> >> /AF [11 0 R]', '', '',
+    '', '', [ObjText(10, '<< /F (a) /EF << /F 12 0 R >> >>'),
+    ObjText(11, '<< /Type /Filespec /F (a) /UF (a) /AFRelationship /Data /EF << /F 12 0 R >> >>'),
+    StreamObj(12, 'x', ' /Type /EmbeddedFile /Subtype /text#2Fxml')]), par_6_8_3, pro_Failed,
+    'the last value of a name is judged');
+  CheckOutcome(CatalogPdf('/Names << /EmbeddedFiles << /Names [(a) 10 0 R <FEFF0061> 11 0 R] >> >> /AF [11 0 R]',
+    '', '', '', '', [ObjText(10, '<< /F (a) /EF << /F 12 0 R >> >>'),
+    ObjText(11, '<< /Type /Filespec /F (a) /UF (a) /AFRelationship /Data /EF << /F 12 0 R >> >>'),
+    StreamObj(12, 'x', ' /Type /EmbeddedFile /Subtype /text#2Fxml')]), par_6_8_3, pro_Passed,
+    'names compared as text');
+  CheckOutcome(CatalogPdf('/Names << /EmbeddedFiles << /Names [(a) 10 0 R (a)] >> >>', '', '', '', '',
+    [ObjText(10, '<< /F (a) /EF << /F 12 0 R >> >>'),
+    StreamObj(12, 'x', ' /Type /EmbeddedFile /Subtype /text#2Fxml')]), par_6_8_3, pro_Passed,
+    'a last key without a value replaces the earlier one');
+
+  { a large appearance dictionary is not read key by key }
+  Ap := '';
+  for I := 1 to 100 do
+    Ap := Ap + '/K' + IntToAnsi(I) + ' 11 0 R ';
+  CheckOutcome(ContentPdf('', '', '/Annots [10 0 R]', '',
+    [ObjText(10, '<< /Type /Annot /Subtype /Text /F 4 /Rect [0 0 10 10] /AP << ' + Ap + '>> >>'),
+    StreamObj(11, '', ' /BBox [0 0 1 1]')]), par_6_3_3_2, pro_Incomplete, '100 appearance keys');
+end;
+
 { Rounds 60 and 61 of the reviews: B tokens, ExtGState streams, default
   spaces of forms, named device spaces, one-element arrays, generations on
   every hop, the tree parent's resources, /AF visits, repeated keys in
@@ -3163,6 +3289,7 @@ begin
   RegisterTest('PdfA.Graphics', TestPdfAGraphics);
   RegisterTest('PdfA.OutputIntents', TestPdfAOutputIntents);
   RegisterTest('PdfA.Colour', TestPdfAColour);
+  RegisterTest('PdfA.Review', TestPdfAReview);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
 

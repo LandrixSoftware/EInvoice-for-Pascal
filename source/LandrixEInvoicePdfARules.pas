@@ -162,8 +162,6 @@ type
     FTrailerTo: Integer;
     FMaxReal: Double;
     FMinReal: Double;
-    { 2^63: /F values from here on are saturated }
-    FInt64Limit: Double;
     { rules whose scope could not be walked to the end (a limit, no
       catalog, objects without envelope) }
     FIncomplete: array[TLandrixEInvoicePdfARule] of Boolean;
@@ -213,6 +211,12 @@ type
     FPropNums: array of Integer;
     FPropNames: array of string;
     FPropCount: Integer;
+    { occurrences of XMP properties judged (a work limit) }
+    FPropWork: Integer;
+    { the pages veraPDF sees may differ from the walk of CheckPages: its
+      failures leave the rules undecided }
+    FPagesUnsure: Boolean;
+    FNodesPages: Integer;
     procedure Reset;
     procedure Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer; ASource: TLandrixEInvoicePdfSyntaxSource;
       APos: Integer; const ADetail: string);
@@ -231,15 +235,20 @@ type
     procedure CheckPerms;
     procedure CheckSignature(ASig: TLandrixEInvoicePdfObject);
     procedure CheckFields(AField: TLandrixEInvoicePdfObject; const AInheritedType: AnsiString; ADepth: Integer);
-    procedure CheckPages(ANode, AMediaBox, ACropBox: TLandrixEInvoicePdfObject; ADepth: Integer);
-    procedure CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string);
+    function CountPages(ANode: TLandrixEInvoicePdfObject; ADepth: Integer): Integer;
+    procedure CheckPages(ANode, AMediaBox, ACropBox, AMediaOwner, ACropOwner: TLandrixEInvoicePdfObject;
+      ADepth: Integer);
+    procedure CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string; AOwner: TLandrixEInvoicePdfObject);
     procedure MarkStageB;
+    procedure MarkPageRules;
     function Where(AObj: TLandrixEInvoicePdfObject): string;
     procedure FailAt(ARule: TLandrixEInvoicePdfARule; AObj: TLandrixEInvoicePdfObject; const ADetail: string);
     function Known(ADict: TLandrixEInvoicePdfObject; const AKey: AnsiString): Boolean;
     function FieldType(AAnnot: TLandrixEInvoicePdfObject; out AType: AnsiString): Boolean;
     procedure CheckAnnot(AAnnot: TLandrixEInvoicePdfObject);
     procedure CheckEvents(AAA: TLandrixEInvoicePdfObject; const AEvents: array of AnsiString);
+    function ActionRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
+    function ActionGet(AObj: TLandrixEInvoicePdfObject; const AKey: AnsiString): TLandrixEInvoicePdfObject;
     function StageBBudget(ADepth: Integer): Boolean;
     procedure CheckAction(AAction: TLandrixEInvoicePdfObject; ADepth: Integer);
     procedure CheckForm;
@@ -335,6 +344,9 @@ uses
   Contnrs,
   LandrixXmlBase,
   LandrixEInvoicePdfContent;
+
+type
+  TSupersededFlags = array of Boolean;
 
 type
   TOcNames = array of TLandrixEInvoiceString;
@@ -507,6 +519,8 @@ const
   MaxTreeDepth = 64;
   { longest /Parent chain of a form field followed }
   MaxParentChain = 1024;
+  { most keys of an appearance dictionary (and of a state dictionary) read }
+  MaxAppearanceKeys = 64;
   { most dictionaries and arrays visited in the walk of all objects }
   MaxWalkNodes = 4000000;
   MaxWalkDepth = 128;
@@ -815,13 +829,149 @@ begin
   Result := True;
 end;
 
+{ An integer as veraPDF's getIntegerKey reads it: a number truncated toward
+  zero, a string its byte length; False for anything else. }
+function AFInteger(V: TLandrixEInvoicePdfObject; out AValue: Int64): Boolean;
+begin
+  Result := False;
+  AValue := 0;
+  if V = nil then
+    Exit;
+  if V.Kind = pok_Num then
+  begin
+    { an integer token as Java's long; else Java's (long) cast, which
+      saturates beyond about 9e18 }
+    if V.NumExact then
+      AValue := V.NumInt
+    else if V.NumVal >= 9.0E18 then
+      AValue := High(Int64)
+    else if V.NumVal <= -9.0E18 then
+      AValue := Low(Int64)
+    else
+      AValue := Trunc(V.NumVal);
+    Result := True;
+  end
+  else if V.Kind = pok_Str then
+  begin
+    AValue := Length(V.StrVal);
+    Result := True;
+  end;
+  { Long.intValue: the low 32 bits }
+  AValue := AValue and $FFFFFFFF;
+  if AValue > $7FFFFFFF then
+    AValue := AValue - $100000000;
+end;
+
+{ A raw dictionary value veraPDF counts as present: anything but a direct
+  null and a reference to a null object; a reference to no object counts.
+  DE: Ein roher Dictionary-Wert, den veraPDF als vorhanden zaehlt: alles
+  ausser einem direkten null und einer Referenz auf ein null-Objekt; eine
+  Referenz auf kein Objekt zaehlt. }
+function PresentValue(ADoc: TLandrixEInvoicePdfDocument; ARaw: TLandrixEInvoicePdfObject): Boolean;
+var
+  V: TLandrixEInvoicePdfObject;
+  Unsure: Boolean;
+begin
+  Result := False;
+  if (ARaw = nil) or (ARaw.Kind = pok_Null) then
+    Exit;
+  if ARaw.Kind = pok_Ref then
+  begin
+    { a chain too long to follow may end in null: not counted }
+    Unsure := False;
+    V := LandrixEInvoicePdfResolveRef(ADoc, ARaw, Unsure);
+    Result := not Unsure and ((V = nil) or (V.Kind <> pok_Null));
+  end
+  else
+    Result := True;
+end;
+
+{ For each pair of a name tree's /Names array: True where a later pair of
+  the same array has the same string key (veraPDF keeps the last value of a
+  key, compared as decoded text).
+  DE: Je Paar eines /Names-Arrays: True, wo ein spaeteres Paar desselben
+  Arrays denselben String-Schluessel hat (veraPDF behaelt den letzten Wert
+  eines Schluessels, als dekodierter Text verglichen). }
+function SupersededNames(ADoc: TLandrixEInvoicePdfDocument; AArr: TLandrixEInvoicePdfObject): TSupersededFlags;
+var
+  Keys: array of TLandrixEInvoiceString;
+  Idx, Tmp: array of Integer;
+  N, M, I, Width, Lo, Mid, Hi, L, R, K: Integer;
+  O: TLandrixEInvoicePdfObject;
+begin
+  Result := nil;
+  Keys := nil;
+  Idx := nil;
+  Tmp := nil;
+  { pairs, and a last key without a value (veraPDF gives it an empty value
+    that replaces an earlier one) }
+  N := (AArr.ArrCount + 1) div 2;
+  SetLength(Result, N + 1);
+  SetLength(Keys, N);
+  SetLength(Idx, N);
+  M := 0;
+  for I := 0 to N - 1 do
+  begin
+    Result[I] := False;
+    O := ADoc.Resolve(AArr.ArrItem(2 * I));
+    if (O <> nil) and (O.Kind = pok_Str) then
+    begin
+      { compared as the decoded text, as Java strings }
+      Keys[I] := LandrixEInvoicePdfTextToString(O.StrVal);
+      Idx[M] := I;
+      Inc(M);
+    end;
+  end;
+  Result[N] := False;
+  { stable merge sort of the pairs with a string key by key }
+  SetLength(Tmp, M);
+  Width := 1;
+  while Width < M do
+  begin
+    Lo := 0;
+    while Lo < M do
+    begin
+      Mid := Lo + Width;
+      if Mid > M then
+        Mid := M;
+      Hi := Mid + Width;
+      if Hi > M then
+        Hi := M;
+      L := Lo;
+      R := Mid;
+      K := Lo;
+      while K < Hi do
+      begin
+        if (L < Mid) and ((R >= Hi) or not (Keys[Idx[R]] < Keys[Idx[L]])) then
+        begin
+          Tmp[K] := Idx[L];
+          Inc(L);
+        end
+        else
+        begin
+          Tmp[K] := Idx[R];
+          Inc(R);
+        end;
+        Inc(K);
+      end;
+      Lo := Hi;
+    end;
+    for K := 0 to M - 1 do
+      Idx[K] := Tmp[K];
+    Width := Width * 2;
+  end;
+  { in a run of equal keys (in array order) all but the last are replaced }
+  for K := 0 to M - 2 do
+    if Keys[Idx[K]] = Keys[Idx[K + 1]] then
+      Result[Idx[K]] := True;
+end;
+
 constructor TLandrixEInvoicePdfARuleCheck.Create;
 begin
   inherited Create;
   { built at run time: literals of this size lose precision as Extended }
   FMaxReal := FloatOf('3.403e38');
   FMinReal := FloatOf('1.175e-38');
-  FInt64Limit := FloatOf('9223372036854775808');
   Reset;
 end;
 
@@ -863,6 +1013,9 @@ begin
   FPropNums := nil;
   FPropNames := nil;
   FPropCount := 0;
+  FPropWork := 0;
+  FPagesUnsure := False;
+  FNodesPages := 0;
   FLive := nil;
   FLiveCount := 0;
   FLiveByNum := nil;
@@ -877,6 +1030,11 @@ end;
 procedure TLandrixEInvoicePdfARuleCheck.Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer;
   ASource: TLandrixEInvoicePdfSyntaxSource; APos: Integer; const ADetail: string);
 begin
+  if FPagesUnsure then
+  begin
+    FIncomplete[ARule] := True;
+    Exit;
+  end;
   Inc(FResults[ARule].Failures);
   if FResults[ARule].Failures = 1 then
   begin
@@ -1019,7 +1177,9 @@ begin
     Fail(par_6_1_13_7, -1, -1, pss_File, -1, IntToStr(FFacts.InUseCount) + ' indirect objects');
   if FDoc.Catalog <> nil then
   begin
-    CheckPages(FDoc.DGet(FDoc.Catalog, 'Pages'), nil, nil, 0);
+    CountPages(FDoc.DGet(FDoc.Catalog, 'Pages'), 0);
+    CheckPages(FDoc.DGet(FDoc.Catalog, 'Pages'), nil, nil, nil, nil, 0);
+    FPagesUnsure := False;
     CheckForm;
     CheckCatalogActions;
     CheckOptionalContent;
@@ -1218,7 +1378,7 @@ const
   Allowed: array[0..7] of AnsiString = ('ASCIIHexDecode', 'ASCII85Decode', 'FlateDecode', 'RunLengthDecode',
     'CCITTFaxDecode', 'JBIG2Decode', 'DCTDecode', 'JPXDecode');
 var
-  Filter, Parms, F, P, N: TLandrixEInvoicePdfObject;
+  Filter, Parms, F, P, N, Raw: TLandrixEInvoicePdfObject;
   I, K, Count: Integer;
   Ok: Boolean;
   Name: AnsiString;
@@ -1252,19 +1412,26 @@ begin
     begin
       { the decode parameters of this filter; without them the Identity
         filter applies }
+      { veraPDF 1.30.4 (GFCosStream): with one filter the raw /DecodeParms,
+        which is a parameter dictionary only when it is a direct one; with
+        several filters the entry of the parameter array }
       P := nil;
-      if (Parms <> nil) and (Parms.Kind = pok_Arr) then
+      if Count = 1 then
       begin
-        if I < Parms.ArrCount then
-          P := FDoc.Resolve(Parms.ArrItem(I));
+        Raw := AStream.Stream.RawGet('DecodeParms');
+        if (Raw <> nil) and (Raw.Kind = pok_Dict) then
+          P := Raw;
       end
-      else if Filter.Kind <> pok_Arr then
-        P := Parms;
+      else if (Parms <> nil) and (Parms.Kind = pok_Arr) and (I < Parms.ArrCount) then
+        P := FDoc.Resolve(Parms.ArrItem(I));
       Ok := True;
+      { a parameter dictionary without /Name names no filter (veraPDF:
+        null is not Identity); parameters that are no dictionary count as
+        absent }
       if (P <> nil) and P.IsDictLike then
       begin
         N := FDoc.DGet(P, 'Name');
-        if (N <> nil) and ((N.Kind <> pok_Name) or (N.NameVal <> 'Identity')) then
+        if (N = nil) or (N.Kind <> pok_Name) or (N.NameVal <> 'Identity') then
           Ok := False;
       end;
     end;
@@ -1446,14 +1613,64 @@ begin
   CheckFields(FDoc.DGet(AField, 'Kids'), FieldType, ADepth + 1);
 end;
 
+{ The leaves below ANode as veraPDF tells nodes and pages (the root a node,
+  below it /Type /Pages a node and /Type /Page a page); sets FPagesUnsure
+  where a kid has another type, a node's /Count differs from its leaves or
+  a limit is reached: veraPDF finds a page by its index through /Count and
+  may see other pages.
+  DE: Die Blaetter unter ANode, wie veraPDF Knoten und Seiten
+  unterscheidet; setzt FPagesUnsure, wo ein Kind einen anderen Typ hat, das
+  /Count eines Knotens nicht zu seinen Blaettern passt oder eine Grenze
+  erreicht ist. }
+function TLandrixEInvoicePdfARuleCheck.CountPages(ANode: TLandrixEInvoicePdfObject; ADepth: Integer): Integer;
+var
+  T, Kids: TLandrixEInvoicePdfObject;
+  Count: Int64;
+  I: Integer;
+begin
+  Result := 0;
+  Inc(FNodesPages);
+  if (ANode = nil) or not ANode.IsDictLike or (ADepth > MaxTreeDepth) or (FNodesPages > MaxNodes) then
+  begin
+    FPagesUnsure := True;
+    Exit;
+  end;
+  if ADepth > 0 then
+  begin
+    T := FDoc.DGet(ANode, 'Type');
+    if (T = nil) or (T.Kind <> pok_Name) or ((T.NameVal <> 'Page') and (T.NameVal <> 'Pages')) then
+    begin
+      FPagesUnsure := True;
+      Exit;
+    end;
+    if T.NameVal = 'Page' then
+    begin
+      Result := 1;
+      Exit;
+    end;
+  end;
+  Kids := FDoc.DGet(ANode, 'Kids');
+  if (Kids <> nil) and (Kids.Kind = pok_Arr) then
+    for I := 0 to Kids.ArrCount - 1 do
+    begin
+      Inc(Result, CountPages(FDoc.Resolve(Kids.ArrItem(I)), ADepth + 1));
+      if FPagesUnsure then
+        Exit;
+    end;
+  if not AFInteger(FDoc.DGet(ANode, 'Count'), Count) then
+    Count := 0;
+  if Count <> Result then
+    FPagesUnsure := True;
+end;
+
 { 6.1.13-11: MediaBox and CropBox (inherited) and the BleedBox, TrimBox and
   ArtBox of every page.
   DE: 6.1.13-11: MediaBox und CropBox (geerbt) und BleedBox, TrimBox und
   ArtBox jeder Seite. }
-procedure TLandrixEInvoicePdfARuleCheck.CheckPages(ANode, AMediaBox, ACropBox: TLandrixEInvoicePdfObject;
-  ADepth: Integer);
+procedure TLandrixEInvoicePdfARuleCheck.CheckPages(ANode, AMediaBox, ACropBox, AMediaOwner,
+  ACropOwner: TLandrixEInvoicePdfObject; ADepth: Integer);
 var
-  Kids, Box, Media, Crop, TypeObj, Annots, A: TLandrixEInvoicePdfObject;
+  Kids, Box, Media, Crop, MediaOwner, CropOwner, TypeObj, Annots, A, Raw: TLandrixEInvoicePdfObject;
   I: Integer;
 begin
   { a page tree node that does not resolve leaves boxes, annotations and
@@ -1475,46 +1692,83 @@ begin
   end;
   Media := AMediaBox;
   Crop := ACropBox;
+  MediaOwner := AMediaOwner;
+  CropOwner := ACropOwner;
   Box := FDoc.DGet(ANode, 'MediaBox');
   if Box <> nil then
+  begin
     Media := Box;
+    MediaOwner := ANode;
+  end;
   Box := FDoc.DGet(ANode, 'CropBox');
   if Box <> nil then
-    Crop := Box;
-  TypeObj := FDoc.DGet(ANode, 'Type');
-  Kids := FDoc.DGet(ANode, 'Kids');
-  { veraPDF makes the root a node whatever its /Type }
-  if (ADepth = 0) or ((Kids <> nil) and (Kids.Kind = pok_Arr) and not ((TypeObj <> nil) and
-    (TypeObj.Kind = pok_Name) and (TypeObj.NameVal = 'Page'))) then
   begin
-    if (Kids <> nil) and (Kids.Kind = pok_Arr) then
-      for I := 0 to Kids.ArrCount - 1 do
-        CheckPages(FDoc.Resolve(Kids.ArrItem(I)), Media, Crop, ADepth + 1);
+    Crop := Box;
+    CropOwner := ANode;
+  end;
+  TypeObj := FDoc.DGet(ANode, 'Type');
+  { veraPDF makes the root a node whatever its /Type and tells the kids by
+    /Type: /Pages a node, /Page a page; it does not judge a kid of another
+    type }
+  if (ADepth > 0) and ((TypeObj = nil) or (TypeObj.Kind <> pok_Name) or
+    ((TypeObj.NameVal <> 'Page') and (TypeObj.NameVal <> 'Pages'))) then
+  begin
+    MarkPageRules;
     Exit;
   end;
-  CheckBox(Media, 'MediaBox');
-  CheckBox(Crop, 'CropBox');
-  CheckBox(FDoc.DGet(ANode, 'BleedBox'), 'BleedBox');
-  CheckBox(FDoc.DGet(ANode, 'TrimBox'), 'TrimBox');
-  CheckBox(FDoc.DGet(ANode, 'ArtBox'), 'ArtBox');
+  if (ADepth = 0) or (TypeObj.NameVal = 'Pages') then
+  begin
+    Kids := FDoc.DGet(ANode, 'Kids');
+    if (Kids <> nil) and (Kids.Kind = pok_Arr) then
+      for I := 0 to Kids.ArrCount - 1 do
+        CheckPages(FDoc.Resolve(Kids.ArrItem(I)), Media, Crop, MediaOwner, CropOwner, ADepth + 1);
+    Exit;
+  end;
+  CheckBox(Media, 'MediaBox', MediaOwner);
+  CheckBox(Crop, 'CropBox', CropOwner);
+  CheckBox(FDoc.DGet(ANode, 'BleedBox'), 'BleedBox', ANode);
+  CheckBox(FDoc.DGet(ANode, 'TrimBox'), 'TrimBox', ANode);
+  CheckBox(FDoc.DGet(ANode, 'ArtBox'), 'ArtBox', ANode);
   { 6.5.2-2 and the page events O and C; the annotations of the page }
   if Known(ANode, 'AA') then
     FailAt(par_6_5_2_2, ANode, 'page with /AA');
   CheckEvents(FDoc.DGet(ANode, 'AA'), ['O', 'C']);
-  { 6.10-2: the page's own /PresSteps, not inherited; any value but null
+  { 6.10-2: the page's own /PresSteps, not inherited; any value but null (a
+    reference to no object counts, one to a null object does not)
     DE: 6.10-2: das eigene /PresSteps der Seite, nicht geerbt; jeder Wert
-    ausser null }
-  A := FDoc.DGet(ANode, 'PresSteps');
-  if (A <> nil) and (A.Kind <> pok_Null) then
+    ausser null (eine Referenz auf kein Objekt zaehlt, eine auf ein
+    null-Objekt nicht) }
+  Raw := ANode.RawGet('PresSteps');
+  if PresentValue(FDoc, Raw) then
     FailAt(par_6_10_2, ANode, 'page with /PresSteps');
+  { veraPDF builds annotations from dictionaries only }
   Annots := FDoc.DGet(ANode, 'Annots');
   if (Annots <> nil) and (Annots.Kind = pok_Arr) then
     for I := 0 to Annots.ArrCount - 1 do
     begin
       A := FDoc.Resolve(Annots.ArrItem(I));
-      if (A <> nil) and A.IsDictLike then
+      if (A <> nil) and (A.Kind = pok_Dict) then
         CheckAnnot(A);
     end;
+end;
+
+{ The rules a page and its annotations decide cannot be checked (a page
+  veraPDF may see is not walked).
+  DE: Die Regeln, die eine Seite und ihre Annotationen entscheiden, sind
+  nicht pruefbar (eine Seite, die veraPDF sehen kann, wird nicht
+  durchlaufen). }
+procedure TLandrixEInvoicePdfARuleCheck.MarkPageRules;
+var
+  R: TLandrixEInvoicePdfARule;
+begin
+  FIncomplete[par_6_1_13_11] := True;
+  FIncomplete[par_6_10_2] := True;
+  FIncomplete[par_6_4_1_1] := True;
+  FIncomplete[par_6_5_2_2] := True;
+  for R := par_6_3_1_1 to par_6_3_3_4 do
+    FIncomplete[R] := True;
+  for R := par_6_5_1_1 to par_6_5_1_2 do
+    FIncomplete[R] := True;
 end;
 
 { The rules of 6.3 to 6.5 cannot all be checked: a limit or a broken
@@ -1577,8 +1831,13 @@ begin
   Depth := 0;
   while (Node <> nil) and Node.IsDictLike do
   begin
-    if Depth > MaxParentChain then
+    { every step counts to the stage B budget: widgets sharing a long chain
+      must not repeat it without limit }
+    Inc(FNodesB);
+    if (Depth > MaxParentChain) or (FNodesB > MaxNodes) then
     begin
+      if FNodesB > MaxNodes then
+        MarkStageB;
       Result := False;
       Exit;
     end;
@@ -1619,11 +1878,12 @@ var
   Flags: Int64;
   HasFlags, HasRect, Ok, Appearances: Boolean;
   R: array[0..3] of Double;
-  I, Count, K: Integer;
-  TypeKnown, Seen: Boolean;
+  I, K: Integer;
+  TypeKnown, Seen, TooMany: Boolean;
 begin
   if not StageBBudget(0) then
     Exit;
+  TooMany := False;
   Subtype := '';
   Sub := FDoc.DGet(AAnnot, 'Subtype');
   if (Sub <> nil) and (Sub.Kind = pok_Name) then
@@ -1635,23 +1895,14 @@ begin
   if not Ok then
     FailAt(par_6_3_1_1, AAnnot, 'annotation type ' + AsciiText(Subtype));
 
-  { /F as veraPDF reads it: a number truncated toward zero (saturated to the
-    64-bit range), anything else none
-    DE: /F, wie veraPDF es liest: eine Zahl, zur Null hin abgeschnitten (auf
-    den 64-Bit-Bereich begrenzt), alles andere keines }
-  HasFlags := False;
+  { /F as veraPDF's getIntegerKey reads it: a number truncated toward zero,
+    a string its byte length (the low 32 bits), anything else none
+    DE: /F, wie getIntegerKey von veraPDF es liest: eine Zahl, zur Null hin
+    abgeschnitten, ein String seine Bytelaenge (die unteren 32 Bit), alles
+    andere keines }
   Flags := 0;
   FObj := FDoc.DGet(AAnnot, 'F');
-  if Known(AAnnot, 'F') and (FObj <> nil) and (FObj.Kind = pok_Num) then
-  begin
-    HasFlags := True;
-    if FObj.NumVal >= FInt64Limit then
-      Flags := High(Int64)
-    else if FObj.NumVal <= -FInt64Limit then
-      Flags := Low(Int64)
-    else
-      Flags := Trunc(FObj.NumVal);
-  end;
+  HasFlags := Known(AAnnot, 'F') and AFInteger(FObj, Flags);
   if (Subtype <> 'Popup') and not HasFlags then
     FailAt(par_6_3_2_1, AAnnot, AsciiText(Subtype) + ' annotation without /F');
   if HasFlags and not (((Flags and 1) = 0) and ((Flags and 2) = 0) and ((Flags and 4) = 4) and ((Flags and 32) = 0) and
@@ -1667,14 +1918,23 @@ begin
   if (Rect <> nil) and (Rect.Kind = pok_Arr) and (Rect.ArrCount >= 4) then
   begin
     HasRect := True;
-    Count := Rect.ArrCount;
-    for I := 0 to Count - 1 do
+    { veraPDF's getRealArray: every entry must be a number or a string (its
+      byte length), the first four are the rectangle }
+    for I := 0 to Rect.ArrCount - 1 do
     begin
       O := FDoc.Resolve(Rect.ArrItem(I));
-      if (O = nil) or (O.Kind <> pok_Num) then
-        HasRect := False
-      else if I <= 3 then
-        R[I] := O.NumVal;
+      if (O <> nil) and (O.Kind = pok_Num) then
+      begin
+        if I <= 3 then
+          R[I] := O.NumVal;
+      end
+      else if (O <> nil) and (O.Kind = pok_Str) then
+      begin
+        if I <= 3 then
+          R[I] := Length(O.StrVal);
+      end
+      else
+        HasRect := False;
     end;
   end;
 
@@ -1686,6 +1946,16 @@ begin
   AP := FDoc.DGet(AAnnot, 'AP');
   if (AP <> nil) and (AP.Kind <> pok_Dict) then
     AP := nil;
+  { an appearance dictionary has N, D and R; beyond MaxAppearanceKeys keys
+    the rules on it stay undecided (the key list would cost quadratic time) }
+  if (AP <> nil) and (AP.DVals.Count > MaxAppearanceKeys) then
+  begin
+    FIncomplete[par_6_3_3_2] := True;
+    FIncomplete[par_6_3_3_3] := True;
+    FIncomplete[par_6_3_3_4] := True;
+    AP := nil;
+    TooMany := True;
+  end;
   APKeys := '';
   if AP <> nil then
     for I := 0 to Integer(AP.DVals.Count) - 1 do
@@ -1701,7 +1971,7 @@ begin
           APKeys := APKeys + '&';
         APKeys := APKeys + AP.DKeys[I];
       end;
-  if (AP = nil) and (Subtype <> 'Popup') and (Subtype <> 'Link') and
+  if (AP = nil) and not TooMany and (Subtype <> 'Popup') and (Subtype <> 'Link') and
     not (HasRect and (R[2] - R[0] = 0) and (R[3] - R[1] = 0)) then
     FailAt(par_6_3_3_1, AAnnot, AsciiText(Subtype) + ' annotation without appearance');
   if (AP <> nil) and (APKeys <> 'N') then
@@ -1730,6 +2000,12 @@ begin
     if Entry <> nil then
       if Entry.Kind = pok_Stream then
         Appearances := True
+      else if (Entry.Kind = pok_Dict) and (Entry.DVals.Count > MaxAppearanceKeys) then
+      begin
+        { too many states to look up by key: undecided }
+        FIncomplete[par_6_3_3_3] := True;
+        Appearances := True;
+      end
       else if Entry.Kind = pok_Dict then
         for I := 0 to Integer(Entry.DVals.Count) - 1 do
         begin
@@ -1759,10 +2035,37 @@ begin
     FailAt(par_6_4_1_1, AAnnot, 'widget with /A or /AA');
   { an action is a dictionary; a stream is none
     DE: eine Aktion ist ein Dictionary; ein Stream ist keine }
-  O := FDoc.DGet(AAnnot, 'A');
+  O := ActionGet(AAnnot, 'A');
   if (O <> nil) and (O.Kind = pok_Dict) then
     CheckAction(O, 0);
   CheckEvents(FDoc.DGet(AAnnot, 'AA'), ['E', 'X', 'D', 'U', 'Fo', 'Bl', 'PO', 'PC', 'PV', 'PI']);
+end;
+
+{ An action reference as veraPDF resolves it (number and generation; nil
+  where no such object is in use); a chain too long to follow leaves 6.5.1
+  undecided.
+  DE: Eine Aktionsreferenz, wie veraPDF sie aufloest (Nummer und
+  Generation; nil, wo kein solches Objekt benutzt ist); eine zu lange Kette
+  laesst 6.5.1 offen. }
+function TLandrixEInvoicePdfARuleCheck.ActionRef(ARaw: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfObject;
+var
+  Unsure: Boolean;
+begin
+  Unsure := False;
+  Result := GenRef(ARaw, Unsure);
+  if Unsure then
+  begin
+    FIncomplete[par_6_5_1_1] := True;
+    FIncomplete[par_6_5_1_2] := True;
+  end;
+end;
+
+function TLandrixEInvoicePdfARuleCheck.ActionGet(AObj: TLandrixEInvoicePdfObject;
+  const AKey: AnsiString): TLandrixEInvoicePdfObject;
+begin
+  Result := nil;
+  if (AObj <> nil) and AObj.IsDictLike then
+    Result := ActionRef(AObj.RawGet(AKey));
 end;
 
 { The actions of the named events of an additional-actions dictionary.
@@ -1777,7 +2080,7 @@ begin
     Exit;
   for I := 0 to Integer(Length(AEvents)) - 1 do
   begin
-    A := FDoc.DGet(AAA, AEvents[I]);
+    A := ActionGet(AAA, AEvents[I]);
     if (A <> nil) and (A.Kind = pok_Dict) then
       CheckAction(A, 0);
   end;
@@ -1794,34 +2097,42 @@ var
   S, N, Next, A: TLandrixEInvoicePdfObject;
   Kind, Name: AnsiString;
   I: Integer;
-  Ok: Boolean;
+  Ok, Unsure: Boolean;
 begin
   if not StageBBudget(ADepth) then
     Exit;
   Kind := '';
-  S := FDoc.DGet(AAction, 'S');
+  Unsure := False;
+  S := GenRef(AAction.RawGet('S'), Unsure);
   if (S <> nil) and (S.Kind = pok_Name) then
     Kind := S.NameVal;
   Ok := False;
   for I := 0 to High(Allowed) do
     if Kind = Allowed[I] then
       Ok := True;
-  if not Ok then
+  if Unsure then
+  begin
+    FIncomplete[par_6_5_1_1] := True;
+    FIncomplete[par_6_5_1_2] := True;
+  end
+  else if not Ok then
     FailAt(par_6_5_1_1, AAction, 'action ' + AsciiText(Kind));
   if Kind = 'Named' then
   begin
     Name := '';
-    N := FDoc.DGet(AAction, 'N');
+    N := GenRef(AAction.RawGet('N'), Unsure);
     if (N <> nil) and (N.Kind = pok_Name) then
       Name := N.NameVal;
     Ok := False;
     for I := 0 to High(Named) do
       if Name = Named[I] then
         Ok := True;
-    if not Ok then
+    if Unsure then
+      FIncomplete[par_6_5_1_2] := True
+    else if not Ok then
       FailAt(par_6_5_1_2, AAction, 'named action ' + AsciiText(Name));
   end;
-  Next := FDoc.DGet(AAction, 'Next');
+  Next := ActionGet(AAction, 'Next');
   if Next = nil then
     Exit;
   if Next.Kind = pok_Dict then
@@ -1829,7 +2140,7 @@ begin
   else if Next.Kind = pok_Arr then
     for I := 0 to Next.ArrCount - 1 do
     begin
-      A := FDoc.Resolve(Next.ArrItem(I));
+      A := ActionRef(Next.ArrItem(I));
       if (A <> nil) and (A.Kind = pok_Dict) then
         CheckAction(A, ADepth + 1);
     end;
@@ -1906,7 +2217,7 @@ begin
   if Known(Cat, 'AA') then
     FailAt(par_6_5_2_1, Cat, 'catalog with /AA');
   CheckEvents(FDoc.DGet(Cat, 'AA'), ['WC', 'WS', 'DS', 'WP', 'DP']);
-  Open := FDoc.DGet(Cat, 'OpenAction');
+  Open := ActionGet(Cat, 'OpenAction');
   if (Open <> nil) and (Open.Kind = pok_Dict) then
     CheckAction(Open, 0);
   Outlines := FDoc.DGet(Cat, 'Outlines');
@@ -1926,7 +2237,7 @@ begin
   begin
     if not StageBBudget(ADepth) then
       Exit;
-    A := FDoc.DGet(Item, 'A');
+    A := ActionGet(Item, 'A');
     if (A <> nil) and (A.Kind = pok_Dict) then
       CheckAction(A, 0);
     CheckOutline(FDoc.DGet(Item, 'First'), ADepth + 1);
@@ -2076,7 +2387,9 @@ procedure TLandrixEInvoicePdfARuleCheck.WalkEmbeddedFiles(ANode: TLandrixEInvoic
 var
   Arr, Raw, V, T, Kids, O: TLandrixEInvoicePdfObject;
   I, Num, Depth: Integer;
+  Superseded: TSupersededFlags;
 begin
+  Superseded := nil;
   if (ANode = nil) or not ANode.IsDictLike or FWalkBroken then
     Exit;
   Inc(FNodesC);
@@ -2095,9 +2408,15 @@ begin
       BreakWalk;
       Exit;
     end;
+    Superseded := SupersededNames(FDoc, Arr);
     I := 1;
     while I < Arr.ArrCount do
     begin
+      if Superseded[I div 2] then
+      begin
+        Inc(I, 2);
+        Continue;
+      end;
       Raw := Arr.ArrItem(I);
       V := FDoc.Resolve(Raw);
       if (V <> nil) and (V.Kind = pok_Dict) then
@@ -2264,39 +2583,6 @@ begin
   FAFSeen[ARaw.RefNum] := FAFSeen[ARaw.RefNum] or AKind;
 end;
 
-{ An integer as veraPDF's getIntegerKey reads it: a number truncated toward
-  zero, a string its byte length; False for anything else. }
-function AFInteger(V: TLandrixEInvoicePdfObject; out AValue: Int64): Boolean;
-begin
-  Result := False;
-  AValue := 0;
-  if V = nil then
-    Exit;
-  if V.Kind = pok_Num then
-  begin
-    { an integer token as Java's long; else Java's (long) cast, which
-      saturates beyond about 9e18 }
-    if V.NumExact then
-      AValue := V.NumInt
-    else if V.NumVal >= 9.0E18 then
-      AValue := High(Int64)
-    else if V.NumVal <= -9.0E18 then
-      AValue := Low(Int64)
-    else
-      AValue := Trunc(V.NumVal);
-    Result := True;
-  end
-  else if V.Kind = pok_Str then
-  begin
-    AValue := Length(V.StrVal);
-    Result := True;
-  end;
-  { Long.intValue: the low 32 bits }
-  AValue := AValue and $FFFFFFFF;
-  if AValue > $7FFFFFFF then
-    AValue := AValue - $100000000;
-end;
-
 { The pages below ANode; the number of leaves. veraPDF finds a page by its
   index through the /Count of the nodes: where one does not match, it may
   see fewer or other pages. }
@@ -2372,6 +2658,9 @@ begin
     Exit;
   for I := 0 to Annots.ArrCount - 1 do
   begin
+    { a page or annotation met again walks its entries again: each counts }
+    if not AFBudget(1) then
+      Exit;
     { veraPDF builds annotations from dictionaries only }
     A := AFRef(Annots.ArrItem(I));
     if (A = nil) or (A.Kind <> pok_Dict) then
@@ -2390,6 +2679,8 @@ begin
       else if V.Kind = pok_Dict then
         for J := 0 to Integer(V.DVals.Count) - 1 do
         begin
+          if not AFBudget(1) then
+            Exit;
           S := AFRef(TLandrixEInvoicePdfObject(V.DVals[J]));
           if (S <> nil) and (S.Kind = pok_Stream) then
             AFAppearance(S, 1);
@@ -2440,7 +2731,7 @@ procedure TLandrixEInvoicePdfARuleCheck.AFXObject(ARaw: TLandrixEInvoicePdfObjec
 var
   X, Sub: TLandrixEInvoicePdfObject;
 begin
-  if not AFFirstVisit(ARaw, 1) or not AFBudget(ADepth) then
+  if not AFBudget(ADepth) or not AFFirstVisit(ARaw, 1) then
     Exit;
   X := AFRef(ARaw);
   if (X = nil) or not X.IsDictLike then
@@ -2458,7 +2749,7 @@ procedure TLandrixEInvoicePdfARuleCheck.AFFont(ARaw: TLandrixEInvoicePdfObject; 
 var
   F, Sub: TLandrixEInvoicePdfObject;
 begin
-  if not AFFirstVisit(ARaw, 2) or not AFBudget(ADepth) then
+  if not AFBudget(ADepth) or not AFFirstVisit(ARaw, 2) then
     Exit;
   F := AFRef(ARaw);
   if (F = nil) or (F.Kind <> pok_Dict) then
@@ -2472,7 +2763,7 @@ procedure TLandrixEInvoicePdfARuleCheck.AFGState(ARaw: TLandrixEInvoicePdfObject
 var
   G, F: TLandrixEInvoicePdfObject;
 begin
-  if not AFFirstVisit(ARaw, 4) or not AFBudget(ADepth) then
+  if not AFBudget(ADepth) or not AFFirstVisit(ARaw, 4) then
     Exit;
   G := AFRef(ARaw);
   if (G = nil) or not G.IsDictLike then
@@ -2488,7 +2779,7 @@ var
   T: Int64;
   K: Integer;
 begin
-  if not AFFirstVisit(ARaw, 8) or not AFBudget(ADepth) then
+  if not AFBudget(ADepth) or not AFFirstVisit(ARaw, 8) then
     Exit;
   P := AFRef(ARaw);
   K := 0;
@@ -2829,8 +3120,8 @@ begin
   Names := FDoc.DGet(Cat, 'Names');
   if (Names <> nil) and Names.IsDictLike then
   begin
-    V := FDoc.DGet(Names, 'AlternatePresentations');
-    if (V <> nil) and (V.Kind <> pok_Null) then
+    { a reference to no object counts, one to a null object does not }
+    if PresentValue(FDoc, Names.RawGet('AlternatePresentations')) then
       FailAt(par_6_10_1, Names, 'name dictionary with /AlternatePresentations');
   end;
   V := FDoc.DGet(Cat, 'Requirements');
@@ -3255,8 +3546,9 @@ begin
 end;
 
 const
-  { most XMP properties judged for 6.6.2.3.1 }
+  { most XMP properties judged for 6.6.2.3.1, most occurrences looked up }
   MaxXmpProperties = 4096;
+  MaxXmpOccurrences = 200000;
 
 { 6.6.2.3.1 on one packet: every top-level property except
   pdfaExtension:schemas. -1: predefined (XMP 2005 chapter 4, pdfaid) or
@@ -3303,6 +3595,13 @@ begin
     P := APacket.Prop(I);
     if (P.Ns = LandrixEInvoiceXmpNsPdfaExtension) and (P.Local = 'schemas') then
       Continue;
+    Inc(FPropWork);
+    if FPropWork > MaxXmpOccurrences then
+    begin
+      FIncomplete[par_6_6_2_3_1_1] := True;
+      FIncomplete[par_6_6_2_3_1_2] := True;
+      Exit;
+    end;
     { this packet, then the main packet, then the predefined properties }
     Here := ATypes.Defines(P.Ns, P.Local, T, E);
     Main := xmt_No;
@@ -3723,26 +4022,36 @@ begin
   end;
 end;
 
-procedure TLandrixEInvoicePdfARuleCheck.CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string);
+{ 6.1.13-11 on a box array as veraPDF reads it: the first four entries, a
+  missing one, a reference or one that is no number as 0; AOwner is the
+  page or node the box is written in.
+  DE: 6.1.13-11 an einem Box-Array, wie veraPDF es liest: die ersten vier
+  Eintraege, ein fehlender, eine Referenz oder einer, der keine Zahl ist,
+  als 0; AOwner ist die Seite oder der Knoten, in dem die Box steht. }
+procedure TLandrixEInvoicePdfARuleCheck.CheckBox(ABox: TLandrixEInvoicePdfObject; const AName: string;
+  AOwner: TLandrixEInvoicePdfObject);
 var
   V: array[0..3] of Double;
   I: Integer;
   O: TLandrixEInvoicePdfObject;
   W, H: Double;
 begin
-  if (ABox = nil) or (ABox.Kind <> pok_Arr) or (ABox.ArrCount <> 4) then
+  if (ABox = nil) or (ABox.Kind <> pok_Arr) then
     Exit;
   for I := 0 to 3 do
   begin
-    O := FDoc.Resolve(ABox.ArrItem(I));
-    if (O = nil) or (O.Kind <> pok_Num) then
-      Exit;
-    V[I] := O.NumVal;
+    V[I] := 0;
+    if I < ABox.ArrCount then
+    begin
+      O := ABox.ArrItem(I);
+      if (O <> nil) and (O.Kind = pok_Num) then
+        V[I] := O.NumVal;
+    end;
   end;
   W := Abs(V[2] - V[0]);
   H := Abs(V[3] - V[1]);
   if (W < 3) or (W > 14400) or (H < 3) or (H > 14400) then
-    Fail(par_6_1_13_11, -1, -1, pss_File, -1, AName + ' outside 3 to 14400 units');
+    FailAt(par_6_1_13_11, AOwner, AName + ' outside 3 to 14400 units');
 end;
 
 end.
