@@ -1934,9 +1934,14 @@ begin
   Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
     '<recipient name="a" status="failed"/><recipient name="a" status="passed"/>' +
     '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>')) <> '', 'a recipient twice invalid');
-  { part and recipient together are invalid too (the field of the key
-    findingSource selects two nodes), but the XSD validator of LandrixXml
-    does not report a field with several nodes yet (backlog) }
+  { part and recipient together: XSD 1.0 (cvc-identity-constraint.3) and
+    .NET reject it, the field of the key findingSource selects two nodes.
+    Xerces takes the attributes of one element from a union as one value
+    (the first branch), and LandrixXml follows Xerces on purpose: valid }
+  CheckEqualsStr('', ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
+    '<recipient name="authority" status="failed"/><findings errors="1" warnings="0" infos="0" predicted="0" advisory="0">' +
+    '<finding part="kosit" recipient="authority" rule="X-1" severity="error"><text>t</text></finding></findings>')),
+    'part and recipient together valid as in Xerces');
   Check(ReportSchemaErrors(Mutated(Xml, '<findings errors="0" warnings="0" infos="0" predicted="0" advisory="0"/>',
     '<findings errors="1" warnings="0" infos="0" predicted="0" advisory="0"><finding severity="error"><text>t</text></finding>' +
     '</findings>')) <> '', 'neither part nor recipient invalid');

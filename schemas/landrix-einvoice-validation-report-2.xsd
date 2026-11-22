@@ -216,7 +216,10 @@
   <xs:complexType name="Findings">
     <xs:sequence>
       <xs:element name="finding" type="r:Finding" minOccurs="0" maxOccurs="unbounded">
-        <!-- exactly one of part and recipient -->
+        <!-- exactly one of part and recipient. A validator that follows
+             XSD 1.0 strictly (.NET) also rejects both together
+             (cvc-identity-constraint.3); Xerces and LandrixXML accept that
+             (they take the first branch of the union, part). -->
         <xs:key name="findingSource">
           <xs:selector xpath="."/>
           <xs:field xpath="@part|@recipient"/>
@@ -233,7 +236,7 @@
   </xs:complexType>
 
   <!-- part: the part that reported it; a finding of a recipient profile has
-       recipient instead (exactly one of the two, the key findingSource). rule: KoSIT code or assert id,
+       recipient instead (exactly one of the two; see the key findingSource). rule: KoSIT code or assert id,
        rule of the own check or the PDF checker, kind of a reading
        diagnostic; absent for a finding of the validation itself. step: KoSIT
        only. positionIn: what line and column count in (the invoice XML, or
