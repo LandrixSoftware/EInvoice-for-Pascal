@@ -201,6 +201,13 @@ Supported invoice standards are documented per release.
   stay incomplete.
 
 ### Changed
+- `tools/build.ps1`: new set `dev` (before every commit: FPC 3.2.2 Win32/Win64 and Linux with checks, Delphi 6,
+  Delphi 13 Win32/Win64). The local toolchains build and run in parallel (`-Jobs`, child processes, output in
+  `build/<toolchain>/worker.log`). The new toolchain `x86` (in `dev` and `all`) runs the test runners of the Windows
+  toolchains of the call at the same time on a real x86 machine over SSH, in a work tree kept there and brought up to
+  date by a manifest; the outputs the cross test and `-Validate` need come back. Without the machine they run locally
+  with a warning. The Linux toolchains work in a copy of the tree in the WSL file system (`rsync`, one per checkout)
+  instead of on `/mnt/d`. Toolchain names are case-insensitive.
 - Code lists: EN 16931 code list values version 18 of the European Commission (valid from 2026-11-15)
   instead of version 17. New members: electronic address scheme 9960, ICD 0249 to 0251 and the 18
   Spanish exemption reasons `VATEX-ES-*`. The rule check keeps judging them as the validators of
