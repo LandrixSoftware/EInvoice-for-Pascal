@@ -1284,7 +1284,7 @@ var
     E: Integer;
   begin
     Result := True;
-    for E := 0 to Length(Existing) - 1 do
+    for E := 0 to Integer(Length(Existing)) - 1 do
       if Existing[E] = AK then
         Exit;
     Result := False;

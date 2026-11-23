@@ -350,16 +350,16 @@ var
   I: Integer;
 begin
   for I := Low(GoodDates) to High(GoodDates) do
-    CheckEquals(0, ReadDiagnostics(TLandrixXmlUtf8(GoodDates[I]), '12:00:00', '', edk_InvalidValue),
+    CheckEquals(0, ReadDiagnostics(LandrixXmlStringToUtf8(GoodDates[I]), '12:00:00', '', edk_InvalidValue),
       'date ' + GoodDates[I]);
   for I := Low(BadDates) to High(BadDates) do
-    CheckEquals(1, ReadDiagnostics(TLandrixXmlUtf8(BadDates[I]), '12:00:00', '', edk_InvalidValue),
+    CheckEquals(1, ReadDiagnostics(LandrixXmlStringToUtf8(BadDates[I]), '12:00:00', '', edk_InvalidValue),
       'date ' + BadDates[I]);
   for I := Low(GoodTimes) to High(GoodTimes) do
-    CheckEquals(0, ReadDiagnostics('2026-10-18', TLandrixXmlUtf8(GoodTimes[I]), '', edk_InvalidValue),
+    CheckEquals(0, ReadDiagnostics('2026-10-18', LandrixXmlStringToUtf8(GoodTimes[I]), '', edk_InvalidValue),
       'time ' + GoodTimes[I]);
   for I := Low(BadTimes) to High(BadTimes) do
-    CheckEquals(1, ReadDiagnostics('2026-10-18', TLandrixXmlUtf8(BadTimes[I]), '', edk_InvalidValue),
+    CheckEquals(1, ReadDiagnostics('2026-10-18', LandrixXmlStringToUtf8(BadTimes[I]), '', edk_InvalidValue),
       'time ' + BadTimes[I]);
   CheckEquals(0, ReadDiagnostics('2026-10-18', '12:00:00', '&#10;&#9; <![CDATA[ ]]><![CDATA[]]>',
     edk_UnexpectedText), 'whitespace as references and CDATA');

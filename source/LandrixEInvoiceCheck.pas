@@ -2089,7 +2089,7 @@ begin
   { the rate is a percentage: / 100 }
   Inc(X.Scale, 2);
   T := ExactInt(Abs(ATaxCents));
-  Half := ExactAdd(ExactInt(AWidth - 1), ExactOf('0.5'));
+  Half := ExactAdd(ExactInt(Int64(AWidth) - 1), ExactOf('0.5'));
   Result := (ExactCompare(X, ExactSub(T, Half)) >= 0) and (ExactCompare(X, ExactAdd(T, Half)) < 0);
 end;
 

@@ -2249,7 +2249,7 @@ begin
   Result := '';
   Acc := 0;
   Bits := 0;
-  for I := Low(ACodes) to High(ACodes) do
+  for I := 0 to Integer(High(ACodes)) do
     for J := 8 downto 0 do
     begin
       Acc := (Acc shl 1) or ((ACodes[I] shr J) and 1);
@@ -2390,7 +2390,7 @@ begin
     Finish(Pdf, O, 29, '');
     List.Clear;
     Check(ExtractAll(Pdf, List, Info), 'bombs: ' + string(Info.Error));
-    CheckEquals(0, List.Count, 'bombs: nothing decoded after the budget');
+    CheckEquals(0, Integer(List.Count), 'bombs: nothing decoded after the budget');
     CheckEquals(9, Info.SkippedAttachments, 'bombs: all skipped');
   finally
     List.Free;

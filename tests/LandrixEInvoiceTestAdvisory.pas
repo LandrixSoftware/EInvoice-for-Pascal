@@ -72,9 +72,9 @@ begin
   finally
     Reported.Free;
   end;
-  CheckEquals(D.Count, I, 'number of hints');
+  CheckEquals(Integer(D.Count), I, 'number of hints');
   Result := '';
-  for I := 0 to D.Count - 1 do
+  for I := 0 to Integer(D.Count) - 1 do
   begin
     Check(D[I].Severity <> eds_Error, 'a hint is never an error');
     Check(D[I].Kind = edk_RuleViolation, 'kind');
@@ -118,7 +118,7 @@ begin
   Target.Syntax := esy_CII;
   LandrixEInvoiceAdvise(AInvoice, Target, [eaf_Plausibility], D, nil);
   Result := '';
-  for I := 0 to D.Count - 1 do
+  for I := 0 to Integer(D.Count) - 1 do
   begin
     if Result <> '' then
       Result := Result + '; ';
@@ -194,7 +194,7 @@ begin
     { not in the family set: nothing }
     D.Clear;
     CheckEquals(0, LandrixEInvoiceAdvise(Inv, NoTarget, [], D), 'no family');
-    CheckEquals(0, D.Count, 'no family: no diagnostic');
+    CheckEquals(0, Integer(D.Count), 'no family: no diagnostic');
     { without a list the hints are counted }
     CheckEquals(1, LandrixEInvoiceAdvise(Inv, NoTarget, [eaf_Identifiers], nil),
       'counted without a list');

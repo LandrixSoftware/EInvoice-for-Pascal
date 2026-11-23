@@ -772,6 +772,19 @@ begin
     Result[I] := Char(Ord(S[I]));
 end;
 
+{ Decimal digits of V as ASCII bytes, without a code page conversion. }
+function IntToAscii(V: Integer): AnsiString;
+var
+  S: string;
+  I: Integer;
+begin
+  S := IntToStr(V);
+  Result := '';
+  SetLength(Result, Length(S));
+  for I := 1 to Length(S) do
+    Result[I] := AnsiChar(Ord(S[I]));
+end;
+
 function MinInt(A, B: Integer): Integer;
 begin
   if A < B then
@@ -800,11 +813,12 @@ var
   Sign, Norm: AnsiString;
 begin
   AValue := 0;
-  if (Pos('e', ATok) > 0) or (Pos('E', ATok) > 0) then
-  begin
-    ACode := 1;
-    Exit;
-  end;
+  for I := 1 to Length(ATok) do
+    if (ATok[I] = 'e') or (ATok[I] = 'E') then
+    begin
+      ACode := 1;
+      Exit;
+    end;
   I := 1;
   Sign := '';
   if (I <= Length(ATok)) and ((ATok[I] = '+') or (ATok[I] = '-')) then
@@ -855,7 +869,7 @@ begin
   if Zeros > 100 then
   begin
     Norm := Sign + '0.' + Copy(ATok, FracFrom + Zeros, FracTo - FracFrom - Zeros) + 'E-' +
-      AnsiString(IntToStr(Zeros));
+      IntToAscii(Zeros);
     Val(AsciiToNative(Norm), AValue, ACode);
     Exit;
   end;
@@ -910,7 +924,7 @@ begin
   begin
     if (S[I] < '0') or (S[I] > '9') then
       Exit;
-    D := Ord(S[I]) - Ord('0');
+    D := Int64(Ord(S[I])) - Ord('0');
     if AValue > (High(Int64) - D) div 10 then
       Exit;
     AValue := AValue * 10 + D;
@@ -5197,9 +5211,9 @@ begin
         else if Ent = 'apos' then
           Code := Ord('''')
         else if (Length(Ent) > 2) and (Ent[1] = '#') and (Ent[2] = 'x') then
-          Code := StrToIntDef('$' + string(Copy(Ent, 3, MaxInt)), -1)
+          Code := StrToIntDef('$' + AsciiToNative(Copy(Ent, 3, MaxInt)), -1)
         else if (Length(Ent) > 1) and (Ent[1] = '#') then
-          Code := StrToIntDef(string(Copy(Ent, 2, MaxInt)), -1);
+          Code := StrToIntDef(AsciiToNative(Copy(Ent, 2, MaxInt)), -1);
       end;
     end;
     Inc(N);

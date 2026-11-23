@@ -1064,7 +1064,7 @@ begin
         Check(HasRule(D, ID), ID + ' reported by LandrixEInvoiceCheckInvoice');
         { the result counts exactly the errors among the diagnostics }
         Counted := 0;
-        for J := 0 to D.Count - 1 do
+        for J := 0 to Integer(D.Count) - 1 do
           if D[J].Severity = eds_Error then
             Inc(Counted);
         CheckEquals(Counted, Errors, ID + ' errors counted');

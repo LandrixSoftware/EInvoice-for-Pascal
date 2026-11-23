@@ -1329,7 +1329,7 @@ begin
     { and the PDF checker (its findings are copied later)
       DE: und die PDF-Pruefung (ihre Befunde werden spaeter uebernommen) }
     if AResult.FPdf <> nil then
-      for J := 0 to AResult.FPdf.Diagnostics.Count - 1 do
+      for J := 0 to Integer(AResult.FPdf.Diagnostics.Count) - 1 do
         if AResult.FPdf.Diagnostics[J].RuleID <> '' then
           Reported.Add(string(AResult.FPdf.Diagnostics[J].RuleID));
     try

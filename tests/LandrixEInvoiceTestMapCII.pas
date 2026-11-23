@@ -1281,7 +1281,7 @@ begin
     MapToCIIXml(Invoice, TLandrixEInvoiceTargets.FacturX('1.09', epr_Extended), D, nil);
     CheckEquals(1, CountKind(D, edk_DuplicateElement, '/ram:ApplicableTradeSettlementFinancialCard'), 'second card');
     CheckEquals(1, CountKind(D, edk_DuplicateElement, '/ram:PayerPartyDebtorFinancialAccount'), 'second account');
-    for I := 0 to D.Count - 1 do
+    for I := 0 to Integer(D.Count) - 1 do
       if D[I].Kind = edk_DuplicateElement then
         Check(D[I].Severity = eds_Info, 'an info: ' + string(D[I].Message));
     { MINIMUM writes no payment means: nothing to report }

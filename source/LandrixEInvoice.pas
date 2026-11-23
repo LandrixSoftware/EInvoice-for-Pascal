@@ -1117,7 +1117,7 @@ begin
   ACopy := TMemoryStream.Create;
   try
     repeat
-      N := AStream.Read(Buf[0], Length(Buf));
+      N := AStream.Read(Buf[0], Integer(Length(Buf)));
       if N > 0 then
       begin
         { no invoice file is larger than the PDF limit }

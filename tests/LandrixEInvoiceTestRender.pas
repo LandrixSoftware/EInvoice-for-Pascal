@@ -1146,10 +1146,10 @@ var
   D: TLandrixEInvoiceDiagnostics;
   I, K, Depth, Before: Integer;
 
-  function Occurrences(const AText, AWhat: AnsiString): Integer;
+  function Occurrences(const AText, AWhat: TLandrixXmlUtf8): Integer;
   var
     P: Integer;
-    Rest: AnsiString;
+    Rest: TLandrixXmlUtf8;
   begin
     Result := 0;
     Rest := AText;

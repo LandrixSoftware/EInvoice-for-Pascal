@@ -825,7 +825,7 @@ end;
 function TContentLexer.ParseNumber: TCv;
 var
   Neg, Valid: Boolean;
-  Start, Dots, I, Dot, IntDigits, LeadZeros: Integer;
+  Start, Dots, I, Dot, IntDigits, LeadZeros, Digit: Integer;
   Digits, IntPart, FracPart: AnsiString;
   V: Int64;
   D: Double;
@@ -857,10 +857,11 @@ begin
     I := 1;
     while Valid and (I <= Length(Digits)) do
     begin
-      if V > (High(Int64) - (Ord(Digits[I]) - Ord('0'))) div 10 then
+      Digit := Ord(Digits[I]) - Ord('0');
+      if V > (High(Int64) - Digit) div 10 then
         Valid := False
       else
-        V := V * 10 + (Ord(Digits[I]) - Ord('0'));
+        V := V * 10 + Digit;
       Inc(I);
     end;
     if not Valid then
@@ -1378,7 +1379,7 @@ begin
   while I + 1 < FLen do
   begin
     { veraPDF's counter has read EI too when it compares with /L }
-    if (FBuf[I] = Ord('E')) and (FBuf[I + 1] = Ord('I')) and ((L < 0) or (I + 2 - DataStart >= L)) then
+    if (FBuf[I] = Ord('E')) and (FBuf[I + 1] = Ord('I')) and ((L < 0) or (Int64(I) + 2 - DataStart >= L)) then
     begin
       if I + 2 >= FLen then
       begin
@@ -1580,7 +1581,7 @@ begin
     else
       Hi := Mid - 1;
   end;
-  N := Length(ASorted);
+  N := Integer(Length(ASorted));
   SetLength(ASorted, N + 1);
   if Lo < N then
     Move(ASorted[Lo], ASorted[Lo + 1], (N - Lo) * SizeOf(Integer));

@@ -248,6 +248,9 @@ Supported invoice standards are documented per release.
   remaining 32-bit x86 effect on the FPU control word is described there.
 
 ### Fixed
+- Compiler hints and warnings on FPC 3.2.2 i386 (Int64 subtraction, signed with unsigned) and Delphi 13 Win32/Win64
+  (W1072 for NativeInt lengths and counts, W1057 to W1060 for string casts, now byte-wise ASCII conversions); no
+  change in behaviour.
 - Reading CII: the due date of a cash discount term whose own period (basis date plus days) ends on another date is the
   net due date BT-9 when no net term gives one, as ZUGFeRD EXTENDED invoices write it (`#SKONTO#` term with
   `DueDateDateTime`); it was dropped silently. Further differing dates are reported.

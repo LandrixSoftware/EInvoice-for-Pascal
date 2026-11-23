@@ -267,6 +267,30 @@ end;
 
 { --- active content of the visualization ------------------------------------ }
 
+{ The text of an AnsiString that holds ASCII, character by character: no
+  code page conversion, the same on every compiler. }
+function AsciiToNative(const S: AnsiString): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, Length(S));
+  for I := 1 to Length(S) do
+    Result[I] := Char(Ord(S[I]));
+end;
+
+{ S with A..Z lowered, every other byte unchanged (as LowerCase, without the
+  detour through string and a code page). }
+function LowerAscii(const S: AnsiString): AnsiString;
+var
+  I: Integer;
+begin
+  Result := S;
+  for I := 1 to Length(Result) do
+    if (Result[I] >= 'A') and (Result[I] <= 'Z') then
+      Result[I] := AnsiChar(Ord(Result[I]) + 32);
+end;
+
 { The KoSIT stylesheet copies invoice values into active content: BT-124
   (external document location) into an href, and the attachment's
   reference, MIME code and file name into the arguments of an onClick
@@ -309,9 +333,9 @@ begin
         else if Ent = 'gt' then
           Code := Ord('>')
         else if (Length(Ent) > 2) and (Ent[1] = '#') and ((Ent[2] = 'x') or (Ent[2] = 'X')) then
-          Code := StrToIntDef('$' + string(Copy(Ent, 3, MaxInt)), -1)
+          Code := StrToIntDef('$' + AsciiToNative(Copy(Ent, 3, MaxInt)), -1)
         else if (Length(Ent) > 1) and (Ent[1] = '#') then
-          Code := StrToIntDef(string(Copy(Ent, 2, MaxInt)), -1);
+          Code := StrToIntDef(AsciiToNative(Copy(Ent, 2, MaxInt)), -1);
         if Code >= 0 then
         begin
           Inc(N);
@@ -349,7 +373,7 @@ begin
       V[N] := AValue[I];
     end;
   SetLength(V, N);
-  V := AnsiString(LowerCase(string(V)));
+  V := LowerAscii(V);
   Result := True;
   for I := 1 to Length(V) do
     if (V[I] = '/') or (V[I] = '?') or (V[I] = '#') then
@@ -475,7 +499,7 @@ begin
     NameStart := P;
     while (P <= Len) and not IsHtmlWhite(Buf[P]) and (Buf[P] <> '>') and (Buf[P] <> '/') do
       Inc(P);
-    Tag := AnsiString(LowerCase(string(Copy(Buf, NameStart, P - NameStart))));
+    Tag := LowerAscii(Copy(Buf, NameStart, P - NameStart));
     while P <= Len do
     begin
       while (P <= Len) and (IsHtmlWhite(Buf[P]) or (Buf[P] = '/')) do
@@ -485,7 +509,7 @@ begin
       NameStart := P;
       while (P <= Len) and not IsHtmlWhite(Buf[P]) and (Buf[P] <> '=') and (Buf[P] <> '>') do
         Inc(P);
-      Name := AnsiString(LowerCase(string(Copy(Buf, NameStart, P - NameStart))));
+      Name := LowerAscii(Copy(Buf, NameStart, P - NameStart));
       while (P <= Len) and IsHtmlWhite(Buf[P]) do
         Inc(P);
       if (P > Len) or (Buf[P] <> '=') then

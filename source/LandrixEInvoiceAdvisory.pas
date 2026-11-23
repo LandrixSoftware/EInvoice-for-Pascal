@@ -925,7 +925,7 @@ begin
     Inc(Characters);
   end;
   Fits := False;
-  for I := Low(ALengths) to High(ALengths) do
+  for I := 0 to Integer(High(ALengths)) do
     if (ACheckDigit and LandrixEInvoiceIsDigits(AValue, ALengths[I])) or
        (not ACheckDigit and (Characters = ALengths[I])) then
       Fits := True;

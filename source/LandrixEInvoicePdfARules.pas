@@ -3382,7 +3382,7 @@ begin
   begin
     if (S[I] < '0') or (S[I] > '9') then
       Exit;
-    AValue := AValue * 10 + (Word(S[I]) - Ord('0'));
+    AValue := AValue * 10 + (Int64(Ord(S[I])) - Ord('0'));
     if AValue > 2147483648 then
       Exit;
   end;

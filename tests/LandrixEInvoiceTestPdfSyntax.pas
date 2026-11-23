@@ -2008,7 +2008,7 @@ begin
     'a Q back from beyond the kept levels');
   Keys := '';
   for I := 1 to 100 do
-    Keys := Keys + '/K' + AnsiString(IntToStr(I)) + ' 0 ';
+    Keys := Keys + '/K' + IntToAnsi(I) + ' 0 ';
   CheckOutcome(ContentPdf('/Span << ' + Keys + '>> BDC EMC 2147483648 w', '', '', '', NoExtra), par_6_1_13_1,
     pro_Failed, '100 keys');
   CheckOutcome(ContentPdf('/Span << ' + Keys + '/K0 0 >> BDC EMC 2147483648 w', '', '', '', NoExtra), par_6_1_13_1,

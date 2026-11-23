@@ -675,11 +675,11 @@ begin
   I := 0;
   while I < 32 do
   begin
-    N := Bytes[I] shl 16;
+    N := Integer(Bytes[I]) shl 16;
     if I + 1 < 32 then
-      N := N or (Bytes[I + 1] shl 8);
+      N := N or (Integer(Bytes[I + 1]) shl 8);
     if I + 2 < 32 then
-      N := N or Bytes[I + 2];
+      N := N or Integer(Bytes[I + 2]);
     S := S + Alphabet[(N shr 18) and 63 + 1] + Alphabet[(N shr 12) and 63 + 1];
     if I + 1 < 32 then
       S := S + Alphabet[(N shr 6) and 63 + 1]
