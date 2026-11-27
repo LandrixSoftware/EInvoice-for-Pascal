@@ -92,13 +92,21 @@ type
 
   { One message: a well-formedness or XML schema error (code cvc-... as
     Xerces, otherwise generic-error) or a failed assert or successful report
-    of a Schematron step (code = its id, UNSPECIFIC without id). A step
-    that could not be completed has no messages; see ProcessingError.
+    of a Schematron step (code = its id, UNSPECIFIC without id). A
+    Schematron step that failed has no messages; see ProcessingError. A
+    step stopped at its limit keeps its messages and adds one with Cut
+    (generic-error); a dynamic error after the Schematron limit is a
+    ProcessingError instead. TLandrixEInvoiceValidationResult.Cut tells
+    both.
     DE: Eine Meldung: ein Fehler der Wohlgeformtheit oder des XML-Schemas
     (Code cvc-... wie Xerces, sonst generic-error) oder ein fehlgeschlagenes
     assert bzw. erfolgreiches report eines Schematron-Schritts (Code = seine
-    id, UNSPECIFIC ohne id). Ein Schritt, der nicht abgeschlossen werden
-    konnte, hat keine Meldungen; siehe ProcessingError. }
+    id, UNSPECIFIC ohne id). Ein gescheiterter Schematron-Schritt hat keine
+    Meldungen; siehe ProcessingError. Ein Schritt, der an seiner Grenze
+    abbrach, behaelt seine Meldungen und bekommt eine mit Cut dazu
+    (generic-error); ein dynamischer Fehler nach der Schematron-Grenze ist
+    stattdessen ein ProcessingError. TLandrixEInvoiceValidationResult.Cut
+    zeigt beides. }
   TLandrixEInvoiceValidationMessage = class(TObject)
   private
     FStep: TLandrixEInvoiceValidationStep;
@@ -113,6 +121,7 @@ type
     FColumn: Integer;
     FText: TLandrixEInvoiceString;
     FFailedAssert: Boolean;
+    FCut: Boolean;
   public
     property Step: TLandrixEInvoiceValidationStep read FStep;
     { 1-based number of the Schematron step, 0 for the other steps.
@@ -136,6 +145,13 @@ type
     property Line: Integer read FLine;
     property Column: Integer read FColumn;
     property Text: TLandrixEInvoiceString read FText;
+    { the message says that the step stopped at its limit (more schema
+      errors than listed, more Schematron results than MaxSchematronResults);
+      always an error.
+      DE: die Meldung sagt, dass der Schritt an seiner Grenze abbrach (mehr
+      Schemafehler als aufgefuehrt, mehr Schematron-Ergebnisse als
+      MaxSchematronResults); immer ein Fehler. }
+    property Cut: Boolean read FCut;
   end;
 
   { One step of a run as the KoSIT report input lists it: well-formedness
@@ -185,6 +201,8 @@ type
     FXmlSchemaValid: Boolean;
     FProcessingError: TLandrixEInvoiceString;
     FAccepted: Boolean;
+    FCut: Boolean;
+    FSchematronCut: Boolean;
     FSteps: TObjectList;
     FTimestamp: TLandrixEInvoiceString;
     FDocumentHash: TLandrixEInvoiceString;
@@ -225,6 +243,20 @@ type
     { the assessment: accept (True) or reject (False).
       DE: die Bewertung: annehmen (True) oder abweisen (False). }
     property Accepted: Boolean read FAccepted;
+    { a step stopped at its limit (more XML Schema errors than listed, more
+      Schematron results than MaxSchematronResults, also with a dynamic
+      error after the limit); the document is rejected and the KoSIT report
+      refuses the result.
+      DE: ein Schritt brach an seiner Grenze ab (mehr XML-Schema-Fehler als
+      aufgefuehrt, mehr Schematron-Ergebnisse als MaxSchematronResults, auch
+      mit einem dynamischen Fehler nach der Grenze); das Dokument wird
+      abgewiesen und der KoSIT-Bericht verweigert das Ergebnis. }
+    property Cut: Boolean read FCut;
+    { a Schematron step stopped at MaxSchematronResults: the check is not
+      complete.
+      DE: ein Schematron-Schritt brach bei MaxSchematronResults ab: die
+      Pruefung ist nicht vollstaendig. }
+    property SchematronCut: Boolean read FSchematronCut;
     property MessageCount: Integer read GetMessageCount;
     property Messages[AIndex: Integer]: TLandrixEInvoiceValidationMessage read GetMessage; default;
     { the start of the run as xs:dateTime in local time, without time zone.
@@ -323,6 +355,7 @@ type
     FSchemas: TStringList;
     FRules: TStringList;
     FKeepSvrl: Boolean;
+    FMaxSchematronResults: Integer;
     FNoScenarioReportFile: string;
     procedure ReadScenarioXml(const AFileName: string);
     function GetScenarioCount: Integer;
@@ -398,6 +431,18 @@ type
       schreibt), fuer den Eingang des KoSIT-Berichts; Vorgabe False (das
       SVRL fuehrt jede gefeuerte Regel auf und kann gross werden). }
     property KeepSvrl: Boolean read FKeepSvrl write FKeepSvrl;
+    { The most results a Schematron step keeps (default 10000; 0 = no
+      limit, as the KoSIT validator). A crafted document can fail a rule on
+      every node; beyond the limit the step stops, the result gets an error
+      message saying so and the document is never accepted (the rest of
+      the rules was not checked). Real invoices stay far below it.
+      DE: Die meisten Ergebnisse, die ein Schematron-Schritt behaelt
+      (Vorgabe 10000; 0 = ohne Grenze, wie der KoSIT-Validator). Ein
+      praepariertes Dokument kann an jedem Knoten eine Regel verletzen;
+      jenseits der Grenze bricht der Schritt ab, das Ergebnis bekommt eine
+      Fehlermeldung dazu und das Dokument wird nie angenommen (der Rest der
+      Regeln wurde nicht geprueft). Echte Rechnungen bleiben weit darunter. }
+    property MaxSchematronResults: Integer read FMaxSchematronResults write FMaxSchematronResults;
     { the report stylesheet of noScenarioReport (full path), which KoSIT
       applies when no scenario is chosen; '' if the configuration names
       none.
@@ -802,6 +847,8 @@ begin
   FXmlSchemaValid := False;
   FProcessingError := '';
   FAccepted := False;
+  FCut := False;
+  FSchematronCut := False;
   FSteps.Clear;
   FTimestamp := '';
   FDocumentHash := '';
@@ -907,6 +954,7 @@ begin
   FRuleFiles := TStringList.Create;
   FSchemas := TStringList.Create;
   FRules := TStringList.Create;
+  FMaxSchematronResults := 10000;
   { file names may differ only in case (Linux, macOS with a case-sensitive
     volume); on Windows another spelling only loads twice
     DE: Dateinamen koennen sich nur in der Schreibweise unterscheiden
@@ -1327,11 +1375,9 @@ var
   Step: TLandrixEInvoiceValidationStepResult;
   FileData: TMemoryStream;
   SvrlWriter: TLandrixXmlWriter;
-  TruncMsg: TLandrixEInvoiceValidationMessage;
 begin
   AResult.Clear;
   Result := False;
-  TruncMsg := nil;
   Scenario := nil;
   AResult.FTimestamp := U(LandrixXmlFormatDateTime(Now));
   if AFileName <> '' then
@@ -1445,7 +1491,8 @@ begin
         if XsdValidator.Truncated then
         begin
           Msg := AResult.Add(evs_XmlSchema, 0, 'generic-error', evl_Error);
-          TruncMsg := Msg;
+          Msg.FCut := True;
+          AResult.FCut := True;
           Msg.FText := 'more than ' + TLandrixEInvoiceString(IntToStr(XsdValidator.MaxErrors)) +
             ' schema errors; the rest is not listed';
         end;
@@ -1463,6 +1510,7 @@ begin
           Step := AResult.AddStep(evs_Schematron, Scenario.FSchematronResourceXml[I]);
           try
             SchValidator.AbortOnDynamicError := True;
+            SchValidator.MaxResults := FMaxSchematronResults;
             SchValidator.ValidateTree(Tree);
             HasDynamicError := SchValidator.Incomplete;
             ErrorText := '';
@@ -1473,6 +1521,20 @@ begin
                 if ErrorText = '' then
                   ErrorText := U(SchValidator.Results[K].Message);
               end;
+            if SchValidator.Truncated then
+            begin
+              AResult.FCut := True;
+              AResult.FSchematronCut := True;
+            end;
+            if HasDynamicError and (ErrorText = '') then
+            begin
+              { the error itself was not kept: the result list was full }
+              if SchValidator.Truncated then
+                ErrorText := 'a dynamic error after reaching the Schematron result limit (' +
+                  TLandrixEInvoiceString(IntToStr(SchValidator.MaxResults)) + ')'
+              else
+                ErrorText := 'a dynamic error';
+            end;
             if HasDynamicError then
             begin
               { as KoSIT: the step's XSLT fails, a processing error without
@@ -1513,6 +1575,13 @@ begin
                 Msg.FText := U(SchResult.Message);
                 Msg.FFailedAssert := SchResult.Kind = xsrFailedAssert;
               end;
+              if SchValidator.Truncated then
+              begin
+                Msg := AResult.Add(evs_Schematron, I + 1, 'generic-error', evl_Error);
+                Msg.FCut := True;
+                Msg.FText := 'more than ' + TLandrixEInvoiceString(IntToStr(SchValidator.MaxResults)) +
+                  ' Schematron results; the rest of the step is not checked';
+              end;
             end;
           finally
             SchValidator.Free;
@@ -1530,8 +1599,9 @@ begin
         end;
       { errors beyond the cut were not seen: a customLevel must not turn the
         cut list into an acceptance }
-      if TruncMsg <> nil then
-        TruncMsg.FEffectiveLevel := evl_Error;
+      for I := 0 to AResult.MessageCount - 1 do
+        if AResult.Messages[I].FCut then
+          AResult.Messages[I].FEffectiveLevel := evl_Error;
       AResult.FAccepted := (Scenario <> nil) and (AResult.FProcessingError = '');
       if AResult.FAccepted and Scenario.FHasAcceptMatch then
       begin
@@ -1552,6 +1622,11 @@ begin
           if AResult.Messages[I].FFailedAssert then
             AResult.FAccepted := False;
       end;
+      { a cut Schematron step did not check the rest of its rules
+        DE: ein abgebrochener Schematron-Schritt hat den Rest seiner Regeln
+        nicht geprueft }
+      if AResult.FCut then
+        AResult.FAccepted := False;
     end;
   except
     AResult.FAccepted := False;

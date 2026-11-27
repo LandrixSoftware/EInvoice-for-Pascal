@@ -819,6 +819,81 @@ begin
   AStream.Position := 0;
 end;
 
+{ MaxSchematronResults: a cut step is reported and never accepted. }
+procedure TestSchematronLimit;
+var
+  V: TLandrixEInvoiceValidator;
+  R: TLandrixEInvoiceValidationResult;
+  DV: TLandrixEInvoiceDocumentValidator;
+  DR: TLandrixEInvoiceDocumentValidation;
+begin
+  V := TLandrixEInvoiceValidator.Create;
+  R := TLandrixEInvoiceValidationResult.Create;
+  try
+    V.LoadConfiguration(DataDir + 'scenarios.xml');
+    V.RuleFiles.Values['test.xsl'] := DataDir + 'many.sch';
+    CheckEquals(10000, V.MaxSchematronResults, 'default limit');
+    CheckDoc(V, 'doc-a-5.xml', 'Test A', 1, True, 'M-01:information M-02:information');
+    V.MaxSchematronResults := 1;
+    Check(not V.Validate(DataDir + 'doc-a-5.xml', R), 'a cut step is not accepted');
+    CheckEquals(2, R.MessageCount, 'the kept result and the cut');
+    CheckEqualsStr('M-01', string(R[0].Code), 'kept result');
+    CheckEqualsStr('generic-error', string(R[1].Code), 'cut message code');
+    CheckEquals(Ord(evl_Error), Ord(R[1].EffectiveLevel), 'cut message level');
+    CheckEquals(Ord(evs_Schematron), Ord(R[1].Step), 'cut message step');
+    Check(R.Cut and R.SchematronCut, 'the result says it was cut');
+    V.MaxSchematronResults := 2;
+    Check(V.Validate(DataDir + 'doc-a-5.xml', R), 'exactly at the limit');
+    V.MaxSchematronResults := 0;
+    Check(V.Validate(DataDir + 'doc-a-5.xml', R), 'no limit');
+    CheckEquals(2, R.MessageCount, 'no limit: both results');
+    Check(not R.Cut, 'no limit: not cut');
+    { the document validation: rejected, the KoSIT part incomplete }
+    V.MaxSchematronResults := 1;
+    DV := NewDocumentValidator(V);
+    DR := TLandrixEInvoiceDocumentValidation.Create;
+    try
+      CheckEquals(Ord(ev_Rejected), Ord(DV.ValidateFile(DataDir + 'doc-a-5.xml', DR)), 'cut: rejected');
+      CheckEquals(Ord(evr_Incomplete), Ord(DR.Status[evp_KoSIT]), 'cut: KoSIT part incomplete');
+    finally
+      DR.Free;
+      DV.Free;
+    end;
+  finally
+    R.Free;
+    V.Free;
+  end;
+  V := TLandrixEInvoiceValidator.Create;
+  R := TLandrixEInvoiceValidationResult.Create;
+  try
+    V.LoadConfiguration(DataDir + 'scenarios-no-accept.xml');
+    V.RuleFiles.Values['test.xsl'] := DataDir + 'many.sch';
+    V.MaxSchematronResults := 1;
+    Check(not V.Validate(DataDir + 'doc-a-5.xml', R), 'a cut step is not accepted without acceptMatch');
+  finally
+    R.Free;
+    V.Free;
+  end;
+  { a dynamic error right after the last kept result: a processing error
+    that says why }
+  V := TLandrixEInvoiceValidator.Create;
+  R := TLandrixEInvoiceValidationResult.Create;
+  try
+    V.LoadConfiguration(DataDir + 'scenarios.xml');
+    V.RuleFiles.Values['test.xsl'] := DataDir + 'dynamic.sch';
+    Check(not V.Validate(DataDir + 'doc-a-5.xml', R), 'a dynamic error rejects');
+    Check(R.ProcessingError <> '', 'a dynamic error is a processing error');
+    V.MaxSchematronResults := 1;
+    Check(not V.Validate(DataDir + 'doc-a-5.xml', R), 'a dynamic error at the limit rejects');
+    Check(Pos('result limit (1)', string(R.ProcessingError)) > 0,
+      'the processing error names the limit: ' + string(R.ProcessingError));
+    Check(R.Cut and R.SchematronCut, 'a dynamic error at the limit is a cut');
+  finally
+    R.Free;
+    V.Free;
+  end;
+end;
+
 { The verdict is KoSIT's; reading and the own rule check add findings. }
 procedure TestDocumentXml;
 var
@@ -2131,6 +2206,7 @@ begin
   RegisterTest('Validator.Configuration', TestConfiguration);
   RegisterTest('Validator.Stream', TestStream);
   RegisterTest('Validator.WithoutAcceptMatch', TestWithoutAcceptMatch);
+  RegisterTest('Validator.SchematronLimit', TestSchematronLimit);
   RegisterTest('Validator.KositSuite', TestKositSuite);
   RegisterTest('Validation.Xml', TestDocumentXml);
   RegisterTest('Validation.Pdf', TestDocumentPdf);

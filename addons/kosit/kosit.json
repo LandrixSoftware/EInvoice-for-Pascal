@@ -70,6 +70,6 @@
   ],
   "landrixxml": {
     "submodule": "external/landrix-xml",
-    "url": "https://raw.githubusercontent.com/landrix/LandrixXML-for-Pascal/v0.5.0/"
+    "url": "https://raw.githubusercontent.com/landrix/LandrixXML-for-Pascal/v0.5.1/"
   }
 }

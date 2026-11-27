@@ -201,6 +201,20 @@ Supported invoice standards are documented per release.
   stay incomplete.
 
 ### Changed
+- LandrixXML 0.5.1 (`a2305e0`, was 0.5.0): fixes of a complete review (many for very large or hostile input),
+  XML Schema pattern character classes as in Xerces (the validator of the KoSIT tools), the XSLT prefixes `xs` and
+  `fn` bound only where a stylesheet declares them, and a result limit for Schematron. The KoSIT, visualization,
+  rule and Peppol oracles show no difference. Reading numbers on 32-bit x86 no longer changes the process-wide
+  FPU control word, so the note on threads in `docs/validation.md` drops it.
+- Validator: a Schematron step keeps at most `MaxSchematronResults` results (new property of
+  `TLandrixEInvoiceValidator`, default 10,000, 0 = no limit, as `MaxErrors` of the XML Schema step); beyond it
+  the result gets an error message (`generic-error`; a dynamic error after the limit is a processing error
+  instead, and the new `TLandrixEInvoiceValidationResult.Cut` tells both), the document is never accepted, also without
+  `acceptMatch` and whatever `customLevel` says; the KoSIT report refuses such a result
+  (`ELandrixEInvoiceError`), since the report stylesheets would judge the kept results only. New
+  `TLandrixEInvoiceValidationMessage.Cut` marks such messages (also the XML Schema one); the document validation
+  reports the KoSIT part of a cut result as incomplete. Before, LandrixXML had no such limit. The KoSIT oracle masks
+  only the check time of the report page, also with one-digit day, month or hour.
 - `tools/build.ps1`: new set `dev` (before every commit: FPC 3.2.2 Win32/Win64 and Linux with checks, Delphi 6,
   Delphi 13 Win32/Win64). The local toolchains build and run in parallel (`-Jobs`, child processes, output in
   `build/<toolchain>/worker.log`). The new toolchain `x86` (in `dev` and `all`) runs the test runners of the Windows

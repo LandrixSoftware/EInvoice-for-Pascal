@@ -289,7 +289,7 @@ def file_hash(path):
 
 
 REPORT_MASKS = [re.compile(r"(<rep:(?:name|timestamp|documentReference|hashValue)>)[^<]*(</rep:)"),
-                re.compile(r"(<dd>)\d\d\.\d\d\.\d{4} \d\d:\d\d:\d\d(</dd>)")]
+                re.compile(r"(Zeitpunkt der Pr\S{1,8}fung:</dt>\s*<dd>)\d{1,2}\.\d{1,2}\.\d{4} \d{1,2}:\d\d:\d\d(</dd>)")]
 
 
 PARSER_MESSAGE = re.compile(r'(<rep:message [^>]*(?:id="val-xml[^"]*"|code="cvc-[^"]*")[^>]*>)(.*?)(</rep:message>)', re.S)

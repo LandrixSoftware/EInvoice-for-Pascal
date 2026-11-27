@@ -150,9 +150,13 @@ end.
   Give each thread its own validators and its own `TLandrixEInvoiceDocumentValidator`, or let
   one thread at a time validate (for example behind a lock). Each document in progress needs its
   own result object and its own stream; a result is cleared when the next validation into it
-  starts. On 32-bit x86 one shared effect remains: reading numbers briefly changes the FPU control
-  word, and the runtime stores it as the process-wide default, so a thread that starts at that
-  moment inherits the reduced precision. Parallel validation has not been tested yet.
+  starts. Parallel validation has not been tested yet.
+- A step keeps at most 10,000 XML Schema errors and 10,000 Schematron findings (the latter can be
+  changed: `TLandrixEInvoiceValidator.MaxSchematronResults`, 0 = no limit), so that a crafted document
+  cannot make the list of findings grow without bound (with `KeepSvrl` the SVRL still grows with the
+  document). Beyond the limit the result gets an error message saying so; a cut Schematron step has not
+  checked the rest of its rules, so the document is never accepted, and the KoSIT report refuses such a
+  result. The KoSIT validator lists everything; real invoices stay far below these numbers.
 - A missing rule file or a schema that does not load raises `ELandrixEInvoiceError`: a problem of
   the setup, not of the document. A configuration this library cannot run (another
   `acceptMatch`, a scenario without a match expression or with several XML schema resources) is

@@ -65,12 +65,16 @@ type
     constructor Create;
     { Writes the report input of AResult as UTF-8 XML. Raises
       ELandrixEInvoiceError when a Schematron step that ran has no SVRL
-      (the result was made without KeepSvrl) or the result has no steps (it
-      was not filled by a validation).
+      (the result was made without KeepSvrl), a step stopped at its limit
+      (TLandrixEInvoiceValidationResult.Cut: the check is incomplete) or the
+      result has no steps (it was not filled by a validation).
       DE: Schreibt den Berichtseingang zu AResult als UTF-8-XML. Loest
       ELandrixEInvoiceError aus, wenn ein Schematron-Schritt, der lief,
-      kein SVRL hat (das Ergebnis entstand ohne KeepSvrl) oder das Ergebnis
-      keine Schritte hat (es wurde nicht von einer Pruefung gefuellt). }
+      kein SVRL hat (das Ergebnis entstand ohne KeepSvrl), ein Schritt an
+      seiner Grenze abbrach (TLandrixEInvoiceValidationResult.Cut: die
+      Pruefung ist unvollstaendig) oder das
+      Ergebnis keine Schritte hat (es wurde nicht von einer Pruefung
+      gefuellt). }
     procedure WriteToStream(AResult: TLandrixEInvoiceValidationResult; AStream: TStream);
     { The same into a file. DE: Dasselbe in eine Datei. }
     procedure SaveToFile(AResult: TLandrixEInvoiceValidationResult; const AFileName: string);
@@ -150,6 +154,16 @@ begin
     if (Step.Step = evs_Schematron) and (Step.ProcessingError = '') and (Step.Svrl = '') then
       raise ELandrixEInvoiceError.Create('KoSIT report input: a Schematron step has no SVRL (validate with KeepSvrl)');
   end;
+  { a step cut at its limit did not check everything; the report
+    stylesheets of the configurations would judge the kept messages only
+    (with their customLevel) and could accept
+    DE: ein an seiner Grenze abgebrochener Schritt hat nicht alles
+    geprueft; die Bericht-Stylesheets der Konfigurationen wuerden nur die
+    behaltenen Meldungen beurteilen (mit ihrem customLevel) und koennten
+    annehmen }
+  if AResult.Cut then
+    raise ELandrixEInvoiceError.Create('KoSIT report input: a step stopped at its limit (XML Schema errors or ' +
+      'MaxSchematronResults); no report for an incomplete check');
   W := TLandrixXmlWriter.Create(AStream);
   try
     W.StartDocument;

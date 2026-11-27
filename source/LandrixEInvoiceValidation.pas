@@ -104,11 +104,13 @@ type
 
   { The status of a part. Failed: it found errors (reading: an error, or
     the document could not be read at all). Incomplete: it started but
-    could not finish (a Schematron step that failed, a part that raised).
+    could not finish (a Schematron step that failed, a step that stopped at
+    its limit, a part that raised).
     DE: Der Status eines Teils. Failed: er hat Fehler gefunden (Lesen: ein
     Fehler, oder das Dokument liess sich gar nicht lesen). Incomplete: er
     hat begonnen, konnte aber nicht zu Ende laufen (ein Schematron-Schritt,
-    der scheiterte, ein Teil, der eine Ausnahme ausloeste). }
+    der scheiterte, ein Schritt, der an seiner Grenze abbrach, ein Teil, der
+    eine Ausnahme ausloeste). }
   TLandrixEInvoicePartStatus = (evr_NotRun, evr_Passed, evr_Failed, evr_Incomplete);
 
   { The KoSIT step that reported a finding (well-formedness, XML schema,
@@ -923,6 +925,12 @@ begin
       AResult.AddFinding(evp_KoSIT, '', eds_Error, '', 0, 0, K.ProcessingError);
       AResult.FStatus[evp_KoSIT] := evr_Incomplete;
     end
+    { a step stopped at its limit (XML Schema errors, Schematron results)
+      could not finish
+      DE: ein Schritt, der an seiner Grenze abbrach (XML-Schema-Fehler,
+      Schematron-Ergebnisse), konnte nicht zu Ende laufen }
+    else if K.Cut then
+      AResult.FStatus[evp_KoSIT] := evr_Incomplete
     else if K.Accepted then
       AResult.FStatus[evp_KoSIT] := evr_Passed
     else

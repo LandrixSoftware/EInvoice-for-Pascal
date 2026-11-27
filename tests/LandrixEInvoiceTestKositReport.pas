@@ -232,7 +232,7 @@ end;
 
 procedure TestReport;
 var
-  V: TLandrixEInvoiceValidator;
+  V, V2: TLandrixEInvoiceValidator;
   Reporter: TLandrixEInvoiceKositReporter;
   R: TLandrixEInvoiceValidationResult;
   Html: TLandrixXmlUtf8;
@@ -252,6 +252,47 @@ begin
     { not well-formed: in:error-message as input-document }
     Check(not ReportOf(V, Reporter, 'doc-broken.xml', Html), 'broken rejected');
     Check(Contains(Html, 'class="root">error-message</'), 'error-message passed');
+    { a Schematron step cut at its limit: no report (the report stylesheets
+      would judge the kept results only) }
+    V2 := NewValidator(True);
+    try
+      V2.RuleFiles.Values['test.xsl'] := DataDir + 'many.sch';
+      Check(ReportOf(V2, Reporter, 'doc-a-5.xml', Html), 'many results accepted');
+      V2.MaxSchematronResults := 1;
+      R := TLandrixEInvoiceValidationResult.Create;
+      try
+        V2.Validate(DataDir + 'doc-a-5.xml', R);
+        try
+          Reporter.CreateReport(R, nil).Free;
+          FailNotRaised('ELandrixEInvoiceError');
+        except
+          on ELandrixEInvoiceError do ;
+        end;
+      finally
+        R.Free;
+      end;
+    finally
+      V2.Free;
+    end;
+    V2 := NewValidator(True);
+    try
+      V2.RuleFiles.Values['test.xsl'] := DataDir + 'dynamic.sch';
+      V2.MaxSchematronResults := 1;
+      R := TLandrixEInvoiceValidationResult.Create;
+      try
+        V2.Validate(DataDir + 'doc-a-5.xml', R);
+        try
+          Reporter.CreateReport(R, nil).Free;
+          FailNotRaised('ELandrixEInvoiceError');
+        except
+          on ELandrixEInvoiceError do ;
+        end;
+      finally
+        R.Free;
+      end;
+    finally
+      V2.Free;
+    end;
     { without KeepSvrl: refused }
     V.KeepSvrl := False;
     R := TLandrixEInvoiceValidationResult.Create;

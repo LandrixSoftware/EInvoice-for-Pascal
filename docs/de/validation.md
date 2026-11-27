@@ -152,10 +152,15 @@ end.
   gleichzeitig laden und ablegen. Jedem Thread eigene Validatoren und einen eigenen
   `TLandrixEInvoiceDocumentValidator` geben oder immer nur einen Thread prüfen lassen (etwa hinter
   einer Sperre). Jedes laufende Dokument braucht ein eigenes Ergebnisobjekt und einen eigenen
-  Stream; ein Ergebnis wird geleert, wenn die nächste Validierung hinein beginnt. Unter 32-Bit-x86
-  bleibt eine gemeinsame Wirkung: Das Lesen von Zahlen ändert kurz das FPU-Steuerwort, und die
-  Laufzeitbibliothek legt es als prozessweiten Standard ab; ein Thread, der genau dann startet,
-  erbt die verringerte Genauigkeit. Paralleles Prüfen ist noch nicht getestet.
+  Stream; ein Ergebnis wird geleert, wenn die nächste Validierung hinein beginnt. Paralleles Prüfen
+  ist noch nicht getestet.
+- Ein Schritt behält höchstens 10.000 XML-Schema-Fehler und 10.000 Schematron-Befunde (die zweite
+  Grenze ist einstellbar: `TLandrixEInvoiceValidator.MaxSchematronResults`, 0 = ohne Grenze), damit
+  ein präpariertes Dokument die Befundliste nicht unbegrenzt wachsen lassen kann (mit `KeepSvrl`
+  wächst das SVRL weiter mit dem Dokument). Jenseits der Grenze bekommt das Ergebnis eine
+  Fehlermeldung dazu; ein abgebrochener Schematron-Schritt hat den Rest seiner Regeln nicht geprüft,
+  daher wird das Dokument nie angenommen, und der KoSIT-Bericht verweigert ein solches Ergebnis. Der
+  KoSIT-Validator listet alles; echte Rechnungen bleiben weit unter diesen Zahlen.
 - Eine fehlende Regeldatei oder ein Schema, das nicht lädt, löst `ELandrixEInvoiceError` aus: ein
   Problem der Einrichtung, nicht des Dokuments. Eine Konfiguration, die diese Bibliothek nicht
   ausführen kann (anderes `acceptMatch`, Szenario ohne match-Ausdruck oder mit mehreren
