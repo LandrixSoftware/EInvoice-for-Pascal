@@ -199,6 +199,15 @@ Supported invoice standards are documented per release.
   modelled (soft masks, alternate images, shading patterns, JPEG 2000, 3D annotations) leave the findings
   uncertain. Test `PdfA.Colour`; no false positives in the corpus, 210 of 213 expected failures found, the other three
   stay incomplete.
+- PDF/A level 1, stage D, fourth part (overprint and Separation spaces): 6.2.4.2-2 (an ICCBased CMYK space is
+  not painted with overprint on and an overprint mode other than 0) and 6.2.4.4-2 (Separation spaces of one
+  colourant name have the same alternate space and tint transform), both fully implemented. The content walk keeps
+  `/OP`, `/op` and `/OPM` of the graphics state as veraPDF reads them and gives them only to the colour space a paint
+  or text operator links directly. Separations are compared document-wide as veraPDF compares their objects; a
+  conflict is certain only between two Separations certainly used. Where veraPDF itself stops with an exception
+  (a Separation whose alternate space it cannot build, a reference to no object in a compared value, an alternate
+  image without its image), no rule of the document is decided. Test `PdfA.Colour2`; all 10 corpus failures of
+  these rules are found, no false positives.
 
 ### Changed
 - LandrixXML 0.5.1 (`a2305e0`, was 0.5.0): fixes of a complete review (many for very large or hostile input),

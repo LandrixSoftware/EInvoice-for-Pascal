@@ -93,7 +93,9 @@ type
     depends on the output intent); an ICC input profile of a class, colour
     space or version not allowed; a DeviceN colour space with more than 32
     colourants, or with a colourant that is neither in /Colorants nor a
-    process component.
+    process component; an ICCBased CMYK space painted with overprint on and
+    an overprint mode other than 0; two Separation spaces of one colourant
+    name with different alternate spaces or tint transforms.
     DE: Worum es bei einem Befund in einem Content-Stream geht: eine ganze
     Zahl, eine reelle Zahl ausserhalb des Bereichs oder zu nah an null, ein
     zu langer String, ein hexadezimaler String mit ungerader Zeichenzahl
@@ -114,13 +116,17 @@ type
     verletzt, haengt vom Output-Intent ab); ein ICC-Eingangsprofil mit nicht
     erlaubter Klasse, Farbraum oder Version; ein DeviceN-Farbraum mit mehr
     als 32 Farbmitteln oder mit einem Farbmittel, das weder in /Colorants
-    noch eine Prozesskomponente ist. }
+    noch eine Prozesskomponente ist; ein ICCBased-CMYK-Raum, mit dem bei
+    eingeschaltetem Ueberdrucken und einem Ueberdruckmodus ungleich 0 gemalt
+    wird; zwei Separation-Raeume eines Farbmittelnamens mit verschiedenen
+    Alternativraeumen oder Tint-Funktionen. }
   TLandrixEInvoicePdfContentCheck = (pcc_Integer, pcc_Real, pcc_SmallReal, pcc_StringLength, pcc_HexOdd,
     pcc_HexDigits, pcc_NameLength, pcc_InlineFilter, pcc_Nesting, pcc_SpecNames, pcc_SpecRelationship,
     pcc_SpecDirect, pcc_Undefined, pcc_TR, pcc_TR2, pcc_HTP, pcc_HalftoneType, pcc_HalftoneName,
     pcc_HalftoneTransfer, pcc_Intent, pcc_ImageAlternates, pcc_ImageOPI, pcc_Interpolate, pcc_ImageBits,
     pcc_MaskBits, pcc_FormPS, pcc_FormRef, pcc_PSXObject, pcc_BlendMode, pcc_DeviceGray, pcc_DeviceRGB,
-    pcc_DeviceCMYK, pcc_IccInput, pcc_DeviceNComponents, pcc_DeviceNColorants);
+    pcc_DeviceCMYK, pcc_IccInput, pcc_DeviceNComponents, pcc_DeviceNColorants, pcc_Overprint,
+    pcc_SeparationConsistency);
 
   { A finding that veraPDF certainly reports: the content stream object
     (for the /Contents array of a page its first stream) and a short text.
@@ -156,6 +162,8 @@ type
     FMinReal: Double;
     FMaxDouble: Double;
     FTiny: Double;
+    { 2^31 }
+    FTwo31: Double;
     FNearHigh: Double;
     FNearHighTop: Double;
     FNearLow: Double;
@@ -190,8 +198,10 @@ type
     FHtCtx: array of Byte;
     FHtBuilt: Boolean;
     FHtBroken: Boolean;
-    { veraPDF throws while validating: it reports nothing }
+    { veraPDF throws while validating: it reports nothing (FThrows also at a
+      scan limit of this walk; FMayThrow only where veraPDF itself throws) }
     FThrows: Boolean;
+    FMayThrow: Boolean;
     { ICC profile headers read so far, by object }
     FIccCache: TStringList;
     { a 3D annotation: veraPDF reaches colour spaces through its 3D stream
@@ -202,6 +212,15 @@ type
     { a colour space was not followed somewhere: veraPDF may meet a shared
       one there first, so findings on shared objects are not certain }
     FSharedUnsure: Boolean;
+    { the Separation spaces linked anywhere (TSepSig), by key; the work of
+      comparing them; a comparison not decided for another reason }
+    FSeps: TObjectList;
+    FSepKeys: TStringList;
+    FSepWork: Int64;
+    FSepUnsure: Boolean;
+    { a paint with an overprint mode not decided: it may share the identity
+      of any CMYK ICC link, so no profile reached as one is certain }
+    FOpmUnsure: Boolean;
     { the decoding budget (MaxTotalBytes) ran out: nothing more is decoded }
     FBudgetSpent: Boolean;
     { Type3 glyph sets already replayed into a parse (key and parse) }
@@ -221,6 +240,9 @@ type
     function WalkPages(ANode, AInherited: TLandrixEInvoicePdfObject; ADepth: Integer): Integer;
     procedure WalkPage(APage, AInherited: TLandrixEInvoicePdfObject);
     procedure Finish;
+    procedure SeparationThrows;
+    procedure FinishSeparations(var AGroupStart, AMembers: array of Integer; var AReach: array of Boolean;
+      ANG: Integer);
     procedure ScanTiling;
     procedure ScanAlternates;
     procedure AddRootFinding(ACheck: TLandrixEInvoicePdfContentCheck; ANum: Integer; const ADetail: string);
@@ -250,6 +272,11 @@ type
       zugeordnet, den veraPDF liest; oder es kann sein. }
     function AssociatedSure(ANum: Integer): Boolean;
     function AssociatedMaybe(ANum: Integer): Boolean;
+    { veraPDF may stop with an exception on this document (it then reports
+      no rule at all).
+      DE: veraPDF kann bei diesem Dokument mit einer Ausnahme abbrechen (es
+      meldet dann gar keine Regel). }
+    function Throws: Boolean;
   end;
 
   { The header fields of an ICC profile stream as veraPDF reads them for
@@ -1525,6 +1552,12 @@ type
     FillCs: TCsRef;
     StrokeCs: TCsRef;
     TextMode: Integer;
+    { overprint for stroking (/OP) and filling (/op) and the overprint mode
+      (/OPM; OPMKnown False: a value not decided) }
+    OPStroke: Boolean;
+    OPFill: Boolean;
+    OPM: Int64;
+    OPMKnown: Boolean;
   end;
 
   TGStack = array of TGState;
@@ -1555,6 +1588,11 @@ type
       a shading, a colour space array, a group), in the context it meets it
       first }
     Virtual: Boolean;
+    { the Separation spaces this parse links (indexes into the walk's list),
+      and whether only maybe }
+    SepIdx: array of Integer;
+    SepMaybe: array of Boolean;
+    procedure AddSep(AIndex: Integer; AMaybe: Boolean);
     procedure AddChild(AIndex: Integer);
     procedure AddAssoc(ANum: Integer);
     procedure CompactAssoc;
@@ -1641,6 +1679,23 @@ begin
   end;
 end;
 
+procedure TContentParse.AddSep(AIndex: Integer; AMaybe: Boolean);
+var
+  I: Integer;
+begin
+  for I := 0 to Integer(Length(SepIdx)) - 1 do
+    if SepIdx[I] = AIndex then
+    begin
+      if not AMaybe then
+        SepMaybe[I] := False;
+      Exit;
+    end;
+  SetLength(SepIdx, Length(SepIdx) + 1);
+  SetLength(SepMaybe, Length(SepMaybe) + 1);
+  SepIdx[High(SepIdx)] := AIndex;
+  SepMaybe[High(SepMaybe)] := AMaybe;
+end;
+
 { Appended; duplicates go when the list has doubled since the last
   compaction (sorted insertion would be quadratic for numbers in falling
   order). }
@@ -1707,7 +1762,28 @@ begin
     IntToStr(Ord(C.WasDefault));
 end;
 
+{ A key of the overprint state for the memo. }
+function OpKey(const AState: TGState): string;
+begin
+  Result := IntToStr(Ord(AState.OPStroke)) + IntToStr(Ord(AState.OPFill)) + ':' + IntToStr(AState.OPM) +
+    IntToStr(Ord(AState.OPMKnown));
+end;
+
 type
+  { A Separation space veraPDF registers: its colourant name, the alternate
+    space as built and the tint transform as stored (element 3). }
+  TSepSig = class(TObject)
+  public
+    Name: AnsiString;
+    NameOk: Boolean;
+    Alt: TCsRef;
+    Tint: TLandrixEInvoicePdfObject;
+    Num: Integer;
+    Index: Integer;
+    { the same object built with another alternate elsewhere }
+    Unsure: Boolean;
+  end;
+
   { The parse an interpreter writes to, kept while it writes to a virtual
     one. }
   TVSave = record
@@ -1742,6 +1818,12 @@ type
     FSiteFrom: TLandrixEInvoicePdfObject;
     { shading patterns being followed }
     FPatternNest: Integer;
+    { a paint or text link is being made: the overprint flag of its side
+      and the mode go with the colour space it links directly }
+    FPaintActive: Boolean;
+    FPaintFlag: Boolean;
+    FPaintOPM: Int64;
+    FPaintOPMKnown: Boolean;
     function SeenBefore(const AKey: string): Boolean;
     procedure Mark(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AWhat: string);
     procedure ExposeNumber(V: TCv);
@@ -1771,8 +1853,11 @@ type
     function EnterVirtual(const AKey, ACtx: string; ANum: Integer; out ASave: TVSave): Boolean;
     procedure LeaveVirtual(const ASave: TVSave);
     procedure ExposeCs(const C: TCsRef; ANullGray: Boolean; ADepth: Integer);
-    procedure ExposeArray(const C: TCsRef; ADepth: Integer);
-    procedure ExposeIcc(const C: TCsRef);
+    procedure ExposeArray(const C: TCsRef; ADepth: Integer; APaint: Boolean);
+    procedure ExposeIcc(const C: TCsRef; APaint: Boolean);
+    procedure RecordSeparation(const C: TCsRef);
+    function CvSelectsSpecial(V: TCv; ADepth: Integer): Boolean;
+    procedure PaintLink(const C: TCsRef; AStroke: Boolean);
     procedure ExposeDeviceN(const C: TCsRef; ADepth: Integer);
     function SiteSpace(ARaw: TLandrixEInvoicePdfObject; AShading: Boolean): TCsRef;
     procedure SiteLink(ARaw: TLandrixEInvoicePdfObject; AShading: Boolean);
@@ -1833,7 +1918,7 @@ begin
     IntToStr(Ord(AState.ColorOn)) + IntToStr(Ord(AState.FillPattern)) + IntToStr(Ord(AState.StrokePattern)) +
     IntToStr(Ord(AState.Unsure)) + IntToStr(Ord(AState.Under)) + '/' +
     AWalk.ObjId(AState.Font) + '/' + CsKey(AWalk, AState.FillCs) + '/' + CsKey(AWalk, AState.StrokeCs) + '/' +
-    IntToStr(AState.TextMode);
+    IntToStr(AState.TextMode) + '/' + OpKey(AState);
   MemoKey := AKey + '#' + Ctx;
   Idx := AWalk.FMemo.IndexOf(MemoKey);
   if Idx >= 0 then
@@ -2033,7 +2118,7 @@ end;
 
 const
   { the checks of colour spaces }
-  ColourChecks = [pcc_DeviceGray..pcc_DeviceNColorants];
+  ColourChecks = [pcc_DeviceGray..pcc_SeparationConsistency];
   { DeviceN names and process components compared one by one at most }
   MaxColorantScan = 1000;
   { nested colour spaces looked into per document }
@@ -2570,10 +2655,11 @@ begin
     Result := F.NameVal;
 end;
 
-{ /N of the profile of an ICCBased array as veraPDF reads it (-1 if none). }
+{ /N of the profile of an ICCBased array as veraPDF reads it (-1 if none,
+  -2 not decided). }
 function IccComponents(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): Int64;
 var
-  S: TLandrixEInvoicePdfObject;
+  S, N: TLandrixEInvoicePdfObject;
 begin
   Result := -1;
   if (FirstName(AWalk, V) <> 'ICCBased') or (V.ArrCount < 2) then
@@ -2581,7 +2667,12 @@ begin
   S := AWalk.ResolveRef(V.ArrItem(1));
   if (S = nil) or (S.Kind <> pok_Stream) then
     Exit;
-  if IntegerOf(AWalk.DGetRef(S, 'N'), Result) then
+  N := AWalk.DGetRef(S, 'N');
+  { a string counts its bytes, which this reader may not read as veraPDF
+    does (an ASCII85 token): -2, not decided }
+  if (N <> nil) and (N.Kind = pok_Str) then
+    Result := -2
+  else if IntegerOf(N, Result) then
     Result := Narrow32(Result)
   else
     Result := -1;
@@ -2627,6 +2718,10 @@ begin
     Result.FillCs.Kind := csk_Unknown;
   Result.StrokeCs := Result.FillCs;
   Result.TextMode := 0;
+  Result.OPStroke := False;
+  Result.OPFill := False;
+  Result.OPM := 0;
+  Result.OPMKnown := True;
 end;
 
 procedure TInterpreter.Mark(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AWhat: string);
@@ -2933,11 +3028,54 @@ end;
 procedure TInterpreter.SetExtGState(const AName: AnsiString);
 var
   G, F, Font, Raw: TLandrixEInvoicePdfObject;
+  OpmValue: Int64;
 begin
   G := Lookup('ExtGState', AName, Raw);
   if (G = nil) or not G.IsDictLike then
     Exit;
   CheckExtGState(G, Raw);
+  { 6.2.4.2-2: /OP for stroking; /op for filling, else /OP of the same
+    dictionary; /OPM as veraPDF's getIntegerKey reads it; a value of
+    another type leaves the state as it was
+    DE: 6.2.4.2-2: /OP fuers Zeichnen von Linien; /op fuers Fuellen, sonst
+    /OP desselben Dictionarys; /OPM, wie veraPDFs getIntegerKey es liest;
+    ein Wert anderen Typs laesst den Zustand, wie er war }
+  F := FWalk.DGetRef(G, 'OP');
+  if (F <> nil) and (F.Kind = pok_Bool) then
+    FState.OPStroke := F.BoolVal;
+  F := FWalk.DGetRef(G, 'op');
+  if (F = nil) or (F.Kind <> pok_Bool) then
+    F := FWalk.DGetRef(G, 'OP');
+  if (F <> nil) and (F.Kind = pok_Bool) then
+    FState.OPFill := F.BoolVal;
+  F := FWalk.DGetRef(G, 'OPM');
+  if F <> nil then
+  begin
+    if F.Kind = pok_Num then
+    begin
+      { a long as such, then the low 32 bits; a real by Java's (long) cast
+        (toward zero). From 2^31 on the low bits of a real depend on how
+        exactly its digits are read, which this reader does not promise on
+        every compiler: not decided }
+      if F.NumExact then
+      begin
+        FState.OPM := Narrow32(F.NumInt);
+        FState.OPMKnown := True;
+      end
+      else if Abs(F.NumVal) < FWalk.FTwo31 then
+      begin
+        OpmValue := Trunc(F.NumVal);
+        FState.OPM := Narrow32(OpmValue);
+        FState.OPMKnown := True;
+      end
+      else
+        FState.OPMKnown := False;
+    end
+    else if F.Kind = pok_Str then
+      { the byte length of a string; this reader may not keep the bytes
+        veraPDF reads (an ASCII85 token): not decided }
+      FState.OPMKnown := False;
+  end;
   F := FWalk.DGetRef(G, 'Font');
   if (F = nil) or (F.Kind <> pok_Arr) or (F.ArrCount = 0) then
     Exit;
@@ -2978,7 +3116,7 @@ begin
   Key := FWalk.ObjId(F) + '/' + FWalk.ObjId(FRes.Page) + '/' + IntToStr(Ord(FState.ColorOn)) +
     IntToStr(Ord(FState.FillPattern)) + IntToStr(Ord(FState.StrokePattern)) + IntToStr(Ord(FState.Unsure)) +
     IntToStr(Ord(FState.Under)) + '/' + CsKey(FWalk, FState.FillCs) + '/' + CsKey(FWalk, FState.StrokeCs) + '/' +
-    IntToStr(FState.TextMode);
+    IntToStr(FState.TextMode) + '/' + OpKey(FState);
   Num := FWalk.FType3Seen.IndexOf(Key);
   if Num >= 0 then
   begin
@@ -3414,6 +3552,7 @@ begin
       begin
         { veraPDF throws and reports nothing }
         FWalk.FThrows := True;
+        FWalk.FMayThrow := True;
         FWalk.FIncomplete := True;
         Continue;
       end;
@@ -3494,7 +3633,7 @@ var
   C: TLandrixEInvoicePdfContentCheck;
 begin
   FWalk.FSharedUnsure := True;
-  for C := pcc_DeviceGray to pcc_DeviceNColorants do
+  for C := pcc_DeviceGray to pcc_SeparationConsistency do
     Mark(C, True, AWhat);
 end;
 
@@ -3542,18 +3681,28 @@ end;
 procedure TInterpreter.ExposeCs(const C: TCsRef; ANullGray: Boolean; ADepth: Integer);
 var
   Save: TVSave;
-  Key, Ctx: string;
+  Key, Ctx, Pair: string;
   ShRaw: TLandrixEInvoicePdfObject;
+  Paint: Boolean;
 begin
+  { the overprint state goes only with the space a paint links directly }
+  Paint := FPaintActive and (ADepth = 0);
+  FPaintActive := False;
   if ADepth > MaxCsDepth then
   begin
     MaybeColour('colour spaces nested too deep');
     Exit;
   end;
+  { veraPDF's ICCBased CMYK wrapper carries the overprint mode and flag in
+    its identity; (0, false) for every link that is no paint }
+  Pair := '';
+  if Paint and (C.Kind = csk_Value) and (IccComponents(FWalk, C.V) = 4) and
+    (FPaintFlag or not FPaintOPMKnown or (FPaintOPM <> 0)) then
+    Pair := '/' + IntToStr(FPaintOPM) + IntToStr(Ord(FPaintOPMKnown)) + IntToStr(Ord(FPaintFlag));
   { the same space array in the same parse and mode adds nothing new }
   if (ADepth = 0) and (C.Kind = csk_Value) and
     SeenBefore('C' + IntToStr(FParseIndex) + '/' + CsKey(FWalk, C) + '/' + IntToStr(Ord(ANullGray)) +
-    IntToStr(Ord(FCsMaybe > 0))) then
+    IntToStr(Ord(FCsMaybe > 0)) + Pair) then
     Exit;
   if ADepth > 0 then
   begin
@@ -3612,23 +3761,36 @@ begin
         Key := '';
         Ctx := FWalk.ObjId(C.R) + '/' + IntToStr(Ord(C.WasDefault));
         if C.Num >= 0 then
-          Key := 'XK' + IntToStr(C.Num)
+          Key := 'XK' + IntToStr(C.Num) + Pair
         else if IccComponents(FWalk, C.V) = 4 then
         begin
-          Key := 'XC';
+          Key := 'XC' + Pair;
           Ctx := FWalk.ObjId(C.V);
         end;
-        { the direct CMYK ICC spaces share one identity: veraPDF may meet
-          one first on a route not modelled (a JPEG 2000 image, a 3D
-          stream), so their findings stay uncertain }
+        { a component count not decided: whether this is the CMYK wrapper
+          (and its identity) is not known }
+        if IccComponents(FWalk, C.V) = -2 then
+        begin
+          Inc(FCsMaybe);
+          try
+            ExposeArray(C, ADepth, False);
+          finally
+            Dec(FCsMaybe);
+          end;
+          Exit;
+        end;
+        { the direct CMYK ICC spaces share one identity per overprint pair:
+          with (0, false) veraPDF may meet one first on a route not
+          modelled (a JPEG 2000 image, a 3D stream), so their findings stay
+          uncertain; only a paint gives another pair }
         if Key = 'XC' then
           Inc(FCsMaybe);
         try
           if Key = '' then
-            ExposeArray(C, ADepth)
+            ExposeArray(C, ADepth, Paint)
           else if EnterVirtual(Key, Ctx, C.Num, Save) then
             try
-              ExposeArray(C, ADepth);
+              ExposeArray(C, ADepth, Paint);
             finally
               LeaveVirtual(Save);
             end;
@@ -3651,17 +3813,18 @@ end;
   eines Separation-Raums, die Teile eines DeviceN-Raums. Verschachtelte
   Namen werden in den Ressourcen gesucht, in denen das Array gefunden
   wurde. }
-procedure TInterpreter.ExposeArray(const C: TCsRef; ADepth: Integer);
+procedure TInterpreter.ExposeArray(const C: TCsRef; ADepth: Integer; APaint: Boolean);
 var
   N: AnsiString;
 begin
   N := FirstName(FWalk, C.V);
   if N = 'ICCBased' then
-    ExposeIcc(C)
+    ExposeIcc(C, APaint)
   else if N = 'Indexed' then
     ExposeCs(CsValue(FWalk, C.R, C.V.ArrItem(1), False, 0), True, ADepth + 1)
   else if N = 'Separation' then
   begin
+    RecordSeparation(C);
     if C.V.ArrCount > 2 then
       ExposeCs(CsValue(FWalk, C.R, C.V.ArrItem(2), C.WasDefault, 0), True, ADepth + 1)
     else
@@ -3679,11 +3842,23 @@ end;
   ist ein Eingabe-, Anzeige-, Ausgabe- oder Farbraumprofil fuer RGB, CMYK,
   Gray oder Lab unter ICC-Version 5; ein Kopf, der sich nicht so lesen
   laesst wie von veraPDF, laesst die Regel offen. }
-procedure TInterpreter.ExposeIcc(const C: TCsRef);
+procedure TInterpreter.ExposeIcc(const C: TCsRef; APaint: Boolean);
 var
   S: TLandrixEInvoicePdfObject;
   H: TLandrixEInvoicePdfIccHeader;
 begin
+  { 6.2.4.2-2: an ICCBased space with /N 4 painted with overprint on needs
+    overprint mode 0
+    DE: 6.2.4.2-2: ein ICCBased-Raum mit /N 4, mit dem bei eingeschaltetem
+    Ueberdrucken gemalt wird, braucht den Ueberdruckmodus 0 }
+  if APaint and FPaintFlag and (IccComponents(FWalk, C.V) = 4) then
+  begin
+    if not FPaintOPMKnown then
+      Mark(pcc_Overprint, True, 'ICCBased CMYK colour space painted with overprint on, mode not decided')
+    else if FPaintOPM <> 0 then
+      Mark(pcc_Overprint, False, 'ICCBased CMYK colour space painted with overprint on and OPM ' +
+        IntToStr(FPaintOPM));
+  end;
   S := FWalk.ResolveRef(C.V.ArrItem(1));
   if (S = nil) or (S.Kind <> pok_Stream) then
     Exit;
@@ -3695,6 +3870,400 @@ begin
     (H.ColorSpace = 'Lab ')) and (H.Major < 5)) then
     Mark(pcc_IccInput, False, 'ICC profile with device class "' + TextOf(H.DeviceClass) + '", colour space "' +
       TextOf(H.ColorSpace) + '", major version ' + IntToStr(H.Major));
+end;
+
+const
+  { COS comparison results }
+  ceq_Equal = 0;
+  ceq_Different = 1;
+  ceq_Unknown = 2;
+  MaxSepsPerName = 200;
+  MaxSepsPerParse = 5000;
+  { comparison steps and stream bytes for Separations per document }
+  MaxSepWork = 50000000;
+
+{ veraPDF's equals of two COS values. AInArray: inside an array, where a
+  reference is followed before comparing; elsewhere a reference equals only
+  a reference to an equal object. Streams compare their entries except
+  /Length, /Filter and /DecodeParms and their stored bytes. Anything this
+  cannot decide is ceq_Unknown: a string with the same bytes (veraPDF also
+  compares how it was written), a real 0 (its sign), a number beyond a long,
+  a null against a missing value, a stream whose stored bytes are not
+  certain, a reference chain too long; a reference to no object may make
+  veraPDF throw. The work is counted against a budget.
+  DE: veraPDFs equals zweier COS-Werte. AInArray: in einem Array, wo ein
+  Verweis vor dem Vergleich verfolgt wird; sonst gleicht ein Verweis nur
+  einem Verweis auf ein gleiches Objekt. Streams vergleichen ihre Eintraege
+  ausser /Length, /Filter und /DecodeParms und ihre gespeicherten Bytes.
+  Was sich so nicht entscheiden laesst, ist ceq_Unknown: ein String mit
+  denselben Bytes (veraPDF vergleicht auch, wie er geschrieben wurde), eine
+  reelle 0 (ihr Vorzeichen), eine Zahl jenseits von long, ein null gegen
+  einen fehlenden Wert, ein Stream, dessen gespeicherte Bytes nicht sicher
+  sind, eine zu lange Verweiskette; ein Verweis auf kein Objekt kann
+  veraPDF eine Ausnahme werfen lassen. Die Arbeit zaehlt gegen ein Budget. }
+function CosCompare(AWalk: TLandrixEInvoicePdfContentWalk; A, B: TLandrixEInvoicePdfObject; AInArray: Boolean;
+  ADepth: Integer): Integer;
+var
+  I, R: Integer;
+  Ra, Rb: TLandrixEInvoicePdfBytes;
+  AnyUnknown, Gone: Boolean;
+
+  function Follow(X: TLandrixEInvoicePdfObject; var AGone: Boolean): TLandrixEInvoicePdfObject;
+  var
+    Unsure: Boolean;
+  begin
+    Unsure := False;
+    Result := LandrixEInvoicePdfResolveRef(AWalk.FDoc, X, Unsure);
+    if Unsure then
+      AGone := True
+    else if Result = nil then
+    begin
+      AWalk.FThrows := True;
+      AWalk.FMayThrow := True;
+      AWalk.FIncomplete := True;
+      AGone := True;
+    end;
+  end;
+
+  function StoredBytes(X: TLandrixEInvoicePdfObject; out AData: TLandrixEInvoicePdfBytes): Boolean;
+  var
+    L: TLandrixEInvoicePdfObject;
+  begin
+    Result := False;
+    AData := nil;
+    if AWalk.FDoc.Encrypted then
+      Exit;
+    L := AWalk.DGetRef(X, 'Length');
+    if (L = nil) or (L.Kind <> pok_Num) or not L.NumExact or (L.NumInt < 0) then
+      Exit;
+    if L.NumInt > MaxSepWork - AWalk.FSepWork then
+    begin
+      AWalk.FSepUnsure := True;
+      Exit;
+    end;
+    Inc(AWalk.FSepWork, L.NumInt);
+    if not AWalk.FDoc.GetStreamRaw(X, AData) then
+      Exit;
+    Result := L.NumInt = Length(AData);
+  end;
+
+  function DictEntries(X, Y: TLandrixEInvoicePdfObject; ASkipStream: Boolean): Integer;
+  var
+    J, Cx, Cy: Integer;
+    Key: AnsiString;
+    V: TLandrixEInvoicePdfObject;
+  begin
+    Result := ceq_Unknown;
+    { each key is looked up in both dictionaries }
+    Inc(AWalk.FSepWork, Int64(X.DVals.Count) * (Int64(X.DVals.Count) + Int64(Y.DVals.Count)) +
+      Int64(Y.DVals.Count) * Int64(Y.DVals.Count));
+    if AWalk.FSepWork > MaxSepWork then
+    begin
+      AWalk.FSepUnsure := True;
+      Exit;
+    end;
+    Result := ceq_Equal;
+    Cx := 0;
+    Cy := 0;
+    for J := 0 to Integer(X.DVals.Count) - 1 do
+    begin
+      Key := X.DKeys[J];
+      if ASkipStream and ((Key = 'Length') or (Key = 'Filter') or (Key = 'DecodeParms')) then
+        Continue;
+      V := TLandrixEInvoicePdfObject(X.DVals[J]);
+      { a key given twice, a null value: not decided }
+      if (X.RawGet(Key) <> V) or (V.Kind = pok_Null) then
+      begin
+        Result := ceq_Unknown;
+        Exit;
+      end;
+      Inc(Cx);
+      if Y.RawGet(Key) = nil then
+      begin
+        Result := ceq_Different;
+        Exit;
+      end;
+      case CosCompare(AWalk, V, Y.RawGet(Key), False, ADepth + 1) of
+        ceq_Different:
+          begin
+            Result := ceq_Different;
+            Exit;
+          end;
+        ceq_Unknown:
+          Result := ceq_Unknown;
+      end;
+    end;
+    for J := 0 to Integer(Y.DVals.Count) - 1 do
+    begin
+      Key := Y.DKeys[J];
+      if ASkipStream and ((Key = 'Length') or (Key = 'Filter') or (Key = 'DecodeParms')) then
+        Continue;
+      V := TLandrixEInvoicePdfObject(Y.DVals[J]);
+      if (Y.RawGet(Key) <> V) or (V.Kind = pok_Null) then
+      begin
+        Result := ceq_Unknown;
+        Exit;
+      end;
+      Inc(Cy);
+    end;
+    if Cx <> Cy then
+      Result := ceq_Different;
+  end;
+
+begin
+  Result := ceq_Unknown;
+  Inc(AWalk.FSepWork);
+  if (ADepth > MaxCsDepth) or (AWalk.FSepWork > MaxSepWork) then
+  begin
+    AWalk.FSepUnsure := True;
+    Exit;
+  end;
+  if (A = nil) or (B = nil) then
+  begin
+    if (A = nil) and (B = nil) then
+      Result := ceq_Equal
+    else if ((A <> nil) and (A.Kind = pok_Null)) or ((B <> nil) and (B.Kind = pok_Null)) then
+      Result := ceq_Unknown
+    else
+      Result := ceq_Different;
+    Exit;
+  end;
+  Gone := False;
+  if AInArray or ((A.Kind = pok_Ref) and (B.Kind = pok_Ref)) then
+  begin
+    if A.Kind = pok_Ref then
+      A := Follow(A, Gone);
+    if B.Kind = pok_Ref then
+      B := Follow(B, Gone);
+    if Gone then
+      Exit;
+  end
+  else if (A.Kind = pok_Ref) or (B.Kind = pok_Ref) then
+  begin
+    { a reference against a direct value }
+    Result := ceq_Different;
+    Exit;
+  end;
+  if A = B then
+  begin
+    Result := ceq_Equal;
+    Exit;
+  end;
+  if A.Kind <> B.Kind then
+  begin
+    Result := ceq_Different;
+    Exit;
+  end;
+  AnyUnknown := False;
+  case A.Kind of
+    pok_Null:
+      Result := ceq_Equal;
+    pok_Bool:
+      if A.BoolVal = B.BoolVal then
+        Result := ceq_Equal
+      else
+        Result := ceq_Different;
+    pok_Num:
+      if (not A.NumExact and (Abs(A.NumVal) >= 9.0E18)) or (not B.NumExact and (Abs(B.NumVal) >= 9.0E18)) then
+        { a token beyond a long: not decided }
+        Result := ceq_Unknown
+      else if A.NumExact <> B.NumExact then
+        Result := ceq_Different
+      else if A.NumExact then
+      begin
+        if A.NumInt = B.NumInt then
+          Result := ceq_Equal
+        else
+          Result := ceq_Different;
+      end
+      else if A.NumVal <> B.NumVal then
+        Result := ceq_Different
+      else if A.NumVal = 0 then
+        Result := ceq_Unknown
+      else
+        Result := ceq_Equal;
+    pok_Name:
+      if A.NameVal = B.NameVal then
+        Result := ceq_Equal
+      else
+        Result := ceq_Different;
+    pok_Str:
+      { veraPDF also compares how a string was written, and this reader may
+        not keep the bytes veraPDF reads (an ASCII85 token): not decided }
+      Result := ceq_Unknown;
+    pok_Arr:
+      begin
+        if A.ArrCount <> B.ArrCount then
+        begin
+          Result := ceq_Different;
+          Exit;
+        end;
+        for I := 0 to A.ArrCount - 1 do
+        begin
+          R := CosCompare(AWalk, A.ArrItem(I), B.ArrItem(I), True, ADepth + 1);
+          if R = ceq_Different then
+          begin
+            Result := ceq_Different;
+            Exit;
+          end;
+          if R = ceq_Unknown then
+            AnyUnknown := True;
+        end;
+        if AnyUnknown then
+          Result := ceq_Unknown
+        else
+          Result := ceq_Equal;
+      end;
+    pok_Dict:
+      Result := DictEntries(A, B, False);
+    pok_Stream:
+      begin
+        R := DictEntries(A, B, True);
+        if R = ceq_Different then
+        begin
+          Result := ceq_Different;
+          Exit;
+        end;
+        if not StoredBytes(A, Ra) or not StoredBytes(B, Rb) then
+          Exit;
+        if (Length(Ra) <> Length(Rb)) or ((Length(Ra) > 0) and not CompareMem(@Ra[0], @Rb[0], Length(Ra))) then
+        begin
+          Result := ceq_Different;
+          Exit;
+        end;
+        { the same bytes: veraPDF also compares how they are filtered }
+        if (R = ceq_Equal) and (CosCompare(AWalk, A.RawGet('Filter'), B.RawGet('Filter'), False, ADepth + 1) =
+          ceq_Equal) and (CosCompare(AWalk, A.RawGet('DecodeParms'), B.RawGet('DecodeParms'), False, ADepth + 1) =
+          ceq_Equal) then
+          Result := ceq_Equal;
+      end;
+  else
+    { references are resolved above }
+  end;
+end;
+
+{ The alternate spaces of two Separations as veraPDF compares them (the
+  objects of the spaces it builds): device spaces by family, a device space
+  against an array differs, two arrays differ where their values differ; two
+  equal arrays that are different objects are not decided (a reference may
+  stand where the other has a direct value).
+  DE: Die Alternativraeume zweier Separations, wie veraPDF sie vergleicht
+  (die Objekte der Raeume, die es baut): Geraeteraeume nach Familie, ein
+  Geraeteraum gegen ein Array ist verschieden, zwei Arrays verschieden, wo
+  ihre Werte verschieden sind; zwei gleiche Arrays, die verschiedene Objekte
+  sind, bleiben offen (ein Verweis kann stehen, wo das andere einen direkten
+  Wert hat). }
+function AltCompare(AWalk: TLandrixEInvoicePdfContentWalk; const A, B: TCsRef): Integer;
+var
+  DevA, DevB: Boolean;
+begin
+  Result := ceq_Unknown;
+  DevA := A.Kind in [csk_Gray, csk_RGB, csk_CMYK];
+  DevB := B.Kind in [csk_Gray, csk_RGB, csk_CMYK];
+  if DevA and DevB then
+  begin
+    if A.Kind = B.Kind then
+      Result := ceq_Equal
+    else
+      Result := ceq_Different;
+  end
+  else if (DevA and (B.Kind = csk_Value)) or (DevB and (A.Kind = csk_Value)) then
+    Result := ceq_Different
+  else if (A.Kind = csk_Value) and (B.Kind = csk_Value) then
+  begin
+    if A.V = B.V then
+      Result := ceq_Equal
+    else if CosCompare(AWalk, A.V, B.V, True, 0) = ceq_Different then
+      Result := ceq_Different;
+  end
+  else if (A.Kind = csk_Null) and (B.Kind = csk_Null) then
+    Result := ceq_Unknown;
+end;
+
+{ 6.2.4.4-2: veraPDF registers every Separation space it builds under its
+  colourant name, document-wide; the rule compares them in Finish.
+  DE: 6.2.4.4-2: veraPDF registriert jeden Separation-Raum, den es baut,
+  unter seinem Farbmittelnamen, im ganzen Dokument; die Regel vergleicht
+  sie in Finish. }
+procedure TInterpreter.RecordSeparation(const C: TCsRef);
+var
+  Key: string;
+  K: Integer;
+  Sig: TSepSig;
+  N: TLandrixEInvoicePdfObject;
+  Alt: TCsRef;
+begin
+  if C.V.ArrCount > 2 then
+    Alt := CsValue(FWalk, C.R, C.V.ArrItem(2), C.WasDefault, 0)
+  else
+    Alt := NullCs;
+  { an indirect Separation is one object to veraPDF wherever it is used }
+  if C.Num >= 0 then
+    Key := 'N' + IntToStr(C.Num)
+  else
+    Key := 'D' + FWalk.ObjId(C.V) + '/' + FWalk.ObjId(C.R) + '/' + IntToStr(Ord(C.WasDefault));
+  if FWalk.FSepKeys.Find(Key, K) then
+  begin
+    Sig := TSepSig(FWalk.FSepKeys.Objects[K]);
+    if AltCompare(FWalk, Sig.Alt, Alt) <> ceq_Equal then
+    begin
+      Sig.Unsure := True;
+      if Alt.Kind = csk_Null then
+      begin
+        FWalk.FThrows := True;
+        FWalk.FMayThrow := True;
+        FWalk.FIncomplete := True;
+      end;
+    end;
+  end
+  else
+  begin
+    Sig := TSepSig.Create;
+    N := FWalk.ResolveRef(C.V.ArrItem(1));
+    Sig.NameOk := (N <> nil) and (N.Kind = pok_Name);
+    if Sig.NameOk then
+      Sig.Name := N.NameVal;
+    Sig.Alt := Alt;
+    Sig.Tint := nil;
+    if C.V.ArrCount > 3 then
+      Sig.Tint := C.V.ArrItem(3);
+    Sig.Num := C.Num;
+    Sig.Index := Integer(FWalk.FSeps.Add(Sig));
+    FWalk.FSepKeys.AddObject(Key, Sig);
+  end;
+  if Length(FParse.SepIdx) >= MaxSepsPerParse then
+  begin
+    FWalk.FSepUnsure := True;
+    Exit;
+  end;
+  FParse.AddSep(Sig.Index, FCsMaybe > 0);
+end;
+
+{ A paint or text link of C: the overprint flag of the side and the mode
+  go with it. }
+procedure TInterpreter.PaintLink(const C: TCsRef; AStroke: Boolean);
+begin
+  if AStroke then
+    FPaintFlag := FState.OPStroke
+  else
+    FPaintFlag := FState.OPFill;
+  FPaintOPM := FState.OPM;
+  FPaintOPMKnown := FState.OPMKnown;
+  FPaintActive := True;
+  { a mode not decided may be 0, the identity of every link that is no
+    paint: nothing reached here is certain }
+  if not FState.OPMKnown then
+  begin
+    Inc(FCsMaybe);
+    FWalk.FOpmUnsure := True;
+  end;
+  try
+    ExposeCs(C, True, 0);
+  finally
+    FPaintActive := False;
+    if not FState.OPMKnown then
+      Dec(FCsMaybe);
+  end;
 end;
 
 { 6.1.13-9 and 6.2.4.4-1: a DeviceN space has at most 32 colourants (every
@@ -3874,6 +4443,7 @@ begin
   if (C.Kind = csk_Pattern) and (C.V = nil) and not Loose and (FCsMaybe = 0) then
   begin
     FWalk.FThrows := True;
+    FWalk.FMayThrow := True;
     FWalk.FIncomplete := True;
     Exit;
   end;
@@ -4020,6 +4590,69 @@ begin
     SiteLink(S.RawGet('ColorSpace'), True);
 end;
 
+{ The space C is or holds (as an Indexed base or a pattern's underlying
+  space) a Separation or DeviceN space, or that is not decided. }
+function SpaceHasSpecial(AWalk: TLandrixEInvoicePdfContentWalk; const C: TCsRef; ADepth: Integer): Boolean;
+var
+  N: AnsiString;
+begin
+  Result := True;
+  if (ADepth > MaxCsDepth) or (C.Kind = csk_Unknown) then
+    Exit;
+  Result := False;
+  if C.Kind = csk_PatternUnder then
+  begin
+    Result := SpaceHasSpecial(AWalk, CsValue(AWalk, C.R, C.V.ArrItem(1), C.WasDefault, 0), ADepth + 1);
+    Exit;
+  end;
+  if C.Kind <> csk_Value then
+    Exit;
+  N := FirstName(AWalk, C.V);
+  if (N = 'Separation') or (N = 'DeviceN') then
+    Result := True
+  else if N = 'Indexed' then
+    Result := SpaceHasSpecial(AWalk, CsValue(AWalk, C.R, C.V.ArrItem(1), False, 0), ADepth + 1);
+end;
+
+{ A name in V (an inline value, at any depth) selects a space that is or
+  holds a Separation or DeviceN space in the stream's resources. }
+function TInterpreter.CvSelectsSpecial(V: TCv; ADepth: Integer): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if (V = nil) or (ADepth > MaxCsDepth) then
+    Exit;
+  if V.Kind = cvk_Name then
+    Result := SpaceHasSpecial(FWalk, ResolveName(FWalk, FRes, V.Text), 0)
+  else if V.Kind = cvk_Arr then
+    for I := 0 to Integer(V.Items.Count) - 1 do
+      if CvSelectsSpecial(TCv(V.Items[I]), ADepth + 1) then
+      begin
+        Result := True;
+        Exit;
+      end;
+end;
+
+{ The name AName occurs in V (an inline value), at any depth. }
+function CvHasName(V: TCv; const AName: AnsiString; ADepth: Integer): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if (V = nil) or (ADepth > MaxCsDepth) then
+    Exit;
+  if V.Kind = cvk_Name then
+    Result := V.Text = AName
+  else if V.Kind = cvk_Arr then
+    for I := 0 to Integer(V.Items.Count) - 1 do
+      if CvHasName(TCv(V.Items[I]), AName, ADepth + 1) then
+      begin
+        Result := True;
+        Exit;
+      end;
+end;
+
 { A name of an inline image as veraPDF expands it (one table for colour
   spaces and filters). }
 function InlineSpaceName(const AName: AnsiString): AnsiString;
@@ -4126,8 +4759,15 @@ begin
       end
       else
       begin
-        { an array not modelled may reach a shared colour space first }
+        { an array not modelled may reach a shared colour space first; one
+          with a Separation in it may make veraPDF throw }
         FWalk.FColourUnsure := True;
+        if CvHasName(CS, 'Separation', 0) or CvHasName(CS, 'DeviceN', 0) or CvSelectsSpecial(CS, 0) then
+        begin
+          FWalk.FThrows := True;
+          FWalk.FMayThrow := True;
+          FWalk.FIncomplete := True;
+        end;
         MaybeColour('inline image colour space array');
       end;
     end
@@ -4157,6 +4797,7 @@ begin
   if (C.Kind = csk_Pattern) and (C.V = nil) then
   begin
     FWalk.FThrows := True;
+    FWalk.FMayThrow := True;
     FWalk.FIncomplete := True;
   end
   else if (C.Kind = csk_PatternUnder) or (C.Kind = csk_Pattern) then
@@ -4242,9 +4883,9 @@ begin
     Inc(FCsMaybe);
   try
     if Undecided or (M = 0) or (M = 4) or (M = 2) or (M = 6) then
-      ExposeCs(FState.FillCs, True, 0);
+      PaintLink(FState.FillCs, False);
     if Undecided or (M = 1) or (M = 5) or (M = 2) or (M = 6) then
-      ExposeCs(FState.StrokeCs, True, 0);
+      PaintLink(FState.StrokeCs, True);
   finally
     if Undecided then
       Dec(FCsMaybe);
@@ -4488,15 +5129,15 @@ begin
       end;
     oc_PaintFill:
       if FState.ColorOn then
-        ExposeCs(FState.FillCs, True, 0);
+        PaintLink(FState.FillCs, False);
     oc_PaintStroke:
       if FState.ColorOn then
-        ExposeCs(FState.StrokeCs, True, 0);
+        PaintLink(FState.StrokeCs, True);
     oc_PaintBoth:
       if FState.ColorOn then
       begin
-        ExposeCs(FState.FillCs, True, 0);
-        ExposeCs(FState.StrokeCs, True, 0);
+        PaintLink(FState.FillCs, False);
+        PaintLink(FState.StrokeCs, True);
       end;
     oc_TextMode:
       { veraPDF reads the first operand as an int; a missing, other or
@@ -4621,6 +5262,9 @@ begin
   FType3Seen.Duplicates := dupIgnore;
   FIccCache := TStringList.Create;
   FIccCache.Sorted := True;
+  FSeps := TObjectList.Create(True);
+  FSepKeys := TStringList.Create;
+  FSepKeys.Sorted := True;
   FType3Replayed := TStringList.Create;
   FType3Replayed.Sorted := True;
   FType3Replayed.Duplicates := dupIgnore;
@@ -4636,6 +5280,7 @@ begin
   FMinReal := FloatOf('1.175e-38');
   FMaxDouble := FloatOf('1.7976931348623157e308');
   FTiny := FloatOf('1e-300');
+  FTwo31 := FloatOf('2147483648');
   { a decimal this close to a limit may round to either side of it }
   FNearHigh := FloatOf('3.4029e38');
   FNearHighTop := FloatOf('3.4031e38');
@@ -4653,6 +5298,8 @@ begin
   for I := 0 to FIccCache.Count - 1 do
     FIccCache.Objects[I].Free;
   FIccCache.Free;
+  FSepKeys.Free;
+  FSeps.Free;
   for I := 0 to FPartsCache.Count - 1 do
     FPartsCache.Objects[I].Free;
   FPartsCache.Free;
@@ -5013,6 +5660,7 @@ var
               if (Img = nil) or (Img.Kind <> pok_Stream) then
               begin
                 FThrows := True;
+                FMayThrow := True;
                 Exit;
               end;
             end;
@@ -5622,6 +6270,7 @@ var
   Chk: TLandrixEInvoicePdfContentCheck;
   Num, MaxNum: Integer;
 begin
+  SeparationThrows;
   Members := nil;
   GroupStart := nil;
   Reach := nil;
@@ -5718,7 +6367,7 @@ begin
     for G := 0 to NG - 1 do
       Reach[G] := False;
   for Chk := Low(TLandrixEInvoicePdfContentCheck) to High(TLandrixEInvoicePdfContentCheck) do
-    FUncertain[Chk] := FIncomplete or (FColourUnsure and (Chk in ColourChecks));
+    FUncertain[Chk] := FIncomplete or (FColourUnsure and (Chk in ColourChecks) and (Chk <> pcc_Overprint));
   MaxNum := FDoc.XrefCount;
   SetLength(FAssocSure, MaxNum);
   SetLength(FAssocMaybe, MaxNum);
@@ -5754,8 +6403,11 @@ begin
           if P.Level[Chk] > 0 then
             AnyLvl := True;
         end;
+        { the overprint pair of a failing paint is in the identity: no
+          route that is not modelled gives it }
         if AllDef and Reach[G] and not ((FColourUnsure or (FSharedUnsure and TContentParse(FParses[P0]).Virtual)) and
-          (Chk in ColourChecks)) then
+          (Chk in ColourChecks) and (Chk <> pcc_Overprint)) and
+          not (FOpmUnsure and (Chk = pcc_IccInput) and TContentParse(FParses[P0]).Virtual) then
         begin
           Emitted := False;
           J := Head[P0];
@@ -5816,6 +6468,8 @@ begin
     end;
   end;
 
+  FinishSeparations(GroupStart, Members, Reach, NG);
+
   { the findings outside any parse: certain where the pages are. DE: die
     Befunde ausserhalb jeder Analyse: sicher, wo die Seiten es sind. }
   for I := 0 to FRCount - 1 do
@@ -5838,6 +6492,266 @@ begin
     end;
 end;
 
+{ V (a stored COS value) holds a reference to no object at any depth. }
+function HasDangling(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject; ADepth: Integer;
+  var ABudget: Integer; var ALimit: Boolean): Boolean;
+var
+  I: Integer;
+  Unsure: Boolean;
+  T: TLandrixEInvoicePdfObject;
+begin
+  Result := False;
+  Dec(ABudget);
+  if V = nil then
+    Exit;
+  if (ADepth > MaxCsDepth) or (ABudget < 0) then
+  begin
+    { not searched to the end: no throw found, but not decided }
+    ALimit := True;
+    Exit;
+  end;
+  if V.Kind = pok_Ref then
+  begin
+    Unsure := False;
+    T := LandrixEInvoicePdfResolveRef(AWalk.FDoc, V, Unsure);
+    if Unsure then
+    begin
+      ALimit := True;
+      Exit;
+    end;
+    if T = nil then
+    begin
+      Result := True;
+      Exit;
+    end;
+    Result := HasDangling(AWalk, T, ADepth + 1, ABudget, ALimit);
+    Exit;
+  end;
+  case V.Kind of
+    pok_Arr:
+      for I := 0 to V.ArrCount - 1 do
+        if HasDangling(AWalk, V.ArrItem(I), ADepth + 1, ABudget, ALimit) then
+        begin
+          Result := True;
+          Exit;
+        end;
+    pok_Dict, pok_Stream:
+      for I := 0 to Integer(V.DVals.Count) - 1 do
+        if HasDangling(AWalk, TLandrixEInvoicePdfObject(V.DVals[I]), ADepth + 1, ABudget, ALimit) then
+        begin
+          Result := True;
+          Exit;
+        end;
+  else
+    { numbers, strings, names }
+  end;
+end;
+
+{ The bytes of AText as hex digits: a sort key that keeps every byte. }
+function HexKey(const AText: AnsiString): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to Length(AText) do
+    Result := Result + IntToHex(Ord(AText[I]), 2);
+end;
+
+{ veraPDF stops with an exception (and reports nothing) when it compares a
+  Separation whose alternate space it cannot build with another of the same
+  name; two uses of one such object by two names already make two. Any
+  Separation without a buildable alternate is taken as that risk.
+  DE: veraPDF bricht mit einer Ausnahme ab (und meldet nichts), wenn es eine
+  Separation, deren Alternativraum es nicht bauen kann, mit einer anderen
+  gleichen Namens vergleicht; zwei Verwendungen eines solchen Objekts unter
+  zwei Namen ergeben schon zwei. Jede Separation ohne baubaren
+  Alternativraum gilt als dieses Risiko. }
+procedure TLandrixEInvoicePdfContentWalk.SeparationThrows;
+var
+  I: Integer;
+begin
+  for I := 0 to Integer(FSeps.Count) - 1 do
+    if TSepSig(FSeps[I]).Alt.Kind = csk_Null then
+    begin
+      FThrows := True;
+      FMayThrow := True;
+      FIncomplete := True;
+      Exit;
+    end;
+end;
+
+{ 6.2.4.4-2: two Separation spaces of one colourant name have the same
+  alternate space and tint transform. A conflict is certain only between
+  two Separations that are certainly linked (every parse of a certainly
+  reached stream links them); a pair veraPDF might not both meet, or whose
+  comparison is not decided, leaves the rule open.
+  DE: 6.2.4.4-2: zwei Separation-Raeume eines Farbmittelnamens haben
+  denselben Alternativraum und dieselbe Tint-Funktion. Ein Widerspruch ist
+  nur zwischen zwei sicher verknuepften Separations sicher (jede Analyse
+  eines sicher erreichten Streams verknuepft sie); ein Paar, das veraPDF
+  vielleicht nicht beide trifft oder dessen Vergleich nicht entschieden
+  ist, laesst die Regel offen. }
+procedure TLandrixEInvoicePdfContentWalk.FinishSeparations(var AGroupStart, AMembers: array of Integer;
+  var AReach: array of Boolean; ANG: Integer);
+var
+  Certain, Any: array of Boolean;
+  Cnt, Touched: array of Integer;
+  G, M, K, I, J, Idx, Count, NT, NM, Cmp, Num, First, Last: Integer;
+  P: TContentParse;
+  AnyUnc, Emitted, Blocked: Boolean;
+  A, B: TSepSig;
+  ByName: TStringList;
+  Budget: Integer;
+  Limit: Boolean;
+begin
+  Count := Integer(FSeps.Count);
+  { colour spaces reached on routes not modelled may be more Separations }
+  if FColourUnsure or FSharedUnsure or FSepUnsure then
+    FUncertain[pcc_SeparationConsistency] := True;
+  if Count = 0 then
+    Exit;
+  Certain := nil;
+  Any := nil;
+  Cnt := nil;
+  Touched := nil;
+  SetLength(Certain, Count);
+  SetLength(Any, Count);
+  SetLength(Cnt, Count);
+  SetLength(Touched, Count);
+  for I := 0 to Count - 1 do
+  begin
+    Certain[I] := False;
+    Any[I] := False;
+    Cnt[I] := 0;
+  end;
+  for G := 0 to ANG - 1 do
+  begin
+    AnyUnc := False;
+    NM := AGroupStart[G + 1] - AGroupStart[G];
+    for M := AGroupStart[G] to AGroupStart[G + 1] - 1 do
+      if TContentParse(FParses[AMembers[M]]).Uncertain then
+        AnyUnc := True;
+    NT := 0;
+    for M := AGroupStart[G] to AGroupStart[G + 1] - 1 do
+    begin
+      P := TContentParse(FParses[AMembers[M]]);
+      for K := 0 to Integer(Length(P.SepIdx)) - 1 do
+      begin
+        Idx := P.SepIdx[K];
+        Any[Idx] := True;
+        if P.SepMaybe[K] then
+          Continue;
+        if Cnt[Idx] = 0 then
+        begin
+          Touched[NT] := Idx;
+          Inc(NT);
+        end;
+        Inc(Cnt[Idx]);
+      end;
+    end;
+    for K := 0 to NT - 1 do
+    begin
+      Idx := Touched[K];
+      if (Cnt[Idx] = NM) and AReach[G] and not AnyUnc then
+        Certain[Idx] := True;
+      Cnt[Idx] := 0;
+    end;
+  end;
+  Blocked := FColourUnsure or FSharedUnsure or FSepUnsure or FPagesUnsure or FThrows;
+  ByName := TStringList.Create;
+  try
+    for I := 0 to Count - 1 do
+    begin
+      A := TSepSig(FSeps[I]);
+      if not Any[I] then
+        Continue;
+      if not A.NameOk or A.Unsure then
+        FUncertain[pcc_SeparationConsistency] := True;
+      if A.NameOk then
+        ByName.AddObject(HexKey(A.Name), A);
+    end;
+    ByName.CaseSensitive := True;
+    ByName.Sort;
+    First := 0;
+    while First < ByName.Count do
+    begin
+      Last := First;
+      while (Last + 1 < ByName.Count) and (TSepSig(ByName.Objects[Last + 1]).Name =
+        TSepSig(ByName.Objects[First]).Name) do
+        Inc(Last);
+      { a reference to no object in a tint or an alternate of a name veraPDF
+        compares: its comparison may throw, in an order not followed here }
+      if Last > First then
+        for I := First to Last do
+        begin
+          A := TSepSig(ByName.Objects[I]);
+          Budget := 100000;
+          Limit := False;
+          if HasDangling(Self, A.Tint, 0, Budget, Limit) or ((A.Alt.Kind = csk_Value) and HasDangling(Self, A.Alt.V,
+            0, Budget, Limit)) then
+          begin
+            FThrows := True;
+            FMayThrow := True;
+            FIncomplete := True;
+          end;
+          if Limit then
+            FSepUnsure := True;
+        end;
+      if Last - First + 1 > MaxSepsPerName then
+        FUncertain[pcc_SeparationConsistency] := True
+      else
+      begin
+        Emitted := False;
+        for I := First to Last - 1 do
+        begin
+          if Emitted then
+            Break;
+          A := TSepSig(ByName.Objects[I]);
+          for J := I + 1 to Last do
+          begin
+            B := TSepSig(ByName.Objects[J]);
+            Cmp := AltCompare(Self, A.Alt, B.Alt);
+            if Cmp <> ceq_Different then
+            begin
+              K := CosCompare(Self, A.Tint, B.Tint, False, 0);
+              if (Cmp = ceq_Equal) or (K = ceq_Different) then
+                Cmp := K;
+            end;
+            if Cmp = ceq_Equal then
+              Continue;
+            if (Cmp = ceq_Different) and Certain[A.Index] and Certain[B.Index] and not A.Unsure and not B.Unsure and
+              not Blocked and not FThrows and not FSepUnsure then
+            begin
+              Emitted := True;
+              if FFindingCount >= Length(FFindings) then
+                SetLength(FFindings, 16 + 2 * FFindingCount);
+              Num := B.Num;
+              FFindings[FFindingCount].Check := pcc_SeparationConsistency;
+              FFindings[FFindingCount].ObjNum := Num;
+              if Num >= 0 then
+                FFindings[FFindingCount].ObjGen := FDoc.XrefEntry(Num).Gen
+              else
+                FFindings[FFindingCount].ObjGen := -1;
+              FFindings[FFindingCount].Detail := 'Separation /' + TextOf(A.Name) +
+                ': alternate space or tint transform differs from another Separation of that name';
+              Inc(FFindingCount);
+              Break;
+            end
+            else
+              FUncertain[pcc_SeparationConsistency] := True;
+          end;
+        end;
+      end;
+      First := Last + 1;
+    end;
+  finally
+    ByName.Free;
+  end;
+  { a comparison stopped at its budget or met a reference to no object }
+  if FSepUnsure or FThrows then
+    FUncertain[pcc_SeparationConsistency] := True;
+end;
+
 function TLandrixEInvoicePdfContentWalk.FindingCount: Integer;
 begin
   Result := FFindingCount;
@@ -5856,6 +6770,11 @@ end;
 function TLandrixEInvoicePdfContentWalk.AssociatedSure(ANum: Integer): Boolean;
 begin
   Result := (ANum >= 0) and (ANum < Integer(Length(FAssocSure))) and FAssocSure[ANum];
+end;
+
+function TLandrixEInvoicePdfContentWalk.Throws: Boolean;
+begin
+  Result := FMayThrow;
 end;
 
 function TLandrixEInvoicePdfContentWalk.AssociatedMaybe(ANum: Integer): Boolean;

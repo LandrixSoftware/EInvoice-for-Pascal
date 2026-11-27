@@ -2370,6 +2370,90 @@ begin
     par_6_2_3_1, pro_Incomplete, 'a reference chain too long to follow');
 end;
 
+{ 6.2.4.2-2 and 6.2.4.4-2: overprint with ICCBased CMYK, Separation
+  consistency. }
+procedure TestPdfAColour2;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+  Cs0 = '/ColorSpace << /CS0 [/ICCBased 11 0 R] >>';
+  Fn = '<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 1 1 1] /N 1 >>';
+var
+  Cmyk: AnsiString;
+begin
+  Cmyk := StreamObj(11, IccHead('prtr', 'CMYK', 2), ' /N 4');
+  { overprint }
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 CS 1 1 1 1 SCN 0 0 10 10 re S', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 1 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Failed,
+    'stroking with overprint and OPM 1');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 1 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Failed,
+    'filling takes /OP without /op');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /op false /OPM 1 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Passed,
+    '/op false for filling');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 0 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Passed, 'OPM 0');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 1 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Passed,
+    'selecting the space paints nothing');
+  CheckOutcome(ContentPdf('q /GS1 gs Q /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 1 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Passed, 'Q restores');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM (x) >> >>', [Cmyk]), par_6_2_4_2_2, pro_Incomplete,
+    'a string OPM is not decided');
+  CheckOutcome(ContentPdf('/GS1 gs /CS1 cs 0 scn 0 0 10 10 re f', '', '',
+    '/ColorSpace << /CS1 [/Indexed [/ICCBased 11 0 R] 0 <00000000>] >> /ExtGState << /GS1 << /OP true /OPM 1 >> >>',
+    [Cmyk]), par_6_2_4_2_2, pro_Passed, 'a nested CMYK space carries no overprint');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs /Fm1 Do', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 1 >> >> /XObject << /Fm1 12 0 R >>',
+    [Cmyk, StreamObj(12, '0 0 1 1 re f', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_2_4_2_2,
+    pro_Failed, 'a form inherits the overprint state');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn BT (a) Tj ET', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /op true /OPM 1 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Failed, 'filled text');
+  { Separation consistency }
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /DeviceRGB 13 0 R] >>',
+    [ObjText(13, Fn)]), par_6_2_4_4_2, pro_Failed, 'another alternate space');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /DeviceCMYK 13 0 R] >>',
+    [ObjText(13, Fn)]), par_6_2_4_4_2, pro_Passed, 'the same alternate and tint transform');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /DeviceCMYK 14 0 R] >>',
+    [ObjText(13, Fn), ObjText(14, Fn)]), par_6_2_4_4_2, pro_Passed, 'equal tint transforms in two objects');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /DeviceCMYK 14 0 R] >>',
+    [ObjText(13, Fn), ObjText(14, '<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 1 1] /N 1 >>')]),
+    par_6_2_4_4_2, pro_Failed, 'different tint transforms');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /DeviceCMYK ' + Fn + '] >>',
+    [ObjText(13, Fn)]), par_6_2_4_4_2, pro_Failed, 'a direct tint transform against a reference');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Other /DeviceRGB 13 0 R] >>',
+    [ObjText(13, Fn)]), par_6_2_4_4_2, pro_Passed, 'different colourant names');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /Missing 13 0 R] >>',
+    [ObjText(13, Fn)]), par_6_2_4_4_2, pro_Incomplete, 'an alternate not built: veraPDF throws');
+  CheckOutcome(ContentPdf('/A cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /DeviceRGB 13 0 R] >>',
+    [ObjText(13, Fn)]), par_6_2_4_4_2, pro_Passed, 'a Separation not used is not compared');
+  { veraPDF may throw: no rule is decided }
+  CheckOutcome(ContentPdf('/A cs xyz', '', '', '/ColorSpace << /A [/Separation /Spot /Missing 13 0 R] >>',
+    [ObjText(13, Fn)]), par_6_2_2_1, pro_Incomplete, 'a Separation without its alternate leaves every rule open');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 9151314442816847872.0 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Incomplete,
+    'a real overprint mode beyond 2^31 is not decided');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 0.7 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Passed,
+    'a real overprint mode truncates toward zero');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn 0 0 10 10 re f', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 4294967296 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Passed,
+    'an integer overprint mode keeps its low 32 bits');
+  CheckOutcome(ContentPdf('/A cs /B cs', '', '',
+    '/ColorSpace << /A [/Separation /Spot /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0] /C1 [1] /N 1 ' +
+    '/Note (A) >>] /B [/Separation /Spot /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0] /C1 [1] /N 1 ' +
+    '/Note <41> >>] >>', NoExtra), par_6_2_4_4_2, pro_Incomplete, 'strings with the same bytes written otherwise');
+end;
+
 { 6.2.4: colour spaces used in content. }
 procedure TestPdfAColour;
 const
@@ -3295,6 +3379,7 @@ begin
   RegisterTest('PdfA.Graphics', TestPdfAGraphics);
   RegisterTest('PdfA.OutputIntents', TestPdfAOutputIntents);
   RegisterTest('PdfA.Colour', TestPdfAColour);
+  RegisterTest('PdfA.Colour2', TestPdfAColour2);
   RegisterTest('PdfA.Review', TestPdfAReview);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;

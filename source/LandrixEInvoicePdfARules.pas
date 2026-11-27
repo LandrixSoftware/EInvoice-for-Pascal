@@ -100,8 +100,8 @@ type
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
     par_6_1_12_1, par_6_1_12_2, par_6_1_13_1, par_6_1_13_2, par_6_1_13_3, par_6_1_13_4, par_6_1_13_5,
     par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11,
-    par_6_2_2_1, par_6_2_3_1, par_6_2_3_2, par_6_2_3_3, par_6_2_4_2_1, par_6_2_4_3_2, par_6_2_4_3_3, par_6_2_4_3_4,
-    par_6_2_4_4_1,
+    par_6_2_2_1, par_6_2_3_1, par_6_2_3_2, par_6_2_3_3, par_6_2_4_2_1, par_6_2_4_2_2, par_6_2_4_3_2, par_6_2_4_3_3,
+    par_6_2_4_3_4, par_6_2_4_4_1, par_6_2_4_4_2,
     par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5, par_6_2_5_6, par_6_2_6_1,
     par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1, par_6_2_9_2, par_6_2_9_3,
     par_6_2_10_1,
@@ -184,6 +184,8 @@ type
       (empty: none); False when it is not certain }
     FOutputCS: AnsiString;
     FOutputCSKnown: Boolean;
+    { veraPDF may stop with an exception on the document: no rule decided }
+    FVeraThrows: Boolean;
     { associations made in the page tree (doubtful where veraPDF may see
       other pages) }
     FAssocPage: array of Boolean;
@@ -406,11 +408,15 @@ const
     (Number: '6.2.4.2-1'; Coverage: prc_Full;
       Text: 'An ICC input profile is an input, display, output or colour space profile for RGB, CMYK, Gray or Lab ' +
       'below ICC version 5'),
+    (Number: '6.2.4.2-2'; Coverage: prc_Full;
+      Text: 'An ICCBased CMYK colour space is not painted with overprint on and an overprint mode other than 0'),
     (Number: '6.2.4.3-2'; Coverage: prc_Full; Text: 'DeviceRGB is used only with an RGB output intent'),
     (Number: '6.2.4.3-3'; Coverage: prc_Full; Text: 'DeviceCMYK is used only with a CMYK output intent'),
     (Number: '6.2.4.3-4'; Coverage: prc_Full; Text: 'DeviceGray is used only with an output intent'),
     (Number: '6.2.4.4-1'; Coverage: prc_Full;
       Text: 'Every colourant of a DeviceN colour space is in /Colorants or a process component'),
+    (Number: '6.2.4.4-2'; Coverage: prc_Full;
+      Text: 'Separation colour spaces of one colourant name have the same alternate space and tint transform'),
     (Number: '6.2.5-1'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /TR'),
     (Number: '6.2.5-2'; Coverage: prc_Full; Text: 'An ExtGState dictionary has /TR2 only with the value Default'),
     (Number: '6.2.5-3'; Coverage: prc_Full; Text: 'An ExtGState dictionary has no /HTP'),
@@ -1029,6 +1035,7 @@ begin
   FAFUnsure := False;
   FOutputCS := '';
   FOutputCSKnown := True;
+  FVeraThrows := False;
 end;
 
 procedure TLandrixEInvoicePdfARuleCheck.Fail(ARule: TLandrixEInvoicePdfARule; AObjNum, AObjGen: Integer;
@@ -1209,6 +1216,18 @@ begin
   for R := Low(TLandrixEInvoicePdfARule) to High(TLandrixEInvoicePdfARule) do
     if Rules[R].Coverage = prc_None then
       FResults[R].Outcome := pro_NotChecked
+    else if FVeraThrows then
+    begin
+      { veraPDF reports nothing for such a document
+        DE: veraPDF meldet fuer ein solches Dokument nichts }
+      FResults[R].Outcome := pro_Incomplete;
+      FResults[R].Failures := 0;
+      FResults[R].ObjNum := -1;
+      FResults[R].ObjGen := -1;
+      FResults[R].Source := pss_File;
+      FResults[R].Pos := -1;
+      FResults[R].Detail := '';
+    end
     else if FResults[R].Failures > 0 then
       FResults[R].Outcome := pro_Failed
     else if (Rules[R].Coverage = prc_Partial) or not FFacts.Complete or FIncomplete[R] then
@@ -2485,7 +2504,7 @@ const
     par_6_8_3, par_6_8_4, par_6_2_2_1, par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5,
     par_6_2_5_6, par_6_2_6_1, par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1,
     par_6_2_9_2, par_6_2_9_3, par_6_2_10_1, par_6_2_4_3_4, par_6_2_4_3_2, par_6_2_4_3_3, par_6_2_4_2_1, par_6_1_13_9,
-    par_6_2_4_4_1);
+    par_6_2_4_4_1, par_6_2_4_2_2, par_6_2_4_4_2);
 var
   Walk: TLandrixEInvoicePdfContentWalk;
   F: TLandrixEInvoicePdfContentFinding;
@@ -2506,6 +2525,7 @@ begin
   Walk := TLandrixEInvoicePdfContentWalk.Create(FDoc);
   try
     Walk.Run;
+    FVeraThrows := Walk.Throws;
     for I := 0 to Walk.FindingCount - 1 do
     begin
       F := Walk.Finding(I);
