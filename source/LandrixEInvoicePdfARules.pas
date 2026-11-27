@@ -15,9 +15,9 @@
 { The PDF/A-3b rules of clauses 6.1 (file structure), 6.2 (graphics: content
   stream operators, graphics states, rendering intents, images, XObjects,
   blend modes, output intents, device colour spaces, ICC input profiles and
-  DeviceN colourants; not yet overprint, Separation consistency, fonts,
-  JPEG 2000 images, the blending colour space of transparency groups and
-  implicit resources),
+  DeviceN colourants, overprint, Separation consistency, inherited
+  resources, page transparency, JPEG 2000 images and the font dictionaries;
+  not yet the font programs),
   6.3 (annotations),
   6.4 (interactive forms), 6.5 (actions), 6.6 (XMP metadata: packets,
   properties, extension schemas, PDF/A identification), 6.8
@@ -43,9 +43,10 @@
   DE: Die PDF/A-3b-Regeln der Abschnitte 6.1 (Dateistruktur), 6.2 (Grafik:
   Operatoren in Content-Streams, Grafikzustaende, Rendering-Intents, Bilder,
   XObjects, Blend-Modes, Output-Intents, Geraetefarbraeume,
-  ICC-Eingangsprofile und DeviceN-Farbmittel; noch nicht Ueberdrucken,
-  Separation-Konsistenz, Schriften, JPEG-2000-Bilder, der Mischfarbraum
-  von Transparenzgruppen und implizite Ressourcen),
+  ICC-Eingangsprofile und DeviceN-Farbmittel, Ueberdrucken,
+  Separation-Konsistenz, geerbte Ressourcen, Transparenz der Seiten,
+  JPEG-2000-Bilder und die Schrift-Dictionarys; noch nicht die
+  Fontprogramme),
   6.3 (Annotationen), 6.4 (interaktive Formulare), 6.5 (Aktionen), 6.6
   (XMP-Metadaten: Pakete, Eigenschaften, Erweiterungsschemas,
   PDF/A-Kennung), 6.8 (eingebettete Dateien), 6.9 (optionale Inhalte), 6.10
@@ -106,6 +107,10 @@ type
     par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_8_3_1, par_6_2_8_3_2, par_6_2_8_3_3,
     par_6_2_8_3_4, par_6_2_8_3_5, par_6_2_9_1, par_6_2_9_2, par_6_2_9_3,
     par_6_2_10_1, par_6_2_10_2,
+    par_6_2_11_2_1, par_6_2_11_2_2, par_6_2_11_2_3, par_6_2_11_2_4, par_6_2_11_2_5, par_6_2_11_2_6, par_6_2_11_2_7,
+    par_6_2_11_3_1_1, par_6_2_11_3_2_1, par_6_2_11_3_3_1, par_6_2_11_3_3_2, par_6_2_11_3_3_3, par_6_2_11_4_1_1,
+    par_6_2_11_4_1_2, par_6_2_11_4_2_1, par_6_2_11_4_2_2, par_6_2_11_5_1, par_6_2_11_6_1, par_6_2_11_6_2,
+    par_6_2_11_6_3, par_6_2_11_6_4, par_6_2_11_8_1,
     par_6_3_1_1, par_6_3_2_1, par_6_3_2_2, par_6_3_3_1, par_6_3_3_2, par_6_3_3_3, par_6_3_3_4,
     par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
     par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2,
@@ -449,6 +454,35 @@ const
     (Number: '6.2.10-1'; Coverage: prc_Full; Text: 'Only the blend modes of ISO 32000-1 in /BM'),
     (Number: '6.2.10-2'; Coverage: prc_Full;
       Text: 'Without a PDF/A output intent, a page with transparency has a /Group with /CS'),
+    (Number: '6.2.11.2-1'; Coverage: prc_Full; Text: 'A font has /Type /Font'),
+    (Number: '6.2.11.2-2'; Coverage: prc_Full; Text: 'A font has a /Subtype of ISO 32000-1'),
+    (Number: '6.2.11.2-3'; Coverage: prc_Full; Text: 'A font other than Type 3 has a /BaseFont name'),
+    (Number: '6.2.11.2-4'; Coverage: prc_Full; Text: 'A simple font other than the standard 14 has /FirstChar'),
+    (Number: '6.2.11.2-5'; Coverage: prc_Full; Text: 'A simple font other than the standard 14 has /LastChar'),
+    (Number: '6.2.11.2-6'; Coverage: prc_Full;
+      Text: 'A simple font other than the standard 14 has /Widths with LastChar - FirstChar + 1 entries'),
+    (Number: '6.2.11.2-7'; Coverage: prc_Full;
+      Text: 'An embedded font program has no /Subtype other than Type1C, CIDFontType0C and OpenType'),
+    (Number: '6.2.11.3.1-1'; Coverage: prc_Full;
+      Text: 'The CMap of a Type 0 font is an Identity CMap or matches the CIDSystemInfo of its CIDFont'),
+    (Number: '6.2.11.3.2-1'; Coverage: prc_Full; Text: 'An embedded CIDFontType2 font has /CIDToGIDMap'),
+    (Number: '6.2.11.3.3-1'; Coverage: prc_Full; Text: 'The CMap of a Type 0 font is predefined or embedded'),
+    (Number: '6.2.11.3.3-2'; Coverage: prc_None; Text: 'An embedded CMap has the /WMode of its dictionary'),
+    (Number: '6.2.11.3.3-3'; Coverage: prc_Full; Text: 'A CMap named by /UseCMap is a predefined one'),
+    (Number: '6.2.11.4.1-1'; Coverage: prc_Full;
+      Text: 'A font other than Type 3 and Type 0 used for visible text is embedded'),
+    (Number: '6.2.11.4.1-2'; Coverage: prc_None; Text: 'Every glyph shown is present in the font program'),
+    (Number: '6.2.11.4.2-1'; Coverage: prc_None; Text: 'The /CharSet of a Type 1 subset lists all its glyphs'),
+    (Number: '6.2.11.4.2-2'; Coverage: prc_None; Text: 'The /CIDSet of a CIDFont subset lists all its glyphs'),
+    (Number: '6.2.11.5-1'; Coverage: prc_None;
+      Text: 'The widths of the font dictionary and of the font program agree'),
+    (Number: '6.2.11.6-1'; Coverage: prc_None; Text: 'A non-symbolic TrueType font program has a cmap'),
+    (Number: '6.2.11.6-2'; Coverage: prc_Full;
+      Text: 'A non-symbolic TrueType font uses MacRomanEncoding or WinAnsiEncoding'),
+    (Number: '6.2.11.6-3'; Coverage: prc_Full; Text: 'A symbolic TrueType font has no /Encoding'),
+    (Number: '6.2.11.6-4'; Coverage: prc_None;
+      Text: 'A symbolic TrueType font program has one cmap or a (3,0) cmap'),
+    (Number: '6.2.11.8-1'; Coverage: prc_None; Text: 'No glyph shown is .notdef'),
     (Number: '6.3.1-1'; Coverage: prc_Full;
       Text: 'Only annotation types of ISO 32000-1 except 3D, Sound, Screen and Movie'),
     (Number: '6.3.2-1'; Coverage: prc_Full; Text: 'Every annotation except Popup has the flags /F'),
@@ -2499,17 +2533,20 @@ begin
 end;
 
 { 6.1.6, 6.1.10-1, 6.1.13-1 to -5, 6.1.13-8 and 6.8-2 to -4 in the content
-  streams veraPDF reads, and 6.2.2-1, 6.2.5, 6.2.6-1, 6.2.8-1 to -5, 6.2.9
-  and 6.2.10-1 for the operators, graphics states, images and forms they
-  use (LandrixEInvoicePdfContent): certain findings fail the rule,
+  streams veraPDF reads, and 6.2.2, 6.2.4.2-2, 6.2.4.3, 6.2.4.4, 6.2.5,
+  6.2.6-1, 6.2.8, 6.2.9, 6.2.10 and the font dictionary rules of 6.2.11 for
+  the operators, graphics states, colour spaces, images, forms and fonts
+  they use (LandrixEInvoicePdfContent): certain findings fail the rule,
   uncertain ones leave it undecided; the associations of /AF /Name BDC are
   kept for 6.8-4.
   DE: 6.1.6, 6.1.10-1, 6.1.13-1 bis -5, 6.1.13-8 und 6.8-2 bis -4 in den
-  Content-Streams, die veraPDF liest, und 6.2.2-1, 6.2.5, 6.2.6-1, 6.2.8-1
-  bis -5, 6.2.9 und 6.2.10-1 fuer die Operatoren, Grafikzustaende, Bilder
-  und Formen, die sie benutzen (LandrixEInvoicePdfContent): sichere
-  Befunde verletzen die Regel, unsichere lassen sie offen; die Zuordnungen
-  durch /AF /Name BDC bleiben fuer 6.8-4. }
+  Content-Streams, die veraPDF liest, und 6.2.2, 6.2.4.2-2, 6.2.4.3,
+  6.2.4.4, 6.2.5, 6.2.6-1, 6.2.8, 6.2.9, 6.2.10 und die Regeln aus 6.2.11
+  fuer Schrift-Dictionarys fuer die Operatoren, Grafikzustaende,
+  Farbraeume, Bilder, Formen und Schriften, die sie benutzen
+  (LandrixEInvoicePdfContent): sichere Befunde verletzen die Regel,
+  unsichere lassen sie offen; die Zuordnungen durch /AF /Name BDC bleiben
+  fuer 6.8-4. }
 procedure TLandrixEInvoicePdfARuleCheck.CheckContent;
 const
   RuleOf: array[TLandrixEInvoicePdfContentCheck] of TLandrixEInvoicePdfARule = (par_6_1_13_1, par_6_1_13_2,
@@ -2518,7 +2555,9 @@ const
     par_6_2_5_6, par_6_2_6_1, par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1,
     par_6_2_9_2, par_6_2_9_3, par_6_2_10_1, par_6_2_4_3_4, par_6_2_4_3_2, par_6_2_4_3_3, par_6_2_4_2_1, par_6_1_13_9,
     par_6_2_4_4_1, par_6_2_4_2_2, par_6_2_4_4_2, par_6_2_2_2, par_6_2_10_2, par_6_2_8_3_1, par_6_2_8_3_2,
-    par_6_2_8_3_3, par_6_2_8_3_4, par_6_2_8_3_5);
+    par_6_2_8_3_3, par_6_2_8_3_4, par_6_2_8_3_5, par_6_2_11_2_1, par_6_2_11_2_2, par_6_2_11_2_3, par_6_2_11_2_4,
+    par_6_2_11_2_5, par_6_2_11_2_6, par_6_2_11_2_7, par_6_2_11_3_1_1, par_6_2_11_3_2_1, par_6_2_11_3_3_1,
+    par_6_2_11_3_3_3, par_6_2_11_4_1_1, par_6_2_11_6_2, par_6_2_11_6_3);
 var
   Walk: TLandrixEInvoicePdfContentWalk;
   F: TLandrixEInvoicePdfContentFinding;

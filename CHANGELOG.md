@@ -218,6 +218,18 @@ Supported invoice standards are documented per release.
   patterns and the Type 3 glyphs a text operator shows. The JPEG 2000 boxes are read from the stored stream bytes as
   veraPDF reads them; an image whose data make veraPDF stop leaves every rule incomplete. Tests `PdfA.Resources`,
   `PdfA.Transparency` and `PdfA.Jpeg2000`; all 48 corpus failures of these rules are found, no false positives.
+- PDF/A level 1, stage E, first part (font dictionaries): 6.2.11.2-1 to -7 (/Type /Font, the subtype, a
+  /BaseFont name, /FirstChar, /LastChar and /Widths of simple fonts other than the standard 14, the subtype of the
+  font program), 6.2.11.3.1-1 (the CMap of a Type 0 font is an Identity CMap or matches the CIDSystemInfo of its
+  CIDFont), 6.2.11.3.2-1 (an embedded CIDFontType2 font has /CIDToGIDMap), 6.2.11.3.3-1 and -3 (CMaps and the CMaps
+  of /UseCMap are predefined or embedded), 6.2.11.4.1-1 (fonts for visible text are embedded) and 6.2.11.6-2/-3 (the
+  encoding of TrueType fonts), checked on the fonts the text operators show, as veraPDF does. Whether veraPDF
+  accepts an embedded font program is not decided yet, so these rules stay incomplete where the result depends on
+  it (6.2.11.3.2-1, 6.2.11.4.1-1, TrueType /Differences). Text without a font, and a Type 0 font veraPDF cannot
+  build (no /Encoding, a /UseCMap loop), leave every rule incomplete, since veraPDF stops on them. The rules of the
+  font programs themselves (6.2.11.3.3-2, 6.2.11.4.1-2, 6.2.11.4.2, 6.2.11.5, 6.2.11.6-1/-4, 6.2.11.8) are
+  registered as not checked. Test `PdfA.Fonts`; 41 of the 46 corpus failures of the checked rules are found (the
+  rest stay incomplete), no false positives.
 
 ### Changed
 - LandrixXML 0.5.1 (`a2305e0`, was 0.5.0): fixes of a complete review (many for very large or hostile input),

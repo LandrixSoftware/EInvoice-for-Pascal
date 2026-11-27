@@ -59,6 +59,8 @@ uses
 const
   LF = #10;
   CR = #13;
+  { a font resource for content that shows text (veraPDF throws on text without a font) }
+  F0Res = '/Font << /F0 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >>';
 
 function IntToAnsi(V: Integer): AnsiString;
 var
@@ -1631,14 +1633,15 @@ begin
     pro_Incomplete, 'real on the limit');
   CheckOutcome(ContentPdf('0.00000000000000000000000000000000000000001 w', '', '', '', NoExtra), par_6_1_13_5,
     pro_Failed, 'real too close to zero');
-  CheckOutcome(ContentPdf('<A Z 3> Tj', '', '', '', NoExtra), par_6_1_6_1, pro_Failed, 'hex count 3');
-  CheckOutcome(ContentPdf('<A Z 3> Tj', '', '', '', NoExtra), par_6_1_6_2, pro_Failed, 'hex Z');
+  CheckOutcome(ContentPdf('/F0 1 Tf <A Z 3> Tj', '', '', F0Res, NoExtra), par_6_1_6_1, pro_Failed, 'hex count 3');
+  CheckOutcome(ContentPdf('/F0 1 Tf <A Z 3> Tj', '', '', F0Res, NoExtra), par_6_1_6_2, pro_Failed, 'hex Z');
   CheckOutcome(ContentPdf('<A Z 3> 1 w', '', '', '', NoExtra), par_6_1_6_2, pro_Passed, 'a hex string w drops');
   CheckOutcome(ContentPdf('/' + Repeated('n', 128) + ' BMC EMC', '', '', '', NoExtra), par_6_1_13_4, pro_Failed,
     'tag name of 128 bytes');
-  CheckOutcome(ContentPdf('(' + Repeated('a', 32768) + ') Tj', '', '', '', NoExtra), par_6_1_13_3, pro_Failed,
+  CheckOutcome(ContentPdf('/F0 1 Tf (' + Repeated('a', 32768) + ') Tj', '', '', F0Res, NoExtra),
+    par_6_1_13_3, pro_Failed,
     '32768 characters');
-  CheckOutcome(ContentPdf('(' + Bytes2(16384, AnsiChar($C3), AnsiChar($A9)) + ') Tj', '', '', '', NoExtra),
+  CheckOutcome(ContentPdf('/F0 1 Tf (' + Bytes2(16384, AnsiChar($C3), AnsiChar($A9)) + ') Tj', '', '', F0Res, NoExtra),
     par_6_1_13_3, pro_Passed, '32768 bytes of 16384 characters');
   { q nesting: 29 saves fail; a form starts its own stack }
   CheckOutcome(ContentPdf(Saves(29), '', '', '', NoExtra), par_6_1_13_8, pro_Failed, '29 saves');
@@ -2408,8 +2411,8 @@ begin
     Cs0 + ' /ExtGState << /GS1 << /OP true /OPM 1 >> >> /XObject << /Fm1 12 0 R >>',
     [Cmyk, StreamObj(12, '0 0 1 1 re f', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_2_4_2_2,
     pro_Failed, 'a form inherits the overprint state');
-  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn BT (a) Tj ET', '', '',
-    Cs0 + ' /ExtGState << /GS1 << /op true /OPM 1 >> >>', [Cmyk]), par_6_2_4_2_2, pro_Failed, 'filled text');
+  CheckOutcome(ContentPdf('/GS1 gs /CS0 cs 1 1 1 1 scn BT /F0 1 Tf (a) Tj ET', '', '',
+    Cs0 + ' /ExtGState << /GS1 << /op true /OPM 1 >> >> ' + F0Res, [Cmyk]), par_6_2_4_2_2, pro_Failed, 'filled text');
   { Separation consistency }
   CheckOutcome(ContentPdf('/A cs /B cs', '', '',
     '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] /B [/Separation /Spot /DeviceRGB 13 0 R] >>',
@@ -2697,6 +2700,170 @@ begin
     'a profile length veraPDF reads as negative');
 end;
 
+{ 6.2.11.2, 6.2.11.3, 6.2.11.4.1-1 and 6.2.11.6-2/-3: the font dictionaries
+  of the fonts text operators show. }
+procedure TestPdfAFonts;
+
+  function Pdf(const AText, AFont: AnsiString; const AMore: array of AnsiString): AnsiString;
+  var
+    Extra: array of AnsiString;
+    I: Integer;
+  begin
+    Extra := nil;
+    SetLength(Extra, Length(AMore) + 1);
+    Extra[0] := ObjText(10, AFont);
+    for I := 0 to Integer(High(AMore)) do
+      Extra[I + 1] := AMore[I];
+    Result := ContentPdf('BT /F1 1 Tf ' + AText + ' ET', '', '', '/Font << /F1 10 0 R >>', Extra);
+  end;
+
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+  Helv = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  Desc = ' /FontDescriptor 11 0 R';
+  Simple = ' /FirstChar 97 /LastChar 98 /Widths [500 500]';
+  Prog2 = '<< /Type /FontDescriptor /FontName /Arial /Flags 32 /FontFile2 12 0 R >>';
+  Prog3T1 = '<< /Type /FontDescriptor /FontName /Arial /Flags 32 /FontFile3 12 0 R >>';
+  Plain = '<< /Type /FontDescriptor /FontName /Arial /Flags 32 >>';
+  Sym = '<< /Type /FontDescriptor /FontName /Arial /Flags 4 >>';
+  Cid = '<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Arial /CIDSystemInfo << /Registry (Adobe) /Ordering ' +
+    '(Japan1) /Supplement 2 >> /FontDescriptor 11 0 R';
+var
+  Font: AnsiString;
+begin
+  { embedding }
+  CheckOutcome(Pdf('(a) Tj', Helv, NoExtra), par_6_2_11_4_1_1, pro_Failed, 'a standard font not embedded');
+  CheckOutcome(Pdf('3 Tr (a) Tj', Helv, NoExtra), par_6_2_11_4_1_1, pro_Passed, 'invisible text needs no program');
+  CheckOutcome(Pdf('3.5 Tr (a) Tj', Helv, NoExtra), par_6_2_11_4_1_1, pro_Incomplete,
+    'a rendering mode not decided');
+  CheckOutcome(Pdf('(a) Tj', Helv, NoExtra), par_6_2_11_2_4, pro_Passed, 'a standard font needs no /FirstChar');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]),
+    par_6_2_11_4_1_1, pro_Failed, 'a TrueType font without a program');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, 'x', '')]), par_6_2_11_4_1_1, pro_Incomplete,
+    'a TrueType program veraPDF may not parse');
+  CheckOutcome(Pdf('(a) Tj', Font,
+    [ObjText(11, '<< /Type /FontDescriptor /FontName /Arial /Flags 32 /FontFile 12 0 R >>'),
+    StreamObj(12, 'x', '')]), par_6_2_11_4_1_1, pro_Failed, 'a TrueType font with a Type 1 program');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, 'x', '')]), par_6_2_11_6_2, pro_Passed,
+    'WinAnsiEncoding');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog3T1), StreamObj(12, 'x', ' /Subtype /Type1')]),
+    par_6_2_11_2_7, pro_Failed, 'a font program of /Subtype /Type1');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog3T1), StreamObj(12, 'x', ' /Subtype /OpenType')]),
+    par_6_2_11_2_7, pro_Passed, 'an OpenType program');
+  { simple fonts }
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /StandardEncoding' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_6_2, pro_Failed,
+    'a non-symbolic TrueType font with StandardEncoding');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding << /BaseEncoding /WinAnsiEncoding ' +
+    '/Differences [97 /a] >>' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_6_2, pro_Passed,
+    '/Differences without a font program');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, 'x', '')]), par_6_2_11_6_2, pro_Incomplete,
+    '/Differences with a font program');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Sym)]), par_6_2_11_6_3, pro_Failed, 'a symbolic font with an encoding');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Sym)]), par_6_2_11_6_3, pro_Passed, 'a symbolic font without one');
+  Font := '<< /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_2_1, pro_Failed, 'no /Type');
+  Font := '<< /Type /Font /Subtype /TrueType /Encoding /WinAnsiEncoding' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_2_3, pro_Failed, 'no /BaseFont');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding /LastChar 98 ' +
+    '/Widths [500 500]' + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_2_4, pro_Failed, 'no /FirstChar');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_2_6, pro_Failed,
+    'a missing /FirstChar counts as 0');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding /FirstChar 97 ' +
+    '/LastChar 99 /Widths [500 500]' + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_2_6, pro_Failed, 'two widths for three codes');
+  Font := '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /FontDescriptor 11 0 R >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, '<< /Type /FontDescriptor /FontName /Helvetica /Flags 32 ' +
+    '/FontFile 12 0 R >>'), StreamObj(12, 'x', '')]), par_6_2_11_2_4, pro_Incomplete,
+    'an embedded standard font may need /FirstChar');
+  CheckOutcome(Pdf('(a) Tj', '<< /Type /Font /Subtype /Type3 /CharProcs << >> /FontBBox [0 0 1 1] ' +
+    '/FontMatrix [1 0 0 1 0 0] >>', NoExtra), par_6_2_11_2_5, pro_Failed, 'a Type 3 font without /LastChar');
+  { composite fonts }
+  Font := '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /Identity-H /DescendantFonts [13 0 R] >>';
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Prog2), StreamObj(12, 'x', '')]),
+    par_6_2_11_3_2_1, pro_Incomplete, 'an embedded CIDFontType2 without /CIDToGIDMap');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /CIDToGIDMap /Identity >>'), ObjText(11, Prog2),
+    StreamObj(12, 'x', '')]), par_6_2_11_3_2_1, pro_Passed, 'a CIDFontType2 with /CIDToGIDMap');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_4_1_1,
+    pro_Failed, 'a CIDFont without a program');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_3_1_1,
+    pro_Passed, 'an Identity CMap');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, '<< /Type /Font /Subtype /CIDFontType3 /BaseFont /Arial >>')]),
+    par_6_2_11_2_2, pro_Failed, 'a descendant of /Subtype /CIDFontType3');
+  Font := '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /UniJIS-UCS2-H /DescendantFonts [13 0 R] >>';
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_3_1_1,
+    pro_Passed, 'Japan1 supplement 2 with a CMap of supplement 4');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, '<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Arial ' +
+    '/CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 5 >> /FontDescriptor 11 0 R >>'),
+    ObjText(11, Plain)]), par_6_2_11_3_1_1, pro_Failed, 'a CIDFont supplement above the CMap''s');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, '<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Arial ' +
+    '/CIDSystemInfo << /Registry (Adobe) /Ordering (GB1) /Supplement 0 >> /FontDescriptor 11 0 R >>'),
+    ObjText(11, Plain)]), par_6_2_11_3_1_1, pro_Failed, 'another ordering');
+  Font := '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /Foo-H /DescendantFonts [13 0 R] >>';
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_3_3_1,
+    pro_Failed, 'a CMap that is neither predefined nor embedded');
+  Font := '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding 14 0 R /DescendantFonts [13 0 R] >>';
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain), StreamObj(14, 'x',
+    ' /Type /CMap /CMapName /Custom /UseCMap 15 0 R'), StreamObj(15, 'x', ' /Type /CMap /CMapName /Custom2')]),
+    par_6_2_11_3_3_3, pro_Failed, 'an embedded CMap named by /UseCMap');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain), StreamObj(14, 'x',
+    ' /Type /CMap /CMapName /Custom /UseCMap 15 0 R'), StreamObj(15, 'x', ' /Type /CMap /CMapName /Custom2')]),
+    par_6_2_11_3_3_1, pro_Passed, 'embedded CMaps are allowed');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain), StreamObj(14, 'x',
+    ' /Type /CMap /CMapName /Custom /UseCMap /90ms-RKSJ-H')]), par_6_2_11_3_3_3, pro_Passed,
+    'a predefined CMap named by /UseCMap');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain), StreamObj(14, 'x',
+    ' /Type /CMap /CMapName /Custom /UseCMap 14 0 R')]), par_6_2_11_3_3_1, pro_Incomplete,
+    'a /UseCMap loop makes veraPDF throw');
+  CheckOutcome(Pdf('<0001> Tj', '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /DescendantFonts [13 0 R] >>',
+    [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_2_1, pro_Incomplete,
+    'a Type 0 font without /Encoding makes veraPDF throw');
+  CheckOutcome(ContentPdf('BT (a) Tj ET', '', '', '', NoExtra), par_6_2_11_2_1, pro_Incomplete,
+    'text without a font makes veraPDF throw');
+  { veraPDF checks a font once, with the rendering mode of its first use }
+  CheckOutcome(Pdf('3 Tr (a) Tj 0 Tr (b) Tj', Helv, NoExtra), par_6_2_11_4_1_1, pro_Incomplete,
+    'a font shown invisibly and visibly');
+  CheckOutcome(Pdf('(a) Tj', '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding [1]' + Simple + Desc +
+    ' >>', [ObjText(11, Plain)]), par_6_2_11_6_2, pro_Incomplete, 'an /Encoding array makes veraPDF throw');
+  CheckOutcome(Pdf('(a) Tj', '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding' +
+    Simple + Desc + ' >>', [ObjText(11, Prog3T1), StreamObj(12, 'x', ' /Subtype /')]), par_6_2_11_2_7,
+    pro_Failed, 'an empty name as program subtype');
+  CheckOutcome(Pdf('(a) Tj', '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding ' +
+    '/FirstChar -10000000000000000000 /LastChar 98 /Widths [500 500]' + Desc + ' >>', [ObjText(11, Plain)]),
+    par_6_2_11_2_6, pro_Incomplete, 'a /FirstChar far out of range');
+  CheckOutcome(Pdf('(a) Tj', '<< /Type /Font /Subtype /Type3 /CharProcs << >> /FontBBox [0 0 1 1] ' +
+    '/FontMatrix [1 0 0 1 0 0] /FirstChar 97 /LastChar 98 /Widths [1] >>', NoExtra), par_6_2_11_2_6, pro_Failed,
+    'a Type 3 font with too few widths');
+  CheckOutcome(Pdf('(a) Tj', '<< /Type /Font /Subtype /Type1 /FirstChar 97 /LastChar 98 /Widths [1 1]' + Desc +
+    ' >>', [ObjText(11, '<< /Type /FontDescriptor /Flags 32 /FontFile 12 0 R >>'), StreamObj(12, 'x', '')]),
+    par_6_2_11_2_3, pro_Incomplete, 'a Type 1 program without a /BaseFont name may make veraPDF throw');
+  Font := '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /Identity-H /DescendantFonts [13 0 R] >>';
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, '<< /Type /Font /Subtype /TrueType /BaseFont /Arial ' +
+    '/FontDescriptor 11 0 R >>'), ObjText(11, Plain)]), par_6_2_11_2_2, pro_Passed,
+    'a descendant of /Subtype /TrueType');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, '<< /Type /Font /Subtype /Type1 /BaseFont /Arial ' +
+    '/FontDescriptor 11 0 R >>'), ObjText(11, Prog3T1), StreamObj(12, 'x', ' /Subtype /CIDFontType0C')]),
+    par_6_2_11_4_1_1, pro_Incomplete, 'a descendant takes the CIDFont program path');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Prog3T1),
+    StreamObj(12, 'x', ' /Subtype (x)')]), par_6_2_11_4_1_1, pro_Incomplete,
+    'a program /Subtype that is no name makes veraPDF throw');
+  CheckOutcome(Pdf('<0001> Tj', '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /Identity-H >>',
+    NoExtra), par_6_2_11_2_1, pro_Failed, 'a Type 0 font without a descendant');
+  CheckOutcome(Pdf('<0001> Tj', '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding [/Identity-H] ' +
+    '/DescendantFonts [13 0 R] >>', [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_3_1_1,
+    pro_Incomplete, 'a Type 0 /Encoding array makes veraPDF throw');
+  Font := '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /UniJIS-UCS2-H /DescendantFonts [13 0 R] >>';
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, '<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Arial ' +
+    '/CIDSystemInfo << /Registry (Ad' + #$C3#$B6 + 'be) /Ordering (Japan1) /Supplement 0 >> ' +
+    '/FontDescriptor 11 0 R >>'), ObjText(11, Plain)]), par_6_2_11_3_1_1, pro_Incomplete,
+    'a registry beyond ASCII is not decided');
+end;
+
 { 6.2.4: colour spaces used in content. }
 procedure TestPdfAColour;
 const
@@ -2734,8 +2901,9 @@ begin
     'cs with an unknown name links the empty space');
   CheckOutcome(ContentPdf('0 0 0 0 0 0 d1 1 0 0 rg', '', '', '', NoExtra), par_6_2_4_3_2, pro_Passed,
     'no colour after d1');
-  CheckOutcome(ContentPdf('BT 3 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed, 'invisible text');
-  CheckOutcome(ContentPdf('BT (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed, 'filled text');
+  CheckOutcome(ContentPdf('BT /F0 1 Tf 3 Tr (a) Tj ET', '', '', F0Res, NoExtra),
+    par_6_2_4_3_4, pro_Passed, 'invisible text');
+  CheckOutcome(ContentPdf('BT /F0 1 Tf (a) Tj ET', '', '', F0Res, NoExtra), par_6_2_4_3_4, pro_Failed, 'filled text');
   CheckOutcome(ContentPdf('/Pattern cs /P0 scn', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
     'a pattern name that selects nothing');
 
@@ -2820,9 +2988,9 @@ begin
   CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 14 0 R >> /ColorSpace << /DefaultGray /DeviceRGB >>',
     [StreamObj(14, '0 0 1 1 re f', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]')]), par_6_2_4_3_2, pro_Failed,
     'a form paints in the page''s initial space');
-  CheckOutcome(ContentPdf('BT 3 0 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed,
+  CheckOutcome(ContentPdf('BT /F0 1 Tf 3 0 Tr (a) Tj ET', '', '', F0Res, NoExtra), par_6_2_4_3_4, pro_Passed,
     'Tr takes its first operand');
-  CheckOutcome(ContentPdf('BT 9 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+  CheckOutcome(ContentPdf('BT /F0 1 Tf 9 Tr (a) Tj ET', '', '', F0Res, NoExtra), par_6_2_4_3_4, pro_Failed,
     'an invalid rendering mode fills');
   CheckOutcome(ContentPdf('/DeviceRGB cs', '', '', '/ColorSpace << /DefaultRGB 20 0 R >>', NoExtra), par_6_2_4_3_4,
     pro_Failed, 'a default that leads to no object gives the empty space');
@@ -2851,16 +3019,17 @@ begin
     'an inline array not modelled leaves the colour rules open');
   CheckOutcome(ContentPdf('/CS0 cs', '', '', '/ColorSpace << /CS0 [/Separation /Spot] >>', NoExtra), par_6_2_4_3_4,
     pro_Incomplete, 'a Separation space without an alternate');
-  CheckOutcome(ContentPdf('BT 3.0 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Incomplete,
+  CheckOutcome(ContentPdf('BT /F0 1 Tf 3.0 Tr (a) Tj ET', '', '', F0Res, NoExtra), par_6_2_4_3_4, pro_Incomplete,
     'a real rendering mode');
-  CheckOutcome(ContentPdf('BT 1 0 0 rg 1 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Failed,
+  CheckOutcome(ContentPdf('BT /F0 1 Tf 1 0 0 rg 1 Tr (a) Tj ET', '', '', F0Res, NoExtra), par_6_2_4_3_4, pro_Failed,
     'stroked text uses the stroke space');
-  CheckOutcome(ContentPdf('BT 1 0 0 RG 1 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed,
+  CheckOutcome(ContentPdf('BT /F0 1 Tf 1 0 0 RG 1 Tr (a) Tj ET', '', '', F0Res, NoExtra), par_6_2_4_3_4, pro_Passed,
     'stroked text does not use the fill space');
   CheckOutcome(ContentPdf('BI /W 1 /H 1 /CS /Fl /BPC 8 ID a EI', '', '',
     '/ColorSpace << /Fl /DeviceCMYK /FlateDecode /DeviceRGB >>', NoExtra), par_6_2_4_3_3, pro_Passed,
     'inline names are expanded like filter names');
-  CheckOutcome(ContentPdf('BT 7 Tr (a) Tj ET', '', '', '', NoExtra), par_6_2_4_3_4, pro_Passed, 'clipping text');
+  CheckOutcome(ContentPdf('BT /F0 1 Tf 7 Tr (a) Tj ET', '', '', F0Res, NoExtra),
+    par_6_2_4_3_4, pro_Passed, 'clipping text');
   CheckOutcome(CatalogPdf(Intent, '1 0 0 rg 0 0 0 1 k 0 g', '', '', '', [Cmyk]), par_6_2_4_3_4, pro_Passed,
     'DeviceGray with a CMYK output intent');
 end;
@@ -3020,7 +3189,7 @@ begin
     '/Font << /F1 10 0 R >> /ExtGState << /GS << /Font [<< >> 1] >> >>', [Font, Glyph]), par_6_1_13_8, pro_Failed,
     'gs keeps the font where it has none to build');
   CheckOutcome(ContentPdf('BT /F1 1 Tf /F2 1 Tf () Tj ET', '', '', '/Font << /F1 10 0 R >>', [Font, Glyph]),
-    par_6_1_13_8, pro_Passed, 'Tf without a font clears it');
+    par_6_1_13_8, pro_Incomplete, 'Tf without a font clears it: veraPDF throws at the text');
   Pat := StreamObj(10, Saves(29), ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
     '/Resources << >>');
   CheckOutcome(ContentPdf('/P1 scn', '', '', '/ColorSpace << /DefaultGray /Pattern >> /Pattern << /P1 10 0 R >>',
@@ -3131,8 +3300,8 @@ begin
     pro_Failed, 'leading zeros are not cut');
   CheckOutcome(ContentPdf('0.' + Repeated('0', 405) + Repeated('9', 39) + ' w', '', '', '', NoExtra), par_6_1_13_5,
     pro_Incomplete, 'a real that may underflow to zero');
-  CheckOutcome(ContentPdf('(' + Bytes3(11000, AnsiChar($ED), AnsiChar($A0), AnsiChar($80)) + ') Tj', '', '', '',
-    NoExtra), par_6_1_13_3, pro_Incomplete, 'veraPDF may take three bytes as one malformed sequence');
+  CheckOutcome(ContentPdf('/F0 1 Tf (' + Bytes3(11000, AnsiChar($ED), AnsiChar($A0), AnsiChar($80)) + ') Tj',
+    '', '', F0Res, NoExtra), par_6_1_13_3, pro_Incomplete, 'veraPDF may take three bytes as one malformed sequence');
   { /Count 1 with two pages: veraPDF may see only the first }
   Pdf := BuildPdf(GoodHeader, [
     '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R >>' + LF + 'endobj' + LF,
@@ -3626,6 +3795,7 @@ begin
   RegisterTest('PdfA.Resources', TestPdfAResources);
   RegisterTest('PdfA.Transparency', TestPdfATransparency);
   RegisterTest('PdfA.Jpeg2000', TestPdfAJpeg2000);
+  RegisterTest('PdfA.Fonts', TestPdfAFonts);
   RegisterTest('PdfA.Review', TestPdfAReview);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;
