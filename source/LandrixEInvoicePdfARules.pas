@@ -100,11 +100,12 @@ type
     par_6_1_7_1_1, par_6_1_7_1_2, par_6_1_7_1_3, par_6_1_7_2_1, par_6_1_8_1, par_6_1_9_1, par_6_1_10_1,
     par_6_1_12_1, par_6_1_12_2, par_6_1_13_1, par_6_1_13_2, par_6_1_13_3, par_6_1_13_4, par_6_1_13_5,
     par_6_1_13_7, par_6_1_13_8, par_6_1_13_9, par_6_1_13_10, par_6_1_13_11,
-    par_6_2_2_1, par_6_2_3_1, par_6_2_3_2, par_6_2_3_3, par_6_2_4_2_1, par_6_2_4_2_2, par_6_2_4_3_2, par_6_2_4_3_3,
+    par_6_2_2_1, par_6_2_2_2, par_6_2_3_1, par_6_2_3_2, par_6_2_3_3, par_6_2_4_2_1, par_6_2_4_2_2, par_6_2_4_3_2, par_6_2_4_3_3,
     par_6_2_4_3_4, par_6_2_4_4_1, par_6_2_4_4_2,
     par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5, par_6_2_5_6, par_6_2_6_1,
-    par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1, par_6_2_9_2, par_6_2_9_3,
-    par_6_2_10_1,
+    par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_8_3_1, par_6_2_8_3_2, par_6_2_8_3_3,
+    par_6_2_8_3_4, par_6_2_8_3_5, par_6_2_9_1, par_6_2_9_2, par_6_2_9_3,
+    par_6_2_10_1, par_6_2_10_2,
     par_6_3_1_1, par_6_3_2_1, par_6_3_2_2, par_6_3_3_1, par_6_3_3_2, par_6_3_3_3, par_6_3_3_4,
     par_6_4_1_1, par_6_4_1_2, par_6_4_1_3, par_6_4_2_1, par_6_4_2_2, par_6_4_3_1, par_6_4_3_2, par_6_4_3_3,
     par_6_5_1_1, par_6_5_1_2, par_6_5_2_1, par_6_5_2_2,
@@ -400,6 +401,8 @@ const
     (Number: '6.1.13-10'; Coverage: prc_None; Text: 'CID values are at most 65535'),
     (Number: '6.1.13-11'; Coverage: prc_Full; Text: 'Page boundaries are between 3 and 14400 units in each direction'),
     (Number: '6.2.2-1'; Coverage: prc_Full; Text: 'Content streams use only operators defined in ISO 32000-1'),
+    (Number: '6.2.2-2'; Coverage: prc_Full;
+      Text: 'A content stream takes its named resources from its own Resources dictionary'),
     (Number: '6.2.3-1'; Coverage: prc_Full;
       Text: 'An output intent profile is a printer or monitor profile for RGB, CMYK or Gray below ICC version 5'),
     (Number: '6.2.3-2'; Coverage: prc_Full;
@@ -431,10 +434,21 @@ const
     (Number: '6.2.8-3'; Coverage: prc_Full; Text: 'An image has /Interpolate (inline: /I) false or not at all'),
     (Number: '6.2.8-4'; Coverage: prc_Full; Text: 'The BitsPerComponent of an image is 1, 2, 4, 8 or 16'),
     (Number: '6.2.8-5'; Coverage: prc_Full; Text: 'The BitsPerComponent of an image mask is 1'),
+    (Number: '6.2.8.3-1'; Coverage: prc_Full; Text: 'JPEG 2000 data have 1, 3 or 4 colour channels'),
+    (Number: '6.2.8.3-2'; Coverage: prc_Full;
+      Text: 'Without /ColorSpace, JPEG 2000 data have one colour specification or exactly one with APPROX 1'),
+    (Number: '6.2.8.3-3'; Coverage: prc_Full;
+      Text: 'Without /ColorSpace, the colour specification of JPEG 2000 data has METH 1, 2 or 3'),
+    (Number: '6.2.8.3-4'; Coverage: prc_Full;
+      Text: 'Without /ColorSpace, JPEG 2000 data do not use the enumerated colour space 19 (CIEJab)'),
+    (Number: '6.2.8.3-5'; Coverage: prc_Full;
+      Text: 'JPEG 2000 data have no bpcc box and a bit depth from 1 to 38'),
     (Number: '6.2.9-1'; Coverage: prc_Full; Text: 'A form XObject has no /OPI, no /PS and no /Subtype2 /PS'),
     (Number: '6.2.9-2'; Coverage: prc_Full; Text: 'No reference XObjects (/Ref in a form XObject)'),
     (Number: '6.2.9-3'; Coverage: prc_Full; Text: 'No PostScript XObjects'),
     (Number: '6.2.10-1'; Coverage: prc_Full; Text: 'Only the blend modes of ISO 32000-1 in /BM'),
+    (Number: '6.2.10-2'; Coverage: prc_Full;
+      Text: 'Without a PDF/A output intent, a page with transparency has a /Group with /CS'),
     (Number: '6.3.1-1'; Coverage: prc_Full;
       Text: 'Only annotation types of ISO 32000-1 except 3D, Sound, Screen and Movie'),
     (Number: '6.3.2-1'; Coverage: prc_Full; Text: 'Every annotation except Popup has the flags /F'),
@@ -2504,7 +2518,8 @@ const
     par_6_8_3, par_6_8_4, par_6_2_2_1, par_6_2_5_1, par_6_2_5_2, par_6_2_5_3, par_6_2_5_4, par_6_2_5_5,
     par_6_2_5_6, par_6_2_6_1, par_6_2_8_1, par_6_2_8_2, par_6_2_8_3, par_6_2_8_4, par_6_2_8_5, par_6_2_9_1,
     par_6_2_9_2, par_6_2_9_3, par_6_2_10_1, par_6_2_4_3_4, par_6_2_4_3_2, par_6_2_4_3_3, par_6_2_4_2_1, par_6_1_13_9,
-    par_6_2_4_4_1, par_6_2_4_2_2, par_6_2_4_4_2);
+    par_6_2_4_4_1, par_6_2_4_2_2, par_6_2_4_4_2, par_6_2_2_2, par_6_2_10_2, par_6_2_8_3_1, par_6_2_8_3_2,
+    par_6_2_8_3_3, par_6_2_8_3_4, par_6_2_8_3_5);
 var
   Walk: TLandrixEInvoicePdfContentWalk;
   F: TLandrixEInvoicePdfContentFinding;
@@ -2520,6 +2535,10 @@ begin
   Allowed[pcc_DeviceGray] := FOutputCSKnown and (FOutputCS <> '');
   Allowed[pcc_DeviceRGB] := FOutputCSKnown and (FOutputCS = 'RGB ');
   Allowed[pcc_DeviceCMYK] := FOutputCSKnown and (FOutputCS = 'CMYK');
+  { 6.2.10-2: any output intent profile with a colour space lets every page
+    pass. DE: 6.2.10-2: jedes Output-Intent-Profil mit einem Farbraum laesst
+    jede Seite bestehen. }
+  Allowed[pcc_PageTransparency] := FOutputCSKnown and (FOutputCS <> '');
   SetLength(FContentSure, FDoc.XrefCount);
   SetLength(FContentMaybe, FDoc.XrefCount);
   Walk := TLandrixEInvoicePdfContentWalk.Create(FDoc);
@@ -2531,7 +2550,8 @@ begin
       F := Walk.Finding(I);
       if Allowed[F.Check] then
         Continue;
-      if (F.Check in [pcc_DeviceGray, pcc_DeviceRGB, pcc_DeviceCMYK]) and not FOutputCSKnown then
+      if (F.Check in [pcc_DeviceGray, pcc_DeviceRGB, pcc_DeviceCMYK, pcc_PageTransparency]) and
+        not FOutputCSKnown then
         FIncomplete[RuleOf[F.Check]] := True
       else
         Fail(RuleOf[F.Check], F.ObjNum, F.ObjGen, pss_File, -1, F.Detail);

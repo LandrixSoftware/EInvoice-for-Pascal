@@ -2454,6 +2454,249 @@ begin
     '/Note <41> >>] >>', NoExtra), par_6_2_4_4_2, pro_Incomplete, 'strings with the same bytes written otherwise');
 end;
 
+{ 6.2.2-2: named resources a content stream takes from the page's
+  resources (forms, glyphs and patterns without their own entry, a page that
+  inherits its resources). }
+procedure TestPdfAResources;
+const
+  Form = ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]';
+  Font = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  Inherit = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>';
+  Pages = '<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources << ';
+  Fn = '<< /FunctionType 2 /Domain [0 1] /C0 [0] /C1 [1] /N 1 >>';
+begin
+  CheckOutcome(ContentPdf('BT /F1 12 Tf ET', '', '', '/Font << /F1 10 0 R >>', [ObjText(10, Font)]), par_6_2_2_2,
+    pro_Passed, 'the page''s own font');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /Font << /F1 10 0 R >>',
+    [ObjText(10, Font), StreamObj(12, 'BT /F1 12 Tf ET', Form)]), par_6_2_2_2, pro_Failed,
+    'a form without resources takes the page''s font');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >>',
+    [ObjText(10, Font), StreamObj(12, 'BT /F1 12 Tf ET', Form + ' /Resources << /Font << /F1 10 0 R >> >>')]),
+    par_6_2_2_2, pro_Passed, 'a form with its own font');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /Font << /F1 10 0 R >>',
+    [ObjText(10, Font), StreamObj(12, 'BT /F1 12 Tf ET', Form + ' /Resources << /Font << /F2 10 0 R >> >>')]),
+    par_6_2_2_2, pro_Failed, 'a form whose resources lack the name');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >>',
+    [StreamObj(12, '0 0 1 rg /Pattern cs 0 0 1 1 re f', Form)]), par_6_2_2_2, pro_Passed,
+    'device colour and /Pattern in a form without resources');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /ColorSpace << /CS0 [/CalGray << ' +
+    '/WhitePoint [1 1 1] >>] >>', [StreamObj(12, '/CS0 cs', Form)]), par_6_2_2_2, pro_Failed,
+    'a form takes the page''s colour space');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /ColorSpace << /CS0 /DeviceRGB >>',
+    [StreamObj(12, '/CS0 cs', Form)]), par_6_2_2_2, pro_Passed,
+    'a page colour space that is a device space is not marked');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /ExtGState << /GS1 << /CA 1 >> >>',
+    [StreamObj(12, '/GS1 gs', Form)]), par_6_2_2_2, pro_Failed, 'a form takes the page''s graphics state');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /Properties << /P0 << /Type /OCG >> >>',
+    [StreamObj(12, '/OC /P0 BDC EMC', Form)]), par_6_2_2_2, pro_Failed, 'a form takes the page''s properties');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /ColorSpace << /CS0 [/CalGray << ' +
+    '/WhitePoint [1 1 1] >>] >>', [StreamObj(12, '/Im1 Do', Form + ' /Resources << /XObject << /Im1 13 0 R >> >>'),
+    StreamObj(13, #0, ' /Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /CS0')]),
+    par_6_2_2_2, pro_Incomplete, 'an image''s named colour space is looked up when the image is validated');
+  CheckOutcome(PagesPdf(Pages + '/Font << /F1 10 0 R >> >> >>', Inherit,
+    [StreamObj(4, 'BT /F1 12 Tf ET', ''), ObjText(10, Font)]), par_6_2_2_2, pro_Failed,
+    'a page that inherits its resources');
+  CheckOutcome(PagesPdf(Pages + '/Font << /F1 10 0 R >> >> >>', Inherit,
+    [StreamObj(4, '0 0 1 rg 0 0 10 10 re f', ''), ObjText(10, Font)]), par_6_2_2_2, pro_Passed,
+    'an inheriting page that uses no named resource');
+  CheckOutcome(PagesPdf(Pages + '>> >>', Inherit, [StreamObj(4, '/Pattern cs', '')]), par_6_2_2_2, pro_Failed,
+    'an inheriting page selects /Pattern');
+  CheckOutcome(ContentPdf('BT /T3 1 Tf (a) Tj ET', '', '', '/Font << /T3 10 0 R >> /ExtGState << /GS1 << /CA 1 >> >>',
+    [ObjText(10, '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] /CharProcs << ' +
+    '/a 11 0 R >> /Encoding << /Differences [97 /a] >> /FirstChar 97 /LastChar 97 /Widths [1] >>'),
+    StreamObj(11, '1 0 d0 /GS1 gs', '')]), par_6_2_2_2, pro_Failed, 'a glyph takes the page''s graphics state');
+  CheckOutcome(ContentPdf('/A cs', '', '', '/ColorSpace << /A [/Separation /Spot /DeviceCMYK 13 0 R] >>',
+    [ObjText(13, Fn)]), par_6_2_2_2, pro_Passed, 'nested names are no resource lookup');
+  CheckOutcome(PagesPdf('<< /Type /Pages /Kids [3 0 R] /Count 1 >>', Inherit, [StreamObj(4, '/Pattern cs', '')]),
+    par_6_2_2_2, pro_Passed, 'a page without any resources selects /Pattern');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 12 0 R >> /Font << /F1 10 0 R >>',
+    [ObjText(10, Font), StreamObj(12, 'BT /F1 12 Tf ET', Form + ' /Resources 13 0 R'),
+    StreamObj(13, '', ' /Font << /F1 10 0 R >>')]), par_6_2_2_2, pro_Failed,
+    'form resources that are a stream count as none');
+end;
+
+{ 6.2.10-2: a page that contains transparency, as veraPDF finds
+  it, needs a group colour space when the document has no
+  PDF/A output intent. }
+procedure TestPdfATransparency;
+const
+  NoExtra: array[0..0] of AnsiString = ('');
+  Form = ' /Type /XObject /Subtype /Form /BBox [0 0 1 1]';
+  Font = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  Half = '/ExtGState << /GS1 << /ca 0.5 >> >>';
+  Fill = '/GS1 gs 0 0 10 10 re f';
+  T3 = '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] /CharProcs << /a 12 0 R /b ' +
+    '13 0 R >> /Encoding << /Differences [97 /a /b] >> /FirstChar 97 /LastChar 98 /Widths [1 1] /Resources << ' +
+    '/ExtGState << /GS1 << /ca 0.5 >> >> >> >>';
+  T3Self = '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] /CharProcs << /a 12 0 R ' +
+    '/b 13 0 R >> /Encoding << /Differences [97 /a /b] >> /FirstChar 97 /LastChar 98 /Widths [1 1] /Resources << ' +
+    '/Font << /T3 11 0 R >> /ExtGState << /GS1 << /ca 0.5 >> >> >> >>';
+  T3Win = '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] /CharProcs << /z 12 0 R >> ' +
+    '/Encoding /WinAnsiEncoding /FirstChar 122 /LastChar 122 /Widths [1] >>';
+  T3Twice = '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] /CharProcs << /a 12 0 R ' +
+    '/a 13 0 R >> /Encoding << /Differences [97 /a] >> /FirstChar 97 /LastChar 97 /Widths [1] /Resources << ' +
+    '/ExtGState << /GS1 << /ca 0.5 >> >> >> >>';
+  T3E1 = '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] /CharProcs << /a 12 0 R /b ' +
+    '13 0 R >> /Encoding << /Differences [225 /a /b] >> /FirstChar 225 /LastChar 226 /Widths [1 1] /Resources << ' +
+    '/ExtGState << /GS1 << /ca 0.5 >> >> >> >>';
+var
+  Rgb: AnsiString;
+begin
+  Rgb := StreamObj(10, IccHead('mntr', 'RGB ', 2), ' /N 3');
+  CheckOutcome(ContentPdf(Fill, '', '', Half, NoExtra), par_6_2_10_2, pro_Failed, 'a fill with ca 0.5');
+  CheckOutcome(ContentPdf(Fill, '', '/Group << /S /Transparency /CS /DeviceRGB >>', Half, NoExtra), par_6_2_10_2,
+    pro_Passed, 'a page group with a colour space');
+  CheckOutcome(ContentPdf(Fill, '', '/Group << /S /Transparency /CS /CS0 >>', Half, NoExtra), par_6_2_10_2,
+    pro_Failed, 'a group colour space name is built without resources');
+  CheckOutcome(CatalogPdf('/OutputIntents [<< /S /GTS_PDFA1 /DestOutputProfile 10 0 R >>]', Fill, '', '', Half,
+    [Rgb]), par_6_2_10_2, pro_Passed, 'an output intent');
+  CheckOutcome(ContentPdf('/GS1 gs', '', '', Half, NoExtra), par_6_2_10_2, pro_Passed, 'nothing painted');
+  CheckOutcome(ContentPdf('/GS1 gs 0 0 10 10 re S', '', '', Half, NoExtra), par_6_2_10_2, pro_Passed,
+    'a stroke with a fill alpha');
+  CheckOutcome(ContentPdf('/GS1 gs 0 0 10 10 re S', '', '', '/ExtGState << /GS1 << /CA 0.5 >> >>', NoExtra),
+    par_6_2_10_2, pro_Failed, 'a stroke with CA 0.5');
+  CheckOutcome(ContentPdf('q /GS1 gs Q 0 0 10 10 re f', '', '', Half, NoExtra), par_6_2_10_2, pro_Passed, 'Q restores');
+  CheckOutcome(ContentPdf('/GS1 gs /GS2 gs 0 0 10 10 re f', '', '',
+    '/ExtGState << /GS1 << /SMask << /S /Luminosity /G 11 0 R >> >> /GS2 << /LW 1 >> >>',
+    [StreamObj(11, '', Form)]), par_6_2_10_2, pro_Passed, 'a graphics state without /SMask removes the soft mask');
+  CheckOutcome(ContentPdf(Fill, '', '', '/ExtGState << /GS1 << /SMask << /S /Luminosity /G 11 0 R >> >> >>',
+    [StreamObj(11, '', Form)]), par_6_2_10_2, pro_Failed, 'a soft mask');
+  CheckOutcome(ContentPdf(Fill, '', '', '/ExtGState << /GS1 << /BM /Compatible >> >>', NoExtra), par_6_2_10_2,
+    pro_Failed, '/Compatible is not Normal');
+  CheckOutcome(ContentPdf(Fill, '', '', '/ExtGState << /GS1 << /BM [/Normal] >> >>', NoExtra), par_6_2_10_2,
+    pro_Passed, '[/Normal]');
+  CheckOutcome(ContentPdf(Fill, '', '', '/ExtGState << /GS1 << /BM [] >> >>', NoExtra), par_6_2_10_2, pro_Failed,
+    'an empty blend mode array');
+  CheckOutcome(ContentPdf('/Im1 Do', '', '', '/XObject << /Im1 11 0 R >>',
+    [StreamObj(11, #0, ' /Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 ' +
+    '/ColorSpace /DeviceGray /SMask 12 0 R'), StreamObj(12, #0, ' /Type /XObject /Subtype /Image /Width 1 ' +
+    '/Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray')]), par_6_2_10_2, pro_Failed, 'an image with a soft mask');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 11 0 R >>',
+    [StreamObj(11, '', Form + ' /Group << /S /Transparency >>')]), par_6_2_10_2, pro_Failed,
+    'a transparency group form');
+  CheckOutcome(ContentPdf('/Fm1 Do', '', '', '/XObject << /Fm1 11 0 R >>',
+    [StreamObj(11, Fill, Form + ' /Resources << ' + Half + ' >>')]), par_6_2_10_2, pro_Failed,
+    'transparency in a form');
+  CheckOutcome(ContentPdf('/GS1 gs BT /F1 1 Tf 3 Tr (a) Tj ET', '', '', Half + ' /Font << /F1 11 0 R >>',
+    [ObjText(11, Font)]), par_6_2_10_2, pro_Passed, 'invisible text');
+  CheckOutcome(ContentPdf('/GS1 gs BT /F1 1 Tf (a) Tj ET', '', '', Half + ' /Font << /F1 11 0 R >>',
+    [ObjText(11, Font)]), par_6_2_10_2, pro_Failed, 'filled text');
+  CheckOutcome(ContentPdf('/GS1 gs BI /W 1 /H 1 /CS /G /BPC 8 ID ' + #0 + ' EI', '', '', Half, NoExtra), par_6_2_10_2,
+    pro_Passed, 'an inline image is not checked');
+  CheckOutcome(ContentPdf('', '', '/Annots [11 0 R]', '', [ObjText(11, '<< /Type /Annot /Subtype /Square ' +
+    '/Rect [0 0 1 1] /F 4 /AP << /N 12 0 R >> >>'), StreamObj(12, '', Form + ' /Group << /S /Transparency >>')]),
+    par_6_2_10_2, pro_Failed, 'an appearance with a transparency group');
+  CheckOutcome(ContentPdf(Fill, '', '', '/ExtGState << /GS1 << /ca 0.999995 >> >>', NoExtra), par_6_2_10_2,
+    pro_Incomplete, 'an alpha this close to 1 is not decided');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn 0 0 10 10 re f', '', '', '/Pattern << /P1 11 0 R >>',
+    [StreamObj(11, Fill, ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << ' + Half + ' >>')]), par_6_2_10_2, pro_Failed, 'a transparent tiling pattern painted');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn 0 0 10 10 re S', '', '', '/Pattern << /P1 11 0 R >>',
+    [StreamObj(11, Fill, ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << ' + Half + ' >>')]), par_6_2_10_2, pro_Passed, 'a fill pattern with a stroke');
+  CheckOutcome(ContentPdf('BT /T3 1 Tf (a) Tj ET', '', '', '/Font << /T3 11 0 R >>', [ObjText(11, T3),
+    StreamObj(12, '1 0 d0 /GS1 gs 0 0 1 1 re f', ''), StreamObj(13, '1 0 d0 0 0 1 1 re f', '')]), par_6_2_10_2,
+    pro_Failed, 'a transparent Type 3 glyph shown');
+  CheckOutcome(ContentPdf('BT /T3 1 Tf (b) Tj ET', '', '', '/Font << /T3 11 0 R >>', [ObjText(11, T3),
+    StreamObj(12, '1 0 d0 /GS1 gs 0 0 1 1 re f', ''), StreamObj(13, '1 0 d0 0 0 1 1 re f', '')]), par_6_2_10_2,
+    pro_Passed, 'another glyph of the font shown');
+  CheckOutcome(ContentPdf('BT /T3 1 Tf <E1> Tj ET', '', '', '/Font << /T3 11 0 R >>', [ObjText(11, T3E1),
+    StreamObj(12, '1 0 d0 /GS1 gs 0 0 1 1 re f', ''), StreamObj(13, '1 0 d0 0 0 1 1 re f', '')]), par_6_2_10_2,
+    pro_Passed, 'a code from 128 on selects no glyph');
+  CheckOutcome(ContentPdf('BT /T3 1 Tf (a) Tj ET', '', '', '/Font << /T3 11 0 R >>', [ObjText(11, T3Self),
+    StreamObj(12, '1 0 d0 BT /T3 1 Tf (b) Tj ET', ''), StreamObj(13, '1 0 d0 /GS1 gs 0 0 1 1 re f', '')]),
+    par_6_2_10_2, pro_Incomplete, 'a glyph that shows text in its own font');
+  CheckOutcome(ContentPdf('/GS1 gs EI', '', '', Half, NoExtra), par_6_2_10_2, pro_Failed,
+    'an EI without its image is checked as a fill');
+  CheckOutcome(ContentPdf(Fill, '', '/Group << /S /Transparency /CS [/Pattern /DeviceRGB] >>', Half, NoExtra),
+    par_6_2_10_2, pro_Passed, 'a pattern space as the group colour space');
+  CheckOutcome(ContentPdf('/Pattern cs /P1 scn /Fm1 Do', '', '', '/Pattern << /P1 11 0 R >> /XObject << /Fm1 12 0 R >>',
+    [StreamObj(11, Fill, ' /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 1 /YStep 1 ' +
+    '/Resources << ' + Half + ' >>'), StreamObj(12, '0 0 1 1 re f', Form)]), par_6_2_10_2, pro_Incomplete,
+    'a pattern set by the page and painted in a form');
+  CheckOutcome(ContentPdf('BT /T3 1 Tf (z) Tj ET', '', '', '/Font << /T3 11 0 R >>', [ObjText(11, T3Win),
+    StreamObj(12, '1 0 d0 0 0 1 1 re f', '')]), par_6_2_10_2, pro_Passed,
+    'a base table encoding whose glyphs are not transparent');
+  CheckOutcome(ContentPdf('BT /T3 1 Tf (a) Tj ET', '', '', '/Font << /T3 11 0 R >>', [ObjText(11, T3Twice),
+    StreamObj(12, '1 0 d0 /GS1 gs 0 0 1 1 re f', ''), StreamObj(13, '1 0 d0 0 0 1 1 re f', '')]), par_6_2_10_2,
+    pro_Passed, 'a glyph name given twice: the last stream counts');
+end;
+
+function Be32(AValue: Integer): AnsiString;
+begin
+  Result := AnsiChar((AValue shr 24) and $FF) + AnsiChar((AValue shr 16) and $FF) + AnsiChar((AValue shr 8) and $FF) +
+    AnsiChar(AValue and $FF);
+end;
+
+function JpxBox(const AType, AData: AnsiString): AnsiString;
+begin
+  Result := Be32(8 + Length(AData)) + AType + AData;
+end;
+
+{ A JP2 file: signature, file type box and a header box with an image header
+  (ANc channels, the raw bit depth byte ABpc) and the boxes AMore. }
+function JpxData(ANc, ABpc: Integer; const AMore: AnsiString): AnsiString;
+begin
+  Result := #0#0#0#12'jP  '#13#10#$87#10 + JpxBox('ftyp', 'jp2 '#0#0#0#0'jp2 ') +
+    JpxBox('jp2h', JpxBox('ihdr', Be32(1) + Be32(1) + AnsiChar(ANc shr 8) + AnsiChar(ANc and $FF) + AnsiChar(ABpc) +
+    #7#0#0) + AMore) + JpxBox('jp2c', #$FF#$4F);
+end;
+
+function ColrEnum(AApprox, AEnum: Integer): AnsiString;
+begin
+  Result := JpxBox('colr', AnsiString(#1#0) + AnsiChar(AApprox) + Be32(AEnum));
+end;
+
+{ 6.2.8.3-1 to -5: JPEG 2000 data of images as veraPDF's reader takes them
+  from the boxes. }
+procedure TestPdfAJpeg2000;
+
+  function Pdf(const AData, AExtra: AnsiString): AnsiString;
+  begin
+    Result := ContentPdf('/Im1 Do', '', '', '/XObject << /Im1 11 0 R >>',
+      [StreamObj(11, AData, ' /Type /XObject /Subtype /Image /Width 1 /Height 1 /Filter /JPXDecode' + AExtra)]);
+  end;
+
+var
+  Good: AnsiString;
+  R: TLandrixEInvoicePdfARule;
+begin
+  Good := JpxData(3, 7, ColrEnum(0, 16));
+  for R := par_6_2_8_3_1 to par_6_2_8_3_5 do
+    CheckOutcome(Pdf(Good, ''), R, pro_Passed, 'a JP2 image with three channels and sRGB');
+  CheckOutcome(Pdf(JpxData(2, 7, ColrEnum(0, 16)), ''), par_6_2_8_3_1, pro_Failed, 'two channels');
+  CheckOutcome(Pdf(JpxData(3, 7, ColrEnum(0, 16) + ColrEnum(0, 16)), ''), par_6_2_8_3_2, pro_Failed,
+    'two colour specifications without APPROX 1');
+  CheckOutcome(Pdf(JpxData(3, 7, ColrEnum(1, 16) + ColrEnum(0, 16)), ''), par_6_2_8_3_2, pro_Passed,
+    'two colour specifications, one with APPROX 1');
+  CheckOutcome(Pdf(JpxData(3, 7, ColrEnum(0, 16) + ColrEnum(0, 16)), ' /ColorSpace /DeviceRGB'), par_6_2_8_3_2,
+    pro_Passed, 'a /ColorSpace overrides the colour specifications');
+  CheckOutcome(Pdf(JpxData(3, 7, JpxBox('colr', #4#0#0)), ''), par_6_2_8_3_3, pro_Failed, 'METH 4');
+  CheckOutcome(Pdf(JpxData(3, 7, JpxBox('colr', #2#0#0'xxxxxxxxxxxxxxxxxxxx')), ''), par_6_2_8_3_3, pro_Passed,
+    'METH 2 with a profile');
+  CheckOutcome(Pdf(JpxData(3, 7, ColrEnum(0, 19)), ''), par_6_2_8_3_4, pro_Failed, 'CIEJab');
+  CheckOutcome(Pdf(JpxData(3, 7, ColrEnum(0, 19)), ' /ColorSpace /DeviceRGB'), par_6_2_8_3_4, pro_Passed,
+    'CIEJab with a /ColorSpace');
+  CheckOutcome(Pdf(JpxData(3, 7, ColrEnum(0, 16) + JpxBox('bpcc', #7#7#7)), ''), par_6_2_8_3_5, pro_Failed,
+    'a bpcc box');
+  CheckOutcome(Pdf(JpxData(3, 37, ColrEnum(0, 16)), ''), par_6_2_8_3_5, pro_Passed, '38 bits');
+  CheckOutcome(Pdf(JpxData(3, 38, ColrEnum(0, 16)), ''), par_6_2_8_3_5, pro_Failed, '39 bits');
+  CheckOutcome(Pdf(JpxData(3, 135, ColrEnum(0, 16)), ''), par_6_2_8_3_5, pro_Failed,
+    'the bit depth byte is read signed');
+  CheckOutcome(Pdf(#$FF#$4F#$FF#$51, ''), par_6_2_8_3_1, pro_Failed, 'a codestream without the JP2 boxes');
+  CheckOutcome(Pdf(#$FF#$4F#$FF#$51, ' /ColorSpace /DeviceRGB'), par_6_2_8_3_3, pro_Passed,
+    'a codestream with a /ColorSpace');
+  CheckOutcome(ContentPdf('/Im1 Do', '', '', '/XObject << /Im1 11 0 R >>',
+    [StreamObj(11, #$FF#$4F#$FF#$51, ' /Type /XObject /Subtype /Image /Width 1 /Height 1 /Filter [/JPXDecode null]')]),
+    par_6_2_8_3_1, pro_Passed, 'a filter array with a value that is no name: no JPEG 2000 data read');
+  CheckOutcome(Pdf(#0#0#0#12'jP  '#13#10#$87#10 + JpxBox('ftyp', 'jp2 '#0#0#0#0'jp2 ') + Be32(1) + 'jp2h' +
+    #$80#0#0#0#0#0#0#0 + JpxBox('ihdr', Be32(1) + Be32(1) + #0#3#7#7#0#0) + ColrEnum(0, 16), ''), par_6_2_8_3_1,
+    pro_Passed, 'a header box length that wraps to a large one');
+  CheckOutcome(Pdf(#0#0#0#12'jP  '#13#10#$87#10 + JpxBox('ftyp', 'jp2 '#0#0#0#0'jp2 ') + Be32(0) + 'jp2h' +
+    JpxBox('ihdr', Be32(1) + Be32(1) + #0#3#7#7#0#0) + #$90#0#0#0'colr'#2#0#0, ''), par_6_2_8_3_1, pro_Incomplete,
+    'a profile length veraPDF reads as negative');
+end;
+
 { 6.2.4: colour spaces used in content. }
 procedure TestPdfAColour;
 const
@@ -3380,6 +3623,9 @@ begin
   RegisterTest('PdfA.OutputIntents', TestPdfAOutputIntents);
   RegisterTest('PdfA.Colour', TestPdfAColour);
   RegisterTest('PdfA.Colour2', TestPdfAColour2);
+  RegisterTest('PdfA.Resources', TestPdfAResources);
+  RegisterTest('PdfA.Transparency', TestPdfATransparency);
+  RegisterTest('PdfA.Jpeg2000', TestPdfAJpeg2000);
   RegisterTest('PdfA.Review', TestPdfAReview);
   RegisterTest('PdfA.VeraPdf', TestPdfAVeraPdf);
 end;

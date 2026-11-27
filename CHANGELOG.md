@@ -208,6 +208,16 @@ Supported invoice standards are documented per release.
   (a Separation whose alternate space it cannot build, a reference to no object in a compared value, an alternate
   image without its image), no rule of the document is decided. Test `PdfA.Colour2`; all 10 corpus failures of
   these rules are found, no false positives.
+- PDF/A level 1, stage D, fifth part (inherited resources, page transparency, JPEG 2000): 6.2.2-2 (a content
+  stream takes its named resources from its own Resources dictionary), 6.2.10-2 (without a PDF/A output intent, a
+  page with transparency has a /Group with /CS) and 6.2.8.3-1 to -5 (JPEG 2000 data: 1, 3 or 4 colour channels, the
+  colour specifications, METH, no CIEJab, the bit depth), all fully implemented. The content walk notes which
+  resources a form, pattern, Type 3 glyph or appearance without its own entry takes from the page (and every
+  resource of a page that inherits its resources), and finds transparency as veraPDF does: soft masks, blend modes
+  and alphas of the graphics state at each painting operator, images with a soft mask, transparency groups, tiling
+  patterns and the Type 3 glyphs a text operator shows. The JPEG 2000 boxes are read from the stored stream bytes as
+  veraPDF reads them; an image whose data make veraPDF stop leaves every rule incomplete. Tests `PdfA.Resources`,
+  `PdfA.Transparency` and `PdfA.Jpeg2000`; all 48 corpus failures of these rules are found, no false positives.
 
 ### Changed
 - LandrixXML 0.5.1 (`a2305e0`, was 0.5.0): fixes of a complete review (many for very large or hostile input),

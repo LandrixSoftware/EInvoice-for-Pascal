@@ -95,7 +95,15 @@ type
     colourants, or with a colourant that is neither in /Colorants nor a
     process component; an ICCBased CMYK space painted with overprint on and
     an overprint mode other than 0; two Separation spaces of one colourant
-    name with different alternate spaces or tint transforms.
+    name with different alternate spaces or tint transforms; a content
+    stream that takes a named resource from the page's resources instead of
+    its own (or the content of a page that inherits its resources); a page
+    that contains transparency and has no /Group with /CS (whether that
+    breaks 6.2.10-2 depends on the output intent); JPEG 2000 data of an
+    image with other than 1, 3 or 4 colour channels, without a single colour
+    specification (or one with APPROX 1), with a METH other than 1 to 3, with
+    the enumerated colour space 19 (the last three only without /ColorSpace),
+    with a bpcc box or a bit depth outside 1 to 38.
     DE: Worum es bei einem Befund in einem Content-Stream geht: eine ganze
     Zahl, eine reelle Zahl ausserhalb des Bereichs oder zu nah an null, ein
     zu langer String, ein hexadezimaler String mit ungerader Zeichenzahl
@@ -119,14 +127,24 @@ type
     noch eine Prozesskomponente ist; ein ICCBased-CMYK-Raum, mit dem bei
     eingeschaltetem Ueberdrucken und einem Ueberdruckmodus ungleich 0 gemalt
     wird; zwei Separation-Raeume eines Farbmittelnamens mit verschiedenen
-    Alternativraeumen oder Tint-Funktionen. }
+    Alternativraeumen oder Tint-Funktionen; ein Content-Stream, der eine
+    benannte Ressource aus den Ressourcen der Seite statt aus seinen eigenen
+    nimmt (oder der Inhalt einer Seite, die ihre Ressourcen erbt); eine
+    Seite, die Transparenz enthaelt und keine /Group mit /CS hat (ob das
+    6.2.10-2 verletzt, haengt vom Output-Intent ab); JPEG-2000-Daten eines
+    Bilds mit anderen als 1, 3 oder 4 Farbkanaelen, ohne eine einzige
+    Farbspezifikation (oder eine mit APPROX 1), mit einer METH ausser 1 bis
+    3, mit dem aufgezaehlten Farbraum 19 (die letzten drei nur ohne
+    /ColorSpace), mit einer bpcc-Box oder einer Bittiefe ausserhalb 1 bis
+    38. }
   TLandrixEInvoicePdfContentCheck = (pcc_Integer, pcc_Real, pcc_SmallReal, pcc_StringLength, pcc_HexOdd,
     pcc_HexDigits, pcc_NameLength, pcc_InlineFilter, pcc_Nesting, pcc_SpecNames, pcc_SpecRelationship,
     pcc_SpecDirect, pcc_Undefined, pcc_TR, pcc_TR2, pcc_HTP, pcc_HalftoneType, pcc_HalftoneName,
     pcc_HalftoneTransfer, pcc_Intent, pcc_ImageAlternates, pcc_ImageOPI, pcc_Interpolate, pcc_ImageBits,
     pcc_MaskBits, pcc_FormPS, pcc_FormRef, pcc_PSXObject, pcc_BlendMode, pcc_DeviceGray, pcc_DeviceRGB,
     pcc_DeviceCMYK, pcc_IccInput, pcc_DeviceNComponents, pcc_DeviceNColorants, pcc_Overprint,
-    pcc_SeparationConsistency);
+    pcc_SeparationConsistency, pcc_Inherited, pcc_PageTransparency, pcc_JpxChannels, pcc_JpxSpecs, pcc_JpxMethod,
+    pcc_JpxEnum, pcc_JpxDepth);
 
   { A finding that veraPDF certainly reports: the content stream object
     (for the /Contents array of a page its first stream) and a short text.
@@ -221,6 +239,27 @@ type
     { a paint with an overprint mode not decided: it may share the identity
       of any CMYK ICC link, so no profile reached as one is certain }
     FOpmUnsure: Boolean;
+    { a resource lookup of veraPDF that is not
+      decided here (an image's named colour space, the initial gray of a
+      page that inherits a /DeviceGray entry, an odd /Resources entry):
+      6.2.2-2 is not certain }
+    FInheritUnsure: Boolean;
+    { 6.2.10-2 per page walk: the page object (ObjId), its number and the
+      level (0 passes, 1 not decided, 2 transparency without a group colour
+      space) }
+    FPageTpKey: TStringList;
+    { the JPEG 2000 facts of image streams, by object (TJpxEntry) }
+    FJpxCache: TStringList;
+    { the active streams changed (a stamp for TContentParse.ReachGen); a
+      parse failed with an exception somewhere (veraPDF then keeps streams on
+      its stack of streams being read, which reads later uses as empty) }
+    FActiveGen: Integer;
+    FVisitGen: Integer;
+    FAnyParseFailed: Boolean;
+    FPageTpNum: array of Integer;
+    FPageTpLevel: array of Integer;
+    { the number of the page object being walked (-1 direct) }
+    FCurPageNum: Integer;
     { the decoding budget (MaxTotalBytes) ran out: nothing more is decoded }
     FBudgetSpent: Boolean;
     { Type3 glyph sets already replayed into a parse (key and parse) }
@@ -241,6 +280,9 @@ type
     procedure WalkPage(APage, AInherited: TLandrixEInvoicePdfObject);
     procedure Finish;
     procedure SeparationThrows;
+    function ParseTransp(AIndex: Integer): Integer;
+    procedure FinishPageTransparency;
+    function ReachesActive(AIndex: Integer): Boolean;
     procedure FinishSeparations(var AGroupStart, AMembers: array of Integer; var AReach: array of Boolean;
       ANG: Integer);
     procedure ScanTiling;
@@ -614,8 +656,11 @@ type
     Hex: Boolean;
     HexChars: Integer;
     HexInvalid: Boolean;
-    { strings: the number of decoded bytes }
+    { strings: the number of decoded bytes; the bytes that occur (CodesUnsure:
+      an unescaped CR, which veraPDF may read as LF) }
     ByteLen: Integer;
+    Codes: set of Byte;
+    CodesUnsure: Boolean;
     { array items or dictionary values (owned by the pool) }
     Items: TObjectList;
     Keys: array of AnsiString;
@@ -954,7 +999,7 @@ end;
 
 function TContentLexer.ParseLiteral: TCv;
 var
-  Depth, Oct, K, CrLf, N: Integer;
+  Depth, Oct, K, CrLf, N, I: Integer;
   B: Byte;
   Bytes: TLandrixEInvoicePdfBytes;
 
@@ -1016,6 +1061,8 @@ begin
     end;
     if (B = 13) and (FPos < FLen) and (FBuf[FPos] = 10) then
       Inc(CrLf);
+    if B = 13 then
+      Result.CodesUnsure := True;
     if B = Ord('(') then
       Inc(Depth)
     else if B = Ord(')') then
@@ -1028,6 +1075,8 @@ begin
   end;
   SetLength(Bytes, N);
   Result.ByteLen := N;
+  for I := 0 to N - 1 do
+    Include(Result.Codes, Bytes[I]);
   LandrixEInvoicePdfJavaStringLength(Bytes, CrLf, Result.LenLo, Result.LenHi);
 end;
 
@@ -1036,7 +1085,7 @@ end;
   digit is padded with 0 when > closes the string. }
 function TContentLexer.ParseHex: TCv;
 var
-  Hi, V, N: Integer;
+  Hi, V, N, I: Integer;
   B: Byte;
   Bytes: TLandrixEInvoicePdfBytes;
   Closed: Boolean;
@@ -1092,6 +1141,8 @@ begin
   end;
   SetLength(Bytes, N);
   Result.ByteLen := N;
+  for I := 0 to N - 1 do
+    Include(Result.Codes, Bytes[I]);
   LandrixEInvoicePdfJavaStringLength(Bytes, 0, Result.LenLo, Result.LenHi);
 end;
 
@@ -1516,10 +1567,14 @@ end;
 //==============================================================================
 
 type
-  { The lookup of named resources: the stream's own, then the page's. }
+  { The lookup of named resources: the stream's own (nil: none, which
+    veraPDF reads as an empty dictionary), then the page's. InheritAll: the
+    content of a page without /Resources (veraPDF counts every resource
+    found there as inherited). }
   TRes = record
     Local: TLandrixEInvoicePdfObject;
     Page: TLandrixEInvoicePdfObject;
+    InheritAll: Boolean;
   end;
 
   { A colour space as veraPDF's colour space factory builds it: none (null),
@@ -1558,6 +1613,17 @@ type
     OPFill: Boolean;
     OPM: Int64;
     OPMKnown: Boolean;
+    { veraPDF's transparency state (fresh in every parse; 0 no, 1 not
+      decided, 2 yes): a soft mask, a blend mode other than Normal, a fill
+      (ca) and a stroke (CA) alpha below 1 }
+    TSMask: Integer;
+    TBM: Integer;
+    TFillA: Integer;
+    TStrokeA: Integer;
+    { the tiling pattern of the fill and stroke space: its parse, -1 none
+      (or a pattern without content), -2 not decided }
+    FillPat: Integer;
+    StrokePat: Integer;
   end;
 
   TGStack = array of TGState;
@@ -1592,6 +1658,26 @@ type
       and whether only maybe }
     SepIdx: array of Integer;
     SepMaybe: array of Boolean;
+    { 6.2.10-2: whether the parse contains transparency as veraPDF
+      finds it (0 no, 1 not decided, 2 yes); CycleCut: a
+      stream it reaches was being parsed already (veraPDF then reads it as
+      empty, which a reuse of this parse elsewhere may not) }
+    Transp: Integer;
+    CycleCut: Boolean;
+    { a Type 3 entry (FType3Seen): the parse of each CharProcs stream, by
+      glyph name }
+    GlyphNames: array of AnsiString;
+    GlyphIdx: array of Integer;
+    { the entry's glyphs are being parsed (a glyph shows text in its own
+      font); the glyph slot per code 0 to 127 (-1 none, -2 a name from a base
+      table not modelled), CodesDone once filled }
+    Building: Boolean;
+    CodeGlyph: array of Integer;
+    CodesDone: Boolean;
+    { ReachesActive cached for the active streams of stamp ReachGen }
+    ReachGen: Integer;
+    ReachVal: Boolean;
+    VisitGen: Integer;
     procedure AddSep(AIndex: Integer; AMaybe: Boolean);
     procedure AddChild(AIndex: Integer);
     procedure AddAssoc(ANum: Integer);
@@ -1815,6 +1901,10 @@ type
     { the resources the last Lookup found its entry in; the resources that
       supplied the image or shading being looked into }
     FLookupFrom: TLandrixEInvoicePdfObject;
+    { 6.2.10-2: what the last Do painted (its XObject), the glyphs of the
+      last text shown }
+    FDoTransp: Integer;
+    FLastType3: TContentParse;
     FSiteFrom: TLandrixEInvoicePdfObject;
     { shading patterns being followed }
     FPatternNest: Integer;
@@ -1837,16 +1927,28 @@ type
       TLandrixEInvoicePdfObject;
     function IsPatternSpace(const AName: AnsiString): Boolean;
     procedure SetExtGState(const AName: AnsiString);
+    procedure TranspState(G: TLandrixEInvoicePdfObject);
     procedure SelectFont(AOps: TObjectList);
     procedure ShowText;
     procedure ReachForm(const AName: AnsiString);
     procedure ReachPattern(const AName: AnsiString; AFill: Boolean);
     procedure RegisterAF(const AName: AnsiString);
+    procedure CsInherit(const AName: AnsiString);
+    procedure TouchProperties(const AName: AnsiString);
+    procedure NoteTransp(ALevel: Integer);
+    function TranspBase: Integer;
+    function PatTransp(AIndex: Integer): Integer;
+    procedure TranspPaint(AFill, AStroke: Boolean);
+    procedure TextTransp(AFirst: TCv);
+    function Type3Transp(AFirst: TCv): Integer;
+    procedure Type3Codes(AEntry: TContentParse; E: TLandrixEInvoicePdfObject);
+    function ChildTransp(AIndex: Integer; const AKey: string): Integer;
     procedure InlineImage(D: TCv);
     procedure CheckIntent(const AName: AnsiString; const AWhere: string);
     procedure CheckExtGState(G, ARaw: TLandrixEInvoicePdfObject);
     procedure CheckHalftone(V, ARaw: TLandrixEInvoicePdfObject; AClass: Integer; ADepth: Integer);
     procedure CheckImage(V, ARaw: TLandrixEInvoicePdfObject; AKind, ADepth: Integer);
+    procedure CheckJpx(V: TLandrixEInvoicePdfObject; const AWhat: string);
     procedure CheckForm(V, ARaw: TLandrixEInvoicePdfObject);
     procedure CheckInline(D: TCv);
     procedure MaybeColour(const AWhat: string);
@@ -1918,7 +2020,8 @@ begin
     IntToStr(Ord(AState.ColorOn)) + IntToStr(Ord(AState.FillPattern)) + IntToStr(Ord(AState.StrokePattern)) +
     IntToStr(Ord(AState.Unsure)) + IntToStr(Ord(AState.Under)) + '/' +
     AWalk.ObjId(AState.Font) + '/' + CsKey(AWalk, AState.FillCs) + '/' + CsKey(AWalk, AState.StrokeCs) + '/' +
-    IntToStr(AState.TextMode) + '/' + OpKey(AState);
+    IntToStr(AState.TextMode) + '/' + OpKey(AState) + '/' + IntToStr(Ord(ARes.InheritAll)) + '/' +
+    IntToStr(AState.FillPat) + ',' + IntToStr(AState.StrokePat);
   MemoKey := AKey + '#' + Ctx;
   Idx := AWalk.FMemo.IndexOf(MemoKey);
   if Idx >= 0 then
@@ -2006,6 +2109,7 @@ begin
   end;
 
   AWalk.FActive.Add(AKey);
+  Inc(AWalk.FActiveGen);
   Inc(AWalk.FReachDepth);
   try
     { first the whole stream: an exception in veraPDF drops every operator
@@ -2019,7 +2123,10 @@ begin
         lxs_Unknown:
           P.Uncertain := True;
         lxs_Failed:
-          Exit;
+          begin
+            AWalk.FAnyParseFailed := True;
+            Exit;
+          end;
       end;
     finally
       Lex.Free;
@@ -2037,6 +2144,16 @@ begin
         Interp.FRes := ARes;
         Interp.FState := AState;
         Interp.FState.Unsure := False;
+        Interp.FState.TSMask := 0;
+        Interp.FState.TBM := 0;
+        Interp.FState.TFillA := 0;
+        Interp.FState.TStrokeA := 0;
+        { veraPDF builds a tiling pattern at the paint, on the start state of
+          the stream that paints: one set by a caller is not decided here }
+        if Interp.FState.FillPat >= 0 then
+          Interp.FState.FillPat := -2;
+        if Interp.FState.StrokePat >= 0 then
+          Interp.FState.StrokePat := -2;
         Interp.FInit := AState;
         Interp.FStack := nil;
         Interp.Run(Lex);
@@ -2048,6 +2165,7 @@ begin
     end;
   finally
     AWalk.FActive.Delete(AWalk.FActive.Count - 1);
+    Inc(AWalk.FActiveGen);
     Dec(AWalk.FReachDepth);
   end;
 end;
@@ -2642,6 +2760,72 @@ begin
   end;
 end;
 
+{ 6.2.2-2 for a colour space name as veraPDF looks it
+  up: 0 not inherited, 1 not decided, 2 inherited. A device name with a
+  /Default* entry in the stream's own resources is not looked up; a lookup
+  in the page's resources (after the stream's own gave nothing, or for a
+  page that inherits them) marks the name unless it gives null or a device
+  space as such.
+  DE: 6.2.2-2 fuer einen Farbraumnamen, wie veraPDF ihn
+  sucht: 0 nicht geerbt, 1 nicht entschieden, 2 geerbt. Ein Geraetename mit
+  /Default*-Eintrag in den eigenen Ressourcen des Streams wird nicht
+  gesucht; eine Suche in den Ressourcen der Seite (nachdem die eigenen des
+  Streams nichts ergaben, oder fuer eine Seite, die sie erbt) markiert den
+  Namen, ausser sie ergibt null oder einen Geraeteraum als solchen. }
+function CsInheritLevel(AWalk: TLandrixEInvoicePdfContentWalk; const ARes: TRes; const AName: AnsiString): Integer;
+var
+  K: Integer;
+  R, E: TLandrixEInvoicePdfObject;
+  D: TCsKind;
+  C: TCsRef;
+begin
+  Result := 0;
+  { a page without resources: veraPDF looks into empty resources, not marked }
+  if ARes.InheritAll and (ARes.Page = nil) then
+    Exit;
+  D := DeviceKind(AName);
+  if (D <> csk_Null) and (CsRaw(AWalk, ARes.Local, 'Default' + Copy(AName, 7, MaxInt)) <> nil) then
+    Exit;
+  for K := 0 to 1 do
+  begin
+    if K = 0 then
+      R := ARes.Local
+    else
+      R := ARes.Page;
+    if (K = 1) and ((R = nil) or (R = ARes.Local)) then
+      Continue;
+    C := NullCs;
+    E := CsRaw(AWalk, R, AName);
+    if E <> nil then
+    begin
+      if IsDefaultName(AName) then
+        C.Kind := csk_Unknown
+      else
+        C := CsValue(AWalk, R, E, False, 1);
+      if (C.Kind = csk_Null) and (D <> csk_Null) then
+        C.Kind := csk_Unknown;
+    end
+    else if D <> csk_Null then
+      C.Kind := D
+    else if AName = 'Pattern' then
+      C.Kind := csk_Pattern;
+    if C.Kind = csk_Null then
+      Continue;
+    if C.Kind = csk_Unknown then
+    begin
+      { whether this gives null (and the page is asked) is not decided }
+      if (K = 1) or ARes.InheritAll or ((ARes.Page <> nil) and (ARes.Page <> ARes.Local)) then
+        Result := 1;
+      Exit;
+    end;
+    if (K = 0) and not ARes.InheritAll then
+      Exit;
+    if not (C.Kind in [csk_Gray, csk_RGB, csk_CMYK]) then
+      Result := 2;
+    Exit;
+  end;
+end;
+
 { The first name of a colour space array ('' if none). }
 function FirstName(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): AnsiString;
 var
@@ -2676,6 +2860,35 @@ begin
     Result := Narrow32(Result)
   else
     Result := -1;
+end;
+
+{ veraPDF reads JPEG 2000 data of an image: /Filter is the name JPXDecode,
+  or an array of names only with JPXDecode among them.
+  DE: veraPDF liest JPEG-2000-Daten eines Bilds: /Filter ist der Name
+  JPXDecode oder ein Array nur aus Namen, darunter JPXDecode. }
+function IsJpxRead(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): Boolean;
+var
+  F, Item: TLandrixEInvoicePdfObject;
+  I: Integer;
+begin
+  Result := False;
+  F := AWalk.DGetRef(V, 'Filter');
+  if F = nil then
+    Exit;
+  if F.Kind = pok_Name then
+    Result := F.NameVal = 'JPXDecode'
+  else if F.Kind = pok_Arr then
+    for I := 0 to F.ArrCount - 1 do
+    begin
+      Item := AWalk.ResolveRef(F.ArrItem(I));
+      if (Item = nil) or (Item.Kind <> pok_Name) then
+      begin
+        Result := False;
+        Exit;
+      end;
+      if Item.NameVal = 'JPXDecode' then
+        Result := True;
+    end;
 end;
 
 { The image has JPEG 2000 data (a JPXDecode filter). }
@@ -2722,6 +2935,12 @@ begin
   Result.OPFill := False;
   Result.OPM := 0;
   Result.OPMKnown := True;
+  Result.TSMask := 0;
+  Result.TBM := 0;
+  Result.TFillA := 0;
+  Result.TStrokeA := 0;
+  Result.FillPat := -1;
+  Result.StrokePat := -1;
 end;
 
 procedure TInterpreter.Mark(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AWhat: string);
@@ -2993,6 +3212,13 @@ begin
     if ResourceAccepted(FWalk, FRes, ACategory, ARaw, Result) then
     begin
       FLookupFrom := R;
+      { 6.2.2-2: found in the page's resources after the stream's own gave
+        nothing (none count as empty), or by a page that inherits them
+        DE: 6.2.2-2: in den Ressourcen der Seite gefunden, nachdem die
+        eigenen des Streams nichts ergaben (keine zaehlen als leer), oder von
+        einer Seite, die sie erbt }
+      if (K = 1) or FRes.InheritAll then
+        Mark(pcc_Inherited, False, TextOf(ACategory) + ' /' + TextOf(AName) + ' taken from the page''s resources');
       Exit;
     end;
     Result := nil;
@@ -3023,6 +3249,80 @@ begin
   end;
 end;
 
+function MaxOf(A, B: Integer): Integer;
+begin
+  if A > B then
+    Result := A
+  else
+    Result := B;
+end;
+
+{ An alpha (ca, CA) as veraPDF reads it: a number as a float below 1.0
+  (near 1 not decided, the digits may round otherwise); another value
+  leaves the state. }
+procedure AlphaLevel(V: TLandrixEInvoicePdfObject; var ALevel: Integer);
+begin
+  if (V = nil) or (V.Kind <> pok_Num) then
+    Exit;
+  if V.NumExact then
+  begin
+    if V.NumInt < 1 then
+      ALevel := 2
+    else
+      ALevel := 0;
+  end
+  else if V.NumVal >= 1 then
+    ALevel := 0
+  else if V.NumVal * 100000 < 99999 then
+    ALevel := 2
+  else
+    ALevel := 1;
+end;
+
+{ 6.2.10-2: gs copies /SMask and /BM into veraPDF's transparency state
+  whether they are there or not (missing: none), /ca and /CA where they are
+  numbers. A soft mask counts as a dictionary or stream; a blend mode as a
+  name other than Normal, an array not of one element or of one name other
+  than Normal, or any other value but null.
+  DE: 6.2.10-2: gs kopiert /SMask und /BM in veraPDFs Transparenzzustand,
+  ob sie da sind oder nicht (fehlend: keine), /ca und /CA, wo sie Zahlen
+  sind. Eine Soft-Mask zaehlt als Dictionary oder Stream; ein Blend-Mode
+  als Name ausser Normal, als Array nicht aus einem Element oder aus einem
+  Namen ausser Normal, oder als jeder andere Wert ausser null. }
+procedure TInterpreter.TranspState(G: TLandrixEInvoicePdfObject);
+var
+  V, It: TLandrixEInvoicePdfObject;
+begin
+  V := FWalk.DGetRef(G, 'SMask');
+  if (V <> nil) and V.IsDictLike then
+    FState.TSMask := 2
+  else
+    FState.TSMask := 0;
+  V := FWalk.DGetRef(G, 'BM');
+  FState.TBM := 0;
+  if V <> nil then
+    case V.Kind of
+      pok_Name:
+        if V.NameVal <> 'Normal' then
+          FState.TBM := 2;
+      pok_Arr:
+        if V.ArrCount <> 1 then
+          FState.TBM := 2
+        else
+        begin
+          It := FWalk.ResolveRef(V.ArrItem(0));
+          if (It <> nil) and (It.Kind = pok_Name) and (It.NameVal <> 'Normal') then
+            FState.TBM := 2;
+        end;
+      pok_Null:
+        ;
+    else
+      FState.TBM := 2;
+    end;
+  AlphaLevel(FWalk.DGetRef(G, 'ca'), FState.TFillA);
+  AlphaLevel(FWalk.DGetRef(G, 'CA'), FState.TStrokeA);
+end;
+
 { gs: an ExtGState with /Font [font size] selects that font where the font
   factory builds it; otherwise the font stays. }
 procedure TInterpreter.SetExtGState(const AName: AnsiString);
@@ -3032,8 +3332,20 @@ var
 begin
   G := Lookup('ExtGState', AName, Raw);
   if (G = nil) or not G.IsDictLike then
+  begin
+    { an entry veraPDF builds but no dictionary: whether its keys reset the
+      soft mask and blend mode is not decided }
+    if Raw <> nil then
+    begin
+      if FState.TSMask > 0 then
+        FState.TSMask := 1;
+      if FState.TBM > 0 then
+        FState.TBM := 1;
+    end;
     Exit;
+  end;
   CheckExtGState(G, Raw);
+  TranspState(G);
   { 6.2.4.2-2: /OP for stroking; /op for filling, else /OP of the same
     dictionary; /OPM as veraPDF's getIntegerKey reads it; a value of
     another type leaves the state as it was
@@ -3102,11 +3414,12 @@ end;
 procedure TInterpreter.ShowText;
 var
   F, Sub, CP, S, Raw, FontRes, Local: TLandrixEInvoicePdfObject;
-  I, Num: Integer;
+  I, Num, Idx: Integer;
   Entry: TContentParse;
   Key: string;
   Res: TRes;
 begin
+  FLastType3 := nil;
   F := FState.Font;
   if F = nil then
     Exit;
@@ -3116,10 +3429,12 @@ begin
   Key := FWalk.ObjId(F) + '/' + FWalk.ObjId(FRes.Page) + '/' + IntToStr(Ord(FState.ColorOn)) +
     IntToStr(Ord(FState.FillPattern)) + IntToStr(Ord(FState.StrokePattern)) + IntToStr(Ord(FState.Unsure)) +
     IntToStr(Ord(FState.Under)) + '/' + CsKey(FWalk, FState.FillCs) + '/' + CsKey(FWalk, FState.StrokeCs) + '/' +
-    IntToStr(FState.TextMode) + '/' + OpKey(FState);
+    IntToStr(FState.TextMode) + '/' + OpKey(FState) + '/' + IntToStr(FState.FillPat) + ',' +
+    IntToStr(FState.StrokePat);
   Num := FWalk.FType3Seen.IndexOf(Key);
   if Num >= 0 then
   begin
+    FLastType3 := TContentParse(FWalk.FType3Seen.Objects[Num]);
     { reached before from this page: the same glyph parses, once into each
       parse }
     if (Length(TContentParse(FWalk.FType3Seen.Objects[Num]).Children) = 0) or
@@ -3133,15 +3448,20 @@ begin
   { the entry itself: glyphs may add entries before it in the sorted list }
   Entry := TContentParse.Create;
   FWalk.FType3Seen.AddObject(Key, Entry);
+  FLastType3 := Entry;
   CP := FWalk.DGetRef(F, 'CharProcs');
-  if (CP = nil) or not CP.IsDictLike then
+  if (CP = nil) or (CP.Kind <> pok_Dict) then
     Exit;
   FontRes := FWalk.DGetRef(F, 'Resources');
-  if (FontRes <> nil) and not FontRes.IsDictLike then
+  if (FontRes <> nil) and (FontRes.Kind <> pok_Dict) then
     FontRes := nil;
+  Entry.Building := True;
   for I := 0 to Integer(CP.DVals.Count) - 1 do
   begin
     Raw := TLandrixEInvoicePdfObject(CP.DVals[I]);
+    { a key given twice: veraPDF keeps the last value }
+    if FWalk.DictGet(CP, CP.DKeys[I]) <> Raw then
+      Continue;
     S := FWalk.ResolveRef(Raw);
     if (S = nil) or (S.Kind <> pok_Stream) or (Raw.Kind <> pok_Ref) then
       Continue;
@@ -3157,11 +3477,69 @@ begin
       Local := FontRes;
     Res.Local := Local;
     Res.Page := FRes.Page;
-    Entry.AddChild(
-      ParseStreams(FWalk, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [S], Res, FState, False));
+    Res.InheritAll := False;
+    Idx := ParseStreams(FWalk, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [S], Res, FState, False);
+    Entry.AddChild(Idx);
+    SetLength(Entry.GlyphNames, Length(Entry.GlyphNames) + 1);
+    SetLength(Entry.GlyphIdx, Length(Entry.GlyphIdx) + 1);
+    Entry.GlyphNames[High(Entry.GlyphNames)] := CP.DKeys[I];
+    Entry.GlyphIdx[High(Entry.GlyphIdx)] := Idx;
   end;
+  Entry.Building := False;
+  { the most any glyph brings (for codes named by a base table) }
+  for I := 0 to Integer(Length(Entry.GlyphIdx)) - 1 do
+    Entry.Transp := MaxOf(Entry.Transp, FWalk.ParseTransp(Entry.GlyphIdx[I]));
   for I := 0 to Integer(Length(Entry.Children)) - 1 do
     FParse.AddChild(Entry.Children[I]);
+end;
+
+{ 6.2.10-2: an image is transparent with a soft mask stream or
+  /SMaskInData above 0.
+  DE: 6.2.10-2: ein Bild ist transparent mit einem Soft-Mask-Stream oder
+  /SMaskInData ueber 0. }
+function ImageTransp(AWalk: TLandrixEInvoicePdfContentWalk; X: TLandrixEInvoicePdfObject): Integer;
+var
+  V: TLandrixEInvoicePdfObject;
+begin
+  Result := 0;
+  V := AWalk.DGetRef(X, 'SMask');
+  if (V <> nil) and (V.Kind = pok_Stream) then
+  begin
+    Result := 2;
+    Exit;
+  end;
+  V := AWalk.DGetRef(X, 'SMaskInData');
+  if (V = nil) or (V.Kind <> pok_Num) then
+    Exit;
+  if V.NumExact then
+  begin
+    if Narrow32(V.NumInt) > 0 then
+      Result := 2;
+  end
+  else if Abs(V.NumVal) < 2147483647.0 then
+  begin
+    if Trunc(V.NumVal) > 0 then
+      Result := 2;
+  end
+  else
+    Result := 1;
+end;
+
+{ 6.2.10-2: a form (or an appearance) whose /Group dictionary has /S
+  /Transparency.
+  DE: 6.2.10-2: eine Form (oder ein Erscheinungsbild), deren /Group-
+  Dictionary /S /Transparency hat. }
+function FormGroupTransp(AWalk: TLandrixEInvoicePdfContentWalk; X: TLandrixEInvoicePdfObject): Integer;
+var
+  G, S: TLandrixEInvoicePdfObject;
+begin
+  Result := 0;
+  G := AWalk.DGetRef(X, 'Group');
+  if (G = nil) or (G.Kind <> pok_Dict) then
+    Exit;
+  S := AWalk.DGetRef(G, 'S');
+  if (S <> nil) and (S.Kind = pok_Name) and (S.NameVal = 'Transparency') then
+    Result := 2;
 end;
 
 { Do with a form XObject: its content with its own resources (none if
@@ -3171,6 +3549,7 @@ procedure TInterpreter.ReachForm(const AName: AnsiString);
 var
   Raw, X, Sub, Local: TLandrixEInvoicePdfObject;
   Res: TRes;
+  Idx: Integer;
 begin
   X := Lookup('XObject', AName, Raw);
   if X = nil then
@@ -3187,6 +3566,7 @@ begin
   end;
   if Sub.NameVal = 'Image' then
   begin
+    FDoTransp := ImageTransp(FWalk, X);
     CheckImage(X, Raw, ik_Image, 0);
     FSiteFrom := FLookupFrom;
     ImageColour(X, Raw, 0);
@@ -3194,8 +3574,10 @@ begin
     Exit;
   end;
   CheckForm(X, Raw);
+  FDoTransp := FormGroupTransp(FWalk, X);
+  { a form's /Resources counts only as a dictionary (a stream: none) }
   Local := FWalk.DGetRef(X, 'Resources');
-  if (Local <> nil) and not Local.IsDictLike then
+  if (Local <> nil) and (Local.Kind <> pok_Dict) then
     Local := nil;
   { the form's group (also of a form that is no stream) }
   if (Raw <> nil) and (Raw.Kind = pok_Ref) then
@@ -3206,7 +3588,10 @@ begin
     Exit;
   Res.Local := Local;
   Res.Page := FRes.Page;
-  FParse.AddChild(ParseStreams(FWalk, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [X], Res, FState, False));
+  Res.InheritAll := False;
+  Idx := ParseStreams(FWalk, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [X], Res, FState, False);
+  FParse.AddChild(Idx);
+  FDoTransp := MaxOf(FDoTransp, ChildTransp(Idx, 'S' + IntToStr(Raw.RefNum)));
 end;
 
 { scn or SCN with a pattern colour space: a tiling pattern's content with
@@ -3222,7 +3607,12 @@ var
   K: Integer;
   Uncoloured: Boolean;
   ShRaw: TLandrixEInvoicePdfObject;
+  Idx: Integer;
 begin
+  if AFill then
+    FState.FillPat := -1
+  else
+    FState.StrokePat := -1;
   P := Lookup('Pattern', AName, Raw);
   K := 0;
   while (P <> nil) and (P.Kind = pok_Arr) and (P.ArrCount = 1) do
@@ -3288,14 +3678,276 @@ begin
   if (P.Kind <> pok_Stream) or (Raw = nil) or (Raw.Kind <> pok_Ref) then
     Exit;
   Local := FWalk.DGetRef(P, 'Resources');
-  if (Local <> nil) and not Local.IsDictLike then
+  if (Local <> nil) and (Local.Kind <> pok_Dict) then
     Local := nil;
   Res.Local := Local;
   Res.Page := FRes.Page;
+  Res.InheritAll := False;
   St := FInit;
   if Uncoloured then
     St.ColorOn := False;
-  FParse.AddChild(ParseStreams(FWalk, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [P], Res, St, False));
+  Idx := ParseStreams(FWalk, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [P], Res, St, False);
+  FParse.AddChild(Idx);
+  if Idx < 0 then
+  begin
+    if ChildTransp(Idx, 'S' + IntToStr(Raw.RefNum)) > 0 then
+      Idx := -2
+    else
+      Idx := -1;
+  end;
+  if AFill then
+    FState.FillPat := Idx
+  else
+    FState.StrokePat := Idx;
+end;
+
+procedure TInterpreter.NoteTransp(ALevel: Integer);
+begin
+  if ALevel > FParse.Transp then
+    FParse.Transp := ALevel;
+end;
+
+{ veraPDF's base check: a soft mask or a blend mode. }
+function TInterpreter.TranspBase: Integer;
+begin
+  Result := MaxOf(FState.TSMask, FState.TBM);
+end;
+
+{ A tiling pattern (FillPat, StrokePat) as a paint meets it. }
+function TInterpreter.PatTransp(AIndex: Integer): Integer;
+begin
+  if AIndex = -1 then
+    Result := 0
+  else if AIndex < 0 then
+    Result := 1
+  else
+    Result := FWalk.ParseTransp(AIndex);
+end;
+
+{ 6.2.10-2: a path painted (fill, stroke or both) is transparent with a
+  soft mask, a blend mode, an alpha below 1 of a painting side or a
+  transparent tiling pattern there.
+  DE: 6.2.10-2: ein gemalter Pfad (Fuellen, Linie oder beides) ist
+  transparent mit einer Soft-Mask, einem Blend-Mode, einem Alpha unter 1
+  einer malenden Seite oder einem transparenten Kachelmuster dort. }
+procedure TInterpreter.TranspPaint(AFill, AStroke: Boolean);
+var
+  L: Integer;
+begin
+  L := TranspBase;
+  if AFill then
+    L := MaxOf(L, MaxOf(FState.TFillA, PatTransp(FState.FillPat)));
+  if AStroke then
+    L := MaxOf(L, MaxOf(FState.TStrokeA, PatTransp(FState.StrokePat)));
+  NoteTransp(L);
+end;
+
+{ 6.2.10-2: the glyphs of a Type 3 font that a text operator shows, as
+  veraPDF selects them: the bytes of the strings in its first operand (a
+  string, or the strings of an array), the codes from 128 on selecting
+  nothing, named by the /Differences of an /Encoding dictionary (a
+  /BaseEncoding WinAnsi, MacRoman or MacExpert, or such an /Encoding name,
+  adds names not modelled), and the CharProcs stream of that name.
+  DE: 6.2.10-2: die Glyphen einer Type-3-Schrift, die ein Textoperator
+  zeigt, wie veraPDF sie waehlt: die Bytes der Strings in seinem ersten
+  Operanden (ein String oder die Strings eines Arrays), wobei Codes ab 128
+  nichts waehlen, benannt durch die /Differences
+  eines /Encoding-Dictionarys (eine /BaseEncoding WinAnsi, MacRoman oder
+  MacExpert, oder ein solcher /Encoding-Name, fuegt nicht nachgebildete
+  Namen hinzu), und der CharProcs-Stream dieses Namens. }
+function TInterpreter.Type3Transp(AFirst: TCv): Integer;
+var
+  Codes: set of Byte;
+  Unsure: Boolean;
+  E: TLandrixEInvoicePdfObject;
+  Code, I, Lvl, Slot: Integer;
+begin
+  Result := 0;
+  if (FLastType3 = nil) or (AFirst = nil) then
+    Exit;
+  Codes := [];
+  Unsure := False;
+  if AFirst.Kind = cvk_Str then
+  begin
+    Codes := AFirst.Codes;
+    Unsure := AFirst.CodesUnsure;
+  end
+  else if AFirst.Kind = cvk_Arr then
+    for I := 0 to Integer(AFirst.Items.Count) - 1 do
+      if TCv(AFirst.Items[I]).Kind = cvk_Str then
+      begin
+        Codes := Codes + TCv(AFirst.Items[I]).Codes;
+        if TCv(AFirst.Items[I]).CodesUnsure then
+          Unsure := True;
+      end;
+  if Unsure then
+    Codes := Codes + [10, 13];
+  if Codes = [] then
+    Exit;
+  E := FWalk.DGetRef(FState.Font, 'Encoding');
+  if (E = nil) or ((E.Kind <> pok_Name) and (E.Kind <> pok_Dict)) then
+    Exit;
+  { a glyph shows text in its own font: the glyphs are being parsed }
+  if FLastType3.Building then
+  begin
+    Result := 1;
+    Exit;
+  end;
+  if not FLastType3.CodesDone then
+    Type3Codes(FLastType3, E);
+  for Code := 0 to 127 do
+  begin
+    if not (Byte(Code) in Codes) then
+      Continue;
+    Slot := FLastType3.CodeGlyph[Code];
+    if Slot = -1 then
+      Continue;
+    if Slot = -2 then
+    begin
+      { a name from the base table: any glyph may be it }
+      if FLastType3.Transp > 0 then
+        Lvl := 1
+      else
+        Lvl := 0;
+    end
+    else
+      Lvl := FWalk.ParseTransp(FLastType3.GlyphIdx[Slot]);
+    if Unsure and ((Code = 10) or (Code = 13)) and (Lvl > 1) then
+      Lvl := 1;
+    Result := MaxOf(Result, Lvl);
+  end;
+end;
+
+{ The glyph slot of each code 0 to 127 of a finished Type 3 entry (see
+  Type3Transp): /Differences of an /Encoding dictionary; a /BaseEncoding
+  WinAnsi, MacRoman or MacExpert (or such an /Encoding name) for the codes
+  it leaves.
+  DE: Der Glyphenplatz jedes Codes 0 bis 127 eines fertigen Type-3-Eintrags
+  (siehe Type3Transp): /Differences eines /Encoding-Dictionarys; eine
+  /BaseEncoding WinAnsi, MacRoman oder MacExpert (oder ein solcher
+  /Encoding-Name) fuer die Codes, die es offen laesst. }
+procedure TInterpreter.Type3Codes(AEntry: TContentParse; E: TLandrixEInvoicePdfObject);
+var
+  D, It: TLandrixEInvoicePdfObject;
+  Names: array[0..127] of AnsiString;
+  Has: array[0..127] of Boolean;
+  Table: Boolean;
+  Code, J, K: Integer;
+  Idx: Int64;
+begin
+  AEntry.CodesDone := True;
+  SetLength(AEntry.CodeGlyph, 128);
+  for Code := 0 to 127 do
+  begin
+    Names[Code] := '';
+    Has[Code] := False;
+    AEntry.CodeGlyph[Code] := -1;
+  end;
+  if E.Kind = pok_Name then
+    Table := (E.NameVal = 'WinAnsiEncoding') or (E.NameVal = 'MacRomanEncoding') or (E.NameVal = 'MacExpertEncoding')
+  else
+  begin
+    D := FWalk.DGetRef(E, 'BaseEncoding');
+    Table := (D <> nil) and (D.Kind = pok_Name) and ((D.NameVal = 'WinAnsiEncoding') or
+      (D.NameVal = 'MacRomanEncoding') or (D.NameVal = 'MacExpertEncoding'));
+    D := FWalk.DGetRef(E, 'Differences');
+    if (D <> nil) and (D.Kind = pok_Arr) then
+    begin
+      Idx := 0;
+      for K := 0 to D.ArrCount - 1 do
+      begin
+        It := FWalk.ResolveRef(D.ArrItem(K));
+        if It = nil then
+          Continue;
+        if (It.Kind = pok_Num) and It.NumExact then
+          Idx := Narrow32(It.NumInt)
+        else if (It.Kind = pok_Name) and (Idx <> -1) then
+        begin
+          if (Idx >= 0) and (Idx <= 127) then
+          begin
+            Names[Integer(Idx)] := It.NameVal;
+            Has[Integer(Idx)] := True;
+          end;
+          { far beyond the codes that count }
+          if Idx < 1000000 then
+            Inc(Idx);
+        end;
+      end;
+    end;
+  end;
+  for Code := 0 to 127 do
+    if Has[Code] then
+    begin
+      for J := 0 to Integer(Length(AEntry.GlyphNames)) - 1 do
+        if AEntry.GlyphNames[J] = Names[Code] then
+        begin
+          AEntry.CodeGlyph[Code] := J;
+          Break;
+        end;
+    end
+    else if Table and (Length(AEntry.GlyphNames) > 0) then
+      AEntry.CodeGlyph[Code] := -2;
+end;
+
+{ 6.2.10-2 for Tj, TJ, ' and ": the painting sides of the rendering mode
+  (none for 3 and 7) and, for a Type 3 font, the glyphs shown.
+  DE: 6.2.10-2 fuer Tj, TJ, ' und ": die malenden Seiten des Darstellungs-
+  modus (keine bei 3 und 7) und bei einer Type-3-Schrift die gezeigten
+  Glyphen. }
+procedure TInterpreter.TextTransp(AFirst: TCv);
+var
+  M, F, S, G: Integer;
+begin
+  G := Type3Transp(AFirst);
+  F := MaxOf(TranspBase, MaxOf(MaxOf(FState.TFillA, PatTransp(FState.FillPat)), G));
+  S := MaxOf(TranspBase, MaxOf(MaxOf(FState.TStrokeA, PatTransp(FState.StrokePat)), G));
+  M := FState.TextMode;
+  if (M = 0) or (M = 4) then
+    NoteTransp(F)
+  else if (M = 1) or (M = 5) then
+    NoteTransp(S)
+  else if (M = 2) or (M = 6) then
+    NoteTransp(MaxOf(F, S))
+  else if (M < 0) or (M > 7) then
+  begin
+    if MaxOf(F, S) > 0 then
+      NoteTransp(1);
+  end;
+end;
+
+{ The transparency of a stream parsed from this one (AIndex from
+  ParseStreams for AKey): -1 is a cycle (veraPDF reads the stream as
+  empty) or a limit (not decided). }
+function TInterpreter.ChildTransp(AIndex: Integer; const AKey: string): Integer;
+begin
+  if AIndex >= 0 then
+    Result := FWalk.ParseTransp(AIndex)
+  else if FWalk.FActive.IndexOf(AKey) >= 0 then
+  begin
+    FParse.CycleCut := True;
+    Result := 0;
+  end
+  else
+    Result := 1;
+end;
+
+{ 6.2.2-2 for a colour space name veraPDF looks up for the stream. }
+procedure TInterpreter.CsInherit(const AName: AnsiString);
+begin
+  case CsInheritLevel(FWalk, FRes, AName) of
+    1:
+      Mark(pcc_Inherited, True, 'colour space /' + TextOf(AName) + ' maybe taken from the page''s resources');
+    2:
+      Mark(pcc_Inherited, False, 'ColorSpace /' + TextOf(AName) + ' taken from the page''s resources');
+  end;
+end;
+
+{ BDC and DP with a name: veraPDF looks the properties up (6.2.2-2). }
+procedure TInterpreter.TouchProperties(const AName: AnsiString);
+var
+  Raw: TLandrixEInvoicePdfObject;
+begin
+  Lookup('Properties', AName, Raw);
 end;
 
 procedure TInterpreter.RegisterAF(const AName: AnsiString);
@@ -3484,6 +4136,396 @@ end;
   /SMask-Stream eines Bilds (keine weiteren Masken oder Alternativen). Ein
   Alternativen-Dictionary ohne Bild-Stream laesst veraPDF eine Ausnahme
   werfen: es meldet dann nichts, also ist kein Content-Befund sicher. }
+type
+  { What veraPDF takes from the boxes of JPEG 2000 data (defaults where it
+    finds nothing; EnumSet False: null). }
+  TJpxFacts = record
+    Channels: Int64;
+    Specs: Int64;
+    Approx: Int64;
+    Method: Int64;
+    EnumSet: Boolean;
+    Enum: Int64;
+    Depth: Int64;
+    Bpcc: Boolean;
+  end;
+
+  { The raw bytes of a JPX stream as veraPDF reads them: a read of
+    fewer bytes than asked fails, a skip stops at the end. }
+  TJpxReader = record
+    Data: TLandrixEInvoicePdfBytes;
+    Pos: Integer;
+    Len: Integer;
+  end;
+
+{ N bytes as an unsigned number (N at most 4), or the 8 bytes of an XLBox
+  (-1 for a value veraPDF reads as negative, -2 - k for -2^63 + k with k
+  below 16, whose box length minus its header comes out positive there).
+  False: fewer bytes. }
+function JpxRead(var R: TJpxReader; N: Integer; out AValue: Int64): Boolean;
+var
+  I: Integer;
+begin
+  AValue := 0;
+  Result := R.Len - R.Pos >= N;
+  if not Result then
+  begin
+    R.Pos := R.Len;
+    Exit;
+  end;
+  if (N = 8) and (R.Data[R.Pos] >= $80) then
+  begin
+    AValue := -2 - Int64(R.Data[R.Pos + 7]);
+    if R.Data[R.Pos] <> $80 then
+      AValue := -1;
+    for I := 1 to 6 do
+      if R.Data[R.Pos + I] <> 0 then
+        AValue := -1;
+    if R.Data[R.Pos + 7] >= 16 then
+      AValue := -1;
+  end
+  else
+    for I := 0 to N - 1 do
+      AValue := AValue * 256 + R.Data[R.Pos + I];
+  Inc(R.Pos, N);
+end;
+
+procedure JpxSkip(var R: TJpxReader; N: Int64);
+begin
+  if N <= 0 then
+    Exit;
+  if N > Int64(R.Len) - R.Pos then
+    R.Pos := R.Len
+  else
+    Inc(R.Pos, Integer(N));
+end;
+
+{ A box header: LBox, TBox and (LBox 1) XLBox; ASkipped 8 or 16. }
+function JpxBox(var R: TJpxReader; out ALength: Int64; out AType: AnsiString; out ASkipped: Integer): Boolean;
+var
+  T: Int64;
+  I: Integer;
+begin
+  AType := '';
+  ASkipped := 8;
+  Result := False;
+  if not JpxRead(R, 4, ALength) then
+    Exit;
+  if R.Len - R.Pos < 4 then
+  begin
+    R.Pos := R.Len;
+    Exit;
+  end;
+  SetLength(AType, 4);
+  for I := 0 to 3 do
+    AType[I + 1] := AnsiChar(R.Data[R.Pos + I]);
+  Inc(R.Pos, 4);
+  if ALength = 1 then
+  begin
+    if not JpxRead(R, 8, T) then
+      Exit;
+    ALength := T;
+    ASkipped := 16;
+  end;
+  Result := True;
+end;
+
+{ 6.2.8.3: what veraPDF 1.30.4 takes from JPEG 2000 data, from the raw
+  stream bytes: the JP2 signature, the first jp2h box among the top-level
+  boxes, in it ihdr (channels, bit depth byte plus 1, from 128 on negative), bpcc
+  and colr (METH, APPROX, EnumCS). False where veraPDF may throw (a profile
+  length it cannot allocate).
+  DE: 6.2.8.3: was veraPDF 1.30.4 aus JPEG-2000-Daten liest, aus den
+  rohen Stream-Bytes: die JP2-Signatur, die erste jp2h-Box unter den Boxen
+  der obersten Ebene, darin ihdr (Kanaele, Bittiefen-Byte plus 1, ab
+  128 negativ), bpcc und colr (METH, APPROX, EnumCS). False, wo
+  veraPDF eine Ausnahme werfen kann (eine Profillaenge, die es nicht
+  anlegen kann). }
+function JpxFacts(const AData: TLandrixEInvoicePdfBytes; out F: TJpxFacts): Boolean;
+const
+  Sign: array[0..11] of Byte = ($00, $00, $00, $0C, $6A, $50, $20, $20, $0D, $0A, $87, $0A);
+  MaxProfile = 256 * 1024 * 1024;
+var
+  R: TJpxReader;
+  I, Skipped: Integer;
+  Len, Left, LeftInHeader, LeftInBox, V, Meth, Approx, ReadCount, P: Int64;
+  T: AnsiString;
+  ReachEnd, HasSpecs, HasApprox, HasFirstMeth, HasFirstEnum, HasMeth, HasEnum: Boolean;
+  Specs, ApproxCount, FirstMeth, FirstEnum, ColrMeth, ColrEnum: Int64;
+begin
+  Result := True;
+  F.Channels := 0;
+  F.Specs := 0;
+  F.Approx := 0;
+  F.Method := 0;
+  F.EnumSet := False;
+  F.Enum := 0;
+  F.Depth := 0;
+  F.Bpcc := False;
+  R.Data := AData;
+  R.Pos := 0;
+  R.Len := Integer(Length(AData));
+  if R.Len < 12 then
+    Exit;
+  for I := 0 to 11 do
+    if AData[I] <> Sign[I] then
+      Exit;
+  R.Pos := 12;
+  { the header box among the top-level boxes }
+  { 0: the header box runs to the end of the data }
+  LeftInHeader := 0;
+  while True do
+  begin
+    if not JpxBox(R, Len, T, Skipped) then
+      Exit;
+    Left := Len - Skipped;
+    if T = 'jp2h' then
+    begin
+      if (Len <= -2) and (Len >= -17) then
+        { the header length comes out as 2^63 - 16 + k }
+        LeftInHeader := High(Int64) - 15 + (-2 - Len)
+      else if Len <> 0 then
+      begin
+        if Left <= 0 then
+          Exit;
+        LeftInHeader := Left;
+      end;
+      Break;
+    end;
+    if (Len = 0) or (Left < 0) then
+      Exit;
+    JpxSkip(R, Left);
+  end;
+  ReachEnd := LeftInHeader = 0;
+  HasSpecs := False;
+  HasApprox := False;
+  HasFirstMeth := False;
+  HasFirstEnum := False;
+  HasMeth := False;
+  HasEnum := False;
+  Specs := 0;
+  ApproxCount := 0;
+  FirstMeth := 0;
+  FirstEnum := 0;
+  ColrMeth := 0;
+  ColrEnum := 0;
+  while True do
+  begin
+    if not JpxBox(R, Len, T, Skipped) then
+      Break;
+    if (Len < 0) or (not ReachEnd and ((Len = 0) or (Len > LeftInHeader))) then
+      Break;
+    LeftInBox := Len - Skipped;
+    if T = 'ihdr' then
+    begin
+      if (LeftInBox <> 14) and (Len <> 0) then
+        Break;
+      JpxSkip(R, 8);
+      if not JpxRead(R, 2, V) then
+        Break;
+      F.Channels := V;
+      if not JpxRead(R, 1, V) then
+        Break;
+      if V >= 128 then
+        F.Depth := V - 256 + 1
+      else
+        F.Depth := V + 1;
+      JpxSkip(R, 3);
+    end
+    else if T = 'bpcc' then
+    begin
+      F.Bpcc := True;
+      JpxSkip(R, LeftInBox);
+    end
+    else if T = 'colr' then
+    begin
+      if LeftInBox < 3 then
+        Break;
+      HasSpecs := True;
+      Inc(Specs);
+      if not JpxRead(R, 1, Meth) then
+        Break;
+      if not HasFirstMeth then
+      begin
+        FirstMeth := Meth;
+        HasFirstMeth := True;
+      end;
+      JpxSkip(R, 1);
+      if not JpxRead(R, 1, Approx) then
+        Break;
+      if Approx = 1 then
+      begin
+        HasApprox := True;
+        Inc(ApproxCount);
+        if not HasMeth then
+        begin
+          ColrMeth := Meth;
+          HasMeth := True;
+        end;
+      end;
+      ReadCount := 3;
+      if Meth = 1 then
+      begin
+        if LeftInBox < 7 then
+          Break;
+        if not JpxRead(R, 4, V) then
+          Break;
+        Inc(ReadCount, 4);
+        if not HasFirstEnum then
+        begin
+          FirstEnum := V;
+          HasFirstEnum := True;
+        end;
+        if (Approx = 1) and not HasEnum then
+        begin
+          ColrEnum := V;
+          HasEnum := True;
+        end;
+      end
+      else if Meth = 2 then
+      begin
+        { the profile length as veraPDF narrows it to 32 bits: a negative one
+          throws, a very large one may run out of memory there }
+        P := (LeftInBox - ReadCount) and $FFFFFFFF;
+        if (P >= $80000000) or ((P > MaxProfile) and (P > Int64(R.Len) - R.Pos)) then
+        begin
+          Result := False;
+          Exit;
+        end;
+        if Int64(R.Len) - R.Pos < P then
+          Break;
+        Inc(R.Pos, Integer(P));
+        Inc(ReadCount, P);
+      end;
+      JpxSkip(R, LeftInBox - ReadCount);
+    end
+    else
+      JpxSkip(R, LeftInBox);
+    if not ReachEnd then
+      Dec(LeftInHeader, Len);
+    if (ReachEnd and (Len = 0)) or (not ReachEnd and (LeftInHeader = 0)) then
+      Break;
+  end;
+  if HasSpecs then
+    F.Specs := Specs;
+  if HasApprox then
+  begin
+    F.Approx := ApproxCount;
+    if HasMeth then
+      F.Method := ColrMeth;
+    if HasEnum then
+    begin
+      F.EnumSet := True;
+      F.Enum := ColrEnum;
+    end;
+  end
+  else if HasSpecs and (Specs = 1) then
+  begin
+    if HasFirstMeth then
+      F.Method := FirstMeth;
+    if HasFirstEnum then
+    begin
+      F.EnumSet := True;
+      F.Enum := FirstEnum;
+    end;
+  end;
+end;
+
+type
+  { The JPEG 2000 facts of one image stream: Sure (the stored bytes are
+    those veraPDF reads), Throws (veraPDF may throw on them). }
+  TJpxEntry = class(TObject)
+  public
+    Sure: Boolean;
+    Throws: Boolean;
+    Facts: TJpxFacts;
+  end;
+
+{ The JPEG 2000 facts of the image stream V, once per object. }
+function JpxEntryOf(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): TJpxEntry;
+var
+  Key: string;
+  Idx: Integer;
+  Data: TLandrixEInvoicePdfBytes;
+  L: TLandrixEInvoicePdfObject;
+begin
+  Key := AWalk.ObjId(V);
+  if AWalk.FJpxCache.Find(Key, Idx) then
+  begin
+    Result := TJpxEntry(AWalk.FJpxCache.Objects[Idx]);
+    Exit;
+  end;
+  Result := TJpxEntry.Create;
+  AWalk.FJpxCache.AddObject(Key, Result);
+  Data := nil;
+  L := AWalk.DGetRef(V, 'Length');
+  Result.Sure := not AWalk.FDoc.Encrypted and AWalk.FDoc.GetStreamRaw(V, Data) and (L <> nil) and
+    (L.Kind = pok_Num) and L.NumExact and (L.NumInt = Length(Data));
+  { whether veraPDF throws is decided on these bytes even where they may not
+    be exactly its own }
+  Result.Throws := not JpxFacts(Data, Result.Facts);
+end;
+
+{ 6.2.8.3-1 to -5: the JPEG 2000 data of an image as veraPDF reads it (the
+  stored bytes, whatever other filters there are); certain only where they
+  are surely the bytes veraPDF reads (not encrypted, an exact /Length).
+  -2 to -4 only without /ColorSpace.
+  DE: 6.2.8.3-1 bis -5: die JPEG-2000-Daten eines Bilds, wie veraPDF sie
+  liest (die gespeicherten Bytes, gleich welche anderen Filter es gibt);
+  sicher nur, wo es sicher die Bytes sind, die veraPDF liest (nicht
+  verschluesselt, eine genaue /Length). -2 bis -4 nur ohne /ColorSpace. }
+procedure TInterpreter.CheckJpx(V: TLandrixEInvoicePdfObject; const AWhat: string);
+var
+  C: TLandrixEInvoicePdfObject;
+  E: TJpxEntry;
+  F: TJpxFacts;
+  HasCs: Boolean;
+  Chk: TLandrixEInvoicePdfContentCheck;
+begin
+  if V.Kind <> pok_Stream then
+  begin
+    { no data: veraPDF's reader fails on it }
+    FWalk.FThrows := True;
+    FWalk.FMayThrow := True;
+    FWalk.FIncomplete := True;
+    Exit;
+  end;
+  E := JpxEntryOf(FWalk, V);
+  F := E.Facts;
+  if E.Throws then
+  begin
+    { veraPDF may throw on this profile length }
+    FWalk.FThrows := True;
+    FWalk.FMayThrow := True;
+    FWalk.FIncomplete := True;
+    Exit;
+  end;
+  if not E.Sure then
+  begin
+    for Chk := pcc_JpxChannels to pcc_JpxDepth do
+      Mark(Chk, True, AWhat + ': JPEG 2000 data not read with certainty');
+    Exit;
+  end;
+  C := FWalk.ResolveRef(V.RawGet('ColorSpace'));
+  HasCs := (C <> nil) and (C.Kind <> pok_Null);
+  if (F.Channels <> 1) and (F.Channels <> 3) and (F.Channels <> 4) then
+    Mark(pcc_JpxChannels, False, AWhat + ': JPEG 2000 data with ' + IntToStr(F.Channels) + ' colour channels');
+  if not HasCs and (F.Specs <> 1) and (F.Approx <> 1) then
+    Mark(pcc_JpxSpecs, False, AWhat + ': JPEG 2000 data with ' + IntToStr(F.Specs) + ' colour specifications, ' +
+      IntToStr(F.Approx) + ' with APPROX 1');
+  if not HasCs and (F.Method <> 1) and (F.Method <> 2) and (F.Method <> 3) then
+    Mark(pcc_JpxMethod, False, AWhat + ': JPEG 2000 colour specification METH ' + IntToStr(F.Method));
+  if not HasCs and F.EnumSet and (F.Enum = 19) then
+    Mark(pcc_JpxEnum, False, AWhat + ': JPEG 2000 enumerated colour space 19 (CIEJab)');
+  if F.Bpcc or (F.Depth < 1) or (F.Depth > 38) then
+  begin
+    if F.Bpcc then
+      Mark(pcc_JpxDepth, False, AWhat + ': JPEG 2000 data with a bpcc box')
+    else
+      Mark(pcc_JpxDepth, False, AWhat + ': JPEG 2000 bit depth ' + IntToStr(F.Depth));
+  end;
+end;
+
 procedure TInterpreter.CheckImage(V, ARaw: TLandrixEInvoicePdfObject; AKind, ADepth: Integer);
 const
   KindNames: array[ik_Image..ik_SMask] of string = ('image ', 'image mask ', 'soft mask ');
@@ -3525,6 +4567,8 @@ begin
     Mark(pcc_PSXObject, False, W + ' has /Subtype /PS');
   if (AKind <> ik_Mask) and NameKey(FWalk, V, 'Intent', N) then
     CheckIntent(N, W);
+  if IsJpxRead(FWalk, V) then
+    CheckJpx(V, W);
   if AKind = ik_SMask then
     Exit;
   if AKind = ik_Image then
@@ -4406,7 +5450,13 @@ begin
       V := E;
   end;
   if not AShading and (V <> nil) and (V.Kind = pok_Name) then
-    Result := ResolveName(FWalk, FRes, V.NameVal)
+  begin
+    Result := ResolveName(FWalk, FRes, V.NameVal);
+    { veraPDF looks it up for the stream that met the image
+      first, when the image is validated: 6.2.2-2 not decided }
+    if CsInheritLevel(FWalk, FRes, V.NameVal) > 0 then
+      FWalk.FInheritUnsure := True;
+  end
   else
     Result := CsValue(FWalk, From, ARaw, False, 0);
 end;
@@ -5000,6 +6050,10 @@ begin
           ExposeString(L1);
         ShowText;
         TextColour;
+        if N >= 1 then
+          TextTransp(TCv(AOps[0]))
+        else
+          TextTransp(nil);
       end;
     oc_ShowSpaced:
       begin
@@ -5014,6 +6068,10 @@ begin
         end;
         ShowText;
         TextColour;
+        if N >= 1 then
+          TextTransp(TCv(AOps[0]))
+        else
+          TextTransp(nil);
       end;
     oc_ShowArray:
       begin
@@ -5021,6 +6079,10 @@ begin
           ExposeCos(L1, False);
         ShowText;
         TextColour;
+        if N >= 1 then
+          TextTransp(TCv(AOps[0]))
+        else
+          TextTransp(nil);
       end;
     oc_Color:
       if FState.ColorOn then
@@ -5031,9 +6093,14 @@ begin
       begin
         TopNumbers(AOps);
         Stroke := OpCode(AOp.Text) = oc_SpaceStroke;
+        if Stroke then
+          FState.StrokePat := -1
+        else
+          FState.FillPat := -1;
         if IsKind(L1, cvk_Name) then
         begin
           ExposeName(L1);
+          CsInherit(L1.Text);
           Pat := IsPatternSpace(L1.Text);
           Cs := ResolveName(FWalk, FRes, L1.Text);
         end
@@ -5079,6 +6146,10 @@ begin
           Cs := NullCs;
           Cs.Kind := csk_Unknown;
           if Stroke then
+            FState.StrokePat := -1
+          else
+            FState.FillPat := -1;
+          if Stroke then
           begin
             FState.StrokePattern := False;
             FState.StrokeCs := Cs;
@@ -5109,6 +6180,11 @@ begin
           DevName := 'DeviceRGB'
         else
           DevName := 'DeviceCMYK';
+        CsInherit(DevName);
+        if OpCode(AOp.Text) = oc_DeviceStroke then
+          FState.StrokePat := -1
+        else
+          FState.FillPat := -1;
         Pat := IsPatternSpace(DevName);
         Cs := ResolveName(FWalk, FRes, DevName);
         if Cs.Kind = csk_Null then
@@ -5128,16 +6204,25 @@ begin
         ExposeCs(Cs, True, 0);
       end;
     oc_PaintFill:
-      if FState.ColorOn then
-        PaintLink(FState.FillCs, False);
-    oc_PaintStroke:
-      if FState.ColorOn then
-        PaintLink(FState.StrokeCs, True);
-    oc_PaintBoth:
-      if FState.ColorOn then
       begin
-        PaintLink(FState.FillCs, False);
-        PaintLink(FState.StrokeCs, True);
+        TranspPaint(True, False);
+        if FState.ColorOn then
+          PaintLink(FState.FillCs, False);
+      end;
+    oc_PaintStroke:
+      begin
+        TranspPaint(False, True);
+        if FState.ColorOn then
+          PaintLink(FState.StrokeCs, True);
+      end;
+    oc_PaintBoth:
+      begin
+        TranspPaint(True, True);
+        if FState.ColorOn then
+        begin
+          PaintLink(FState.FillCs, False);
+          PaintLink(FState.StrokeCs, True);
+        end;
       end;
     oc_TextMode:
       { veraPDF reads the first operand as an int; a missing, other or
@@ -5151,19 +6236,31 @@ begin
           FState.TextMode := Integer(Narrow32(TCv(AOps[0]).IntVal));
       end;
     oc_Shading:
-      if FState.ColorOn and IsKind(L1, cvk_Name) then
       begin
-        Sh := Lookup('Shading', L1.Text, Raw);
-        FSiteFrom := FLookupFrom;
-        ShadingColour(Sh, Raw);
-        FSiteFrom := nil;
+        { 6.2.10-2: sh paints like a fill (any operands)
+          DE: 6.2.10-2: sh malt wie ein Fuellen (gleich welche Operanden) }
+        NoteTransp(MaxOf(TranspBase, FState.TFillA));
+        if FState.ColorOn and IsKind(L1, cvk_Name) then
+        begin
+          Sh := Lookup('Shading', L1.Text, Raw);
+          FSiteFrom := FLookupFrom;
+          ShadingColour(Sh, Raw);
+          FSiteFrom := nil;
+        end;
       end;
     oc_ExtGState:
       if IsKind(L1, cvk_Name) then
         SetExtGState(L1.Text);
     oc_Do:
-      if IsKind(L1, cvk_Name) then
-        ReachForm(L1.Text);
+      begin
+        { 6.2.10-2: Do paints like a fill, with what the XObject brings
+          DE: 6.2.10-2: Do malt wie ein Fuellen, mit dem, was das XObject
+          mitbringt }
+        FDoTransp := 0;
+        if IsKind(L1, cvk_Name) then
+          ReachForm(L1.Text);
+        NoteTransp(MaxOf(TranspBase, MaxOf(FState.TFillA, FDoTransp)));
+      end;
     oc_Tag:
       if IsKind(L1, cvk_Name) then
         ExposeName(L1);
@@ -5175,7 +6272,9 @@ begin
           ExposeCos(L1, True);
         if (OpCode(AOp.Text) = oc_TagPropsBegin) and IsKind(L2, cvk_Name) and (L2.Text = 'AF') and
           IsKind(L1, cvk_Name) then
-          RegisterAF(L1.Text);
+          RegisterAF(L1.Text)
+        else if IsKind(L1, cvk_Name) then
+          TouchProperties(L1.Text);
       end;
     oc_Inline:
       if AOp.ImageDict <> nil then
@@ -5183,7 +6282,14 @@ begin
     oc_None:
       { 6.2.2-1, also between BX and EX. DE: 6.2.2-1, auch zwischen BX und
         EX. }
-      Mark(pcc_Undefined, False, 'undefined operator');
+      begin
+        { 6.2.10-2: an EI without its image is still checked as a fill
+          DE: 6.2.10-2: ein EI ohne sein Bild wird trotzdem wie ein Fuellen
+          geprueft }
+        if AOp.Text = 'EI' then
+          NoteTransp(MaxOf(TranspBase, FState.TFillA));
+        Mark(pcc_Undefined, False, 'undefined operator');
+      end;
   else
     { n, h, W, W*, text objects, marked content end, BX/EX and unknown
       operators pass nothing on }
@@ -5265,6 +6371,10 @@ begin
   FSeps := TObjectList.Create(True);
   FSepKeys := TStringList.Create;
   FSepKeys.Sorted := True;
+  FPageTpKey := TStringList.Create;
+  FJpxCache := TStringList.Create;
+  FJpxCache.Sorted := True;
+  FCurPageNum := -1;
   FType3Replayed := TStringList.Create;
   FType3Replayed.Sorted := True;
   FType3Replayed.Duplicates := dupIgnore;
@@ -5300,6 +6410,10 @@ begin
   FIccCache.Free;
   FSepKeys.Free;
   FSeps.Free;
+  FPageTpKey.Free;
+  for I := 0 to FJpxCache.Count - 1 do
+    FJpxCache.Objects[I].Free;
+  FJpxCache.Free;
   for I := 0 to FPartsCache.Count - 1 do
     FPartsCache.Objects[I].Free;
   FPartsCache.Free;
@@ -5664,6 +6778,16 @@ var
                 Exit;
               end;
             end;
+          { an image with JPEG 2000 data that makes veraPDF throw: it reads
+            the images of resources before validating anything }
+          Raw := DGetRef(V, 'Subtype');
+          if (Raw <> nil) and (Raw.Kind = pok_Name) and (Raw.NameVal = 'Image') and IsJpxRead(Self, V) and
+            ((V.Kind <> pok_Stream) or JpxEntryOf(Self, V).Throws) then
+          begin
+            FThrows := True;
+            FMayThrow := True;
+            Exit;
+          end;
           for I := 0 to Integer(V.DVals.Count) - 1 do
             if (V.DVals[I] <> nil) and (TLandrixEInvoicePdfObject(V.DVals[I]).Kind <> pok_Ref) then
               Visit(TLandrixEInvoicePdfObject(V.DVals[I]), ADepth + 1);
@@ -5880,7 +7004,13 @@ begin
   begin
     if (Kids <> nil) and (Kids.Kind = pok_Arr) then
       for I := 0 to Kids.ArrCount - 1 do
+      begin
+        if Kids.ArrItem(I).Kind = pok_Ref then
+          FCurPageNum := LastRefNum(Kids.ArrItem(I))
+        else
+          FCurPageNum := -1;
         Inc(Result, WalkPages(ResolveRef(Kids.ArrItem(I)), Inh, ADepth + 1));
+      end;
     { a /Count that is no integer counts 0 }
     if not IntegerOf(DGetRef(ANode, 'Count'), Count) then
       Count := 0;
@@ -5936,10 +7066,13 @@ end;
 { A page: its /Contents (a stream or the streams of an array) and the
   appearances /N, /D and /R (a stream or the streams of a state dictionary)
   of its annotations; resources from the page or up the /Parent chain. }
+function ApTransp(AWalk: TLandrixEInvoicePdfContentWalk; AIndex: Integer): Integer; forward;
+
 procedure TLandrixEInvoicePdfContentWalk.WalkPage(APage, AInherited: TLandrixEInvoicePdfObject);
 const
   ApKeys: array[0..2] of AnsiString = ('N', 'D', 'R');
 var
+  PageNum, Tp, Idx, NoCs: Integer;
   PageRes, C, Raw, S, Annots, A, AP, V, Raw2, S2, Local: TLandrixEInvoicePdfObject;
   Streams: TObjArray;
   Key, CacheKey, Part: string;
@@ -5953,6 +7086,23 @@ begin
   PageRes := AInherited;
   Res.Local := PageRes;
   Res.Page := PageRes;
+  { 6.2.2-2: veraPDF counts every resource it finds for the page's content
+    as inherited when the page has no /Resources key; a key whose value veraPDF
+    may read as empty (null, a reference to no object) is not modelled, nor
+    the initial gray of such a page where its resources have a /DeviceGray
+    entry
+    DE: 6.2.2-2: veraPDF zaehlt jede fuer den Inhalt der Seite gefundene
+    Ressource als geerbt, wenn die Seite keinen /Resources-Schluessel hat; ein
+    Schluessel, dessen Wert veraPDF als leer lesen kann (null, ein Verweis
+    auf kein Objekt), ist nicht nachgebildet, ebenso wenig das anfaengliche
+    Grau einer solchen Seite, deren Ressourcen einen /DeviceGray-Eintrag
+    haben }
+  Raw := APage.RawGet('Resources');
+  Res.InheritAll := Raw = nil;
+  if (Raw <> nil) and ((Raw.Kind = pok_Null) or ((Raw.Kind = pok_Ref) and (ResolveRef(Raw) = nil))) then
+    FInheritUnsure := True;
+  if Res.InheritAll and (CsRaw(Self, PageRes, 'DeviceGray') <> nil) then
+    FInheritUnsure := True;
 
   Streams := nil;
   Key := 'C';
@@ -6033,9 +7183,18 @@ begin
       end;
     end;
   end;
+  PageNum := FCurPageNum;
+  Tp := 0;
   if Length(Streams) > 0 then
-    ParseStreams(Self, Key, First, Streams, Res, FreshState(Self, Res), True);
+  begin
+    Idx := ParseStreams(Self, Key, First, Streams, Res, FreshState(Self, Res), True);
+    if Idx >= 0 then
+      Tp := ParseTransp(Idx)
+    else
+      Tp := 1;
+  end;
   RootGroup(Self, 'XGP' + IntToStr(FPageCount), -1, APage, PageRes);
+  try
 
   Annots := DGetRef(APage, 'Annots');
   if (Annots = nil) or (Annots.Kind <> pok_Arr) then
@@ -6066,12 +7225,15 @@ begin
           Continue;
         CheckAppearanceForm(V, Raw);
         Local := DGetRef(V, 'Resources');
-        if (Local <> nil) and not Local.IsDictLike then
+        if (Local <> nil) and (Local.Kind <> pok_Dict) then
           Local := nil;
         RootGroup(Self, 'XG' + IntToStr(Raw.RefNum), Raw.RefNum, V, Local);
         ApRes.Local := Local;
         ApRes.Page := PageRes;
-        ParseStreams(Self, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [V], ApRes, FreshState(Self, ApRes), True);
+        ApRes.InheritAll := False;
+        Idx := ParseStreams(Self, 'S' + IntToStr(Raw.RefNum), Raw.RefNum, [V], ApRes, FreshState(Self, ApRes),
+          True);
+        Tp := MaxOf(Tp, MaxOf(FormGroupTransp(Self, V), ApTransp(Self, Idx)));
       end
       else if V.Kind = pok_Dict then
         for J := 0 to Integer(V.DVals.Count) - 1 do
@@ -6082,15 +7244,193 @@ begin
             Continue;
           CheckAppearanceForm(S2, Raw2);
           Local := DGetRef(S2, 'Resources');
-          if (Local <> nil) and not Local.IsDictLike then
+          if (Local <> nil) and (Local.Kind <> pok_Dict) then
             Local := nil;
           RootGroup(Self, 'XG' + IntToStr(Raw2.RefNum), Raw2.RefNum, S2, Local);
           ApRes.Local := Local;
           ApRes.Page := PageRes;
-          ParseStreams(Self, 'S' + IntToStr(Raw2.RefNum), Raw2.RefNum, [S2], ApRes, FreshState(Self, ApRes),
+          ApRes.InheritAll := False;
+          Idx := ParseStreams(Self, 'S' + IntToStr(Raw2.RefNum), Raw2.RefNum, [S2], ApRes, FreshState(Self, ApRes),
             True);
+          Tp := MaxOf(Tp, MaxOf(FormGroupTransp(Self, S2), ApTransp(Self, Idx)));
         end;
     end;
+  end;
+  finally
+    { 6.2.10-2: the page's group colour space as veraPDF builds it
+      without resources
+      DE: 6.2.10-2: der Gruppen-Farbraum der Seite, wie veraPDF ihn
+      ohne Ressourcen baut }
+    NoCs := 2;
+    V := DGetRef(APage, 'Group');
+    if (V <> nil) and (V.Kind = pok_Dict) and (V.RawGet('CS') <> nil) then
+      case CsValue(Self, nil, V.RawGet('CS'), False, 0).Kind of
+        csk_Null:
+          ;
+        csk_Unknown:
+          NoCs := 1;
+      else
+        NoCs := 0;
+      end;
+    if NoCs < Tp then
+      Tp := NoCs;
+    I := FPageTpKey.Count;
+    FPageTpKey.Add(ObjId(APage));
+    SetLength(FPageTpNum, I + 1);
+    SetLength(FPageTpLevel, I + 1);
+    FPageTpNum[I] := PageNum;
+    FPageTpLevel[I] := Tp;
+  end;
+end;
+
+{ 6.2.10-2: what an appearance brings (AIndex from ParseStreams): -1 is a
+  cycle (impossible at the top) or a limit. }
+function ApTransp(AWalk: TLandrixEInvoicePdfContentWalk; AIndex: Integer): Integer;
+begin
+  if AIndex >= 0 then
+    Result := AWalk.ParseTransp(AIndex)
+  else
+    Result := 1;
+end;
+
+{ 6.2.10-2: the transparency of a parse as a caller meets it: a parse not
+  read with certainty (veraPDF may drop all its operators) or one that cut a
+  cycle (reused, it may miss a stream veraPDF reads) is not decided. }
+function TLandrixEInvoicePdfContentWalk.ParseTransp(AIndex: Integer): Integer;
+var
+  P: TContentParse;
+begin
+  Result := 1;
+  if (AIndex < 0) or (AIndex >= Integer(FParses.Count)) then
+    Exit;
+  P := TContentParse(FParses[AIndex]);
+  if P.Uncertain then
+    Exit;
+  { a parse that reaches a stream being read now: veraPDF reads that one as
+    empty there, which this parse (made elsewhere) did not }
+  if ReachesActive(AIndex) then
+    Exit;
+  Result := P.Transp;
+  if P.CycleCut and (Result = 0) then
+    Result := 1;
+end;
+
+{ The parse AIndex, or one it reaches, is of a stream being read now
+  (FActive); True also beyond the budget. }
+function TLandrixEInvoicePdfContentWalk.ReachesActive(AIndex: Integer): Boolean;
+const
+  MaxNodes = 100000;
+var
+  Stack: TIntArray;
+  N, Top, I, C: Integer;
+  P, Q: TContentParse;
+begin
+  Result := False;
+  if FActive.Count = 0 then
+    Exit;
+  P := TContentParse(FParses[AIndex]);
+  if P.ReachGen = FActiveGen then
+  begin
+    Result := P.ReachVal;
+    Exit;
+  end;
+  Inc(FVisitGen);
+  Stack := nil;
+  SetLength(Stack, 16);
+  Stack[0] := AIndex;
+  Top := 1;
+  N := 0;
+  while Top > 0 do
+  begin
+    Dec(Top);
+    Q := TContentParse(FParses[Stack[Top]]);
+    if Q.VisitGen = FVisitGen then
+      Continue;
+    Q.VisitGen := FVisitGen;
+    { a known answer for the same active streams }
+    if (Q <> P) and (Q.ReachGen = FActiveGen) then
+    begin
+      if Q.ReachVal then
+      begin
+        Result := True;
+        Break;
+      end;
+      Continue;
+    end;
+    Inc(N);
+    if (N > MaxNodes) or (FActive.IndexOf(Q.Key) >= 0) then
+    begin
+      Result := True;
+      Break;
+    end;
+    for I := 0 to Integer(Length(Q.Children)) - 1 do
+    begin
+      C := Q.Children[I];
+      if (C < 0) or (C >= Integer(FParses.Count)) then
+        Continue;
+      if Top >= Length(Stack) then
+        SetLength(Stack, 2 * Length(Stack));
+      Stack[Top] := C;
+      Inc(Top);
+    end;
+  end;
+  P.ReachGen := FActiveGen;
+  P.ReachVal := Result;
+end;
+
+{ Byte order (equal keys adjacent, whatever the locale). }
+function OrdinalCompare(List: TStringList; Index1, Index2: Integer): Integer;
+begin
+  Result := CompareStr(List[Index1], List[Index2]);
+end;
+
+function PageTpKeyOf(const S: string): string;
+begin
+  Result := Copy(S, 1, Pos(#1, S) - 1);
+end;
+
+function PageTpIndex(const S: string): Integer;
+begin
+  Result := StrToInt(Copy(S, Pos(#1, S) + 1, MaxInt));
+end;
+
+{ 6.2.10-2: veraPDF validates a page object once: one reached in several
+  walks (other inherited resources) is decided where they agree. }
+procedure TLandrixEInvoicePdfContentWalk.FinishPageTransparency;
+var
+  Sorted: TStringList;
+  I, J, K, L: Integer;
+begin
+  Sorted := TStringList.Create;
+  try
+    { key, then the walk's index }
+    for I := 0 to FPageTpKey.Count - 1 do
+      Sorted.Add(FPageTpKey[I] + #1 + IntToStr(I));
+    Sorted.CustomSort(OrdinalCompare);
+    I := 0;
+    while I < Sorted.Count do
+    begin
+      J := I;
+      K := PageTpIndex(Sorted[I]);
+      L := FPageTpLevel[K];
+      while (J + 1 < Sorted.Count) and (PageTpKeyOf(Sorted[J + 1]) = PageTpKeyOf(Sorted[I])) do
+      begin
+        Inc(J);
+        if FPageTpLevel[PageTpIndex(Sorted[J])] <> L then
+          L := 1;
+      end;
+      { a parse failed with an exception somewhere: veraPDF may read other
+        uses of its streams as empty }
+      if (L = 2) and FAnyParseFailed then
+        L := 1;
+      if L = 2 then
+        AddRootFinding(pcc_PageTransparency, FPageTpNum[K], 'page contains transparency without a group colour space')
+      else if L = 1 then
+        FUncertain[pcc_PageTransparency] := True;
+      I := J + 1;
+    end;
+  finally
+    Sorted.Free;
   end;
 end;
 
@@ -6289,7 +7629,7 @@ begin
   try
     for I := 0 to Integer(FParses.Count) - 1 do
       Sorted.AddObject(TContentParse(FParses[I]).Key, FParses[I]);
-    Sorted.Sort;
+    Sorted.CustomSort(OrdinalCompare);
     SetLength(Members, Sorted.Count);
     SetLength(GroupStart, Sorted.Count + 1);
     NG := 0;
@@ -6367,7 +7707,9 @@ begin
     for G := 0 to NG - 1 do
       Reach[G] := False;
   for Chk := Low(TLandrixEInvoicePdfContentCheck) to High(TLandrixEInvoicePdfContentCheck) do
-    FUncertain[Chk] := FIncomplete or (FColourUnsure and (Chk in ColourChecks) and (Chk <> pcc_Overprint));
+    FUncertain[Chk] := FIncomplete or (FColourUnsure and (Chk in ColourChecks) and (Chk <> pcc_Overprint)) or
+      (FInheritUnsure and (Chk = pcc_Inherited));
+  FinishPageTransparency;
   MaxNum := FDoc.XrefCount;
   SetLength(FAssocSure, MaxNum);
   SetLength(FAssocMaybe, MaxNum);
