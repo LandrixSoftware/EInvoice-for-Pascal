@@ -335,12 +335,12 @@ function LandrixEInvoicePdfARuleText(ARule: TLandrixEInvoicePdfARule): string;
 { How far the rule is implemented. DE: Wie weit die Regel umgesetzt ist. }
 function LandrixEInvoicePdfARuleCoverage(ARule: TLandrixEInvoicePdfARule): TLandrixEInvoicePdfARuleCoverage;
 
-{ A value of pdfaid:part as an integer, read as veraPDF reads it (Java
-  Integer.parseInt: an optional sign and ASCII digits, '03' is 3); 0 when
-  it is no integer.
+{ A value of pdfaid:part as an integer, read as veraPDF reads it (an
+  optional sign and ASCII digits within 32 bits, '03' is 3); 0 when it is
+  no integer.
   DE: Ein Wert von pdfaid:part als ganze Zahl, gelesen wie veraPDF ihn
-  liest (Java Integer.parseInt: ein optionales Vorzeichen und ASCII-
-  Ziffern, '03' ist 3); 0, wenn er keine ganze Zahl ist. }
+  liest (ein optionales Vorzeichen und ASCII-Ziffern innerhalb von 32 Bit,
+  '03' ist 3); 0, wenn er keine ganze Zahl ist. }
 function LandrixEInvoicePdfAPartNumber(const AText: TLandrixEInvoiceString): Int64;
 
 implementation
@@ -668,12 +668,11 @@ end;
 
 { A text string of an optional content name as veraPDF decodes it: UTF-16BE
   after FE FF (malformed surrogates and an odd last byte are replacement
-  characters as in Java), UTF-8 after
-  EF BB BF, else PDFDocEncoding; zero characters stay. False for malformed
+  characters), UTF-8 after EF BB BF, else PDFDocEncoding; zero characters stay. False for malformed
   UTF-8, whose exact text is not known (AText is then not empty).
   DE: Ein Textstring eines Namens optionaler Inhalte, wie veraPDF ihn
   dekodiert: UTF-16BE nach FE FF (fehlerhafte Surrogate und ein ungerades
-  letztes Byte sind Ersatzzeichen wie in Java), UTF-8 nach EF BB BF, sonst PDFDocEncoding; Nullzeichen
+  letztes Byte sind Ersatzzeichen), UTF-8 nach EF BB BF, sonst PDFDocEncoding; Nullzeichen
   bleiben. False bei fehlerhaftem UTF-8, dessen genauer Text unbekannt ist
   (AText ist dann nicht leer). }
 function OcText(const ABytes: TLandrixEInvoicePdfBytes; out AText: TLandrixEInvoiceString): Boolean;
@@ -687,7 +686,7 @@ begin
   N := Integer(Length(ABytes));
   if (N >= 2) and (ABytes[0] = $FE) and (ABytes[1] = $FF) then
   begin
-    { as Java's UTF-16BE decoder: a high surrogate takes the next unit with
+    { as veraPDF decodes UTF-16BE: a high surrogate takes the next unit with
       it (both one replacement character if that is no low surrogate); a
       lone low surrogate and the bytes left at the end are one replacement
       character each }
@@ -853,8 +852,8 @@ begin
   Result := True;
 end;
 
-{ An integer as veraPDF's getIntegerKey reads it: a number truncated toward
-  zero, a string its byte length; False for anything else. }
+{ An integer as veraPDF reads it from a dictionary entry: a number
+  truncated toward zero, a string its byte length; False for anything else. }
 function AFInteger(V: TLandrixEInvoicePdfObject; out AValue: Int64): Boolean;
 begin
   Result := False;
@@ -863,8 +862,8 @@ begin
     Exit;
   if V.Kind = pok_Num then
   begin
-    { an integer token as Java's long; else Java's (long) cast, which
-      saturates beyond about 9e18 }
+    { an integer token as it is; a real truncated toward zero, saturated
+      beyond about 9e18 }
     if V.NumExact then
       AValue := V.NumInt
     else if V.NumVal >= 9.0E18 then
@@ -880,7 +879,7 @@ begin
     AValue := Length(V.StrVal);
     Result := True;
   end;
-  { Long.intValue: the low 32 bits }
+  { veraPDF keeps the low 32 bits }
   AValue := AValue and $FFFFFFFF;
   if AValue > $7FFFFFFF then
     AValue := AValue - $100000000;
@@ -940,7 +939,7 @@ begin
     O := ADoc.Resolve(AArr.ArrItem(2 * I));
     if (O <> nil) and (O.Kind = pok_Str) then
     begin
-      { compared as the decoded text, as Java strings }
+      { compared as the decoded text, as veraPDF compares them }
       Keys[I] := LandrixEInvoicePdfTextToString(O.StrVal);
       Idx[M] := I;
       Inc(M);
@@ -1932,9 +1931,9 @@ begin
   if not Ok then
     FailAt(par_6_3_1_1, AAnnot, 'annotation type ' + AsciiText(Subtype));
 
-  { /F as veraPDF's getIntegerKey reads it: a number truncated toward zero,
+  { /F as veraPDF reads an integer entry: a number truncated toward zero,
     a string its byte length (the low 32 bits), anything else none
-    DE: /F, wie getIntegerKey von veraPDF es liest: eine Zahl, zur Null hin
+    DE: /F, wie veraPDF einen ganzzahligen Eintrag liest: eine Zahl, zur Null hin
     abgeschnitten, ein String seine Bytelaenge (die unteren 32 Bit), alles
     andere keines }
   Flags := 0;
@@ -3386,14 +3385,14 @@ begin
   end;
 end;
 
-{ 6.6.4-2: pdfaid:part read as Java's Integer.parseInt reads it: an optional
-  sign and ASCII digits within 32 bits; False if that gives no number.
-  AUnknown for characters beyond ASCII (Java also takes other digits).
-  DE: 6.6.4-2: pdfaid:part gelesen wie Javas Integer.parseInt: ein
-  optionales Vorzeichen und ASCII-Ziffern innerhalb von 32 Bit; False, wenn
-  das keine Zahl ergibt. AUnknown bei Zeichen jenseits von ASCII (Java nimmt
-  auch andere Ziffern). }
-function JavaInt(const S: TLandrixEInvoiceString; out AValue: Int64; out AUnknown: Boolean): Boolean;
+{ 6.6.4-2: pdfaid:part read as veraPDF reads it: an optional sign and
+  ASCII digits within 32 bits; False if that gives no number. AUnknown for
+  characters beyond ASCII (veraPDF may take other digits too).
+  DE: 6.6.4-2: pdfaid:part gelesen wie veraPDF es liest: ein optionales
+  Vorzeichen und ASCII-Ziffern innerhalb von 32 Bit; False, wenn das keine
+  Zahl ergibt. AUnknown bei Zeichen jenseits von ASCII (veraPDF nimmt
+  womoeglich auch andere Ziffern). }
+function XmpInteger(const S: TLandrixEInvoiceString; out AValue: Int64; out AUnknown: Boolean): Boolean;
 var
   I, Start: Integer;
   Neg: Boolean;
@@ -3435,7 +3434,7 @@ function LandrixEInvoicePdfAPartNumber(const AText: TLandrixEInvoiceString): Int
 var
   Unknown: Boolean;
 begin
-  if not JavaInt(AText, Result, Unknown) then
+  if not XmpInteger(AText, Result, Unknown) then
     Result := 0;
 end;
 
@@ -3514,10 +3513,10 @@ begin
 end;
 
 { 6.6.4 on the main packet: a pdfaid property at the top level; part 3 (a
-  simple value as Java reads an integer), conformance A, B or U; the prefix
+  simple value read as an integer), conformance A, B or U; the prefix
   written for part, conformance, amd and corr is pdfaid or none.
   DE: 6.6.4 am Hauptpaket: eine pdfaid-Eigenschaft auf oberster Ebene; part
-  3 (ein einfacher Wert, wie Java eine Ganzzahl liest), conformance A, B
+  3 (ein einfacher Wert, als Ganzzahl gelesen), conformance A, B
   oder U; das fuer part, conformance, amd und corr geschriebene Praefix ist
   pdfaid oder keines. }
 procedure TLandrixEInvoicePdfARuleCheck.JudgeIdentification(APacket: TLandrixEInvoiceXmpPacket; ANum: Integer);
@@ -3551,7 +3550,7 @@ begin
   Unknown := False;
   P := APacket.Find(LandrixEInvoiceXmpNsPdfaId, 'part');
   Part := 0;
-  IsInt := (P <> nil) and (P.Kind = xmk_Simple) and JavaInt(P.Value, Part, Unknown);
+  IsInt := (P <> nil) and (P.Kind = xmk_Simple) and XmpInteger(P.Value, Part, Unknown);
   if IsInt then
     FClaimedPart := Part;
   if not IsInt or (Part <> 3) then

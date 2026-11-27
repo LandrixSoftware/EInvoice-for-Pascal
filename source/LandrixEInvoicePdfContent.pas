@@ -1077,7 +1077,7 @@ begin
   Result.ByteLen := N;
   for I := 0 to N - 1 do
     Include(Result.Codes, Bytes[I]);
-  LandrixEInvoicePdfJavaStringLength(Bytes, CrLf, Result.LenLo, Result.LenHi);
+  LandrixEInvoicePdfStringLength(Bytes, CrLf, Result.LenLo, Result.LenHi);
 end;
 
 { A hexadecimal string: every character other than white space counts
@@ -1143,7 +1143,7 @@ begin
   Result.ByteLen := N;
   for I := 0 to N - 1 do
     Include(Result.Codes, Bytes[I]);
-  LandrixEInvoicePdfJavaStringLength(Bytes, 0, Result.LenLo, Result.LenHi);
+  LandrixEInvoicePdfStringLength(Bytes, 0, Result.LenLo, Result.LenHi);
 end;
 
 { A name: #xx with two hex digits stands for one byte, any other # stays. }
@@ -1577,7 +1577,7 @@ type
     InheritAll: Boolean;
   end;
 
-  { A colour space as veraPDF's colour space factory builds it: none (null),
+  { A colour space as veraPDF builds it: none (null),
     a device space (defaults applied), a space array to look into (V; R the
     resources its nested names are looked up in; Num its object number, -1
     when direct; WasDefault: selected by a /Default* entry), a pattern space
@@ -2242,8 +2242,8 @@ const
   { nested colour spaces looked into per document }
   MaxCsSteps = 2000000;
 
-{ An integer as veraPDF's getIntegerKey reads it: a number truncated
-  toward zero, a string its byte length; False for anything else. }
+{ An integer as veraPDF reads it from a dictionary entry: a number
+  truncated toward zero, a string its byte length; False for anything else. }
 function IntegerOf(V: TLandrixEInvoicePdfObject; out AValue: Int64): Boolean;
 begin
   Result := False;
@@ -2252,8 +2252,8 @@ begin
     Exit;
   if V.Kind = pok_Num then
   begin
-    { an integer token as Java's long; else Java's (long) cast, which
-      saturates beyond about 9e18 }
+    { an integer token as it is; a real truncated toward zero, saturated
+      beyond about 9e18 }
     if V.NumExact then
       AValue := V.NumInt
     else if V.NumVal >= 9.0E18 then
@@ -2271,7 +2271,7 @@ begin
   end;
 end;
 
-{ The low 32 bits as a signed value (Java's Long.intValue). }
+{ The low 32 bits as a signed value, as veraPDF keeps them. }
 function Narrow32(N: Int64): Int64;
 begin
   Result := N and $FFFFFFFF;
@@ -2380,7 +2380,7 @@ begin
 end;
 
 type
-  { What veraPDF's colour space factory builds: nothing, another space, a
+  { What veraPDF builds from a colour space value: nothing, another space, a
     pattern space, or not decided (too deep). }
   TCsClass = (csc_None, csc_Other, csc_Pattern, csc_PatternUnder, csc_Unknown);
 
@@ -2415,7 +2415,7 @@ begin
     Result := ClassifyIn(AWalk, ARes, R, D, AStart, ADepth + 1, True, False);
 end;
 
-{ The space veraPDF's factory builds from a value V met in the resources R
+{ The space veraPDF builds from a value V met in the resources R
   (AStart where R is, -1 none): device names with the default of R (not
   inside a default: ANoDefault), /Pattern, another name as an alias looked
   up in R only (not without resources: ANoAlias), a one-element array as its
@@ -2487,11 +2487,11 @@ begin
   end;
 end;
 
-{ The colour space a name selects, as veraPDF's resource handler finds it
+{ The colour space a name selects, as veraPDF finds it
   (from AStart on: 0 the stream's resources, 1 the page's). A device name
   first takes the /Default* of the stream's own resources. Then each
   resources in turn (a stream without resources counts as empty ones): an entry of the
-  name gives what the factory builds from it (nothing: the next
+  name gives what veraPDF builds from it (nothing: the next
   resources); no entry gives the built-in space of the name (device spaces
   and /Pattern; nothing for other names: the next resources). }
 function ResolveCsName(AWalk: TLandrixEInvoicePdfContentWalk; const ARes: TRes; const AName: AnsiString;
@@ -2587,8 +2587,8 @@ end;
 function CsValue(AWalk: TLandrixEInvoicePdfContentWalk; R, ARaw: TLandrixEInvoicePdfObject; AWasDefault: Boolean;
   ADepth: Integer): TCsRef; forward;
 
-{ A name met in a colour space value of the resources R, as veraPDF's
-  factory resolves it: a device name takes the /Default* entry of R unless
+{ A name met in a colour space value of the resources R, as veraPDF
+  resolves it: a device name takes the /Default* entry of R unless
   the value was itself selected by one (AWasDefault); /Pattern is the
   pattern space; any other name is an alias looked up in R only. veraPDF
   keeps resolved names by name, so a default reached again from a default,
@@ -2635,7 +2635,7 @@ begin
     Result := CsValue(AWalk, R, E, False, ADepth + 1);
 end;
 
-{ The colour space veraPDF's factory builds from the value ARaw met in the
+{ The colour space veraPDF builds from the value ARaw met in the
   resources R: a name (CsName), a one-element array as its element, an
   array by its first name (/CalCMYK as DeviceCMYK; /Pattern a pattern space
   with an underlying space), a pattern dictionary or stream; null for
@@ -2704,13 +2704,13 @@ begin
   end;
 end;
 
-{ The colour space a name selects in a content stream, as veraPDF's
-  resource handler finds it (see ResolveCsName): a device name first takes
+{ The colour space a name selects in a content stream, as veraPDF finds
+  it (see ResolveCsName): a device name first takes
   the /Default* entry of the stream's own resources; then the stream's
   resources and the page's in turn. Null where nothing is found (what that
   gives depends on the operator).
   DE: Der Farbraum, den ein Name in einem Content-Stream auswaehlt, wie
-  veraPDFs Ressourcen-Handler ihn findet (siehe ResolveCsName): ein
+  veraPDF ihn findet (siehe ResolveCsName): ein
   Geraetename nimmt zuerst den /Default*-Eintrag der eigenen Ressourcen des
   Streams; dann die Ressourcen des Streams und die der Seite. Null, wo
   nichts gefunden wird (was das ergibt, haengt vom Operator ab). }
@@ -3134,7 +3134,7 @@ end;
 { A named resource: in the stream's own resources, then in the page's; an
   entry that does not give an object of the kinds asked for (or a reference
   to no object in use) makes veraPDF look in the page's resources. }
-{ A font veraPDF's font factory builds: a dictionary with one of five
+{ An object veraPDF takes as a font: a dictionary with one of five
   subtypes. }
 function IsFontObject(AWalk: TLandrixEInvoicePdfContentWalk; V: TLandrixEInvoicePdfObject): Boolean;
 var
@@ -3152,8 +3152,8 @@ end;
   the entry ARaw (resolved V); if not, it looks in the page's resources.
   ExtGState, Shading and Properties: any entry. XObject: /Subtype Image,
   Form or PS. Font: see IsFontObject. Pattern: a pattern dictionary or
-  stream or a pattern colour space. ColorSpace: a space its colour space
-  factory builds. }
+  stream or a pattern colour space. ColorSpace: a value veraPDF builds a
+  space from. }
 function ResourceAccepted(AWalk: TLandrixEInvoicePdfContentWalk; const ARes: TRes; const ACategory: AnsiString;
   ARaw, V: TLandrixEInvoicePdfObject): Boolean;
 var
@@ -3323,8 +3323,8 @@ begin
   AlphaLevel(FWalk.DGetRef(G, 'CA'), FState.TStrokeA);
 end;
 
-{ gs: an ExtGState with /Font [font size] selects that font where the font
-  factory builds it; otherwise the font stays. }
+{ gs: an ExtGState with /Font [font size] selects that font where veraPDF
+  takes it as a font; otherwise the font stays. }
 procedure TInterpreter.SetExtGState(const AName: AnsiString);
 var
   G, F, Font, Raw: TLandrixEInvoicePdfObject;
@@ -3347,10 +3347,10 @@ begin
   CheckExtGState(G, Raw);
   TranspState(G);
   { 6.2.4.2-2: /OP for stroking; /op for filling, else /OP of the same
-    dictionary; /OPM as veraPDF's getIntegerKey reads it; a value of
+    dictionary; /OPM as veraPDF reads an integer entry; a value of
     another type leaves the state as it was
     DE: 6.2.4.2-2: /OP fuers Zeichnen von Linien; /op fuers Fuellen, sonst
-    /OP desselben Dictionarys; /OPM, wie veraPDFs getIntegerKey es liest;
+    /OP desselben Dictionarys; /OPM, wie veraPDF einen ganzzahligen Eintrag liest;
     ein Wert anderen Typs laesst den Zustand, wie er war }
   F := FWalk.DGetRef(G, 'OP');
   if (F <> nil) and (F.Kind = pok_Bool) then
@@ -3365,8 +3365,8 @@ begin
   begin
     if F.Kind = pok_Num then
     begin
-      { a long as such, then the low 32 bits; a real by Java's (long) cast
-        (toward zero). From 2^31 on the low bits of a real depend on how
+      { an integer as such, then the low 32 bits; a real truncated toward
+        zero. From 2^31 on the low bits of a real depend on how
         exactly its digits are read, which this reader does not promise on
         every compiler: not decided }
       if F.NumExact then
@@ -5430,9 +5430,9 @@ begin
 end;
 
 { The colour space of an image or a shading as veraPDF builds it: an
-  image's name, or one-name array, by the resource handler of the invoking
-  stream; any other value by the colour space factory in the resources
-  that supplied the object (FSiteFrom). }
+  image's name, or one-name array, through the resources of the invoking
+  stream; any other value in the resources that supplied the object
+  (FSiteFrom). }
 function TInterpreter.SiteSpace(ARaw: TLandrixEInvoicePdfObject; AShading: Boolean): TCsRef;
 var
   V, E, From: TLandrixEInvoicePdfObject;
@@ -5769,8 +5769,8 @@ begin
   try
     if (CS <> nil) and (CS.Kind = cvk_Name) then
     begin
-      { veraPDF's inline lookup differs from the handler's where the
-        resources matter: then not decided }
+      { veraPDF looks up an inline image's space otherwise than other
+        names where the resources matter: then not decided }
       C := ResolveName(FWalk, FRes, InlineSpaceName(CS.Text));
       Plain := CsName(FWalk, nil, InlineSpaceName(CS.Text), False, 0);
       Differs := (C.Kind <> Plain.Kind) or (C.V <> Plain.V);
@@ -5799,8 +5799,8 @@ begin
         First := TCv(CS.Items[0]);
         Base := TCv(CS.Items[1]);
       end;
-      { the array goes to the factory as it is: abbreviations inside it
-        are names like any other }
+      { veraPDF builds the array as it is: abbreviations inside it are
+        names like any other }
       if (First <> nil) and (First.Kind = cvk_Name) and (First.Text = 'Indexed') and (Base.Kind = cvk_Name) then
       begin
         { the stream's own resources (none for a form without them) }

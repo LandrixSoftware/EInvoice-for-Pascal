@@ -211,7 +211,7 @@ type
     value ranges are not checked.
     Where the reading is not certain (characters beyond ASCII or line ends in
     a type name, XPath, a type defined in two places, a limit), the answer
-    is unknown. Lower case is that of Java in an English locale.
+    is unknown. Lower case is that of veraPDF in an English locale.
     DE: Die Werttypen und Eigenschaften, die ein Paket mit seinen
     PDF/A-Erweiterungsschemas definiert, und die Pruefung eines Werts gegen
     einen Typ, wie veraPDF sie liest (ISO 19005-3, 6.6.2.3).
@@ -244,7 +244,7 @@ type
     Wo die Lesart nicht sicher ist (Zeichen jenseits von ASCII oder
     Zeilenenden in einem Typnamen, XPath, ein an zwei Stellen definierter
     Typ, eine Grenze), ist die Antwort unbekannt. Kleinbuchstaben wie bei
-    Java in englischer Locale. }
+    veraPDF in englischer Locale. }
   TLandrixEInvoiceXmpSchemaTypes = class(TObject)
   private
     FUris: array of TLandrixEInvoiceString;
@@ -415,9 +415,9 @@ begin
   end;
 end;
 
-{ Java's Character.isWhitespace, by which the XMP parser skips text between
-  elements. U+180E is a space separator in some Java versions only. }
-function JavaSpace(C: WideChar; out AUnknown: Boolean): Boolean;
+{ The white space veraPDF skips as text between XMP elements. U+180E
+  counts only with some runtime versions: unknown. }
+function XmpSpace(C: WideChar; out AUnknown: Boolean): Boolean;
 var
   W: Word;
 begin
@@ -447,7 +447,7 @@ begin
     Exit;
   for I := 1 to Length(AX.Text) do
   begin
-    if not JavaSpace(AX.Text[I], Unknown) then
+    if not XmpSpace(AX.Text[I], Unknown) then
     begin
       if Unknown then
         NotDecided('U+180E in text between elements');
@@ -856,9 +856,8 @@ procedure TRdfReader.ReadRdf(ARoot: TDom);
 var
   I: Integer;
 begin
-  { attributes on rdf:RDF are not needed: the XMPCore fork of veraPDF
-    1.30.4 (ParseRDF.rdf_RDF) reads the node elements without checking
-    them, unlike Adobe's XMPCore }
+  { attributes on rdf:RDF are not needed: veraPDF 1.30.4 reads the node
+    elements without checking them }
   for I := 0 to ARoot.Count - 1 do
     if not IsSpaceNode(ARoot.Child(I)) then
       NodeElement(nil, ARoot.Child(I), True);
@@ -1912,7 +1911,7 @@ end;
 
 { veraPDF's simplified type name: lower case, every "open/closed choice of"
   removed, trimmed; empty is text; a name ending in bag, seq or alt (except
-  lang alt) gets " text". False where Java might read it otherwise
+  lang alt) gets " text". False where veraPDF might read it otherwise
   (characters beyond ASCII, line ends) or the name is very long. }
 function SimplifyType(const AType: TLandrixEInvoiceString; out AKey: TLandrixEInvoiceString): Boolean;
 var
@@ -2091,7 +2090,7 @@ end;
   (optional minus), then -month, -day, then only after a day Thh, :mm, :ss,
   .fraction, then Z or +/-hh[:mm]; a separator needs digits, nothing may
   follow (a T only after a full date). A value that is complete up to its
-  end but has very long digit runs (Java ints), and a time zone right after
+  end but has very long digit runs (beyond 32 bits), and a time zone right after
   a date, are not decided. }
 function XmpDateOk(const S: TLandrixEInvoiceString): TLandrixEInvoiceXmpTruth;
 var

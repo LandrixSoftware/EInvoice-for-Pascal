@@ -1256,7 +1256,7 @@ begin
     /D's /Order 30 contains itself (incomplete, no failure); group 20 has no
     name, and an /Order entry without a string name removes nothing (6.9-3
     once, in the first of /Configs); <FEFFD8000041> is a high surrogate
-    without its low one, which Java decodes with the next unit as one U+FFFD,
+    without its low one, which veraPDF decodes with the next unit as one U+FFFD,
     equal to <FEFFFFFD> (6.9-2) }
   Pdf := BuildPdf(GoodHeader, [
     '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles 5 0 R >> /OCProperties << ' +
@@ -1305,7 +1305,7 @@ var
   Rules: TLandrixEInvoicePdfARuleCheck;
 begin
   { main packet 20: a header with bytes and encoding (6.6.2.1-2/-3);
-    pdfaid:part "+03" (Java reads 3) under the prefix foo (6.6.4-4) in an
+    pdfaid:part "+03" (veraPDF reads 3) under the prefix foo (6.6.4-4) in an
     attribute; conformance as rdf:Alt (6.6.4-3); further packet 21, named
     by the page, with dc:format twice (rejected: 6.6.2.1-4/-5) }
   Pdf := BuildPdf(GoodHeader, [
@@ -1938,7 +1938,7 @@ end;
 
 { Round 61 of the reviews: a null at the growth of a dictionary, colour
   space names through the resources, defaults where the name was found,
-  one-element pattern arrays, Java's int narrowing, the page tree root,
+  one-element pattern arrays, narrowing to 32 bits, the page tree root,
   pages beyond /Count, a missing /Count of an empty node. }
 procedure TestPdfAContent5;
 var
@@ -3095,7 +3095,7 @@ end;
 { Round 58 of the reviews: operator boundaries, tokens starting with I, the
   inline image length, null values, pattern and default colour spaces,
   generations, the font of a graphics state, the page count, repeated keys,
-  long reals, Java's UTF-8 decoding. }
+  long reals, veraPDF's UTF-8 decoding. }
 procedure TestPdfAContent2;
 const
   NoExtra: array[0..0] of AnsiString = ('');
@@ -3132,7 +3132,7 @@ begin
   CheckOutcome(ContentPdf('0.' + Repeated('0', 405) + Repeated('9', 39) + ' w', '', '', '', NoExtra), par_6_1_13_5,
     pro_Incomplete, 'a real that may underflow to zero');
   CheckOutcome(ContentPdf('(' + Bytes3(11000, AnsiChar($ED), AnsiChar($A0), AnsiChar($80)) + ') Tj', '', '', '',
-    NoExtra), par_6_1_13_3, pro_Incomplete, 'Java may take three bytes as one malformed sequence');
+    NoExtra), par_6_1_13_3, pro_Incomplete, 'veraPDF may take three bytes as one malformed sequence');
   { /Count 1 with two pages: veraPDF may see only the first }
   Pdf := BuildPdf(GoodHeader, [
     '1 0 obj' + LF + '<< /Type /Catalog /Pages 2 0 R >>' + LF + 'endobj' + LF,

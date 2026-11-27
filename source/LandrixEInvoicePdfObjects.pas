@@ -74,10 +74,11 @@ type
     Kind: TLandrixEInvoicePdfObjectKind;
     BoolVal: Boolean;
     NumVal: Double;
-    { An integer token within Int64, exactly (Java keeps it as a long; a
-      Double loses the low bits above 2^53).
-      DE: Ein ganzzahliges Token innerhalb von Int64, exakt (Java behaelt
-      es als long; ein Double verliert oberhalb von 2^53 die unteren Bits). }
+    { An integer token within Int64, exactly (veraPDF keeps it as a 64-bit
+      integer; a Double loses the low bits above 2^53).
+      DE: Ein ganzzahliges Token innerhalb von Int64, exakt (veraPDF behaelt
+      es als 64-Bit-Ganzzahl; ein Double verliert oberhalb von 2^53 die
+      unteren Bits). }
     NumInt: Int64;
     NumExact: Boolean;
     StrVal: TLandrixEInvoicePdfBytes;
@@ -236,13 +237,13 @@ type
       ohne Dezimalpunkt geschrieben. }
     procedure NumberToken(APos: Integer; AIsInteger: Boolean; AValue: Double); virtual; abstract;
     { A string: its length as veraPDF measures it (UTF-16 code units of the
-      bytes decoded as UTF-8, see LandrixEInvoicePdfJavaStringLength) as a
+      bytes decoded as UTF-8, see LandrixEInvoicePdfStringLength) as a
       range ALengthLo..ALengthHi; for a hexadecimal string also the number
       of characters other than white space (hex digits or not) and whether
       other characters than hex digits and white space occur.
       DE: Ein String: seine Laenge, wie veraPDF sie misst
       (UTF-16-Codeeinheiten der als UTF-8 dekodierten Bytes, siehe
-      LandrixEInvoicePdfJavaStringLength) als Bereich ALengthLo..ALengthHi;
+      LandrixEInvoicePdfStringLength) als Bereich ALengthLo..ALengthHi;
       bei einem hexadezimalen String auch die Anzahl der Zeichen ausser
       Leerraum (Hex-Ziffern oder nicht) und ob andere Zeichen als
       Hex-Ziffern und Leerraum vorkommen. }
@@ -594,19 +595,19 @@ function LandrixEInvoicePdfBytesToAnsi(const ABuf: TLandrixEInvoicePdfBytes; APo
 function LandrixEInvoicePdfInflateStrict(const ASrc: TLandrixEInvoicePdfBytes; out ADst: TLandrixEInvoicePdfBytes): Boolean;
 
 { The length veraPDF gives a string with these bytes (ISO 19005-2, 6.1.13,
-  as veraPDF measures it): Java decodes the bytes as UTF-8 (its default
-  character set) and counts UTF-16 code units, one per malformed sequence
+  as veraPDF measures it): veraPDF decodes the bytes as UTF-8 and counts
+  UTF-16 code units, one per malformed sequence
   or per malformed byte, and stores a literal string only up to about 65535
   bytes. The result is a range ALo..AHi that covers these uncertainties;
   ACrLf pairs of CR LF in the bytes may count as one LF.
   DE: Die Laenge, die veraPDF einem String mit diesen Bytes gibt (ISO
-  19005-2, 6.1.13, wie veraPDF sie misst): Java dekodiert die Bytes als
-  UTF-8 (seinen Standardzeichensatz) und zaehlt UTF-16-Codeeinheiten, eine
+  19005-2, 6.1.13, wie veraPDF sie misst): veraPDF dekodiert die Bytes als
+  UTF-8 und zaehlt UTF-16-Codeeinheiten, eine
   je fehlerhafter Folge oder je fehlerhaftem Byte, und speichert einen
   Literal-String nur bis etwa 65535 Bytes. Das Ergebnis ist ein Bereich
   ALo..AHi, der diese Unsicherheiten abdeckt; ACrLf Paare CR LF in den
   Bytes koennen als ein LF zaehlen. }
-procedure LandrixEInvoicePdfJavaStringLength(const ABytes: TLandrixEInvoicePdfBytes; ACrLf: Integer;
+procedure LandrixEInvoicePdfStringLength(const ABytes: TLandrixEInvoicePdfBytes; ACrLf: Integer;
   out ALo, AHi: Integer);
 
 type
@@ -936,7 +937,7 @@ begin
 end;
 
 { The generation of an object header as veraPDF reads it: an integer token
-  narrowed to 32 bits like Java's intValue; False for anything else (a real
+  narrowed to its low 32 bits; False for anything else (a real
   number, a word). }
 function HeaderGenOf(const ATok: AnsiString; out AValue: Integer): Boolean;
 var
@@ -1660,10 +1661,10 @@ begin
     (A and $FF = ASrc[E + 3]);
 end;
 
-{ UTF-16 code units of the first ACount bytes decoded as UTF-8 the way Java
-  does it: a well-formed sequence gives one unit (two above U+FFFF); a run of
+{ UTF-16 code units of the first ACount bytes decoded as UTF-8 the way
+  veraPDF does it: a well-formed sequence gives one unit (two above U+FFFF); a run of
   malformed bytes gives at least one replacement character per four bytes
-  (ALo) and at most one per byte (AHi), since Java may take up to four
+  (ALo) and at most one per byte (AHi), since veraPDF may take up to four
   bytes as one malformed sequence. }
 procedure Utf8Units(const ABytes: TLandrixEInvoicePdfBytes; ACount: Integer; out ALo, AHi: Integer);
 var
@@ -1765,7 +1766,7 @@ begin
   Inc(ALo, (Run + 3) div 4);
 end;
 
-procedure LandrixEInvoicePdfJavaStringLength(const ABytes: TLandrixEInvoicePdfBytes; ACrLf: Integer;
+procedure LandrixEInvoicePdfStringLength(const ABytes: TLandrixEInvoicePdfBytes; ACrLf: Integer;
   out ALo, AHi: Integer);
 var
   N, Lo, Hi: Integer;
@@ -2773,7 +2774,7 @@ begin
   Result.StrVal := BuilderDone(Output);
   if FSink <> nil then
   begin
-    LandrixEInvoicePdfJavaStringLength(Result.StrVal, CrLf, Lo, Hi);
+    LandrixEInvoicePdfStringLength(Result.StrVal, CrLf, Lo, Hi);
     FSink.StringToken(Start, Lo, Hi, False, 0, False);
     if not Closed then
       FSink.Unobserved(Start, 'string not closed');
@@ -2828,7 +2829,7 @@ begin
   Result.StrVal := BuilderDone(Output);
   if FSink <> nil then
   begin
-    LandrixEInvoicePdfJavaStringLength(Result.StrVal, 0, Lo, LenHi);
+    LandrixEInvoicePdfStringLength(Result.StrVal, 0, Lo, LenHi);
     FSink.StringToken(Start, Lo, LenHi, True, Digits, Invalid);
     if not Closed then
       FSink.Unobserved(Start, 'hexadecimal string not closed');

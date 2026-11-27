@@ -100,11 +100,11 @@ type
     { Numbers: the value. DE: Zahlen: der Wert. }
     Value: Double;
     { Names: bytes after decoding. Strings: the length as veraPDF measures it
-      (UTF-16 code units, see LandrixEInvoicePdfJavaStringLength), at least
+      (UTF-16 code units, see LandrixEInvoicePdfStringLength), at least
       Length and at most LengthHi.
       DE: Namen: Bytes nach dem Dekodieren. Strings: die Laenge, wie veraPDF
       sie misst (UTF-16-Codeeinheiten, siehe
-      LandrixEInvoicePdfJavaStringLength), mindestens Length und hoechstens
+      LandrixEInvoicePdfStringLength), mindestens Length und hoechstens
       LengthHi. }
     Length: Integer;
     LengthHi: Integer;
