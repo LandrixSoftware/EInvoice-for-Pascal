@@ -471,10 +471,10 @@ const
     (Number: '6.2.11.3.3-3'; Coverage: prc_Full; Text: 'A CMap named by /UseCMap is a predefined one'),
     (Number: '6.2.11.4.1-1'; Coverage: prc_Full;
       Text: 'A font other than Type 3 and Type 0 used for visible text is embedded'),
-    (Number: '6.2.11.4.1-2'; Coverage: prc_None; Text: 'Every glyph shown is present in the font program'),
+    (Number: '6.2.11.4.1-2'; Coverage: prc_Full; Text: 'Every glyph shown is present in the font program'),
     (Number: '6.2.11.4.2-1'; Coverage: prc_None; Text: 'The /CharSet of a Type 1 subset lists all its glyphs'),
     (Number: '6.2.11.4.2-2'; Coverage: prc_None; Text: 'The /CIDSet of a CIDFont subset lists all its glyphs'),
-    (Number: '6.2.11.5-1'; Coverage: prc_None;
+    (Number: '6.2.11.5-1'; Coverage: prc_Full;
       Text: 'The widths of the font dictionary and of the font program agree'),
     (Number: '6.2.11.6-1'; Coverage: prc_Full; Text: 'A non-symbolic TrueType font program has a cmap'),
     (Number: '6.2.11.6-2'; Coverage: prc_Full;
@@ -482,7 +482,7 @@ const
     (Number: '6.2.11.6-3'; Coverage: prc_Full; Text: 'A symbolic TrueType font has no /Encoding'),
     (Number: '6.2.11.6-4'; Coverage: prc_Full;
       Text: 'A symbolic TrueType font program has one cmap or a (3,0) cmap'),
-    (Number: '6.2.11.8-1'; Coverage: prc_None; Text: 'No glyph shown is .notdef'),
+    (Number: '6.2.11.8-1'; Coverage: prc_Full; Text: 'No glyph shown is .notdef'),
     (Number: '6.3.1-1'; Coverage: prc_Full;
       Text: 'Only annotation types of ISO 32000-1 except 3D, Sound, Screen and Movie'),
     (Number: '6.3.2-1'; Coverage: prc_Full; Text: 'Every annotation except Popup has the flags /F'),
@@ -2557,7 +2557,8 @@ const
     par_6_2_4_4_1, par_6_2_4_2_2, par_6_2_4_4_2, par_6_2_2_2, par_6_2_10_2, par_6_2_8_3_1, par_6_2_8_3_2,
     par_6_2_8_3_3, par_6_2_8_3_4, par_6_2_8_3_5, par_6_2_11_2_1, par_6_2_11_2_2, par_6_2_11_2_3, par_6_2_11_2_4,
     par_6_2_11_2_5, par_6_2_11_2_6, par_6_2_11_2_7, par_6_2_11_3_1_1, par_6_2_11_3_2_1, par_6_2_11_3_3_1,
-    par_6_2_11_3_3_3, par_6_2_11_4_1_1, par_6_2_11_6_2, par_6_2_11_6_3, par_6_2_11_6_1, par_6_2_11_6_4);
+    par_6_2_11_3_3_3, par_6_2_11_4_1_1, par_6_2_11_6_2, par_6_2_11_6_3, par_6_2_11_6_1, par_6_2_11_6_4,
+    par_6_2_11_4_1_2, par_6_2_11_5_1, par_6_2_11_8_1);
 var
   Walk: TLandrixEInvoicePdfContentWalk;
   F: TLandrixEInvoicePdfContentFinding;

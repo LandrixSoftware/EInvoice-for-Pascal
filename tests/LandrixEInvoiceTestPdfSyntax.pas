@@ -2804,6 +2804,8 @@ begin
     'a TrueType program veraPDF rejects');
   CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_4_1_1,
     pro_Passed, 'a TrueType program veraPDF accepts');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_8_1,
+    pro_Incomplete, 'glyph names of simple fonts are not decided yet');
   CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_6_1,
     pro_Passed, 'a non-symbolic program with a (3,1) cmap');
   CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_6_1,
@@ -2900,6 +2902,55 @@ begin
     '/Registry (Adobe) /Ordering (Japan1) /Supplement 2 >> /FontDescriptor 11 0 R >>'), ObjText(11, Prog2),
     StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_3_2_1, pro_Incomplete,
     'a parsed CIDFont program without a /BaseFont name makes veraPDF throw');
+  { glyphs of an Identity CMap over a TrueType program with two glyphs of
+    width 500 }
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_4_1_2, pro_Passed, 'a glyph present');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_5_1, pro_Passed, 'equal widths');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_8_1, pro_Passed, 'no .notdef');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /W [1 [600]] >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_5_1, pro_Failed, 'widths that differ');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /W [0 5 500.5] >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_5_1, pro_Passed, 'a /W range within the tolerance');
+  CheckOutcome(Pdf('<0005> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_4_1_2, pro_Failed, 'a CID beyond the glyphs');
+  CheckOutcome(Pdf('3 Tr <0005> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_4_1_2, pro_Passed, 'invisible glyphs need not be present');
+  CheckOutcome(Pdf('3 Tr <0005> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_8_1, pro_Failed, '.notdef also in mode 3');
+  CheckOutcome(Pdf('<0000> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_8_1, pro_Failed, 'CID 0 is .notdef');
+  CheckOutcome(Pdf('<0000> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_4_1_2, pro_Passed, 'code 0 counts as present');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /W [/a [500]] >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_2_1, pro_Incomplete, 'a /W group without a first CID');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /DW 500 /CIDToGIDMap 14 0 R >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), ''), StreamObj(14, #0#0#0#7, '')]), par_6_2_11_4_1_2, pro_Failed,
+    'a /CIDToGIDMap to a glyph beyond the program');
+  CheckOutcome(ContentPdf('BT /F1 1 Tf <0005> Tj ET /Fm1 Do', '', '', '/Font << /F1 10 0 R >> /XObject << /Fm1 15 0 R >>',
+    [ObjText(10, Font), ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2), StreamObj(12, TtfData(NoPairs), ''),
+    StreamObj(15, 'BT /F1 1 Tf <0001> Tj ET', ' /Type /XObject /Subtype /Form /BBox [0 0 1 1] /Resources << /Font ' +
+    '<< /F1 10 0 R >> >>')]), par_6_2_11_4_1_2, pro_Incomplete, 'a font shown in two contexts');
+  CheckOutcome(Pdf('<> Tj', Font, [ObjText(13, Cid + ' /W [/a [500]] >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_2_1, pro_Passed, 'a /W veraPDF cannot read but no glyph shown');
+  CheckOutcome(Pdf('<00> Tj', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_4_1_2, pro_Failed, 'a single last byte is read with FF');
+  CheckOutcome(Pdf('[(x) <0005>] TJ', Font, [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_4_1_2, pro_Failed, 'the strings of a TJ array');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /DW /a >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_5_1, pro_Failed, 'a /DW that is no number gives 1000');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /W [1 [500] 1 1 600] >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_5_1, pro_Passed, 'a single width wins over a range');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /W [0 3 500 1 1 600] >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_5_1, pro_Passed, 'the first range wins');
+  CheckOutcome(Pdf('<0005> Tj', '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /Identity-V ' +
+    '/DescendantFonts [13 0 R] >>', [ObjText(13, Cid + ' /DW 500 >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_4_1_2, pro_Failed, 'Identity-V');
+  CheckOutcome(Pdf('<0002> Tj', Font, [ObjText(13, Cid + ' /W [1 99999999999999999999 600 2 [700]] >>'),
+    ObjText(11, Prog2), StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_5_1, pro_Incomplete,
+    'an integer beyond 64 bits in /W');
   CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /CIDToGIDMap /Identity >>'), ObjText(11, Prog2),
     StreamObj(12, 'x', '')]), par_6_2_11_3_2_1, pro_Passed, 'a CIDFontType2 with /CIDToGIDMap');
   CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_4_1_1,

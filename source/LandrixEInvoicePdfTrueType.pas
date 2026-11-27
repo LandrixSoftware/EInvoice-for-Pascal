@@ -88,6 +88,7 @@ type
     procedure ReadPost(R: TLandrixEInvoicePdfFontReader; AOffset, ALength: Int64);
     procedure Count(R: TLandrixEInvoicePdfFontReader; N: Int64);
     function GetCmapCount: Integer;
+    function GetAdvanceCount: Integer;
   public
     { Reads AData (the decoded program); ASmall: shorter than
       LandrixEInvoicePdfFontMemoryLimit bytes.
@@ -108,6 +109,13 @@ type
     { The first code subtable AIndex maps, -1 none.
       DE: Der erste Code, den Subtabelle AIndex abbildet, -1 keiner. }
     function SampleCode(AIndex: Integer): Integer;
+    { The horizontal advance of glyph AIndex (0 to AdvanceCount - 1).
+      DE: Der horizontale Vorschub der Glyphe AIndex (0 bis
+      AdvanceCount - 1). }
+    function Advance(AIndex: Integer): Integer;
+    { The number of horizontal metrics. DE: Die Zahl der horizontalen
+      Metriken. }
+    property AdvanceCount: Integer read GetAdvanceCount;
     { The number of cmap subtables (0 without cmap).
       DE: Die Zahl der cmap-Subtabellen (0 ohne cmap). }
     property CmapCount: Integer read GetCmapCount;
@@ -425,6 +433,16 @@ begin
       end;
     end;
   R.Seek(Start);
+end;
+
+function TLandrixEInvoicePdfTrueTypeProgram.GetAdvanceCount: Integer;
+begin
+  Result := Integer(Length(FAdvances));
+end;
+
+function TLandrixEInvoicePdfTrueTypeProgram.Advance(AIndex: Integer): Integer;
+begin
+  Result := FAdvances[AIndex];
 end;
 
 function TLandrixEInvoicePdfTrueTypeProgram.GetCmapCount: Integer;

@@ -118,7 +118,10 @@ type
     WinAnsiEncoding (or with /Differences veraPDF does not accept), a
     symbolic one with an encoding; the TrueType program of a non-symbolic
     font without a cmap subtable other than (3,0), of a symbolic one with
-    several subtables but no (3,0).
+    several subtables but no (3,0); a glyph shown that the font program
+    lacks, whose widths in the dictionary and the program differ by more
+    than 1 (both certain only for a font shown in one parse under one
+    resource name), or that is .notdef.
     DE: Worum es bei einem Befund in einem Content-Stream geht: eine ganze
     Zahl, eine reelle Zahl ausserhalb des Bereichs oder zu nah an null, ein
     zu langer String, ein hexadezimaler String mit ungerader Zeichenzahl
@@ -167,7 +170,10 @@ type
     veraPDF nicht annimmt), eine symbolische mit einer Kodierung; das
     TrueType-Programm einer nicht symbolischen Schrift ohne eine
     cmap-Subtabelle ausser (3,0), einer symbolischen mit mehreren
-    Subtabellen, aber ohne (3,0). }
+    Subtabellen, aber ohne (3,0); eine gezeigte Glyphe, die dem
+    Fontprogramm fehlt, deren Breiten im Dictionary und im Programm um mehr
+    als 1 abweichen (beides sicher nur fuer eine Schrift, die in einer Parse
+    unter einem Ressourcennamen gezeigt wird), oder die .notdef ist. }
   TLandrixEInvoicePdfContentCheck = (pcc_Integer, pcc_Real, pcc_SmallReal, pcc_StringLength, pcc_HexOdd,
     pcc_HexDigits, pcc_NameLength, pcc_InlineFilter, pcc_Nesting, pcc_SpecNames, pcc_SpecRelationship,
     pcc_SpecDirect, pcc_Undefined, pcc_TR, pcc_TR2, pcc_HTP, pcc_HalftoneType, pcc_HalftoneName,
@@ -177,7 +183,8 @@ type
     pcc_SeparationConsistency, pcc_Inherited, pcc_PageTransparency, pcc_JpxChannels, pcc_JpxSpecs, pcc_JpxMethod,
     pcc_JpxEnum, pcc_JpxDepth, pcc_FontType, pcc_FontSubtype, pcc_FontName, pcc_FirstChar, pcc_LastChar,
     pcc_Widths, pcc_FontFileSubtype, pcc_CidSystemInfo, pcc_CidToGid, pcc_CMapName, pcc_UseCMapName, pcc_FontEmbedded,
-    pcc_TrueTypeEncoding, pcc_TrueTypeSymbolic, pcc_TrueTypeCmaps, pcc_SymbolicCmaps);
+    pcc_TrueTypeEncoding, pcc_TrueTypeSymbolic, pcc_TrueTypeCmaps, pcc_SymbolicCmaps, pcc_GlyphPresent,
+    pcc_GlyphWidth, pcc_GlyphNotdef);
 
   { A finding that veraPDF certainly reports: the content stream object
     (for the /Contents array of a page its first stream) and a short text.
@@ -411,7 +418,7 @@ function LandrixEInvoicePdfIccHeader(ADoc: TLandrixEInvoicePdfDocument;
 implementation
 
 uses
-  SysUtils, LandrixEInvoicePdfFontProgram, LandrixEInvoicePdfTrueType;
+  SysUtils, LandrixEInvoicePdfFontProgram, LandrixEInvoicePdfTrueType, LandrixEInvoicePdfFontGlyphs;
 
 const
   { q may nest 28 levels deep (ISO 19005-2, 6.1.13) }
@@ -702,6 +709,7 @@ type
     { strings: the number of decoded bytes; the bytes that occur (CodesUnsure:
       an unescaped CR, which veraPDF may read as LF) }
     ByteLen: Integer;
+    Data: TLandrixEInvoicePdfBytes;
     Codes: set of Byte;
     CodesUnsure: Boolean;
     { array items or dictionary values (owned by the pool) }
@@ -1118,6 +1126,7 @@ begin
   end;
   SetLength(Bytes, N);
   Result.ByteLen := N;
+  Result.Data := Bytes;
   for I := 0 to N - 1 do
     Include(Result.Codes, Bytes[I]);
   LandrixEInvoicePdfStringLength(Bytes, CrLf, Result.LenLo, Result.LenHi);
@@ -1184,6 +1193,7 @@ begin
   end;
   SetLength(Bytes, N);
   Result.ByteLen := N;
+  Result.Data := Bytes;
   for I := 0 to N - 1 do
     Include(Result.Codes, Bytes[I]);
   LandrixEInvoicePdfStringLength(Bytes, 0, Result.LenLo, Result.LenHi);
@@ -1640,6 +1650,8 @@ type
     FillPattern: Boolean;
     StrokePattern: Boolean;
     Font: TLandrixEInvoicePdfObject;
+    { the resource name Tf selected the font by ('' from a graphics state) }
+    FontName: AnsiString;
     { the initial colour space was not decided }
     Unsure: Boolean;
     { a pattern space with an underlying space was selected: veraPDF then
@@ -1974,6 +1986,9 @@ type
     procedure SelectFont(AOps: TObjectList);
     procedure ShowText;
     procedure CheckFont;
+    procedure CheckGlyphs(AFirst: TCv);
+    procedure GlyphMark(AFacts: TObject; ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean;
+      const AText: string);
     procedure ReachForm(const AName: AnsiString);
     procedure ReachPattern(const AName: AnsiString; AFill: Boolean);
     procedure RegisterAF(const AName: AnsiString);
@@ -3437,7 +3452,10 @@ begin
     Exit;
   Font := FWalk.ResolveRef(F.ArrItem(0));
   if IsFontObject(FWalk, Font) then
+  begin
     FState.Font := Font;
+    FState.FontName := '';
+  end;
 end;
 
 { Tf: the font of the name (none if there is no font to build). }
@@ -3453,6 +3471,7 @@ begin
   if V.Kind <> cvk_Name then
     Exit;
   FState.Font := Lookup('Font', V.Text, Raw);
+  FState.FontName := V.Text;
 end;
 
 type
@@ -3483,8 +3502,31 @@ type
     EncOut: Integer;
     { shares its program with a font of another encoding outcome }
     Mixed: Boolean;
+    { the glyph rules: 0 nothing to find (no program veraPDF parses), 1 not
+      decided, 2 decided by Glyphs (TLandrixEInvoicePdfCidGlyphs, owned), 3
+      only the glyph name not decided }
+    GlyphKind: Integer;
+    Glyphs: TObject;
+    { the first parse and resource name the font is shown with; MultiCtx:
+      also with another (veraPDF then judges some glyphs with a font object
+      it has not parsed) }
+    CtxParse: Integer;
+    CtxName: AnsiString;
+    CtxSet: Boolean;
+    MultiCtx: Boolean;
+    { the codes checked so far, per paint and unsure (4 bits a code) }
+    Seen: array of Byte;
+    { /W makes veraPDF throw when it reads the width of a glyph }
+    WThrows: Boolean;
+    destructor Destroy; override;
     procedure Add(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AText: string);
   end;
+
+destructor TFontFacts.Destroy;
+begin
+  Glyphs.Free;
+  inherited Destroy;
+end;
 
 procedure TFontFacts.Add(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AText: string);
 var
@@ -4045,6 +4087,157 @@ begin
   end;
 end;
 
+{ The widths of /W as veraPDF reads them: groups of a first CID and either
+  an array of widths (numbers only) or a last CID and one width; a group
+  that does not start with an integer makes veraPDF throw (AThrows), one
+  whose width is missing or no number ends the reading; a real first CID
+  is not decided (AUnsure). }
+procedure CidWidths(AWalk: TLandrixEInvoicePdfContentWalk; G: TLandrixEInvoicePdfCidGlyphs;
+  W: TLandrixEInvoicePdfObject; var AThrows, AUnsure: Boolean);
+var
+  I, J: Integer;
+  First, Item, Width: TLandrixEInvoicePdfObject;
+  CidBegin, CidEnd: Int64;
+begin
+  I := 0;
+  while I < W.ArrCount do
+  begin
+    First := AWalk.ResolveRef(W.ArrItem(I));
+    Inc(I);
+    if (First <> nil) and (First.Kind = pok_Str) then
+    begin
+      { read as its length: not modelled }
+      AUnsure := True;
+      Exit;
+    end;
+    if (First = nil) or (First.Kind <> pok_Num) then
+    begin
+      AThrows := True;
+      Exit;
+    end;
+    if not First.NumExact then
+    begin
+      AUnsure := True;
+      Exit;
+    end;
+    CidBegin := Narrow32(First.NumInt);
+    Item := nil;
+    if I < W.ArrCount then
+      Item := AWalk.ResolveRef(W.ArrItem(I));
+    if (Item <> nil) and (Item.Kind = pok_Num) and not Item.NumExact then
+    begin
+      { a real, or an integer beyond 64 bits that veraPDF reads as an
+        integer: not decided }
+      AUnsure := True;
+      Exit;
+    end;
+    if (Item <> nil) and (Item.Kind = pok_Num) and Item.NumExact then
+    begin
+      CidEnd := Narrow32(Item.NumInt);
+      Inc(I);
+      Width := nil;
+      if I < W.ArrCount then
+        Width := AWalk.ResolveRef(W.ArrItem(I));
+      if (Width = nil) or (Width.Kind <> pok_Num) then
+        Exit;
+      if G <> nil then
+        G.AddRange(CidBegin, CidEnd, Width.NumVal);
+    end
+    else if (Item <> nil) and (Item.Kind = pok_Arr) then
+      for J := 0 to Item.ArrCount - 1 do
+      begin
+        Width := AWalk.ResolveRef(Item.ArrItem(J));
+        if (Width <> nil) and (Width.Kind = pok_Num) and (G <> nil) then
+          G.AddSingle(CidBegin + J, Width.NumVal);
+      end;
+    Inc(I);
+  end;
+end;
+
+{ The glyph rules for a Type 0 font T with the descendant D: decided for an
+  Identity CMap over a CIDFontType2 font whose TrueType program veraPDF
+  parses (AProg 2); nothing to find without such a program; else not
+  decided. }
+procedure CidGlyphKind(AWalk: TLandrixEInvoicePdfContentWalk; F: TFontFacts; T, D: TLandrixEInvoicePdfObject;
+  const ASub: AnsiString; AProg: Integer);
+var
+  E, FF, V, Dw: TLandrixEInvoicePdfObject;
+  TT: TLandrixEInvoicePdfTrueTypeProgram;
+  Data: TLandrixEInvoicePdfBytes;
+  Gids: array of Integer;
+  G: TLandrixEInvoicePdfCidGlyphs;
+  I, N: Integer;
+  Identity, Throws, Unsure: Boolean;
+  DefW: Double;
+begin
+  if (D = nil) or (AProg = 0) or (AProg = 3) then
+  begin
+    F.GlyphKind := 0;
+    Exit;
+  end;
+  F.GlyphKind := 1;
+  { veraPDF reads /W for the glyphs of any Type 0 font with a program }
+  V := AWalk.DGetRef(D, 'W');
+  if (V <> nil) and (V.Kind = pok_Arr) then
+  begin
+    Throws := False;
+    Unsure := False;
+    CidWidths(AWalk, nil, V, Throws, Unsure);
+    if Throws then
+    begin
+      F.WThrows := True;
+      Exit;
+    end;
+  end;
+  E := AWalk.DGetRef(T, 'Encoding');
+  FF := DescStream(AWalk, FontDescriptor(AWalk, D), 'FontFile2');
+  if (AProg <> 2) or (ASub <> 'CIDFontType2') or (FF = nil) or (E = nil) or (E.Kind <> pok_Name) or
+    ((E.NameVal <> 'Identity-H') and (E.NameVal <> 'Identity-V')) then
+    Exit;
+  TT := TrueTypeOf(AWalk, FF);
+  if (TT = nil) or (TT.Load <> pfl_Accepted) then
+    Exit;
+  Gids := nil;
+  Data := nil;
+  Identity := True;
+  V := AWalk.DGetRef(D, 'CIDToGIDMap');
+  if (V <> nil) and (V.Kind = pok_Stream) then
+  begin
+    if not AWalk.StreamBytes(V, Data) then
+      Exit;
+    Identity := False;
+    N := (Integer(Length(Data)) + 1) div 2;
+    SetLength(Gids, N);
+    for I := 0 to N - 1 do
+      if 2 * I + 1 < Integer(Length(Data)) then
+        Gids[I] := Data[2 * I] * 256 + Data[2 * I + 1]
+      else
+        Gids[I] := Data[2 * I] * 256;
+  end;
+  DefW := 1000;
+  Dw := AWalk.DGetRef(D, 'DW');
+  if (Dw <> nil) and (Dw.Kind = pok_Num) then
+    DefW := Dw.NumVal;
+  G := TLandrixEInvoicePdfCidGlyphs.Create(TT, Identity, Gids, DefW);
+  F.Glyphs := G;
+  V := AWalk.DGetRef(D, 'W');
+  Throws := False;
+  Unsure := False;
+  if (V <> nil) and (V.Kind = pok_Arr) then
+    CidWidths(AWalk, G, V, Throws, Unsure);
+  { the tables and the work count against the decoding budget }
+  Inc(AWalk.FTotalBytes, Int64(Length(Data)) + 12 * Int64(G.TableSize) + G.Work);
+  if AWalk.FTotalBytes > MaxTotalBytes then
+  begin
+    AWalk.FBudgetSpent := True;
+    AWalk.FIncomplete := True;
+  end
+  else if Throws then
+    F.WThrows := True
+  else if not Unsure and not G.Unsure then
+    F.GlyphKind := 2;
+end;
+
 { 6.2.11.3.1-1, 6.2.11.3.3-1 and -3 on a Type 0 font T, and 6.2.11.2-1 to
   -3 and -7, 6.2.11.3.2-1 and 6.2.11.4.1-1 on its descendant CIDFont D
   (veraPDF also takes the Type 0 font's /Type, name and descriptor from D). }
@@ -4102,6 +4295,7 @@ begin
     V := AWalk.DGetRef(D, 'BaseFont');
     if ((Prog = 1) or (Prog = 2)) and ((V = nil) or (V.Kind <> pok_Name)) then
       F.Throws := True;
+    CidGlyphKind(AWalk, F, T, D, Sub, Prog);
     if (Sub = 'CIDFontType2') and ((Prog = 1) or (Prog = 2)) then
     begin
       V := AWalk.DGetRef(D, 'CIDToGIDMap');
@@ -4199,6 +4393,7 @@ begin
   FontCommon(AWalk, Result, F, Sub = 'Type3');
   if Sub = 'Type3' then
   begin
+    Result.GlyphKind := 1;
     FontWidths(AWalk, Result, F, 0);
     Exit;
   end;
@@ -4235,6 +4430,12 @@ begin
   end;
   Result.Need := True;
   Result.Prog := Prog;
+  { the glyph names of simple fonts are not decided yet; presence and widths
+    need a program veraPDF parses }
+  if (Prog = 0) or (Prog = 3) then
+    Result.GlyphKind := 3
+  else
+    Result.GlyphKind := 1;
   { 6.2.11.4.2-1 reads the name of a Type 1 font with a program it parses:
     none makes veraPDF throw }
   if ((Sub = 'Type1') or (Sub = 'MMType1')) and (Prog = 1) and ((V = nil) or (V.Kind <> pok_Name)) then
@@ -4279,6 +4480,16 @@ begin
     Exit;
   end;
   Facts := FontFactsOf(FWalk, FState.Font);
+  if FState.FontName = '' then
+    Facts.MultiCtx := True
+  else if not Facts.CtxSet then
+  begin
+    Facts.CtxSet := True;
+    Facts.CtxParse := FParseIndex;
+    Facts.CtxName := FState.FontName;
+  end
+  else if (Facts.CtxParse <> FParseIndex) or (Facts.CtxName <> FState.FontName) then
+    Facts.MultiCtx := True;
   if FState.TextMode = 3 then
     Facts.Modes := Facts.Modes or 1
   else if FState.TextMode < 0 then
@@ -4313,6 +4524,142 @@ begin
     Mark(pcc_FontEmbedded, False, Facts.Lbl + ' is not embedded');
     if FWalk.FFCount > N then
       FWalk.AddFontMark(N, Facts);
+  end;
+end;
+
+{ 6.2.11.4.1-2, 6.2.11.5-1 and 6.2.11.8-1 for the glyphs of the strings of
+  the first operand (veraPDF reads two bytes per code for an Identity CMap,
+  a last single byte with FF). Presence and widths do not apply in
+  rendering mode 3. A finding of presence or width is certain for a font
+  shown in a single parse under a single resource name (see FinishFonts);
+  veraPDF takes the glyph names from the program it has parsed. Each code
+  is checked once per font, paint and certainty of the mode.
+  DE: 6.2.11.4.1-2, 6.2.11.5-1 und 6.2.11.8-1 fuer die Glyphen der Strings
+  des ersten Operanden (veraPDF liest bei einer Identity-CMap zwei Bytes je
+  Code, ein letztes einzelnes Byte mit FF). Vorhandensein und Breiten gelten
+  nicht im Darstellungsmodus 3. Ein Befund zu Vorhandensein oder Breite ist
+  sicher fuer eine Schrift, die in einer einzigen Parse unter einem
+  einzigen Ressourcennamen gezeigt wird (siehe FinishFonts); die
+  Glyphnamen nimmt veraPDF aus dem geparsten Programm. Jeder Code wird je
+  Schrift, Malen und Sicherheit des Modus einmal geprueft. }
+procedure TInterpreter.GlyphMark(AFacts: TObject; ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean;
+  const AText: string);
+var
+  N: Integer;
+begin
+  N := FWalk.FFCount;
+  Mark(ACheck, AMaybe, TFontFacts(AFacts).Lbl + AText);
+  if not AMaybe and (FWalk.FFCount > N) then
+    FWalk.AddFontMark(N, AFacts);
+end;
+
+procedure TInterpreter.CheckGlyphs(AFirst: TCv);
+var
+  Facts: TFontFacts;
+  Strs: array of TCv;
+  I, J, K, Code, N, Bit: Integer;
+  Any, Paint, Unsure: Boolean;
+  G: TLandrixEInvoicePdfCidGlyphs;
+  Diff: Double;
+begin
+  if (FState.Font = nil) or (AFirst = nil) then
+    Exit;
+  Strs := nil;
+  if AFirst.Kind = cvk_Str then
+  begin
+    SetLength(Strs, 1);
+    Strs[0] := AFirst;
+  end
+  else if AFirst.Kind = cvk_Arr then
+  begin
+    SetLength(Strs, AFirst.Items.Count);
+    N := 0;
+    for I := 0 to Integer(AFirst.Items.Count) - 1 do
+      if TCv(AFirst.Items[I]).Kind = cvk_Str then
+      begin
+        Strs[N] := TCv(AFirst.Items[I]);
+        Inc(N);
+      end;
+    SetLength(Strs, N);
+  end;
+  Any := False;
+  for I := 0 to Integer(Length(Strs)) - 1 do
+    if Strs[I].ByteLen > 0 then
+      Any := True;
+  if not Any then
+    Exit;
+  Facts := FontFactsOf(FWalk, FState.Font);
+  Paint := FState.TextMode <> 3;
+  Unsure := FState.TextMode < 0;
+  if Facts.WThrows then
+  begin
+    FWalk.FThrows := True;
+    FWalk.FMayThrow := True;
+    FWalk.FIncomplete := True;
+    Exit;
+  end;
+  case Facts.GlyphKind of
+    1:
+      begin
+        if Paint then
+        begin
+          Mark(pcc_GlyphPresent, True, Facts.Lbl + ': glyphs not decided');
+          Mark(pcc_GlyphWidth, True, Facts.Lbl + ': glyph widths not decided');
+        end;
+        Mark(pcc_GlyphNotdef, True, Facts.Lbl + ': glyph names not decided');
+      end;
+    3:
+      Mark(pcc_GlyphNotdef, True, Facts.Lbl + ': glyph names not decided');
+    2:
+      begin
+        G := TLandrixEInvoicePdfCidGlyphs(Facts.Glyphs);
+        for I := 0 to Integer(Length(Strs)) - 1 do
+        begin
+          if Strs[I].CodesUnsure then
+          begin
+            Mark(pcc_GlyphNotdef, True, Facts.Lbl + ': codes not decided');
+            if Paint then
+            begin
+              Mark(pcc_GlyphPresent, True, Facts.Lbl + ': codes not decided');
+              Mark(pcc_GlyphWidth, True, Facts.Lbl + ': codes not decided');
+            end;
+            Continue;
+          end;
+          N := Strs[I].ByteLen;
+          J := 0;
+          while J < N do
+          begin
+            if J + 1 < N then
+              Code := Strs[I].Data[J] * 256 + Strs[I].Data[J + 1]
+            else
+              Code := Strs[I].Data[J] * 256 + 255;
+            Inc(J, 2);
+            if Facts.Seen = nil then
+            begin
+              SetLength(Facts.Seen, LandrixEInvoicePdfCidCodes div 2);
+              for K := 0 to Integer(Length(Facts.Seen)) - 1 do
+                Facts.Seen[K] := 0;
+            end;
+            Bit := 1 shl ((Code and 1) * 4 + Ord(Paint) * 2 + Ord(Unsure));
+            if Facts.Seen[Code shr 1] and Bit <> 0 then
+              Continue;
+            Facts.Seen[Code shr 1] := Byte(Facts.Seen[Code shr 1] or Bit);
+            if not G.Present(Code) then
+            begin
+              GlyphMark(Facts, pcc_GlyphNotdef, False, ': code ' + IntToStr(Code) + ' is .notdef');
+              if Paint and (Code <> 0) then
+                GlyphMark(Facts, pcc_GlyphPresent, Unsure, ': no glyph for code ' + IntToStr(Code));
+            end;
+            if Paint then
+            begin
+              Diff := Abs(G.ProgramWidth(Code) - G.DictWidth(Code));
+              if not (Diff <= 0.99) then
+                GlyphMark(Facts, pcc_GlyphWidth, Unsure or not (Diff > 1.01), ': widths of code ' + IntToStr(Code) +
+                  ' differ');
+            end;
+          end;
+        end;
+      end;
   end;
 end;
 
@@ -6957,7 +7304,10 @@ begin
         ShowText;
         TextColour;
         if N >= 1 then
-          TextTransp(TCv(AOps[0]))
+        begin
+          TextTransp(TCv(AOps[0]));
+          CheckGlyphs(TCv(AOps[0]));
+        end
         else
           TextTransp(nil);
       end;
@@ -6975,7 +7325,10 @@ begin
         ShowText;
         TextColour;
         if N >= 1 then
-          TextTransp(TCv(AOps[0]))
+        begin
+          TextTransp(TCv(AOps[0]));
+          CheckGlyphs(TCv(AOps[0]));
+        end
         else
           TextTransp(nil);
       end;
@@ -6986,7 +7339,10 @@ begin
         ShowText;
         TextColour;
         if N >= 1 then
-          TextTransp(TCv(AOps[0]))
+        begin
+          TextTransp(TCv(AOps[0]));
+          CheckGlyphs(TCv(AOps[0]));
+        end
         else
           TextTransp(nil);
       end;
@@ -8599,12 +8955,13 @@ begin
   end;
   for K := 0 to FEmbCount - 1 do
     if TFontFacts(FEmbFont[K]).Mixed or ((FFCheck[FEmbIdx[K]] = pcc_FontEmbedded) and
-      (TFontFacts(FEmbFont[K]).Modes and 5 <> 0)) then
+      (TFontFacts(FEmbFont[K]).Modes and 5 <> 0)) or ((FFCheck[FEmbIdx[K]] in [pcc_GlyphPresent, pcc_GlyphWidth]) and
+      TFontFacts(FEmbFont[K]).MultiCtx) then
       FFMaybe[FEmbIdx[K]] := True;
   { a parse keeps level 2 for a font check only with a certain finding left }
   Sure := nil;
   SetLength(Sure, FParses.Count);
-  for Chk := pcc_FontType to pcc_SymbolicCmaps do
+  for Chk := pcc_FontType to pcc_GlyphNotdef do
   begin
     for I := 0 to Integer(FParses.Count) - 1 do
       Sure[I] := False;

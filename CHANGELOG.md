@@ -241,6 +241,14 @@ Supported invoice standards are documented per release.
   name make veraPDF stop and leave every rule incomplete; fonts that share a program with different encodings leave
   the content rules incomplete. 44 of the 46 corpus failures of the checked font rules are found, no false
   positives.
+- PDF/A level 1, stage E, third part (glyphs of CID fonts): new internal unit `LandrixEInvoicePdfFontGlyphs`.
+  6.2.11.4.1-2 (a glyph shown is in the font program), 6.2.11.5-1 (its widths in the dictionary and the program
+  differ by at most 1) and 6.2.11.8-1 (no .notdef glyph) are checked on every code a text operator shows. They are
+  decided for a Type 0 font with Identity-H or Identity-V over a CIDFontType2 font whose TrueType program veraPDF
+  parses (/CIDToGIDMap, /W, /DW). A missing glyph or a width difference is certain when the font is shown in one
+  content stream under one resource name, since veraPDF judges glyphs met with another font object of the same
+  font as not parsed; a .notdef glyph is certain in any case. Other fonts leave these rules incomplete where they
+  show text. A /W group that starts with no number makes veraPDF stop when it reads a glyph width.
 
 ### Changed
 - LandrixXML 0.5.1 (`a2305e0`, was 0.5.0): fixes of a complete review (many for very large or hostile input),
