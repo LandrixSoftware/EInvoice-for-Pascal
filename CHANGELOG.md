@@ -230,6 +230,17 @@ Supported invoice standards are documented per release.
   font programs themselves (6.2.11.3.3-2, 6.2.11.4.1-2, 6.2.11.4.2, 6.2.11.5, 6.2.11.6-1/-4, 6.2.11.8) are
   registered as not checked. Test `PdfA.Fonts`; 41 of the 46 corpus failures of the checked rules are found (the
   rest stay incomplete), no false positives.
+- PDF/A level 1, stage E, second part (TrueType font programs): new internal units `LandrixEInvoicePdfFontProgram`
+  (load states accepted, rejected, veraPDF stops, not decided; bounded reading) and `LandrixEInvoicePdfTrueType`
+  (the table directory, head, hhea, hmtx, cmap with formats 0, 4 and 6, maxp and post, read as veraPDF reads them).
+  The /FontFile2 program of TrueType fonts and CIDFontType2 fonts now decides whether veraPDF takes the font as
+  embedded (6.2.11.4.1-1), 6.2.11.3.2-1 and the cmap condition of /Differences (6.2.11.6-2); a non-symbolic
+  TrueType font whose /Encoding is neither MacRomanEncoding, WinAnsiEncoding nor a dictionary counts as not
+  embedded, as in veraPDF. 6.2.11.6-1 and -4 (cmap subtables of TrueType programs) are checked. A seek past the end
+  of a program of 10240 bytes or more, /Differences codes below -1 and a CIDFontType2 program without a /BaseFont
+  name make veraPDF stop and leave every rule incomplete; fonts that share a program with different encodings leave
+  the content rules incomplete. 44 of the 46 corpus failures of the checked font rules are found, no false
+  positives.
 
 ### Changed
 - LandrixXML 0.5.1 (`a2305e0`, was 0.5.0): fixes of a complete review (many for very large or hostile input),

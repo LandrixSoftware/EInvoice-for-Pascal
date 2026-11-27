@@ -116,7 +116,9 @@ type
     that is not embedded (except Type 3 and Type 0, and text rendering mode
     3); a non-symbolic TrueType font without MacRomanEncoding or
     WinAnsiEncoding (or with /Differences veraPDF does not accept), a
-    symbolic one with an encoding.
+    symbolic one with an encoding; the TrueType program of a non-symbolic
+    font without a cmap subtable other than (3,0), of a symbolic one with
+    several subtables but no (3,0).
     DE: Worum es bei einem Befund in einem Content-Stream geht: eine ganze
     Zahl, eine reelle Zahl ausserhalb des Bereichs oder zu nah an null, ein
     zu langer String, ein hexadezimaler String mit ungerader Zeichenzahl
@@ -162,7 +164,10 @@ type
     eingebettet ist; eine nicht eingebettete Schrift (ausser Type 3 und Type
     0 und Darstellungsmodus 3); eine nicht symbolische TrueType-Schrift ohne
     MacRomanEncoding oder WinAnsiEncoding (oder mit /Differences, die
-    veraPDF nicht annimmt), eine symbolische mit einer Kodierung. }
+    veraPDF nicht annimmt), eine symbolische mit einer Kodierung; das
+    TrueType-Programm einer nicht symbolischen Schrift ohne eine
+    cmap-Subtabelle ausser (3,0), einer symbolischen mit mehreren
+    Subtabellen, aber ohne (3,0). }
   TLandrixEInvoicePdfContentCheck = (pcc_Integer, pcc_Real, pcc_SmallReal, pcc_StringLength, pcc_HexOdd,
     pcc_HexDigits, pcc_NameLength, pcc_InlineFilter, pcc_Nesting, pcc_SpecNames, pcc_SpecRelationship,
     pcc_SpecDirect, pcc_Undefined, pcc_TR, pcc_TR2, pcc_HTP, pcc_HalftoneType, pcc_HalftoneName,
@@ -172,7 +177,7 @@ type
     pcc_SeparationConsistency, pcc_Inherited, pcc_PageTransparency, pcc_JpxChannels, pcc_JpxSpecs, pcc_JpxMethod,
     pcc_JpxEnum, pcc_JpxDepth, pcc_FontType, pcc_FontSubtype, pcc_FontName, pcc_FirstChar, pcc_LastChar,
     pcc_Widths, pcc_FontFileSubtype, pcc_CidSystemInfo, pcc_CidToGid, pcc_CMapName, pcc_UseCMapName, pcc_FontEmbedded,
-    pcc_TrueTypeEncoding, pcc_TrueTypeSymbolic);
+    pcc_TrueTypeEncoding, pcc_TrueTypeSymbolic, pcc_TrueTypeCmaps, pcc_SymbolicCmaps);
 
   { A finding that veraPDF certainly reports: the content stream object
     (for the /Contents array of a page its first stream) and a short text.
@@ -280,7 +285,9 @@ type
     FJpxCache: TStringList;
     { font facts by font object (TFontFacts) }
     FFontCache: TStringList;
-    { certain 6.2.11.4.1-1 findings (index into FF*) and their font facts }
+    { TrueType programs by stream object (nil: the data not decided) }
+    FTrueTypeCache: TStringList;
+    { certain font findings (index into FF*) and their font facts }
     FEmbIdx: array of Integer;
     FEmbFont: array of TObject;
     FEmbCount: Integer;
@@ -322,6 +329,7 @@ type
     procedure ScanTiling;
     procedure ScanAlternates;
     procedure FinishFonts;
+    procedure AddFontMark(AIndex: Integer; AFacts: TObject);
     procedure AddRootFinding(ACheck: TLandrixEInvoicePdfContentCheck; ANum: Integer; const ADetail: string);
     procedure CheckAppearanceForm(V, ARaw: TLandrixEInvoicePdfObject);
     procedure BuildHalftoneContexts;
@@ -403,7 +411,7 @@ function LandrixEInvoicePdfIccHeader(ADoc: TLandrixEInvoicePdfDocument;
 implementation
 
 uses
-  SysUtils;
+  SysUtils, LandrixEInvoicePdfFontProgram, LandrixEInvoicePdfTrueType;
 
 const
   { q may nest 28 levels deep (ISO 19005-2, 6.1.13) }
@@ -3451,9 +3459,10 @@ type
   { What veraPDF checks on a font object that a text operator shows (and on
     the descendant CIDFont of a Type 0 font), except where it depends on the
     text rendering mode: the findings Checks/Maybes/Texts; for 6.2.11.4.1-1
-    whether it applies (Need), and whether there is no font program (Prog
-    0, which fails) or one that veraPDF may or may not parse (Prog 1, not
-    decided); Throws: veraPDF throws while building or checking the font.
+    whether it applies (Need), and the font program: none (Prog 0), one
+    veraPDF may or may not parse (1), one it parses (2), one it builds but
+    does not parse (3); 0 and 3 fail; Throws: veraPDF throws while building
+    or checking the font.
     Modes: the text rendering modes it is shown with (1 mode 3, 2 another, 4
     not decided); veraPDF checks a font once, with the mode of its first
     use. }
@@ -3467,6 +3476,13 @@ type
     Lbl: string;
     Throws: Boolean;
     Modes: Integer;
+    { a TrueType program veraPDF shares between fonts with this key (the
+      stream, symbolic, the /Encoding object or "direct"); EncOut the outcome
+      of its encoding step (Prog, 4 for a throw); '' none }
+    EncKey: string;
+    EncOut: Integer;
+    { shares its program with a font of another encoding outcome }
+    Mixed: Boolean;
     procedure Add(ACheck: TLandrixEInvoicePdfContentCheck; AMaybe: Boolean; const AText: string);
   end;
 
@@ -3714,6 +3730,143 @@ begin
       ' codes');
 end;
 
+{ Symbolic as veraPDF reads it: bit 3 of the descriptor's /Flags. }
+function FontSymbolic(AWalk: TLandrixEInvoicePdfContentWalk; D: TLandrixEInvoicePdfObject): Boolean;
+var
+  Desc: TLandrixEInvoicePdfObject;
+  Flags: Int64;
+begin
+  Desc := FontDescriptor(AWalk, D);
+  Result := (Desc <> nil) and IntegerOf(AWalk.DGetRef(Desc, 'Flags'), Flags) and (Narrow32(Flags) and 4 <> 0);
+end;
+
+{ The TrueType program of the stream AStream, read once; nil where its data
+  are not decided (or the decoding budget is spent). }
+function TrueTypeOf(AWalk: TLandrixEInvoicePdfContentWalk;
+  AStream: TLandrixEInvoicePdfObject): TLandrixEInvoicePdfTrueTypeProgram;
+var
+  Key: string;
+  Idx: Integer;
+  Data: TLandrixEInvoicePdfBytes;
+begin
+  Key := AWalk.ObjId(AStream);
+  if AWalk.FTrueTypeCache.Find(Key, Idx) then
+  begin
+    Result := TLandrixEInvoicePdfTrueTypeProgram(AWalk.FTrueTypeCache.Objects[Idx]);
+    Exit;
+  end;
+  Result := nil;
+  Data := nil;
+  if not AWalk.FBudgetSpent and AWalk.StreamBytes(AStream, Data) then
+  begin
+    Inc(AWalk.FTotalBytes, Int64(Length(Data)));
+    if AWalk.FTotalBytes > MaxTotalBytes then
+    begin
+      AWalk.FBudgetSpent := True;
+      AWalk.FIncomplete := True;
+    end
+    else
+    begin
+      Result := TLandrixEInvoicePdfTrueTypeProgram.Create(Data, Length(Data) < LandrixEInvoicePdfFontMemoryLimit);
+      { the cmap entries count against the same budget }
+      Inc(AWalk.FTotalBytes, 4 * Result.Work);
+      if AWalk.FTotalBytes > MaxTotalBytes then
+      begin
+        AWalk.FBudgetSpent := True;
+        AWalk.FIncomplete := True;
+      end;
+    end;
+  end;
+  AWalk.FTrueTypeCache.AddObject(Key, Result);
+end;
+
+{ The state of a TrueType program as Prog (TFontFacts) and AThrows: an
+  accepted program is parsed (2), a rejected one built but not parsed (3). }
+function TrueTypeProg(P: TLandrixEInvoicePdfTrueTypeProgram; var AThrows: Boolean): Integer;
+begin
+  Result := 1;
+  if P = nil then
+    Exit;
+  case P.Load of
+    pfl_Accepted:
+      Result := 2;
+    pfl_Rejected:
+      Result := 3;
+    pfl_Throws:
+      AThrows := True;
+  else
+    { not decided: 1 }
+  end;
+end;
+
+{ After reading a TrueType program, veraPDF builds the code-to-name table
+  of a non-symbolic font with /Encoding: a name other than MacRomanEncoding
+  or WinAnsiEncoding, or a value that is no dictionary, makes it count as
+  not parsed (3); a /Differences code below -1 (after narrowing to 32 bits)
+  makes it throw. }
+function TrueTypeEncodingProg(AWalk: TLandrixEInvoicePdfContentWalk; D: TLandrixEInvoicePdfObject;
+  AProg: Integer; var AThrows: Boolean): Integer;
+var
+  Raw, E, A, It: TLandrixEInvoicePdfObject;
+  I: Integer;
+  Code: Int64;
+begin
+  Result := AProg;
+  if (AProg <> 2) or FontSymbolic(AWalk, D) then
+    Exit;
+  Raw := AWalk.DictGet(D, 'Encoding');
+  if (Raw = nil) or (Raw.Kind = pok_Null) then
+    Exit;
+  E := AWalk.ResolveRef(Raw);
+  if (E <> nil) and (E.Kind = pok_Name) then
+  begin
+    if (E.NameVal <> 'MacRomanEncoding') and (E.NameVal <> 'WinAnsiEncoding') then
+      Result := 3;
+    Exit;
+  end;
+  if (E = nil) or (E.Kind <> pok_Dict) then
+  begin
+    Result := 3;
+    Exit;
+  end;
+  A := AWalk.DGetRef(E, 'Differences');
+  if (A = nil) or (A.Kind <> pok_Arr) then
+    Exit;
+  Code := 0;
+  for I := 0 to A.ArrCount - 1 do
+  begin
+    It := AWalk.ResolveRef(A.ArrItem(I));
+    if It = nil then
+      Continue;
+    if (It.Kind = pok_Num) and It.NumExact then
+      Code := Narrow32(It.NumInt)
+    else if (It.Kind = pok_Name) and (Code <> -1) then
+    begin
+      if Code < -1 then
+      begin
+        AThrows := True;
+        Exit;
+      end;
+      Code := Narrow32(Code + 1);
+    end;
+  end;
+end;
+
+{ 6.2.11.6-1 and -4 on the parsed TrueType program of a simple font: a
+  non-symbolic font has a cmap subtable (two with a (3,0) one); a symbolic
+  one has one subtable or a (3,0) one. }
+procedure TrueTypeCmapRules(F: TFontFacts; P: TLandrixEInvoicePdfTrueTypeProgram; ASymbolic: Boolean);
+var
+  Has30: Boolean;
+begin
+  Has30 := P.HasCmapFor(3, 0);
+  if not ASymbolic and ((Has30 and (P.CmapCount <= 1)) or (not Has30 and (P.CmapCount <= 0))) then
+    F.Add(pcc_TrueTypeCmaps, False, ' TrueType program of a non-symbolic font without a usable cmap subtable');
+  if ASymbolic and (P.CmapCount <> 1) and not Has30 then
+    F.Add(pcc_SymbolicCmaps, False, ' TrueType program of a symbolic font with ' + IntToStr(P.CmapCount) +
+      ' cmap subtables and none (3,0)');
+end;
+
 { 6.2.11.6-2 and -3 on a TrueType font: a non-symbolic one has the encoding
   MacRomanEncoding or WinAnsiEncoding (the name, or the /BaseEncoding of an
   encoding dictionary) and, with /Differences, a font program with a (3,1)
@@ -3721,7 +3874,7 @@ end;
   a program); a symbolic one has no encoding. Symbolic: bit 3 of the
   descriptor's /Flags. }
 procedure FontTrueType(AWalk: TLandrixEInvoicePdfContentWalk; F: TFontFacts; D: TLandrixEInvoicePdfObject;
-  AProg: Integer);
+  AProg: Integer; AProgram: TLandrixEInvoicePdfTrueTypeProgram);
 var
   Desc, E, V: TLandrixEInvoicePdfObject;
   Flags: Int64;
@@ -3778,8 +3931,14 @@ begin
   if V.Kind = pok_Null then
     F.Add(pcc_TrueTypeEncoding, True, ' /Differences null')
   else if AProg = 1 then
-    { the cmap and glyph names of the program: not decided yet }
-    F.Add(pcc_TrueTypeEncoding, True, ' /Differences with a font program');
+    F.Add(pcc_TrueTypeEncoding, True, ' /Differences with a font program')
+  else if AProg = 3 then
+    F.Add(pcc_TrueTypeEncoding, False, ' /Differences with a font program veraPDF does not parse')
+  else if (AProg = 2) and (AProgram <> nil) and not AProgram.HasCmapFor(3, 1) then
+    F.Add(pcc_TrueTypeEncoding, False, ' /Differences with a font program without a (3,1) cmap')
+  else if AProg = 2 then
+    { the glyph names of /Differences: not decided yet }
+    F.Add(pcc_TrueTypeEncoding, True, ' /Differences with a (3,1) cmap');
 end;
 
 { The CIDSystemInfo veraPDF takes for the /Encoding E of a Type 0 font: a
@@ -3891,7 +4050,8 @@ end;
   (veraPDF also takes the Type 0 font's /Type, name and descriptor from D). }
 procedure FontType0(AWalk: TLandrixEInvoicePdfContentWalk; F: TFontFacts; T: TLandrixEInvoicePdfObject);
 var
-  A, D, E, V, Info: TLandrixEInvoicePdfObject;
+  A, D, E, V, Info, FF: TLandrixEInvoicePdfObject;
+  Data: TLandrixEInvoicePdfBytes;
   Sub, Name, CReg, COrd, FReg, FOrd: AnsiString;
   NameKind, RegKind, OrdKind, FRegKind, FOrdKind: Integer;
   Known, Throws: Boolean;
@@ -3920,19 +4080,34 @@ begin
     Prog := FontProgram(AWalk, D, Sub, True, Throws);
     if Throws then
       F.Throws := True;
+    if (Sub = 'CIDFontType2') and (Prog = 1) then
+    begin
+      FF := DescStream(AWalk, FontDescriptor(AWalk, D), 'FontFile2');
+      V := AWalk.DGetRef(D, 'CIDToGIDMap');
+      { veraPDF reads a /CIDToGIDMap stream when it builds the program }
+      Data := nil;
+      if (FF <> nil) and not ((V <> nil) and (V.Kind = pok_Stream) and not AWalk.StreamBytes(V, Data)) then
+      begin
+        Inc(AWalk.FTotalBytes, Int64(Length(Data)));
+        Throws := False;
+        Prog := TrueTypeProg(TrueTypeOf(AWalk, FF), Throws);
+        if Throws then
+          F.Throws := True;
+      end;
+    end;
     F.Need := (Sub <> 'Type3') and (Sub <> 'Type0');
     F.Prog := Prog;
     { 6.2.11.4.2-2 reads the name of a CIDFont with a program it parses:
       none makes veraPDF throw }
     V := AWalk.DGetRef(D, 'BaseFont');
-    if (Prog = 1) and ((V = nil) or (V.Kind <> pok_Name)) then
+    if ((Prog = 1) or (Prog = 2)) and ((V = nil) or (V.Kind <> pok_Name)) then
       F.Throws := True;
-    if (Sub = 'CIDFontType2') and (Prog = 1) then
+    if (Sub = 'CIDFontType2') and ((Prog = 1) or (Prog = 2)) then
     begin
       V := AWalk.DGetRef(D, 'CIDToGIDMap');
       if (V = nil) or not ((V.Kind = pok_Stream) or ((V.Kind = pok_Name) and (V.NameVal = 'Identity'))) then
         { fails only where veraPDF parses the font program }
-        F.Add(pcc_CidToGid, True, ' CIDFontType2 without /CIDToGIDMap');
+        F.Add(pcc_CidToGid, Prog = 1, ' CIDFontType2 without /CIDToGIDMap');
     end;
   end;
   E := AWalk.DGetRef(T, 'Encoding');
@@ -3998,7 +4173,8 @@ var
   Key: string;
   Sub: AnsiString;
   Idx, Prog, Std: Integer;
-  V: TLandrixEInvoicePdfObject;
+  V, FF, Raw: TLandrixEInvoicePdfObject;
+  TT: TLandrixEInvoicePdfTrueTypeProgram;
   Throws: Boolean;
 begin
   Key := AWalk.ObjId(F);
@@ -4029,6 +4205,34 @@ begin
   Prog := FontProgram(AWalk, F, Sub, False, Throws);
   if Throws then
     Result.Throws := True;
+  TT := nil;
+  if (Sub = 'TrueType') and (Prog = 1) then
+  begin
+    FF := DescStream(AWalk, FontDescriptor(AWalk, F), 'FontFile2');
+    if FF <> nil then
+    begin
+      TT := TrueTypeOf(AWalk, FF);
+      Throws := False;
+      Prog := TrueTypeEncodingProg(AWalk, F, TrueTypeProg(TT, Throws), Throws);
+      if Throws then
+        Result.Throws := True;
+      { veraPDF reads a program once for all fonts with the same stream,
+        symbolic flag and /Encoding object (any direct one counts as the
+        same), with the encoding of the font it meets first }
+      Raw := AWalk.DictGet(F, 'Encoding');
+      if (Raw <> nil) and (Raw.Kind = pok_Ref) then
+        Result.EncKey := IntToStr(AWalk.LastRefNum(Raw))
+      else if Raw <> nil then
+        Result.EncKey := 'direct'
+      else
+        Result.EncKey := 'none';
+      Result.EncKey := AWalk.ObjId(FF) + '/' + IntToStr(Ord(FontSymbolic(AWalk, F))) + '/' + Result.EncKey;
+      if Throws then
+        Result.EncOut := 4
+      else
+        Result.EncOut := Prog;
+    end;
+  end;
   Result.Need := True;
   Result.Prog := Prog;
   { 6.2.11.4.2-1 reads the name of a Type 1 font with a program it parses:
@@ -4046,7 +4250,15 @@ begin
         Std := 1;
   FontWidths(AWalk, Result, F, Std);
   if Sub = 'TrueType' then
-    FontTrueType(AWalk, Result, F, Prog);
+  begin
+    FontTrueType(AWalk, Result, F, Prog, TT);
+    if (Prog = 2) and (TT <> nil) then
+      TrueTypeCmapRules(Result, TT, FontSymbolic(AWalk, F))
+    else if (Prog = 1) and FontSymbolic(AWalk, F) then
+      Result.Add(pcc_SymbolicCmaps, True, ' cmap subtables of a program not decided')
+    else if Prog = 1 then
+      Result.Add(pcc_TrueTypeCmaps, True, ' cmap subtables of a program not decided');
+  end;
 end;
 
 { 6.2.11: the font of a text operator as veraPDF checks it; no font makes
@@ -4082,8 +4294,13 @@ begin
     FWalk.FIncomplete := True;
   end;
   for I := 0 to Integer(Length(Facts.Checks)) - 1 do
+  begin
+    N := FWalk.FFCount;
     Mark(Facts.Checks[I], Facts.Maybes[I], Facts.Texts[I]);
-  if not Facts.Need or (FState.TextMode = 3) then
+    if not Facts.Maybes[I] and (FWalk.FFCount > N) then
+      FWalk.AddFontMark(N, Facts);
+  end;
+  if not Facts.Need or (FState.TextMode = 3) or (Facts.Prog = 2) then
     Exit;
   if Facts.Prog = 1 then
     Mark(pcc_FontEmbedded, True, Facts.Lbl + ': whether veraPDF parses its font program is not decided')
@@ -4095,13 +4312,7 @@ begin
     N := FWalk.FFCount;
     Mark(pcc_FontEmbedded, False, Facts.Lbl + ' is not embedded');
     if FWalk.FFCount > N then
-    begin
-      SetLength(FWalk.FEmbIdx, FWalk.FEmbCount + 1);
-      SetLength(FWalk.FEmbFont, FWalk.FEmbCount + 1);
-      FWalk.FEmbIdx[FWalk.FEmbCount] := N;
-      FWalk.FEmbFont[FWalk.FEmbCount] := Facts;
-      Inc(FWalk.FEmbCount);
-    end;
+      FWalk.AddFontMark(N, Facts);
   end;
 end;
 
@@ -7071,6 +7282,8 @@ begin
   FJpxCache.Sorted := True;
   FFontCache := TStringList.Create;
   FFontCache.Sorted := True;
+  FTrueTypeCache := TStringList.Create;
+  FTrueTypeCache.Sorted := True;
   FCurPageNum := -1;
   FType3Replayed := TStringList.Create;
   FType3Replayed.Sorted := True;
@@ -7114,6 +7327,9 @@ begin
   for I := 0 to FFontCache.Count - 1 do
     FFontCache.Objects[I].Free;
   FFontCache.Free;
+  for I := 0 to FTrueTypeCache.Count - 1 do
+    FTrueTypeCache.Objects[I].Free;
+  FTrueTypeCache.Free;
   for I := 0 to FPartsCache.Count - 1 do
     FPartsCache.Objects[I].Free;
   FPartsCache.Free;
@@ -8337,34 +8553,70 @@ end;
   certainly reached stream reaches. Anything else is uncertain. }
 { 6.2.11.4.1-1: veraPDF checks a font once, with the rendering mode of the
   use it meets first; a font also shown in mode 3 (or in a mode not
-  decided) gives no certain finding. A parse keeps level 2 only with a
+  decided) gives no certain finding. Fonts that share a TrueType program
+  with different encoding outcomes leave the content rules undecided. A parse keeps level 2 only with a
   certain finding left.
   DE: 6.2.11.4.1-1: veraPDF prueft eine Schrift einmal, mit dem
   Darstellungsmodus der Verwendung, die es zuerst trifft; eine Schrift, die
   auch im Modus 3 (oder in einem nicht entschiedenen Modus) gezeigt wird,
-  ergibt keinen sicheren Befund. Eine Parse behaelt Stufe 2 nur mit einem
+  ergibt keinen sicheren Befund. Schriften, die ein TrueType-Programm mit
+  verschiedenen Ergebnissen der Kodierung teilen, lassen die Content-Regeln
+  offen. Eine Parse behaelt Stufe 2 nur mit einem
   verbleibenden sicheren Befund. }
+procedure TLandrixEInvoicePdfContentWalk.AddFontMark(AIndex: Integer; AFacts: TObject);
+begin
+  SetLength(FEmbIdx, FEmbCount + 1);
+  SetLength(FEmbFont, FEmbCount + 1);
+  FEmbIdx[FEmbCount] := AIndex;
+  FEmbFont[FEmbCount] := AFacts;
+  Inc(FEmbCount);
+end;
+
 procedure TLandrixEInvoicePdfContentWalk.FinishFonts;
 var
   K, I, J: Integer;
   P: TContentParse;
   Sure: array of Boolean;
+  A, B: TFontFacts;
+  Chk: TLandrixEInvoicePdfContentCheck;
 begin
+  { fonts that share a TrueType program with different encoding outcomes:
+    which font veraPDF meets first decides for all of them }
+  for I := 0 to FFontCache.Count - 1 do
+  begin
+    A := TFontFacts(FFontCache.Objects[I]);
+    if A.EncKey <> '' then
+      for J := 0 to I - 1 do
+      begin
+        B := TFontFacts(FFontCache.Objects[J]);
+        if (B.EncKey = A.EncKey) and (B.EncOut <> A.EncOut) then
+        begin
+          FIncomplete := True;
+          A.Mixed := True;
+          B.Mixed := True;
+        end;
+      end;
+  end;
   for K := 0 to FEmbCount - 1 do
-    if TFontFacts(FEmbFont[K]).Modes and 5 <> 0 then
+    if TFontFacts(FEmbFont[K]).Mixed or ((FFCheck[FEmbIdx[K]] = pcc_FontEmbedded) and
+      (TFontFacts(FEmbFont[K]).Modes and 5 <> 0)) then
       FFMaybe[FEmbIdx[K]] := True;
+  { a parse keeps level 2 for a font check only with a certain finding left }
   Sure := nil;
   SetLength(Sure, FParses.Count);
-  for I := 0 to Integer(FParses.Count) - 1 do
-    Sure[I] := False;
-  for J := 0 to FFCount - 1 do
-    if (FFCheck[J] = pcc_FontEmbedded) and not FFMaybe[J] then
-      Sure[FFParse[J]] := True;
-  for I := 0 to Integer(FParses.Count) - 1 do
+  for Chk := pcc_FontType to pcc_SymbolicCmaps do
   begin
-    P := TContentParse(FParses[I]);
-    if (P.Level[pcc_FontEmbedded] = 2) and not Sure[I] then
-      P.Level[pcc_FontEmbedded] := 1;
+    for I := 0 to Integer(FParses.Count) - 1 do
+      Sure[I] := False;
+    for J := 0 to FFCount - 1 do
+      if (FFCheck[J] = Chk) and not FFMaybe[J] then
+        Sure[FFParse[J]] := True;
+    for I := 0 to Integer(FParses.Count) - 1 do
+    begin
+      P := TContentParse(FParses[I]);
+      if (P.Level[Chk] = 2) and not Sure[I] then
+        P.Level[Chk] := 1;
+    end;
   end;
 end;
 

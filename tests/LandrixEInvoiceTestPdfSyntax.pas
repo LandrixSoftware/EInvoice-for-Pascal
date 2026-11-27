@@ -2700,6 +2700,65 @@ begin
     'a profile length veraPDF reads as negative');
 end;
 
+function Be16(AValue: Integer): AnsiString;
+begin
+  Result := AnsiChar((AValue shr 8) and $FF) + AnsiChar(AValue and $FF);
+end;
+
+function Zeros(ACount: Integer): AnsiString;
+var
+  I: Integer;
+begin
+  Result := '';
+  SetLength(Result, ACount);
+  for I := 1 to ACount do
+    Result[I] := #0;
+end;
+
+{ A TrueType program veraPDF accepts: head (1000 units per em), hhea and
+  hmtx with two metrics, maxp with two glyphs, and a cmap with one subtable
+  of format 0 (code 97 to glyph 1) under each pair of platform and encoding
+  IDs in APairs (no cmap without pairs). }
+function TtfData(const APairs: array of Integer): AnsiString;
+var
+  Tables, Tags, Dir, Cmap, Sub: AnsiString;
+  N, K, I, Off: Integer;
+  Parts: array of AnsiString;
+begin
+  K := (Integer(High(APairs)) + 1) div 2;
+  Sub := Be16(0) + Be16(262) + Be16(0) + Zeros(97) + #1 + Zeros(158);
+  Cmap := Be16(0) + Be16(K);
+  for I := 0 to K - 1 do
+    Cmap := Cmap + Be16(APairs[2 * I]) + Be16(APairs[2 * I + 1]) + Be32(4 + 8 * K);
+  Cmap := Cmap + Sub;
+  Parts := nil;
+  if K > 0 then
+  begin
+    SetLength(Parts, 5);
+    Tags := 'cmapheadhheahmtxmaxp';
+    Parts[0] := Cmap;
+  end
+  else
+  begin
+    SetLength(Parts, 4);
+    Tags := 'headhheahmtxmaxp';
+  end;
+  N := Integer(Length(Parts));
+  Parts[N - 4] := Zeros(18) + Be16(1000) + Zeros(34);
+  Parts[N - 3] := Zeros(34) + Be16(2);
+  Parts[N - 2] := Be16(500) + Be16(0) + Be16(500) + Be16(0);
+  Parts[N - 1] := Be32($5000) + Be16(2);
+  Off := 12 + 16 * N;
+  Dir := '';
+  Tables := '';
+  for I := 0 to N - 1 do
+  begin
+    Dir := Dir + Copy(Tags, 4 * I + 1, 4) + Be32(0) + Be32(Off + Length(Tables)) + Be32(Length(Parts[I]));
+    Tables := Tables + Parts[I];
+  end;
+  Result := Be32($10000) + Be16(N) + Be16(0) + Be16(0) + Be16(0) + Dir + Tables;
+end;
+
 { 6.2.11.2, 6.2.11.3, 6.2.11.4.1-1 and 6.2.11.6-2/-3: the font dictionaries
   of the fonts text operators show. }
 procedure TestPdfAFonts;
@@ -2719,6 +2778,7 @@ procedure TestPdfAFonts;
 
 const
   NoExtra: array[0..0] of AnsiString = ('');
+  NoPairs: array[0..0] of Integer = (0);
   Helv = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
   Desc = ' /FontDescriptor 11 0 R';
   Simple = ' /FirstChar 97 /LastChar 98 /Widths [500 500]';
@@ -2740,8 +2800,36 @@ begin
   Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding' + Simple + Desc + ' >>';
   CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]),
     par_6_2_11_4_1_1, pro_Failed, 'a TrueType font without a program');
-  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, 'x', '')]), par_6_2_11_4_1_1, pro_Incomplete,
-    'a TrueType program veraPDF may not parse');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, 'x', '')]), par_6_2_11_4_1_1, pro_Failed,
+    'a TrueType program veraPDF rejects');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_4_1_1,
+    pro_Passed, 'a TrueType program veraPDF accepts');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_6_1,
+    pro_Passed, 'a non-symbolic program with a (3,1) cmap');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_6_1,
+    pro_Failed, 'a non-symbolic program without a cmap');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 0]), '')]), par_6_2_11_6_1,
+    pro_Failed, 'a non-symbolic program with only a (3,0) cmap');
+  CheckOutcome(Pdf('3 Tr (a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, '00', ' /Filter /ASCIIHexDecode')]),
+    par_6_2_11_6_1, pro_Incomplete, 'the cmaps of a program whose data are not decided');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, Be32($10000) + Be16(1) + Zeros(6) + 'head' +
+    Be32(0) + Be32($7FFFFFF0) + Be32(54), '')]), par_6_2_11_4_1_1, pro_Failed,
+    'a seek past the end of a small program rejects it');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, Be32($10000) + Be16(1) + Zeros(6) + 'head' +
+    Be32(0) + Be32($7FFFFFF0) + Be32(54) + Zeros(10240), '')]), par_6_2_11_4_1_1, pro_Incomplete,
+    'a seek past the end of a large program makes veraPDF throw');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, Be32($10000) + Be16(1) + Zeros(6) + 'head' +
+    Be32(0) + Be32($7FFFFFF0) + Be32(54) + Zeros(10211), '')]), par_6_2_11_4_1_1, pro_Failed,
+    'a program of 10239 bytes is rejected');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, Be32($10000) + Be16(1) + Zeros(6) + 'head' +
+    Be32(0) + Be32($7FFFFFF0) + Be32(54) + Zeros(10212), '')]), par_6_2_11_4_1_1, pro_Incomplete,
+    'a program of 10240 bytes makes veraPDF throw');
+  CheckOutcome(ContentPdf('BT /F1 1 Tf (a) Tj /F2 1 Tf (a) Tj ET', '', '', '/Font << /F1 10 0 R /F2 13 0 R >>',
+    [ObjText(10, Font), ObjText(13, '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding ' +
+    '/StandardEncoding' + Simple + Desc + ' >>'), ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]),
+    par_6_2_11_4_1_1, pro_Incomplete, 'fonts sharing a program with different encodings');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, Copy(TtfData([3, 1]), 1, 60), '')]),
+    par_6_2_11_4_1_1, pro_Failed, 'a truncated program');
   CheckOutcome(Pdf('(a) Tj', Font,
     [ObjText(11, '<< /Type /FontDescriptor /FontName /Arial /Flags 32 /FontFile 12 0 R >>'),
     StreamObj(12, 'x', '')]), par_6_2_11_4_1_1, pro_Failed, 'a TrueType font with a Type 1 program');
@@ -2759,8 +2847,26 @@ begin
     '/Differences [97 /a] >>' + Simple + Desc + ' >>';
   CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Plain)]), par_6_2_11_6_2, pro_Passed,
     '/Differences without a font program');
-  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, 'x', '')]), par_6_2_11_6_2, pro_Incomplete,
-    '/Differences with a font program');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, 'x', '')]), par_6_2_11_6_2, pro_Failed,
+    '/Differences with a program veraPDF rejects');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([1, 0]), '')]), par_6_2_11_6_2,
+    pro_Failed, '/Differences with a program without a (3,1) cmap');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_6_2,
+    pro_Incomplete, '/Differences with a (3,1) cmap');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding << /BaseEncoding /WinAnsiEncoding ' +
+    '/Differences [-5 /a] >>' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_4_1_1,
+    pro_Incomplete, 'a negative /Differences code makes veraPDF throw');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /StandardEncoding' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Prog2), StreamObj(12, TtfData([3, 1]), '')]), par_6_2_11_4_1_1,
+    pro_Failed, 'StandardEncoding: veraPDF does not take the program as parsed');
+  Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial' + Simple + Desc + ' >>';
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, '<< /Type /FontDescriptor /FontName /Arial /Flags 4 /FontFile2 ' +
+    '12 0 R >>'), StreamObj(12, TtfData([1, 0, 3, 1]), '')]), par_6_2_11_6_4, pro_Failed,
+    'a symbolic program with two cmaps and no (3,0)');
+  CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, '<< /Type /FontDescriptor /FontName /Arial /Flags 4 /FontFile2 ' +
+    '12 0 R >>'), StreamObj(12, TtfData([1, 0, 3, 0]), '')]), par_6_2_11_6_4, pro_Passed,
+    'a symbolic program with a (3,0) cmap');
   Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial /Encoding /WinAnsiEncoding' + Simple + Desc + ' >>';
   CheckOutcome(Pdf('(a) Tj', Font, [ObjText(11, Sym)]), par_6_2_11_6_3, pro_Failed, 'a symbolic font with an encoding');
   Font := '<< /Type /Font /Subtype /TrueType /BaseFont /Arial' + Simple + Desc + ' >>';
@@ -2786,7 +2892,14 @@ begin
   { composite fonts }
   Font := '<< /Type /Font /Subtype /Type0 /BaseFont /Arial /Encoding /Identity-H /DescendantFonts [13 0 R] >>';
   CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Prog2), StreamObj(12, 'x', '')]),
-    par_6_2_11_3_2_1, pro_Incomplete, 'an embedded CIDFontType2 without /CIDToGIDMap');
+    par_6_2_11_3_2_1, pro_Passed, 'a rejected CIDFontType2 program needs no /CIDToGIDMap');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_3_2_1, pro_Failed,
+    'an embedded CIDFontType2 without /CIDToGIDMap');
+  CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, '<< /Type /Font /Subtype /CIDFontType2 /CIDSystemInfo << ' +
+    '/Registry (Adobe) /Ordering (Japan1) /Supplement 2 >> /FontDescriptor 11 0 R >>'), ObjText(11, Prog2),
+    StreamObj(12, TtfData(NoPairs), '')]), par_6_2_11_3_2_1, pro_Incomplete,
+    'a parsed CIDFont program without a /BaseFont name makes veraPDF throw');
   CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' /CIDToGIDMap /Identity >>'), ObjText(11, Prog2),
     StreamObj(12, 'x', '')]), par_6_2_11_3_2_1, pro_Passed, 'a CIDFontType2 with /CIDToGIDMap');
   CheckOutcome(Pdf('<0001> Tj', Font, [ObjText(13, Cid + ' >>'), ObjText(11, Plain)]), par_6_2_11_4_1_1,

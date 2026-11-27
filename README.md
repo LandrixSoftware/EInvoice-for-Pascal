@@ -104,7 +104,7 @@ its level in a comment before its `unit` line (`API: stable` or `API: internal`)
 - **Internal** (may change in any release): `LandrixEInvoiceMapCII`, `LandrixEInvoiceMapUBL`,
   `LandrixEInvoiceCheck`, `LandrixEInvoiceCheckPeppol`, `LandrixEInvoiceIdentifiers`,
   `LandrixEInvoiceCodeNames`, `LandrixEInvoiceRenderLabels`, `LandrixEInvoiceRender`,
-  `LandrixEInvoiceRenderWalk`, `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceSubLines`, `LandrixEInvoicePdfObjects`, `LandrixEInvoicePdfSyntax`, `LandrixEInvoicePdfARules`, `LandrixEInvoicePdfCheck`, `LandrixEInvoicePdfContent`, `LandrixEInvoicePdfXmp`, `LandrixEInvoiceLexical`, `LandrixEInvoiceExact`, `LandrixEInvoiceFiles`,
+  `LandrixEInvoiceRenderWalk`, `LandrixEInvoiceRules`, `LandrixEInvoiceCalc`, `LandrixEInvoiceSubLines`, `LandrixEInvoicePdfObjects`, `LandrixEInvoicePdfSyntax`, `LandrixEInvoicePdfARules`, `LandrixEInvoicePdfCheck`, `LandrixEInvoicePdfContent`, `LandrixEInvoicePdfFontProgram`, `LandrixEInvoicePdfTrueType`, `LandrixEInvoicePdfXmp`, `LandrixEInvoiceLexical`, `LandrixEInvoiceExact`, `LandrixEInvoiceFiles`,
   `LandrixEInvoiceCIIProfiles`, `LandrixEInvoiceCIICodeRules`, and the
   readers and writers `LandrixEInvoiceCIIReader`, `LandrixEInvoiceCIIWriter`,
   `LandrixEInvoiceUBLReader`, `LandrixEInvoiceUBLWriter`. What they offer for reading, writing,
