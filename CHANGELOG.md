@@ -318,6 +318,12 @@ Supported invoice standards are documented per release.
 - Reading CII: the due date of a cash discount term whose own period (basis date plus days) ends on another date is the
   net due date BT-9 when no net term gives one, as ZUGFeRD EXTENDED invoices write it (`#SKONTO#` term with
   `DueDateDateTime`); it was dropped silently. Further differing dates are reported.
+- Reading CII: a cash discount term with structured discount terms whose text also holds `#SKONTO#` lines (e.g.
+  2 % after 10 and after 20 days, structured only for one of them) takes over the structured levels; one of the first three text lines
+  whose days and percentage match none of them was lost silently and is now reported.
+- Example scenarios `LieferungEUohneMehrwertsteuer` (document allowance in category K with exemption reason and
+  code, line exemption reason code) and `Paragr13b` (line exemption reason code), as in XRechnung-for-Delphi;
+  ZUGFeRD EXTENDED counts lines and allowances to BT-116 only with matching reason and code (BR-FXEXT-xx-08rev).
 
 ## Releases
 

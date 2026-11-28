@@ -888,17 +888,35 @@ begin
     TaxPercent := 0;
     TaxCategory := idtfcc_K_VATExemptForEEAIntracommunitySupplyOfGoodsAndServices;
     TaxExemptionReason := IntraCommunityReason;
+    { text and code must equal the VAT breakdown in ZUGFeRD Extended (BR-FXEXT-IC-08rev) }
+    TaxExemptionReasonCode := 'VATEX-EU-IC';
     GrossPriceAmount := 5000;
     NetPriceAmount := 5000;
     LineAmount := 5000;
   end;
 
-  with AddTaxSubtotal(AInvoice, 0, idtfcc_K_VATExemptForEEAIntracommunitySupplyOfGoodsAndServices, 5000, 0) do
+  { document level allowance, also exempt; only ZUGFeRD Extended writes its exemption reason }
+  with AInvoice.AllowanceCharges.AddAllowanceCharge do
+  begin
+    ChargeIndicator := False;
+    ReasonCodeAllowance := iacic_Discount;
+    Reason := 'Treuerabatt';
+    BaseAmount := 5000;
+    MultiplierFactorNumeric := 2; { 2 percent of 5000 EUR }
+    Amount := 100;
+    TaxPercent := 0;
+    TaxCategory := idtfcc_K_VATExemptForEEAIntracommunitySupplyOfGoodsAndServices;
+    TaxExemptionReason := IntraCommunityReason;
+    TaxExemptionReasonCode := 'VATEX-EU-IC';
+  end;
+
+  with AddTaxSubtotal(AInvoice, 0, idtfcc_K_VATExemptForEEAIntracommunitySupplyOfGoodsAndServices, 4900, 0) do
   begin
     TaxExemptionReason := IntraCommunityReason;
     TaxExemptionReasonCode := 'VATEX-EU-IC'; { BT-121, optional besides the text (BR-IC-10) }
   end;
-  SetTotals(AInvoice, 0, 5000, 5000, 5000, 5000);
+  SetTotals(AInvoice, 0, 5000, 4900, 4900, 4900);
+  AInvoice.AllowanceTotalAmount := 100;
 end;
 
 { Small business regulation (section 19 UStG). }
@@ -1177,6 +1195,7 @@ begin
     TaxPercent := 0;
     TaxCategory := idtfcc_AE_VATReverseCharge;
     TaxExemptionReason := ReverseChargeReason; { must equal the subtotal's reason in ZUGFeRD Extended }
+    TaxExemptionReasonCode := 'VATEX-EU-AE'; { must equal the subtotal's code in ZUGFeRD Extended (BR-FXEXT-AE-08rev) }
     GrossPriceAmount := 50;
     NetPriceAmount := 50;
     LineAmount := 200;

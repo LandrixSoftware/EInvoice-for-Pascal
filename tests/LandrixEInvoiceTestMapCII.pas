@@ -925,6 +925,64 @@ begin
   end;
 end;
 
+{ A cash discount term with structured terms for one level whose text holds
+  two #SKONTO# lines (2 % after 10 and after 20 days): the structured level
+  is taken over, the other line is reported; a line that matches the
+  structured level (days from the issue date or the period) is not, nor is
+  a text repeated on two terms that each give one of its levels. }
+procedure TestPaymentTermsTextBesideStructured;
+
+  function Term(const AText, APeriod: string): string;
+  begin
+    Result := '<ram:SpecifiedTradePaymentTerms><ram:Description>' + AText + '</ram:Description>' +
+      '<ram:ApplicableTradePaymentDiscountTerms>' +
+      '<ram:BasisPeriodMeasure unitCode="DAY">' + APeriod + '</ram:BasisPeriodMeasure>' +
+      '<ram:BasisAmount>500.00</ram:BasisAmount><ram:CalculationPercent>2</ram:CalculationPercent>' +
+      '<ram:ActualDiscountAmount>10.00</ram:ActualDiscountAmount>' +
+      '</ram:ApplicableTradePaymentDiscountTerms></ram:SpecifiedTradePaymentTerms>';
+  end;
+
+var
+  Invoice: TLandrixInvoice;
+  D: TLandrixEInvoiceDiagnostics;
+begin
+  Invoice := nil;
+  D := TLandrixEInvoiceDiagnostics.Create;
+  try
+    Invoice := TLandrixInvoice.Create;
+    ReadInvoiceXml(PaymentTermsXml('20261111', Term('#SKONTO#TAGE=10#PROZENT=2.00#' + #10 +
+      '#SKONTO#TAGE=20#PROZENT=2.00#', '20')), Invoice, D);
+    Check(Invoice.PaymentTermsType = iptt_CashDiscount1, 'one cash discount');
+    CheckEquals(20, Invoice.PaymentTermCashDiscount1Days, 'the structured level');
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'the other text level is reported: ' + string(D.ToText));
+    Check(Pos('2.00 % after 10 days', string(D.ToText)) > 0, 'the level not taken over: ' + string(D.ToText));
+    ReadInvoiceXml(PaymentTermsXml('20261111', Term('#SKONTO#TAGE=20#PROZENT=2#', '20')), Invoice, D);
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'a matching line is not reported: ' + string(D.ToText));
+    ReadInvoiceXml(PaymentTermsXml('20261111', Term('#SKONTO#TAGE=20#PROZENT=3#', '20')), Invoice, D);
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'a line with another percentage is reported: ' + string(D.ToText));
+    ReadInvoiceXml(PaymentTermsXml('20261111', Term('#SKONTO#TAGE=10#PROZENT=2.00#' + #10 +
+      '#SKONTO#TAGE=20#PROZENT=2.00#', '10') + Term('#SKONTO#TAGE=10#PROZENT=2.00#' + #10 +
+      '#SKONTO#TAGE=20#PROZENT=2.00#', '20')), Invoice, D);
+    Check(Invoice.PaymentTermsType = iptt_CashDiscount2, 'two cash discounts');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'a text repeated on both terms is not reported: ' + string(D.ToText));
+    ReadInvoiceXml(PaymentTermsXml('20261019',
+      '<ram:SpecifiedTradePaymentTerms><ram:Description>#SKONTO#TAGE=27#PROZENT=3.00#</ram:Description>' +
+      '<ram:DueDateDateTime><udt:DateTimeString format="102">20261115</udt:DateTimeString></ram:DueDateDateTime>' +
+      '<ram:ApplicableTradePaymentDiscountTerms><ram:CalculationPercent>3</ram:CalculationPercent>' +
+      '</ram:ApplicableTradePaymentDiscountTerms></ram:SpecifiedTradePaymentTerms>'), Invoice, D);
+    CheckEquals(27, Invoice.PaymentTermCashDiscount1Days, 'days from the due date');
+    CheckEquals(0, D.CountOf(edk_NotMapped), 'days counted from the due date match: ' + string(D.ToText));
+    ReadInvoiceXml(PaymentTermsXml('20261111', Term('#SKONTO#TAGE=0#PROZENT=2.00#', 'abc')), Invoice, D);
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'an unreadable period matches no line: ' + string(D.ToText));
+    ReadInvoiceXml(PaymentTermsXml('20261111', Term('#SKONTO#TAGE=20#PROZENT=1' + StringOfChar('0', 304) + '#',
+      '20')), Invoice, D);
+    CheckEquals(1, D.CountOf(edk_NotMapped), 'a huge percentage is reported, not raised: ' + string(D.ToText));
+  finally
+    Invoice.Free;
+    D.Free;
+  end;
+end;
+
 { BT-7 and BT-8 when writing: BT-8 once in UNTDID 2475, an unknown code
   unchanged, BT-8 left out next to BT-7 (BR-CO-03), both left out without a
   VAT breakdown. }
@@ -1693,6 +1751,7 @@ begin
   RegisterTest('MapCII.Phase2EN16931', TestPhase2EN16931);
   RegisterTest('MapCII.PaymentTermsOrder', TestPaymentTermsOrder);
   RegisterTest('MapCII.PaymentTermsNetDueBesideDiscount', TestPaymentTermsNetDueBesideDiscount);
+  RegisterTest('MapCII.PaymentTermsTextBesideStructured', TestPaymentTermsTextBesideStructured);
   RegisterTest('MapCII.TaxPointDateWrite', TestTaxPointDateWrite);
   RegisterTest('MapCII.TaxPointDateRead', TestTaxPointDateRead);
   RegisterTest('MapCII.ReviewCases', TestReviewCases);

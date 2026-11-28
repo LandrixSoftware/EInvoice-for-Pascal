@@ -1740,6 +1740,22 @@ end;
 { --- reading ---------------------------------------------------------------- }
 
 type
+  { A structured cash discount level as read: days from the issue date, the
+    period itself and the percentage; Low(Integer) where no day count is
+    known. Named dynamic arrays, not open array parameters: FPC 3.2.2 with
+    -Cr reports those falsely as assigned but never used.
+    DE: Eine gelesene strukturierte Skontostufe: Tage ab Rechnungsdatum, die
+    Frist selbst und der Prozentsatz; Low(Integer), wo keine Tagzahl bekannt
+    ist. Benannte dynamische Arrays statt offener Array-Parameter: FPC 3.2.2
+    mit -Cr meldet diese faelschlich als zugewiesen, aber nie benutzt. }
+  TCIIDiscountLevel = record
+    Days: Integer;
+    PeriodDays: Integer;
+    Percent: Double;
+  end;
+  TCIIDiscountLevels = array of TCIIDiscountLevel;
+  TCIITexts = array of TLandrixEInvoiceString;
+
   { Reads one CII model into one invoice. Each method takes over what the
     invoice model can hold and reports the rest (edk_NotMapped) with the
     help of ListFilledChildren.
@@ -1800,6 +1816,8 @@ type
     procedure ReadSettlement;
     procedure ReadPaymentMeans(ASettlement: TLandrixCIIHeaderTradeSettlement);
     procedure ReadPaymentTerms(ASettlement: TLandrixCIIHeaderTradeSettlement);
+    procedure ReportTextDiscounts(const ATexts: TCIITexts; const ALevels: TCIIDiscountLevels;
+      const APath: TLandrixEInvoiceString);
     procedure ReadTotals(ASettlement: TLandrixCIIHeaderTradeSettlement);
   public
     constructor Create(ACII: TLandrixCIIInvoice; AInvoice: TLandrixInvoice;
@@ -2914,6 +2932,88 @@ begin
   end;
 end;
 
+{ Cash discount terms with structured discount terms whose text also holds
+  #SKONTO# lines (the XRechnung form): the structured terms are the cash
+  discount levels, each text is kept as its level's note. A #SKONTO# line
+  that matches no structured level in days (counted from the issue date or
+  as the period itself) and percent is a further level the model does not
+  take over and is reported; the same text on several terms counts once.
+  DE: Skontobedingungen mit strukturierten Skontoangaben, deren Text auch
+  #SKONTO#-Zeilen enthaelt (die XRechnung-Form): die strukturierten Angaben
+  sind die Skontostufen, jeder Text bleibt die Notiz seiner Stufe. Eine
+  #SKONTO#-Zeile, die zu keiner strukturierten Stufe in Tagen (ab
+  Rechnungsdatum oder als Frist selbst) und Prozent passt, ist eine weitere
+  Stufe, die das Modell nicht uebernimmt, und wird gemeldet; derselbe Text
+  an mehreren Bedingungen zaehlt einmal. }
+procedure TCIIReadMapper.ReportTextDiscounts(const ATexts: TCIITexts; const ALevels: TCIIDiscountLevels;
+  const APath: TLandrixEInvoiceString);
+var
+  Parsed: TLandrixInvoice;
+  T, K, Level, Levels, LevelDays: Integer;
+  LevelPercent: Double;
+  PercentText: TLandrixEInvoiceString;
+  Seen, Matched: Boolean;
+begin
+  Parsed := TLandrixInvoice.Create;
+  try
+    for T := 0 to Integer(Length(ATexts)) - 1 do
+    begin
+      Seen := False;
+      for K := 0 to T - 1 do
+        if ATexts[K] = ATexts[T] then
+          Seen := True;
+      if Seen then
+        Continue;
+      Parsed.Clear;
+      LandrixEInvoiceReadPaymentTermsText(Parsed, ATexts[T]);
+      case Parsed.PaymentTermsType of
+        iptt_CashDiscount1: Levels := 1;
+        iptt_CashDiscount2: Levels := 2;
+        iptt_CashDiscount3: Levels := 3;
+      else
+        Levels := 0;
+      end;
+      for Level := 1 to Levels do
+      begin
+        case Level of
+          1:
+            begin
+              LevelDays := Parsed.PaymentTermCashDiscount1Days;
+              LevelPercent := Parsed.PaymentTermCashDiscount1Percent;
+            end;
+          2:
+            begin
+              LevelDays := Parsed.PaymentTermCashDiscount2Days;
+              LevelPercent := Parsed.PaymentTermCashDiscount2Percent;
+            end;
+        else
+          begin
+            LevelDays := Parsed.PaymentTermCashDiscount3Days;
+            LevelPercent := Parsed.PaymentTermCashDiscount3Percent;
+          end;
+        end;
+        Matched := False;
+        for K := 0 to Integer(Length(ALevels)) - 1 do
+          if ((LevelDays = ALevels[K].Days) or (LevelDays = ALevels[K].PeriodDays)) and
+             (Abs(LevelPercent) < 1000000) and (Abs(ALevels[K].Percent) < 1000000) and
+             (Abs(LevelPercent - ALevels[K].Percent) * 100000 <= 5) then
+            Matched := True;
+        if Matched then
+          Continue;
+        { the formatter refuses numbers far beyond any percentage }
+        if Abs(LevelPercent) < 1000000 then
+          PercentText := LandrixEInvoiceDecimalToLexical(LevelPercent, 2)
+        else
+          PercentText := '?';
+        NotMapped(APath, 'cash discount of ' + PercentText + ' % after ' +
+          TLandrixEInvoiceString(IntToStr(LevelDays)) + ' days in the text beside the structured discount terms');
+      end;
+    end;
+  finally
+    Parsed.Free;
+  end;
+end;
+
 { BT-20/BT-9/BT-89: one term with a due date or #SKONTO# text is the
   XRechnung form; otherwise the Factur-X form: the first term without
   discount terms is the net term (in any position), terms with discount
@@ -2938,12 +3038,14 @@ var
   Discount: TLandrixCIITradePaymentDiscountTerms;
   I: TLandrixEInvoiceListIndex;
   Path: TLandrixEInvoiceString;
-  Days: Integer;
+  Days, PeriodDays: Integer;
   Percent, Period, DayCount: Double;
   Base, Actual: Currency;
   Basis, Due, PeriodEnd: TDateTime;
   TermDues: array of TDateTime;
-  NetFound, InDays, PeriodOk: Boolean;
+  Texts: TCIITexts;
+  DiscountLevels: TCIIDiscountLevels;
+  NetFound, InDays, PeriodOk, DaysOk: Boolean;
   PeriodUnit: TLandrixEInvoiceString;
 begin
   Terms := ASettlement.SpecifiedTradePaymentTerms;
@@ -2963,6 +3065,8 @@ begin
   end;
   NetFound := False;
   TermDues := nil;
+  Texts := nil;
+  DiscountLevels := nil;
   for I := 0 to Terms.Count - 1 do
   begin
     Term := Terms[I];
@@ -3003,6 +3107,9 @@ begin
       Frist in Wochen zaehlt je 7 Tage, eine in anderen Einheiten (Monate,
       Jahre) hat keine feste Zahl von Tagen und wird gemeldet }
     Days := 0;
+    { no day count known: a value no #SKONTO# line can give }
+    PeriodDays := Low(Integer);
+    DaysOk := False;
     PeriodUnit := Discount.BasisPeriodMeasure.UnitCode;
     InDays := (PeriodUnit = '') or (PeriodUnit = 'DAY') or (PeriodUnit = 'WEE');
     if (Discount.BasisPeriodMeasure.Value <> '') and not InDays then
@@ -3041,6 +3148,11 @@ begin
            (FInvoice.InvoiceIssueDate > 0) then
           PeriodEnd := Trunc(FInvoice.InvoiceIssueDate) + Days;
       end;
+      if PeriodOk and LandrixEInvoiceTryLexicalToDouble(Discount.BasisPeriodMeasure.Value, Period) then
+      begin
+        PeriodDays := Days;
+        DaysOk := True;
+      end;
       if PeriodOk and (Basis > 0) and (FInvoice.InvoiceIssueDate > 0) then
         Days := Days + Integer(Trunc(Basis) - Trunc(FInvoice.InvoiceIssueDate));
       if (PeriodEnd > 0) and (Term.DueDateDateTime.Value <> '') then
@@ -3057,7 +3169,10 @@ begin
     begin
       Basis := Date(Term.DueDateDateTime, Path + '/ram:DueDateDateTime');
       if Basis > 0 then
+      begin
         Days := Integer(Trunc(Basis) - Trunc(FInvoice.InvoiceIssueDate));
+        DaysOk := True;
+      end;
     end
     else if Discount.BasisDateTime.Value <> '' then
       NotMapped(Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisDateTime',
@@ -3070,6 +3185,18 @@ begin
         NotMapped(Path + '/ram:DirectDebitMandateID', 'second mandate reference');
     end;
     Percent := Decimal(Discount.CalculationPercent, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:CalculationPercent');
+    SetLength(DiscountLevels, Length(DiscountLevels) + 1);
+    if DaysOk then
+      DiscountLevels[High(DiscountLevels)].Days := Days
+    else
+      DiscountLevels[High(DiscountLevels)].Days := Low(Integer);
+    DiscountLevels[High(DiscountLevels)].PeriodDays := PeriodDays;
+    DiscountLevels[High(DiscountLevels)].Percent := Percent;
+    if Pos('#SKONTO#', Term.Description) > 0 then
+    begin
+      SetLength(Texts, Length(Texts) + 1);
+      Texts[High(Texts)] := Term.Description;
+    end;
     Base := Amount(Discount.BasisAmount, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:BasisAmount');
     Actual := Amount(Discount.ActualDiscountAmount, Path + '/ram:ApplicableTradePaymentDiscountTerms/ram:ActualDiscountAmount');
     case FInvoice.PaymentTermsType of
@@ -3109,6 +3236,8 @@ begin
     Rest(Path, ['ram:Description', 'ram:DueDateDateTime', 'ram:ApplicableTradePaymentDiscountTerms',
       'ram:DirectDebitMandateID']);
   end;
+  if Length(Texts) > 0 then
+    ReportTextDiscounts(Texts, DiscountLevels, Path + '/ram:Description');
   if (Length(TermDues) > 0) and (FInvoice.InvoiceDueDate = 0) then
     FInvoice.InvoiceDueDate := TermDues[0];
   for I := 0 to Length(TermDues) - 1 do
